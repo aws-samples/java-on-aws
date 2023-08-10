@@ -41,7 +41,7 @@ wget https://github.com/mikefarah/yq/releases/download/v4.33.3/yq_linux_amd64.ta
 yq --version
 
 ## Resize disk
-/home/ec2-user/environment/java-on-aws/resize-cloud9.sh 30
+/home/ec2-user/environment/java-on-aws/labs/resize-cloud9.sh 30
 
 ## Set JDK 17 as default
 sudo yum -y install java-17-amazon-corretto-devel
