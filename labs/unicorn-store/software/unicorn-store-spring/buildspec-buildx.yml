@@ -1,0 +1,34 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo Build started on `date`
+      - export BUILDX_VERSION=$(curl --silent "https://api.github.com/repos/docker/buildx/releases/latest" |jq -r .tag_name)
+      - curl -JLO "https://github.com/docker/buildx/releases/download/$BUILDX_VERSION/buildx-$BUILDX_VERSION.linux-amd64"
+      - mkdir -p ~/.docker/cli-plugins
+      - mv "buildx-$BUILDX_VERSION.linux-amd64" ~/.docker/cli-plugins/docker-buildx
+      - chmod +x ~/.docker/cli-plugins/docker-buildx
+      - docker run --privileged --rm tonistiigi/binfmt --install arm64
+      # To install all the supported platforms:
+      # - docker run --privileged --rm tonistiigi/binfmt --install all
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-8)
+      - IMAGE_TAG=i$(date +%Y%m%d%H%M%S)-${COMMIT_HASH:=latest}
+      - echo ECR_URI=$ECR_URI
+      - echo IMAGE_NAME=$IMAGE_NAME
+      - echo COMMIT_HASH=$COMMIT_HASH
+      - echo IMAGE_TAG=$IMAGE_TAG
+      - echo AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_URI
+  build:
+    commands:
+      - echo Build image ...
+      - docker buildx create --use --name multiarch
+      - docker buildx build --push --platform=linux/amd64,linux/arm64 -t $ECR_URI/$IMAGE_NAME:$IMAGE_TAG -t $ECR_URI/$IMAGE_NAME:latest .
+  post_build:
+    commands:
+      - echo Build completed on `date`

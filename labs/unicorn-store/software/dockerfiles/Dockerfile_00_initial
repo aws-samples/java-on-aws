@@ -1,0 +1,13 @@
+FROM public.ecr.aws/amazoncorretto/amazoncorretto:17
+
+RUN yum install -y shadow-utils
+
+COPY store-spring.jar store-spring.jar
+
+RUN groupadd --system spring
+RUN adduser spring -g spring
+
+USER spring:spring
+
+EXPOSE 8080
+ENTRYPOINT ["java","-jar","-Dserver.port=8080","/store-spring.jar"]

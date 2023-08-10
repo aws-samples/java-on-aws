@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unicorn-store-spring
+  namespace: unicorn-store-spring
+  labels:
+    app: unicorn-store-spring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unicorn-store-spring
+  template:
+    metadata:
+      labels:
+        app: unicorn-store-spring
+    spec:
+      serviceAccountName: unicorn-store-spring
+      containers:
+        - name: unicorn-store-spring
+          resources:
+            requests:
+              cpu: "0.5"
+              memory: "1Gi"
+            limits:
+              cpu: "0.5"
+              memory: "1Gi"
+          image: ${ECR_URI}:latest # {"$imagepolicy": "unicorn-store-spring:unicorn-store-spring"}
+          env:
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "unicornstore-db-secret"
+                  key: "password"
+                  optional: false
+            - name: SPRING_DATASOURCE_URL
+              value: ${SPRING_DATASOURCE_URL}
+          ports:
+            - containerPort: 8080
+        # - name: otel
+        #   image: "amazon/aws-otel-collector:latest"
+        #   resources:
+        #     limits:
+        #       cpu: "0.25"
+        #       memory: "0.5Gi"

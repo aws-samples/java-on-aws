@@ -1,0 +1,36 @@
+FROM ghcr.io/graalvm/graalvm-ce:22.3.1 AS build-aot
+
+RUN microdnf install -y unzip zip
+
+RUN \
+    curl -s "https://get.sdkman.io" | bash; \
+    bash -c "source $HOME/.sdkman/bin/sdkman-init.sh; \
+    sdk install maven;"
+
+COPY ./pom.xml ./pom.xml
+COPY src ./src/
+
+ENV MAVEN_OPTS='-Xmx8g'
+
+RUN bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && mvn -Dmaven.test.skip=true clean package -Pnative"
+
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023
+RUN yum install -y shadow-utils
+
+RUN groupadd --system spring 
+RUN adduser spring -g spring 
+
+COPY --from=build-aot /app/target/store-spring /
+
+# OpenTelemetry agent configuration
+ENV OTEL_TRACES_SAMPLER "always_on"
+ENV OTEL_PROPAGATORS "tracecontext,baggage,xray"
+ENV OTEL_RESOURCE_ATTRIBUTES "service.name=unicorn-store-spring"
+ENV OTEL_IMR_EXPORT_INTERVAL "10000"
+ENV OTEL_EXPORTER_OTLP_ENDPOINT "http://localhost:4317"
+
+USER spring:spring
+
+EXPOSE 8080
+
+CMD ["./store-spring", "-Dserver.port=8080"]

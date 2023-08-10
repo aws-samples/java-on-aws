@@ -1,0 +1,47 @@
+FROM maven:3-amazoncorretto-17 as builder
+RUN yum install -y unzip
+
+RUN ls -la /etc/alternatives/java
+
+COPY ./pom.xml ./pom.xml
+RUN mvn dependency:go-offline -f ./pom.xml
+
+COPY src ./src/
+RUN mvn clean package 
+RUN ls -la target
+RUN mv target/store-spring-1.0.0.jar target/store-spring.jar && cd target && unzip store-spring.jar
+
+RUN jdeps --ignore-missing-deps \
+    --multi-release 17 --print-module-deps \
+    --class-path="target/BOOT-INF/lib/*" \
+    target/store-spring.jar > jre-deps.info
+
+# Adding jdk.crypto.ec for TLS 1.3 support  
+RUN truncate --size -1 jre-deps.info
+RUN echo ",jdk.crypto.ec" >> jre-deps.info && cat jre-deps.info
+
+RUN export JAVA_TOOL_OPTIONS=\"-Djdk.lang.Process.launchMechanism=vfork\" && \
+    jlink --verbose --compress 2 --strip-java-debug-attributes \
+    --no-header-files --no-man-pages --output custom-jre \
+    --add-modules $(cat jre-deps.info)
+
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023
+RUN yum install -y shadow-utils
+
+COPY --from=builder target/store-spring.jar store-spring.jar
+COPY --from=builder custom-jre custom-jre
+
+RUN groupadd --system spring 
+RUN adduser spring -g spring 
+
+USER spring:spring
+
+# OpenTelemetry agent configuration
+ENV OTEL_TRACES_SAMPLER "always_on"
+ENV OTEL_PROPAGATORS "tracecontext,baggage,xray"
+ENV OTEL_RESOURCE_ATTRIBUTES "service.name=unicorn-store-spring"
+ENV OTEL_IMR_EXPORT_INTERVAL "10000"
+ENV OTEL_EXPORTER_OTLP_ENDPOINT "http://localhost:4317"
+
+EXPOSE 8080
+ENTRYPOINT ["./custom-jre/bin/java","-jar","-Dserver.port=8080","/store-spring.jar"]
