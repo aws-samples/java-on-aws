@@ -47,4 +47,7 @@ echo "export ECR_URI=${ECR_URI}" >> ~/.bashrc
 cd ~/environment/unicorn-store-spring
 mvn dependency:go-offline -f ./pom.xml 1> /dev/null
 
+# Resolution for ECS Service Unavailable
+aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
+
 echo "FINISHED: setup-infrastructure"
