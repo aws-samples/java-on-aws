@@ -542,14 +542,14 @@ Resources:
                 - echo '=== Clone Git repository ==='
                 - sudo -H -u ec2-user bash -c "git clone https://github.com/ybezsonov/aws-lambda-java-workshop.git /home/ec2-user/environment/java-on-aws/"
                 - echo '=== Update and install default software components, resize disk ==='
-                - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/setup-cloud9.sh &>> /home/ec2-user/java-ws-setup-cloud9.log"
+                - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/setup-cloud9.sh &>> /home/ec2-user/java-ws-setup-cloud9.log"
                 - echo '=== Setup Infrastructure components ==='
                 - sudo -H -i -u ec2-user bash -c "cd /home/ec2-user/environment/java-on-aws/labs/unicorn-store/ && ./setup-infrastructure.sh &>> /home/ec2-user/java-ws-setup-infra.log"
                 - echo '=== Install cfn-signal and report status ==='
                 - yum update -y aws-cfn-bootstrap
                 - if [ "$?" -ne 0 ]; then export BOOTSTRAP_RESULT=false; else export BOOTSTRAP_RESULT=true; fi
                 - "/opt/aws/bin/cfn-signal -e $? -s $BOOTSTRAP_RESULT '{{ WaitHandleUrl }}' "
-                - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/completed.sh"
+                - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/completed.sh"
                 - echo "Bootstrap completed with return code $?"
 
   C9BootstrapAssociation:
