@@ -1,3 +1,19 @@
+flux_version='2.0.1'
+flux_checksum='bff7a54421a591eaae0c13d1f7bd6420b289dd76d0642cb3701897c9d02c6df7'
+
+download_and_verify () {
+  url=$1
+  checksum=$2
+  out_file=$3
+
+  curl --location --show-error --silent --output $out_file $url
+
+  echo "$checksum $out_file" > "$out_file.sha256"
+  sha256sum --check "$out_file.sha256"
+
+  rm "$out_file.sha256"
+}
+
 ## go to tmp directory
 cd /tmp
 
@@ -70,7 +86,13 @@ echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
 kubectl version --output=yaml
 
 # install Flux
-curl -s https://fluxcd.io/install.sh | sudo bash
+# flux
+download_and_verify "https://github.com/fluxcd/flux2/releases/download/v${flux_version}/flux_${flux_version}_linux_amd64.tar.gz" "$flux_checksum" "flux.tar.gz"
+tar zxf flux.tar.gz
+chmod +x flux
+sudo mv ./flux /usr/local/bin
+rm -rf flux.tar.gz
+flux --version
 
 # install Helm
 curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
@@ -82,6 +104,9 @@ helm version
 cd ~/environment/java-on-aws/labs/unicorn-store
 ./mvnw dependency:go-offline -f infrastructure/db-setup/pom.xml 1> /dev/null
 ./mvnw dependency:go-offline -f software/unicorn-store-spring/pom.xml 1> /dev/null
+
+git config --global user.email "you@workshops.aws"
+git config --global user.name "Your Name"
 
 cd ~/environment
 export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)

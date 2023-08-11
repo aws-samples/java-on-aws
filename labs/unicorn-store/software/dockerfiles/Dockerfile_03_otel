@@ -24,8 +24,10 @@ ENV OTEL_RESOURCE_ATTRIBUTES "service.name=unicorn-store-spring"
 ENV OTEL_IMR_EXPORT_INTERVAL "10000"
 ENV OTEL_EXPORTER_OTLP_ENDPOINT "http://localhost:4317"
 
-RUN groupadd --system spring
-RUN adduser spring -g spring
+RUN groupadd --system spring -g 1000
+RUN adduser spring -u 1000 -g 1000
+
+USER 1000:1000
 
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","-Dserver.port=8080","/store-spring.jar"]

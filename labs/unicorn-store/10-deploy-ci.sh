@@ -8,9 +8,6 @@ git init -b main
 git remote add origin codecommit://unicorn-store-spring
 git remote -v
 
-git config --global user.email "you@workshops.aws"
-git config --global user.name "Your Name"
-
 git add .
 git commit -m "initial commit"
 git push --set-upstream origin main

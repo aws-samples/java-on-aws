@@ -40,6 +40,8 @@ git clone ${GITOPS_REPO_URL}
 rsync -av ~/environment/java-on-aws/labs/unicorn-store/gitops/ "${GITOPS_REPO_URL##*/}"
 cd "${GITOPS_REPO_URL##*/}"
 
+git config pull.rebase true
+
 export SPRING_DATASOURCE_URL=$(aws ssm get-parameter --name databaseJDBCConnectionString | jq --raw-output '.Parameter.Value')
 export ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring | jq --raw-output '.repositories[0].repositoryUri')
 export imagepolicy=\$imagepolicy
