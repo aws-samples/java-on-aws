@@ -9,7 +9,7 @@ RUN mvn dependency:go-offline -f ./pom.xml
 COPY src ./src/
 RUN mvn clean package 
 RUN ls -la target
-RUN mv target/store-spring-1.0.0.jar target/store-spring.jar && cd target && unzip store-spring.jar
+RUN mv target/store-spring-1.0.0-exec.jar target/store-spring.jar && cd target && unzip store-spring.jar
 
 RUN jdeps --ignore-missing-deps \
     --multi-release 17 --print-module-deps \

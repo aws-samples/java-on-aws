@@ -34,7 +34,7 @@ spec:
                   key: "password"
                   optional: false
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://unicorninstance.cqsod1juirda.eu-central-1.rds.amazonaws.com:5432/unicorns
+              value: ${SPRING_DATASOURCE_URL}
           ports:
             - containerPort: 8080
           securityContext:
