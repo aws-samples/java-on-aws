@@ -1,0 +1,23 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for all configuration options:
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: "/labs/unicorn-store/infrastructure/cdk" 
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: maven
+    directory: "/labs/unicorn-store/infrastructure/db-setup" 
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: docker
+    directory: "/labs/unicorn-store/software/dockerfiles"
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: maven
+    directory: "/labs/unicorn-store/software/unicorn-store-spring"
+    schedule:
+      interval: "monthly"
