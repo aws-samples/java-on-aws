@@ -37,7 +37,7 @@ public class UnicornStoreApp {
 
         //Add CDK-NAG checks: https://github.com/cdklabs/cdk-nag
         //Add suppression to exclude certain findings that are not needed for Workshop environment
-        Aspects.of(app).add(new AwsSolutionsChecks());
+        Aspects.of(app).add(AwsSolutionsChecks.Builder.create().build());
         var suppressionVpc = List.of(
             new NagPackSuppression.Builder().id("AwsSolutions-VPC7").reason("Workshop environment does not need VPC flow logs").build()
         );
@@ -65,17 +65,18 @@ public class UnicornStoreApp {
         NagSuppressions.addStackSuppressions(unicornStoreLambdaApp, suppression);
 
         var suppressionCICD = List.of(
-            new NagPackSuppression.Builder().id("AwsSolutions-CB3").reason("CodeBuild uses privileged mode to build docker images" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-CB4").reason("CodeBuild uses default AWS-managed CMK for S3" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-S1").reason("CodePipeline uses S3 to store temporary artefacts" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-IAM5").reason("CodeBuild uses default permissions for PipelineProject" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-ELB2").reason("Workshop environment does not need ELB access logs" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-EC23").reason("ELB is accessible from the Internet to allow application testing" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-ECS2").reason("Application need environment variables to accees workshop DB" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-IAM4").reason("AWS Managed policies are acceptable for the workshop" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-IAM5").reason("Workshop environment use CDK default execution role for Kubectl Lamdas" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-L1").reason("Workshop environment use CDK default Labdas for Kubectl" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-EKS1").reason("Workshop non-sensitive EKS cluster uses public access" ).build()
+                new NagPackSuppression.Builder().id("AwsSolutions-CB3").reason("CodeBuild uses privileged mode to build docker images" ).build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-CB4").reason("CodeBuild uses default AWS-managed CMK for S3" ).build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-S1").reason("CodePipeline uses S3 to store temporary artefacts" ).build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-IAM5").reason("CodeBuild uses default permissions for PipelineProject" ).build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-ELB2").reason("Workshop environment does not need ELB access logs" ).build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-EC23").reason("ELB is accessible from the Internet to allow application testing" ).build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-ECS2").reason("Application need environment variables to accees workshop DB" ).build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-IAM4").reason("AWS Managed policies are acceptable for the workshop" ).build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-IAM5").reason("Workshop environment use CDK default execution role for Kubectl Lamdas" ).build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-L1").reason("Workshop environment use CDK default Labdas for Kubectl" ).build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-EKS1").reason("Workshop non-sensitive EKS cluster uses public access" ).build(),
+                new NagPackSuppression.Builder().id("CdkNagValidationFailure").reason("Intrinsic function is used for Workshop definition").build()
         );
 
         NagSuppressions.addStackSuppressions(unicornStoreSpringCI, suppressionCICD);
