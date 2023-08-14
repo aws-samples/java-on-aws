@@ -310,6 +310,8 @@ Resources:
         rules_to_suppress:
           - id: W11
             reason: "Describe Action doesn't support any resource condition"
+          - id: F3
+            reason: "Bootstrap Lambda needs to inspect and operate Ec2 (and Cloud9) instances"
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -395,6 +397,13 @@ Resources:
   C9BootstrapInstanceLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
+      Metadata:
+        cfn_nag:
+          rules_to_suppress:
+            - id: "W92"
+              reason: "No need for running setup Lambda within a VPC"
+            - id: "W89"
+              reason: "No need for reserved concurrency for single setup lambda"
       Tags:
         - Key: Environment
           Value: AWS Example
