@@ -1,5 +1,7 @@
 #bin/sh
 
+echo $(date '+%Y.%m.%d %H:%M:%S')
+
 pushd ~/environment/unicorn-store-spring
 # uss=unicorn-store-spring - long app/service names may cause problems
 export COPILOT_APP=uss-app

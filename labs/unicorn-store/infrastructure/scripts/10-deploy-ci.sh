@@ -1,5 +1,7 @@
 #bin/sh
 
+echo $(date '+%Y.%m.%d %H:%M:%S')
+
 pushd ~/environment/java-on-aws/labs/unicorn-store/infrastructure/cdk
 cdk deploy UnicornStoreSpringCI --outputs-file target/output-ci.json --require-approval never
 

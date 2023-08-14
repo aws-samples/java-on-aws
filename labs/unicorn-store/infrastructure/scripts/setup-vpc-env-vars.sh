@@ -1,5 +1,7 @@
 #bin/sh
 
+echo $(date '+%Y.%m.%d %H:%M:%S')
+
 export UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc \
 --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
 echo "export UNICORN_VPC_ID=$UNICORN_VPC_ID" >> ~/.bashrc

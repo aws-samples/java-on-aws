@@ -1,6 +1,7 @@
 #bin/sh
-date
-start=`date +%s`
+echo $(date '+%Y.%m.%d %H:%M:%S')
+start_time=`date +%s`
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started" $start_time
 
 cd ~/environment/unicorn-store-spring
 copilot app delete --yes
@@ -67,7 +68,5 @@ cdk destroy UnicornStoreVpc --force
 # TODO: delete IAM roles, policies, etc.
 
 popd
-date
-end=`date +%s`
-runtime=$((end-start))
-echo $runtime
+
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Finished" $start_time

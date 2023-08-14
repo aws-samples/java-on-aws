@@ -1,5 +1,7 @@
 #bin/sh
 
+echo $(date '+%Y.%m.%d %H:%M:%S')
+
 pushd ~/environment
 
 export GITOPS_USER=unicorn-store-spring-gitops
@@ -37,7 +39,7 @@ flux bootstrap git \
 
 echo "${GITOPS_REPO_URL}"
 git clone ${GITOPS_REPO_URL}
-rsync -av ~/environment/java-on-aws/labs/unicorn-store/gitops/ "${GITOPS_REPO_URL##*/}"
+rsync -av ~/environment/java-on-aws/labs/unicorn-store/infrastructure/gitops/ "${GITOPS_REPO_URL##*/}"
 cd "${GITOPS_REPO_URL##*/}"
 
 git config pull.rebase true
@@ -56,7 +58,7 @@ apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImageRepository
 metadata:
   name: unicorn-store-spring
-  namespace: unicorn-store-spring
+  namespace: flux-system
 spec:
   provider: aws
   interval: 1m
@@ -72,7 +74,7 @@ apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImagePolicy
 metadata:
   name: unicorn-store-spring
-  namespace: unicorn-store-spring
+  namespace: flux-system
 spec:
   imageRepositoryRef:
     name: unicorn-store-spring
@@ -88,7 +90,7 @@ apiVersion: image.toolkit.fluxcd.io/v1beta1
 kind: ImageUpdateAutomation
 metadata:
   name: unicorn-store-spring
-  namespace: unicorn-store-spring
+  namespace: flux-system
 spec:
   git:
     checkout:
@@ -118,6 +120,8 @@ flux reconcile source git flux-system -n flux-system
 sleep 10
 flux reconcile kustomization apps -n flux-system
 sleep 10
+git -C ~/environment/unicorn-store-spring-gitops pull
+
 kubectl wait deployment -n unicorn-store-spring unicorn-store-spring --for condition=Available=True --timeout=120s
 kubectl -n unicorn-store-spring get all
 echo "App URL: http://$(kubectl get svc unicorn-store-spring -n unicorn-store-spring -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')"

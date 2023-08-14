@@ -1,10 +1,14 @@
 #bin/sh
 
+echo $(date '+%Y.%m.%d %H:%M:%S')
+start_time=`date +%s`
+
+cd ~/environment/java-on-aws/labs/unicorn-store
 # Build the database setup function
-./mvnw clean package -f infrastructure/db-setup/pom.xml 1> /dev/null
+mvn clean package -f infrastructure/db-setup/pom.xml 1> /dev/null
 
 # Build the unicorn application
-./mvnw clean package -f software/unicorn-store-spring/pom.xml 1> /dev/null
+mvn clean package -f software/unicorn-store-spring/pom.xml 1> /dev/null
 
 # Deploy the infrastructure
 pushd infrastructure/cdk
@@ -19,18 +23,13 @@ aws lambda invoke --function-name $(cat target/output-infra.json | jq -r '.Unico
 
 popd
 
-./setup-vpc-env-vars.sh
-source ~/.bashrc
-./setup-vpc-connector.sh
-./setup-vpc-peering.sh
-
 # Copy the Spring Boot Java Application source code to your local directory
 cd ~/environment
 mkdir unicorn-store-spring
 
 rsync -av java-on-aws/labs/unicorn-store/software/unicorn-store-spring/ unicorn-store-spring --exclude target
 cp -R java-on-aws/labs/unicorn-store/software/dockerfiles unicorn-store-spring
-cp -R java-on-aws/labs/unicorn-store/software/maven unicorn-store-spring
+cp -R java-on-aws/labs/unicorn-store/software/scripts unicorn-store-spring
 echo "target" > unicorn-store-spring/.gitignore
 
 # create AWS CodeCommit for Java Sources
@@ -50,4 +49,14 @@ mvn dependency:go-offline -f ./pom.xml 1> /dev/null
 # Resolution for ECS Service Unavailable
 aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
 
-echo "FINISHED: setup-infrastructure"
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-infrastructure" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
+
+# additional modules setup
+start_time=`date +%s`
+
+cd ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-env-vars.sh
+source ~/.bashrc
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-connector.sh
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-peering.sh
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-vpc" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)

@@ -3,9 +3,6 @@ FROM maven:3-amazoncorretto-17 as builder
 COPY ./pom.xml ./pom.xml
 RUN mvn dependency:go-offline -f ./pom.xml
 
-ADD https://github.com/aws-observability/aws-otel-java-instrumentation/releases/latest/download/aws-opentelemetry-agent.jar /opt/aws-opentelemetry-agent.jar
-ENV JAVA_TOOL_OPTIONS=-javaagent:/opt/aws-opentelemetry-agent.jar
-
 COPY src ./src/
 RUN mvn clean package && mv target/store-spring-1.0.0-exec.jar store-spring.jar
 
@@ -26,6 +23,7 @@ ENV OTEL_EXPORTER_OTLP_ENDPOINT "http://localhost:4317"
 
 RUN groupadd --system spring -g 1000
 RUN adduser spring -u 1000 -g 1000
+RUN chown 1000 /opt/aws-opentelemetry-agent.jar
 
 USER 1000:1000
 

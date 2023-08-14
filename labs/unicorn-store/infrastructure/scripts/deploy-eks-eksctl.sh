@@ -1,7 +1,8 @@
 #bin/sh
 
-# Build an image
+echo $(date '+%Y.%m.%d %H:%M:%S')
 
+# Build an image
 export ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring | jq --raw-output '.repositories[0].repositoryUri')
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URI
 
@@ -128,10 +129,3 @@ spec:
         key: unicornstore-db-secret
         property: password
 EOF
-
-# install a GitOps  stack and Flux to operate the deployment.
-cd ~/environment/java-on-aws/labs/unicorn-store
-./21-deploy-gitops.sh
-
-export SVC_URL=http://$(kubectl get svc unicorn-store-spring -n unicorn-store-spring -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
-echo $SVC_URL

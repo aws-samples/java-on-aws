@@ -21,8 +21,12 @@ fi
 
 if [ $app == "eks" ]
 then
-  # location=$(cat infrastructure/cdk/target/output-eks.json | jq -r '.UnicornStoreSpringEKS.UnicornStoreServiceURL')
   location=$(kubectl get svc unicorn-store-spring -n unicorn-store-spring -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
+fi
+
+if [ $app == "lambda" ]
+then
+  location=$(aws cloudformation describe-stacks --stack-name UnicornStoreLambdaApp | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "ApiEndpointSpring").OutputValue')
 fi
 
 id=$(curl --location --request POST $location'/unicorns' \

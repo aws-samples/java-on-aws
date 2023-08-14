@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo $(date '+%Y.%m.%d %H:%M:%S')
+
 # Specify the desired volume size in GiB as a command line argument. If not specified, default to 20 GiB.
 SIZE=${1:-20}
 

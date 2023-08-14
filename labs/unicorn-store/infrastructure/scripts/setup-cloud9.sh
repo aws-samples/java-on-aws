@@ -1,3 +1,9 @@
+#bin/sh
+
+start_time=`date +%s`
+export init_time=$start_time
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
+
 flux_version='2.0.1'
 flux_checksum='bff7a54421a591eaae0c13d1f7bd6420b289dd76d0642cb3701897c9d02c6df7'
 
@@ -23,6 +29,11 @@ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip
 unzip -q awscliv2.zip
 sudo ./aws/install
 rm awscliv2.zip
+
+## Resize disk
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/resize-cloud9.sh 50
+
+cd /tmp
 
 ## Install Maven
 export MVN_VERSION=3.9.2
@@ -56,9 +67,6 @@ wget https://github.com/mikefarah/yq/releases/download/v4.33.3/yq_linux_amd64.ta
   tar xz && sudo mv yq_linux_amd64 /usr/bin/yq
 yq --version
 
-## Resize disk
-/home/ec2-user/environment/java-on-aws/labs/resize-cloud9.sh 30
-
 ## Set JDK 17 as default
 sudo yum -y install java-17-amazon-corretto-devel
 sudo update-alternatives --set java /usr/lib/jvm/java-17-amazon-corretto.x86_64/bin/java
@@ -79,7 +87,7 @@ eksctl version
 
 ## kubectl
 # https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
-curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.25.6/2023-01-30/bin/linux/amd64/kubectl
+curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.27.1/2023-04-19/bin/linux/amd64/kubectl
 chmod +x ./kubectl
 mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
 echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
@@ -102,8 +110,8 @@ helm version
 
 ## Pre-Download Maven dependencies for Unicorn Store
 cd ~/environment/java-on-aws/labs/unicorn-store
-./mvnw dependency:go-offline -f infrastructure/db-setup/pom.xml 1> /dev/null
-./mvnw dependency:go-offline -f software/unicorn-store-spring/pom.xml 1> /dev/null
+mvn dependency:go-offline -f infrastructure/db-setup/pom.xml 1> /dev/null
+mvn dependency:go-offline -f software/unicorn-store-spring/pom.xml 1> /dev/null
 
 git config --global user.email "you@workshops.aws"
 git config --global user.name "Your Name"
@@ -117,6 +125,10 @@ aws configure set default.region ${AWS_REGION}
 aws configure get default.region
 test -n "$AWS_REGION" && echo AWS_REGION is "$AWS_REGION" || echo AWS_REGION is not set
 
-cd ~/environment
+# export C9ID=$(aws cloud9 list-environments --query 'environmentIds[0]' --output text)
+# echo C9ID=$C9ID
+# aws cloud9 update-environment  --environment-id $C9ID --managed-credentials-action DISABLE
+# rm -vf ${HOME}/.aws/credentials
+# aws sts get-caller-identity --query Arn | grep java-on-aws-workshop-admin -q && echo "IAM role is valid" || echo "IAM role is NOT valid"
 
-echo "FINISHED: setup-cloud9"
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-cloud9" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)

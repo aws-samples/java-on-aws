@@ -25,7 +25,7 @@ spec:
             limits:
               cpu: "0.5"
               memory: "1Gi"
-          image: ${ECR_URI}:latest # {"$imagepolicy": "unicorn-store-spring:unicorn-store-spring"}
+          image: ${ECR_URI}:latest # {"$imagepolicy": "flux-system:unicorn-store-spring"}
           env:
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
