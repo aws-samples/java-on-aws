@@ -18,6 +18,7 @@
     <description>Unicorn storage service</description>
     <properties>
         <java.version>17</java.version>
+        <snakeyaml.version>2.1</snakeyaml.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
@@ -155,6 +156,7 @@
                             </metadataRepository>
                             <buildArgs>
                                 <arg>--verbose</arg>
+                                <arg>-Ob</arg>
                                 <arg>-H:ReflectionConfigurationFiles=./src/main/resources/META-INF/native-image/reflect-config.json</arg>
                                 <arg>--initialize-at-build-time=org.apache.commons.logging.LogFactory,org.apache.commons.logging.LogFactoryService</arg>
                             </buildArgs>
