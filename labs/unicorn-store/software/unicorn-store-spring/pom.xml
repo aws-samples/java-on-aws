@@ -109,7 +109,7 @@
         <dependency>
             <groupId>io.opentelemetry.instrumentation</groupId>
             <artifactId>opentelemetry-aws-sdk-2.2</artifactId>
-            <version>1.27.0-alpha</version>
+            <version>1.28.0-alpha</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.opentelemetry.contrib/opentelemetry-aws-xray -->
         <dependency>
