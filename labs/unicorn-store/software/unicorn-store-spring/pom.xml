@@ -122,7 +122,7 @@
         <dependency>
             <groupId>io.opentelemetry.contrib</groupId>
             <artifactId>opentelemetry-aws-xray-propagator</artifactId>
-            <version>1.27.0-alpha</version>
+            <version>1.28.0-alpha</version>
         </dependency>
     </dependencies>
     <profiles>
