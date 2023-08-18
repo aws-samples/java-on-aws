@@ -6,12 +6,12 @@ location=""
 
 if [ $app == "apprunner" ]
 then
-  location=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName == 'unicorn-store-spring'].ServiceUrl" --output text)
+  location=https://$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName == 'unicorn-store-spring'].ServiceUrl" --output text)
 fi
 
 if [ $app == "copilot" ]
 then
-  location=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName == 'uss-app-env-dev-uss-svc'].ServiceUrl" --output text)
+  location=https://$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName == 'uss-app-env-dev-uss-svc'].ServiceUrl" --output text)
 fi
 
 if [ $app == "ecs" ]
