@@ -204,6 +204,16 @@
                             <layout>JAR</layout>
                         </configuration>
                     </plugin>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <version>3.3.2</version>
+                        <configuration>
+                            <container>
+                                <user>1000</user>
+                            </container>
+                        </configuration>
+                    </plugin>
                 </plugins>
             </build>
         </profile>
