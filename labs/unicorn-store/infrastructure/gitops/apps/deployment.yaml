@@ -20,11 +20,11 @@ spec:
         - name: unicorn-store-spring
           resources:
             requests:
-              cpu: "0.5"
-              memory: "1Gi"
+              cpu: "1"
+              memory: "2Gi"
             limits:
-              cpu: "0.5"
-              memory: "1Gi"
+              cpu: "1"
+              memory: "2Gi"
           image: ${ECR_URI}:latest # {"$imagepolicy": "flux-system:unicorn-store-spring"}
           env:
             - name: SPRING_DATASOURCE_PASSWORD
