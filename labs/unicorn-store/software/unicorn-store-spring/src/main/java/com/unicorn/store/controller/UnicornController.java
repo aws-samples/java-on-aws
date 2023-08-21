@@ -91,14 +91,8 @@ public class UnicornController {
         } finally {
         }
     }
-
-    @GetMapping("/health")
-    ResponseEntity<String> health() {
-        return new ResponseEntity<>("Healthy!", HttpStatus.OK);
-    }
-
     @GetMapping("/")
-    ResponseEntity<String> root() {
-        return new ResponseEntity<>("OK!", HttpStatus.OK);
+    public ResponseEntity<String> getWelcomeMessage() {
+        return new ResponseEntity<>("Welcome!", HttpStatus.OK);
     }
 }
