@@ -22,13 +22,6 @@ RUN adduser spring -u 1000 -g 1000
 
 COPY --from=build-aot /app/target/store-spring /
 
-# OpenTelemetry agent configuration
-ENV OTEL_TRACES_SAMPLER "always_on"
-ENV OTEL_PROPAGATORS "tracecontext,baggage,xray"
-ENV OTEL_RESOURCE_ATTRIBUTES "service.name=unicorn-store-spring"
-ENV OTEL_IMR_EXPORT_INTERVAL "10000"
-ENV OTEL_EXPORTER_OTLP_ENDPOINT "http://localhost:4317"
-
 USER 1000:1000
 
 EXPOSE 8080
