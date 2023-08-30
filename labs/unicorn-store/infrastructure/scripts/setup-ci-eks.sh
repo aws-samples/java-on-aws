@@ -41,6 +41,11 @@ flux reconcile kustomization apps -n flux-system
 sleep 10
 git -C ~/environment/unicorn-store-spring-gitops pull
 kubectl wait deployment -n unicorn-store-spring unicorn-store-spring --for condition=Available=True --timeout=120s
+export SVC_URL=http://$(kubectl get svc unicorn-store-spring -n unicorn-store-spring -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
+echo "export SVC_URL=${SVC_URL}" >> ~/.bashrc
+while [[ $(curl -s -o /dev/null -w "%{http_code}" $SVC_URL/) != "200" ]]; do echo "Service not yet available ..." &&  sleep 10; done
+echo "-----------------"
+echo "Service is Ready!"
 
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "gitops" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
 
