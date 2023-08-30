@@ -26,10 +26,13 @@ start_time=`date +%s`
 # enable otel
 pushd ~/environment/unicorn-store-spring-gitops
 git pull
-export ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring | jq --raw-output '.repositories[0].repositoryUri')
 export SPRING_DATASOURCE_URL=$(aws ssm get-parameter --name databaseJDBCConnectionString | jq --raw-output '.Parameter.Value')
-envsubst < ./deployment-with-otel.yaml > ./deployment-with-otel-new.yaml
-mv ./deployment-with-otel-new.yaml ./apps/deployment.yaml
+export ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring | jq --raw-output '.repositories[0].repositoryUri')
+export imagepolicy=\$imagepolicy
+cp ~/environment/java-on-aws/labs/unicorn-store/infrastructure/gitops/deployment-with-otel.yaml ./apps/
+envsubst < ./apps/deployment-with-otel.yaml > ./apps/deployment-with-otel-new.yaml
+mv ./apps/deployment-with-otel-new.yaml ./apps/deployment.yaml
+rm ./apps/deployment-with-otel.yaml
 git add . && git commit -m "enable otel" && git push
 popd
 flux reconcile source git flux-system -n flux-system
