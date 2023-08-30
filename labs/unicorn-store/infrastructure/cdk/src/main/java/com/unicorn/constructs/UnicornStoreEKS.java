@@ -92,7 +92,7 @@ public class UnicornStoreEKS extends Construct {
         cluster.addNodegroupCapacity("managed-node-group-x64",
                 NodegroupOptions.builder().nodegroupName("managed-node-group-x64")
                         .capacityType(CapacityType.ON_DEMAND)
-                        .instanceTypes(List.of(new InstanceType("m5.large"))).minSize(0)
+                        .instanceTypes(List.of(new InstanceType("m5.xlarge"))).minSize(0)
                         .desiredSize(2).maxSize(4).build());
 
         // Additional node group is ARM64

@@ -2,18 +2,6 @@
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
 
-# Build an image
-export ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring | jq --raw-output '.repositories[0].repositoryUri')
-aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URI
-
-cd ~/environment/unicorn-store-spring
-docker buildx build --load -t unicorn-store-spring:latest .
-IMAGE_TAG=i$(date +%Y%m%d%H%M%S)
-docker tag unicorn-store-spring:latest $ECR_URI:$IMAGE_TAG
-docker tag unicorn-store-spring:latest $ECR_URI:latest
-docker push $ECR_URI:$IMAGE_TAG
-docker push $ECR_URI:latest
-
 # define VPC
 export UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
 export UNICORN_SUBNET_PRIVATE_1=$(aws ec2 describe-subnets \
@@ -29,7 +17,7 @@ export UNICORN_SUBNET_PUBLIC_2=$(aws ec2 describe-subnets \
 eksctl create cluster \
 --name unicorn-store-spring \
 --version 1.27 --region $AWS_REGION \
---nodegroup-name managed-node-group-x64 --managed --node-type m5.large --nodes 2 --nodes-min 2 --nodes-max 4 \
+--nodegroup-name managed-node-group-x64 --managed --node-type m5.xlarge --nodes 2 --nodes-min 2 --nodes-max 4 \
 --with-oidc --full-ecr-access --alb-ingress-access \
 --vpc-private-subnets $UNICORN_SUBNET_PRIVATE_1,$UNICORN_SUBNET_PRIVATE_2 \
 --vpc-public-subnets $UNICORN_SUBNET_PUBLIC_1,$UNICORN_SUBNET_PUBLIC_2

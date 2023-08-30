@@ -52,9 +52,9 @@ spec:
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
-      # - name: otel
-      #   image: "amazon/aws-otel-collector:latest"
-      #   resources:
-      #     limits:
-      #       cpu: "0.25"
-      #       memory: "0.5Gi"
+        - name: otel
+          image: "amazon/aws-otel-collector:latest"
+          resources:
+            limits:
+              cpu: "0.25"
+              memory: "0.5Gi"
