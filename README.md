@@ -49,7 +49,7 @@ The workshop is structured in multiple independent modules that can be chosen in
 
 #### ARM64 with AWS Graviton  (30 minutes)
 
-AWS Graviton processors are designed by AWS to deliver the best price performance for your cloud workloads.
+- AWS Graviton processors are designed by AWS to deliver the best price performance for your cloud workloads.
 - Understand how to build multi-arch images and leverage AWS Graviton on different compute platforms.
 
 #### Observability (60+ minutes)
