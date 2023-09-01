@@ -74,6 +74,15 @@ sudo update-alternatives --set javac /usr/lib/jvm/java-17-amazon-corretto.x86_64
 export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto.x86_64
 java -version
 
+# Install docker buildx
+export BUILDX_VERSION=$(curl --silent "https://api.github.com/repos/docker/buildx/releases/latest" |jq -r .tag_name)
+curl -JLO "https://github.com/docker/buildx/releases/download/$BUILDX_VERSION/buildx-$BUILDX_VERSION.linux-amd64"
+mkdir -p ~/.docker/cli-plugins
+mv "buildx-$BUILDX_VERSION.linux-amd64" ~/.docker/cli-plugins/docker-buildx
+chmod +x ~/.docker/cli-plugins/docker-buildx
+docker run --privileged --rm tonistiigi/binfmt --install all
+docker buildx create --use --driver=docker-container
+
 ## eksctl
 # for ARM systems, set ARCH to: `arm64`, `armv6` or `armv7`
 ARCH=amd64
