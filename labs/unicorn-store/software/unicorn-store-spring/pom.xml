@@ -211,6 +211,7 @@
                         <artifactId>jib-maven-plugin</artifactId>
                         <version>3.3.2</version>
                         <configuration>
+                            <from><image>public.ecr.aws/docker/library/eclipse-temurin:latest</image></from>
                             <container>
                                 <user>1000</user>
                             </container>
