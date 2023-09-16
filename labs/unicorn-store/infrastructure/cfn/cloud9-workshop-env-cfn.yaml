@@ -53,11 +53,11 @@ Parameters:
 Resources:
   VPC:
     Type: AWS::EC2::VPC
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W60
-            reason: "No need for Flow logs in this workshop"
+    # Metadata:
+    #   cfn_nag:
+    #     rules_to_suppress:
+    #       - id: W60
+    #         reason: "No need for Flow logs in this workshop"
     Properties:
       CidrBlock: !Ref VpcCIDR
       EnableDnsSupport: true
@@ -220,11 +220,11 @@ Resources:
 
   NoIngressSecurityGroup:
     Type: AWS::EC2::SecurityGroup
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W5
-            reason: "Outbound access to the world is needed to download dependencies in C9"
+    # Metadata:
+    #   cfn_nag:
+    #     rules_to_suppress:
+    #       - id: W5
+    #         reason: "Outbound access to the world is needed to download dependencies in C9"
     Properties:
       GroupDescription: "Security group with no ingress rule"
       VpcId: !Ref VPC
@@ -258,15 +258,13 @@ Resources:
   ################## PERMISSIONS AND ROLES #################
   C9Role:
     Type: AWS::IAM::Role
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W43
-            reason: "C9 Instance will be used to deploy Infrastructure in the workshop"
-          - id: W28
-            reason: "Needed in order to check the proper role is attached to the instance before running CDK"
-
-
+    # Metadata:
+    #   cfn_nag:
+    #     rules_to_suppress:
+    #       - id: W43
+    #         reason: "C9 Instance will be used to deploy Infrastructure in the workshop"
+    #       - id: W28
+    #         reason: "Needed in order to check the proper role is attached to the instance before running CDK"
     Properties:
       RoleName: java-on-aws-workshop-admin
       Tags:
@@ -305,13 +303,13 @@ Resources:
 
   C9LambdaExecutionRole:
     Type: AWS::IAM::Role
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W11
-            reason: "Describe Action doesn't support any resource condition"
-          - id: F3
-            reason: "Bootstrap Lambda needs to inspect and operate Ec2 (and Cloud9) instances"
+    # Metadata:
+    #   cfn_nag:
+    #     rules_to_suppress:
+    #       - id: W11
+    #         reason: "Describe Action doesn't support any resource condition"
+    #       - id: F3
+    #         reason: "Bootstrap Lambda needs to inspect and operate Ec2 (and Cloud9) instances"
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -397,13 +395,13 @@ Resources:
   C9BootstrapInstanceLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      Metadata:
-        cfn_nag:
-          rules_to_suppress:
-            - id: "W92"
-              reason: "No need for running setup Lambda within a VPC"
-            - id: "W89"
-              reason: "No need for reserved concurrency for single setup lambda"
+      # Metadata:
+      #   cfn_nag:
+      #     rules_to_suppress:
+      #       - id: "W92"
+      #         reason: "No need for running setup Lambda within a VPC"
+      #       - id: "W89"
+      #         reason: "No need for reserved concurrency for single setup lambda"
       Tags:
         - Key: Environment
           Value: AWS Example
@@ -483,11 +481,11 @@ Resources:
   ################## SSM BOOTSRAP HANDLER ###############
   C9OutputBucket:
     Type: AWS::S3::Bucket
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W35
-            reason: "Access Logs aren't needed for this bucket"
+    # Metadata:
+    #   cfn_nag:
+    #     rules_to_suppress:
+    #       - id: W35
+    #         reason: "Access Logs aren't needed for this bucket"
     DeletionPolicy: Retain
     Properties:
       AccessControl: Private
@@ -549,7 +547,7 @@ Resources:
                 - echo LC_ALL=en_US.UTF-8 >> /etc/environment
                 - . /home/ec2-user/.bashrc
                 - echo '=== Clone Git repository ==='
-                - sudo -H -u ec2-user bash -c "git clone https://github.com/ybezsonov/aws-lambda-java-workshop.git /home/ec2-user/environment/java-on-aws/"
+                - sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws.git /home/ec2-user/environment/java-on-aws/"
                 - echo '=== Setup Cloud9 ==='
                 - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-cloud9.sh &>> /home/ec2-user/setup-cloud9.log"
                 - echo '=== Setup Infrastructure components ==='
