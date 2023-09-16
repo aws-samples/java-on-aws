@@ -11,8 +11,8 @@ rm -vf ${HOME}/.aws/credentials
 aws sts get-caller-identity --query Arn | grep java-on-aws-workshop-admin -q && echo "IAM role is valid" || echo "IAM role is NOT valid"
 
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/10-deploy-ci.sh
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/11-deploy-copilot.sh
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/12-deploy-ecs.sh
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/11-deploy-ecs.sh
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/12-deploy-copilot.sh
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/20-deploy-eks.sh
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/deploy-gitops.sh
 
