@@ -1,11 +1,10 @@
 package com.unicorn.store.data;
 
 import java.util.List;
-import java.util.UUID;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.persistence.EntityManager;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 
 import com.unicorn.store.model.Unicorn;
 
@@ -22,13 +21,13 @@ public class UnicornRepository {
     return this.entityManager.merge(unicorn);
   }
 
-  public void removeById(UUID id) {
+  public void removeById(String id) {
     Unicorn unicorn = findById(id);
     if (unicorn != null)
       this.entityManager.remove(unicorn);
   }
 
-  public Unicorn findById(UUID id) {
+  public Unicorn findById(String id) {
     return this.entityManager.find(Unicorn.class, id);
   }
 

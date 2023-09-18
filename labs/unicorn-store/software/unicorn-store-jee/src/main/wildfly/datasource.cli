@@ -1,1 +1,1 @@
-data-source add --name=showcase --jndi-name=java:/jdbc/showcase --driver-name=postgresql --connection-url=jdbc:postgresql://localhost:5432/showcase --user-name=showcase --password=showcase
+data-source add --name=unicorn-store --jndi-name=java:/jdbc/unicorn-store --driver-name=postgresql --connection-url=jdbc:postgresql://localhost:5432/unicorn-store --user-name=postgres --password=postgres

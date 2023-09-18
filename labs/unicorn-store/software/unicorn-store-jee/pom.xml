@@ -16,7 +16,7 @@
   <properties>
     <java.code.version>17</java.code.version>
     <primefaces.version>12.0.0</primefaces.version>
-    <wildfly.bootable.jar.version>8.0.0.Final</wildfly.bootable.jar.version>
+    <wildfly.bootable.jar.version>10.0.0.Final</wildfly.bootable.jar.version>
     <wildfly.version>26.0.0.Final</wildfly.version>
   </properties>
 
@@ -32,13 +32,6 @@
       <groupId>org.primefaces</groupId>
       <artifactId>primefaces</artifactId>
       <version>${primefaces.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
-      <version>1.18.24</version>
-      <scope>provided</scope>
     </dependency>
   </dependencies>
 

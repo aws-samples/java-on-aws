@@ -6,7 +6,6 @@
     <properties>
       <property name="hibernate.hbm2ddl.auto" value="update" />
       <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect" />
-      <property name="hibernate.type.preferred_uuid_jdbc_type" value="VARCHAR" />
     </properties>
   </persistence-unit>
 

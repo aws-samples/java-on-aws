@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+        xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.unicorn</groupId>
+  <artifactId>store-spring</artifactId>
+  <version>1.0.0</version>
+  <name>store</name>
+  <description>Unicorn storage service</description>
+
+  <packaging>war</packaging>
+
+  <properties>
+    <java.code.version>17</java.code.version>
+    <primefaces.version>12.0.0</primefaces.version>
+    <wildfly.plugin.version>4.2.0.Final</wildfly.plugin.version>
+    <wildfly.bootable.jar.version>10.0.0.Final</wildfly.bootable.jar.version>
+    <wildfly.version>29.0.1.Final</wildfly.version>
+    <wildfly.datasources.galleon.pack.version>5.0.0.Final</wildfly.datasources.galleon.pack.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>jakarta.platform</groupId>
+      <artifactId>jakarta.jakartaee-api</artifactId>
+      <version>10.0.0</version>
+      <!--<scope>provided</scope>-->
+    </dependency>
+
+    <dependency>
+      <groupId>org.primefaces</groupId>
+      <artifactId>primefaces</artifactId>
+      <version>${primefaces.version}</version>
+      <classifier>jakarta</classifier>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <defaultGoal>package</defaultGoal>
+    <finalName>${project.artifactId}</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.wildfly.plugins</groupId>
+        <artifactId>wildfly-maven-plugin</artifactId>
+        <version>${wildfly.plugin.version}</version>
+
+        <configuration>
+          <hostname>localhost</hostname>
+          <port>9990</port>
+          <username>admin</username>
+          <password>wildfly!</password>
+      
+          <scripts>
+            <script>src/main/wildfly/datasource.cli</script>
+          </scripts>
+        </configuration>
+      <!--    <feature-packs>-->
+      <!--      <feature-pack>-->
+      <!--        <location>org.wildfly:wildfly-galleon-pack:${wildfly.version}</location>-->
+      <!--      </feature-pack>-->
+      <!--      <feature-pack>-->
+      <!--        <location>org.wildfly:wildfly-datasources-galleon-pack:${wildfly.datasources.galleon.pack.version}</location>-->
+      <!--      </feature-pack>-->
+      <!--    </feature-packs>-->
+      <!--    <layers>-->
+      <!--      <layer>jsf</layer>-->
+      <!--      <layer>jaxrs</layer>-->
+      <!--      <layer>cdi</layer>-->
+      <!--      <layer>jpa</layer>-->
+      <!--      <layer>h2-default-datasource</layer>-->
+      <!--      <layer>postgresql-driver</layer>-->
+      <!--    </layers>-->
+      <!--    <excluded-layers>-->
+      <!--      <layer>deployment-scanner</layer>-->
+      <!--    </excluded-layers>-->
+      <!--    <scripts>-->
+      <!--      <script>src/main/wildfly/datasource.cli</script>-->
+      <!--    </scripts>-->
+      <!--</configuration>-->
+      <!--  <executions>-->
+      <!--    <execution>-->
+      <!--      <goals>-->
+      <!--        <goal>package</goal>-->
+      <!--      </goals>-->
+      <!--    </execution>-->
+      <!--  </executions>-->
+      <!--</plugin>-->
+      <!--<plugin>-->
+      <!--  <groupId>org.wildfly.plugins</groupId>-->
+      <!--  <artifactId>wildfly-jar-maven-plugin</artifactId>-->
+      <!--  <version>${wildfly.bootable.jar.version}</version>-->
+      <!--  <configuration>-->
+      <!--    <feature-packs>-->
+      <!--      <feature-pack>-->
+      <!--        <location>wildfly@maven(org.jboss.universe:community-universe)#${wildfly.version}</location>-->
+      <!--      </feature-pack>-->
+      <!--      <feature-pack>-->
+      <!--        <groupId>org.wildfly</groupId>-->
+      <!--        <artifactId>wildfly-datasources-galleon-pack</artifactId>-->
+      <!--        <version>5.0.0.Final</version>-->
+      <!--      </feature-pack>-->
+      <!--    </feature-packs>-->
+      <!--    <layers>-->
+      <!--      <layer>jsf</layer>-->
+      <!--      <layer>jaxrs</layer>-->
+      <!--      <layer>cdi</layer>-->
+      <!--      <layer>jpa</layer>-->
+      <!--      <layer>h2-default-datasource</layer>-->
+      <!--      <layer>postgresql-driver</layer>-->
+      <!--    </layers>-->
+      <!--    <excluded-layers>-->
+      <!--      <layer>deployment-scanner</layer>-->
+      <!--    </excluded-layers>-->
+      <!--    <plugin-options>-->
+      <!--      <jboss-maven-dist/>-->
+      <!--    </plugin-options>-->
+      <!--    <hollow-jar>true</hollow-jar>-->
+      <!--    <output-file-name>wildfly-bootable.jar</output-file-name>-->
+      <!--    <cli-sessions>-->
+      <!--      <cli-session>-->
+      <!--        <script-files>-->
+      <!--          <script>src/main/wildfly/datasource.cli</script>-->
+      <!--        </script-files>-->
+      <!--      </cli-session>-->
+      <!--    </cli-sessions>-->
+      <!--  </configuration>-->
+      <!--  <executions>-->
+      <!--      <execution>-->
+      <!--          <goals>-->
+      <!--              <goal>package</goal>-->
+      <!--          </goals>-->
+      <!--      </execution>-->
+      <!--  </executions>-->
+      </plugin>
+    </plugins>
+  </build>
+</project>
