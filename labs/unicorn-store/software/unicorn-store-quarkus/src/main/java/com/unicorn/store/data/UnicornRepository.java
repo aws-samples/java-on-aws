@@ -13,14 +13,16 @@ public class UnicornRepository {
   @Inject
   EntityManager entityManager;
 
-  public void persist(Unicorn unicorn) {
+  public Unicorn persist(Unicorn unicorn) {
     this.entityManager.persist(unicorn);
+    this.entityManager.flush();
+    return unicorn;
   }
 
   public Unicorn merge(Unicorn unicorn) {
     return this.entityManager.merge(unicorn);
   }
-
+  
   public void removeById(String id) {
     Unicorn unicorn = findById(id);
     if (unicorn != null)
