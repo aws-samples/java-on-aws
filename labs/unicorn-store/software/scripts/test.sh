@@ -32,7 +32,7 @@ fi
 id=$(curl --location --request POST $location'/unicorns' \
   --header 'Content-Type: application/json' \
   --data-raw '{
-    "name": "Something",
+    "name": "'"Something-$(date +%s)"'",
     "age": "20",
     "type": "Animal",
     "size": "Very big"
@@ -45,7 +45,7 @@ echo PUT ...
 curl --location --request PUT $location'/unicorns/'$id \
   --header 'Content-Type: application/json' \
   --data-raw '{
-    "name": "Something smaller",
+    "name": "'"Something-$(date +%s)"'",
     "age": "10",
     "type": "Animal",
     "size": "Small"
