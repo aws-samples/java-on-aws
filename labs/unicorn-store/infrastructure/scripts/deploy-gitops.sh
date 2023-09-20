@@ -6,10 +6,10 @@ pushd ~/environment
 
 export GITOPS_USER=unicorn-store-spring-gitops
 export GITOPSC_REPO_NAME=unicorn-store-spring-gitops
-export CC_POLICY_ARN=$(aws iam list-policies --query 'Policies[?PolicyName==`AWSCodeCommitPowerUser`].{ARN:Arn}' --output text)
+# export CC_POLICY_ARN=$(aws iam list-policies --query 'Policies[?PolicyName==`AWSCodeCommitPowerUser`].{ARN:Arn}' --output text)
 
-aws iam create-user --user-name $GITOPS_USER
-aws iam attach-user-policy --user-name $GITOPS_USER --policy-arn $CC_POLICY_ARN
+# aws iam create-user --user-name $GITOPS_USER
+# aws iam attach-user-policy --user-name $GITOPS_USER --policy-arn $CC_POLICY_ARN
 
 aws codecommit create-repository --repository-name $GITOPSC_REPO_NAME --repository-description "GitOps repository"
 

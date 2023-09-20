@@ -20,6 +20,7 @@ import software.amazon.awscdk.services.rds.Credentials;
 import software.amazon.awscdk.services.ssm.*;
 import software.amazon.awscdk.services.secretsmanager.*;
 import software.amazon.awscdk.services.iam.Role;
+import software.amazon.awscdk.services.iam.User;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.constructs.Construct;
@@ -103,19 +104,35 @@ public class InfrastructureStack extends Stack {
 
         new DatabaseSetupConstruct(this, "UnicornDatabaseConstruct");
 
+        User unicornStoreGitOpsUser = User.Builder.create(this, "unicorn-store-spring-gitops")
+            .userName("unicorn-store-spring-gitops")
+            .build();
+
         Role unicornStoreApprunnerRole = Role.Builder.create(this, "unicornstore-apprunner-role")
             .roleName("unicornstore-apprunner-role")
             .assumedBy(new ServicePrincipal("tasks.apprunner.amazonaws.com")).build();
-
-            unicornStoreApprunnerRole.addToPolicy(PolicyStatement.Builder.create()
+        unicornStoreApprunnerRole.addToPolicy(PolicyStatement.Builder.create()
             .actions(List.of("xray:PutTraceSegments"))
             .resources(List.of("*"))
             .build());
 
+        Role appRunnerECRAccessRole = Role.Builder.create(this, "AppRunnerECRAccessRole")
+            .roleName("AppRunnerECRAccessRole")
+            .assumedBy(new ServicePrincipal("build.apprunner.amazonaws.com")).build();
+        appRunnerECRAccessRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+            "AppRunnerECRAccessRole-" + "AWSAppRunnerServicePolicyForECRAccess",
+            "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"));
+
+        // Role appRunnerAWSServiceRoleForAppRunner = Role.Builder.create(this, "AWSServiceRoleForAppRunner")
+        //     .roleName("AWSServiceRoleForAppRunner")
+        //     .assumedBy(new ServicePrincipal("apprunner.amazonaws.com")).build();
+        // appRunnerAWSServiceRoleForAppRunner.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+        //     "AWSServiceRoleForAppRunner-" + "AppRunnerServiceRolePolicy",
+        //     "arn:aws:iam::aws:policy/aws-service-role/AppRunnerServiceRolePolicy"));
+
         Role unicornStoreEscTaskRole = Role.Builder.create(this, "unicornstore-ecs-task-role")
             .roleName("unicornstore-ecs-task-role")
             .assumedBy(new ServicePrincipal("ecs-tasks.amazonaws.com")).build();
-
         unicornStoreEscTaskRole.addToPolicy(PolicyStatement.Builder.create()
             .actions(List.of("xray:PutTraceSegments"))
             .resources(List.of("*"))
@@ -124,12 +141,10 @@ public class InfrastructureStack extends Stack {
         Role unicornStoreEscTaskExecutionRole = Role.Builder.create(this, "unicornstore-ecs-task-execution-role")
             .roleName("unicornstore-ecs-task-execution-role")
             .assumedBy(new ServicePrincipal("ecs-tasks.amazonaws.com")).build();
-
         unicornStoreEscTaskExecutionRole.addToPolicy(PolicyStatement.Builder.create()
             .actions(List.of("logs:CreateLogGroup"))
             .resources(List.of("*"))
             .build());
-
         unicornStoreEscTaskExecutionRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
             "unicorn-store-spring-" + "AmazonECSTaskExecutionRolePolicy",
             "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"));

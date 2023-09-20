@@ -28,9 +28,13 @@ echo "export UNICORN_SUBNET_PUBLIC_2=$UNICORN_SUBNET_PUBLIC_2" >> ~/.bashrc
 
 export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
 echo "export ACCOUNT_ID=${ACCOUNT_ID}" >> ~/.bashrc
+export CDK_DEFAULT_ACCOUNT=${ACCOUNT_ID}
+echo "export CDK_DEFAULT_ACCOUNT=${CDK_DEFAULT_ACCOUNT}" >> ~/.bashrc
 
 export AWS_REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 echo "export AWS_REGION=${AWS_REGION}" >> ~/.bashrc
+export CDK_DEFAULT_REGION=${AWS_REGION}
+echo "export CDK_DEFAULT_REGION=${CDK_DEFAULT_REGION}" >> ~/.bashrc
 
 aws ec2 create-tags --resources $UNICORN_SUBNET_PRIVATE_1 $UNICORN_SUBNET_PRIVATE_2 \
 --tags Key=kubernetes.io/cluster/unicorn-store-spring,Value=shared Key=kubernetes.io/role/internal-elb,Value=1
