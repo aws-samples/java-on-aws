@@ -107,6 +107,9 @@ public class InfrastructureStack extends Stack {
         User unicornStoreGitOpsUser = User.Builder.create(this, "unicorn-store-spring-gitops")
             .userName("unicorn-store-spring-gitops")
             .build();
+        unicornStoreGitOpsUser.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+            "unicornStoreGitOpsUser-" + "AWSCodeCommitPowerUser",
+            "arn:aws:iam::aws:policy/AWSCodeCommitPowerUser"));
 
         Role unicornStoreApprunnerRole = Role.Builder.create(this, "unicornstore-apprunner-role")
             .roleName("unicornstore-apprunner-role")
