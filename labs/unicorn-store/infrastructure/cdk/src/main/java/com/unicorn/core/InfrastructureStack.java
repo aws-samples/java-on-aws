@@ -104,8 +104,8 @@ public class InfrastructureStack extends Stack {
 
         new DatabaseSetupConstruct(this, "UnicornDatabaseConstruct");
 
-        User unicornStoreGitOpsUser = User.Builder.create(this, "unicorn-store-spring-gitops")
-            .userName("unicorn-store-spring-gitops")
+        User unicornStoreGitOpsUser = User.Builder.create(this, "unicorn-store-gitops")
+            .userName("unicorn-store-gitops")
             .build();
         unicornStoreGitOpsUser.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
             "unicornStoreGitOpsUser-" + "AWSCodeCommitPowerUser",
@@ -149,7 +149,7 @@ public class InfrastructureStack extends Stack {
             .resources(List.of("*"))
             .build());
         unicornStoreEscTaskExecutionRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
-            "unicorn-store-spring-" + "AmazonECSTaskExecutionRolePolicy",
+            "unicornstore-" + "AmazonECSTaskExecutionRolePolicy",
             "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"));
 
         getEventBridge().grantPutEventsTo(unicornStoreApprunnerRole);
