@@ -119,19 +119,12 @@ public class InfrastructureStack extends Stack {
             .resources(List.of("*"))
             .build());
 
-        Role appRunnerECRAccessRole = Role.Builder.create(this, "AppRunnerECRAccessRole")
-            .roleName("AppRunnerECRAccessRole")
+        Role appRunnerECRAccessRole = Role.Builder.create(this, "unicornstore-apprunner-ecr-access-role")
+            .roleName("unicornstore-apprunner-ecr-access-role")
             .assumedBy(new ServicePrincipal("build.apprunner.amazonaws.com")).build();
         appRunnerECRAccessRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
-            "AppRunnerECRAccessRole-" + "AWSAppRunnerServicePolicyForECRAccess",
+            "unicornstore-apprunner-ecr-access-role-" + "AWSAppRunnerServicePolicyForECRAccess",
             "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"));
-
-        // Role appRunnerAWSServiceRoleForAppRunner = Role.Builder.create(this, "AWSServiceRoleForAppRunner")
-        //     .roleName("AWSServiceRoleForAppRunner")
-        //     .assumedBy(new ServicePrincipal("apprunner.amazonaws.com")).build();
-        // appRunnerAWSServiceRoleForAppRunner.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
-        //     "AWSServiceRoleForAppRunner-" + "AppRunnerServiceRolePolicy",
-        //     "arn:aws:iam::aws:policy/aws-service-role/AppRunnerServiceRolePolicy"));
 
         Role unicornStoreEscTaskRole = Role.Builder.create(this, "unicornstore-ecs-task-role")
             .roleName("unicornstore-ecs-task-role")

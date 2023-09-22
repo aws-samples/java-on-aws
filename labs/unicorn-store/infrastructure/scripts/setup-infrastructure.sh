@@ -49,6 +49,19 @@ mvn dependency:go-offline -f ./pom.xml 1> /dev/null
 # Resolution for ECS Service Unavailable
 aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
 
+# Copy the Spring Boot Java Application source code Lambda labs
+cd ~/environment
+mkdir unicorn-store-lambda
+
+rsync -av java-on-aws/labs/unicorn-store/software/unicorn-store-spring/ unicorn-store-lambda --exclude target
+cp -R java-on-aws/labs/unicorn-store/software/scripts unicorn-store-lambda
+echo "target" > unicorn-store-lambda/.gitignore
+rm unicorn-store-lambda/buildspec*
+rm unicorn-store-lambda/Dockerfile
+rm unicorn-store-lambda/scripts/deploy2eks.sh
+rm unicorn-store-lambda/scripts/installdeps.sh
+rm -rf unicorn-store-lambda/config
+
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-infrastructure" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
 
 # additional modules setup

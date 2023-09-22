@@ -24,7 +24,7 @@ start_time=`date +%s`
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/deploy-gitops.sh
 
 # enable otel
-pushd ~/environment/unicorn-store-spring-gitops
+pushd ~/environment/unicorn-store-gitops
 git pull
 export SPRING_DATASOURCE_URL=$(aws ssm get-parameter --name databaseJDBCConnectionString | jq --raw-output '.Parameter.Value')
 export ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring | jq --raw-output '.repositories[0].repositoryUri')
@@ -39,7 +39,7 @@ flux reconcile source git flux-system -n flux-system
 sleep 10
 flux reconcile kustomization apps -n flux-system
 sleep 10
-git -C ~/environment/unicorn-store-spring-gitops pull
+git -C ~/environment/unicorn-store-gitops pull
 kubectl wait deployment -n unicorn-store-spring unicorn-store-spring --for condition=Available=True --timeout=120s
 export SVC_URL=http://$(kubectl get svc unicorn-store-spring -n unicorn-store-spring -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
 echo "export SVC_URL=${SVC_URL}" >> ~/.bashrc
