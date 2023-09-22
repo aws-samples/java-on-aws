@@ -62,6 +62,10 @@ rm unicorn-store-lambda/scripts/deploy2eks.sh
 rm unicorn-store-lambda/scripts/installdeps.sh
 rm -rf unicorn-store-lambda/config
 
+# Disable Temporary credentials on login
+echo 'aws cloud9 update-environment --environment-id $C9_PID --managed-credentials-action DISABLE --region $AWS_REGION &> /dev/null' | tee -a /home/ec2-user/.bash_profile
+echo 'rm -vf ${HOME}/.aws/credentials  &> /dev/null' | tee -a /home/ec2-user/.bash_profile
+
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-infrastructure" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
 
 # additional modules setup
