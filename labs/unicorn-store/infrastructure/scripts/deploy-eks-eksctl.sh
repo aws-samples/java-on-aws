@@ -15,7 +15,7 @@ export UNICORN_SUBNET_PUBLIC_2=$(aws ec2 describe-subnets \
 
 # create EKS cluster
 eksctl create cluster \
---name unicorn-store-spring \
+--name unicorn-store \
 --version 1.27 --region $AWS_REGION \
 --nodegroup-name managed-node-group-x64 --managed --node-type m5.xlarge --nodes 2 --nodes-min 2 --nodes-max 4 \
 --with-oidc --full-ecr-access --alb-ingress-access \
@@ -23,7 +23,7 @@ eksctl create cluster \
 --vpc-public-subnets $UNICORN_SUBNET_PUBLIC_1,$UNICORN_SUBNET_PUBLIC_2
 
 # add our IAM role to the list of administrators in EKS cluster to get access to the cluster from AWS Console.
-eksctl create iamidentitymapping --cluster unicorn-store-spring --region=$AWS_REGION \
+eksctl create iamidentitymapping --cluster unicorn-store --region=$AWS_REGION \
     --arn arn:aws:iam::$ACCOUNT_ID:role/WSParticipantRole --username admin --group system:masters \
     --no-duplicate-arns
 
@@ -67,7 +67,7 @@ cat <<EOF > service-account-policy.json
 EOF
 aws iam create-policy --policy-name unicorn-eks-service-account-policy --policy-document file://service-account-policy.json
 
-eksctl create iamserviceaccount --cluster=unicorn-store-spring --name=unicorn-store-spring --namespace=unicorn-store-spring \
+eksctl create iamserviceaccount --cluster=unicorn-store --name=unicorn-store-spring --namespace=unicorn-store-spring \
 --attach-policy-arn=$(aws iam list-policies --query 'Policies[?PolicyName==`unicorn-eks-service-account-policy`].Arn' --output text) --approve --region=$AWS_REGION
 
 # use External Secrets and install it via Helm
