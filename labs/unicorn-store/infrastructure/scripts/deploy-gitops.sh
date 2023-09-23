@@ -4,12 +4,12 @@ echo $(date '+%Y.%m.%d %H:%M:%S')
 
 pushd ~/environment
 
-export GITOPS_USER=unicorn-store-spring-gitops
-export GITOPSC_REPO_NAME=unicorn-store-spring-gitops
-export CC_POLICY_ARN=$(aws iam list-policies --query 'Policies[?PolicyName==`AWSCodeCommitPowerUser`].{ARN:Arn}' --output text)
+export GITOPS_USER=unicorn-store-gitops
+export GITOPSC_REPO_NAME=unicorn-store-gitops
+# export CC_POLICY_ARN=$(aws iam list-policies --query 'Policies[?PolicyName==`AWSCodeCommitPowerUser`].{ARN:Arn}' --output text)
 
-aws iam create-user --user-name $GITOPS_USER
-aws iam attach-user-policy --user-name $GITOPS_USER --policy-arn $CC_POLICY_ARN
+# aws iam create-user --user-name $GITOPS_USER
+# aws iam attach-user-policy --user-name $GITOPS_USER --policy-arn $CC_POLICY_ARN
 
 aws codecommit create-repository --repository-name $GITOPSC_REPO_NAME --repository-description "GitOps repository"
 
@@ -19,13 +19,13 @@ export SSC_ID=$(aws iam list-service-specific-credentials --user-name $GITOPS_US
 export SSC_USER=$(aws iam list-service-specific-credentials --user-name $GITOPS_USER --query 'ServiceSpecificCredentials[0].ServiceUserName' --output text)
 export SSC_PWD=$(aws iam reset-service-specific-credential --user-name $GITOPS_USER --service-specific-credential-id $SSC_ID --query 'ServiceSpecificCredential.ServicePassword' --output text)
 
-# $(aws cloudformation describe-stacks --stack-name UnicornStoreSpringEKS \
+# $(aws cloudformation describe-stacks --stack-name UnicornStoreEKS \
 #   --query 'Stacks[0].Outputs[?OutputKey==`UnicornStoreEksKubeconfig`].OutputValue' --output text)
 
 export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
 export AWS_REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 
-aws eks --region $AWS_REGION update-kubeconfig --name unicorn-store-spring
+aws eks --region $AWS_REGION update-kubeconfig --name unicorn-store
 
 sleep 20
 
@@ -122,7 +122,7 @@ flux reconcile source git flux-system -n flux-system
 sleep 10
 flux reconcile kustomization apps -n flux-system
 sleep 10
-git -C ~/environment/unicorn-store-spring-gitops pull
+git -C ~/environment/unicorn-store-gitops pull
 
 kubectl wait deployment -n unicorn-store-spring unicorn-store-spring --for condition=Available=True --timeout=120s
 kubectl -n unicorn-store-spring get all

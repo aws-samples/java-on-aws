@@ -72,6 +72,10 @@ public class UnicornStoreEKS extends Construct {
         IRole workshopAdminRole = Role.fromRoleArn(scope, projectName + "-workshop-admin-role",
                 "arn:aws:iam::" + infrastructureStack.getAccount() + ":role/java-on-aws-workshop-admin",
                 FromRoleArnOptions.builder().mutable(false).build());
+        // Cloud9 EC2 instance role to manage EKS cluster via kubectl
+        IRole workshopUserRole = Role.fromRoleArn(scope, projectName + "-workshop-user-role",
+                "arn:aws:iam::" + infrastructureStack.getAccount() + ":role/java-on-aws-workshop-user",
+                FromRoleArnOptions.builder().mutable(false).build());
         // Workshop Studio role to manage EKS cluster via UI
         IRole workshopStudioRole = Role.fromRoleArn(scope, projectName + "-workshop-studio-role",
                 "arn:aws:iam::" + infrastructureStack.getAccount() + ":assumed-role/WSParticipantRole/Participant",
@@ -81,6 +85,8 @@ public class UnicornStoreEKS extends Construct {
         cluster.getAwsAuth().addRoleMapping(adminRole,
                 AwsAuthMapping.builder().groups(List.of("system:masters")).build());
         cluster.getAwsAuth().addRoleMapping(workshopAdminRole,
+                AwsAuthMapping.builder().groups(List.of("system:masters")).build());
+        cluster.getAwsAuth().addRoleMapping(workshopUserRole,
                 AwsAuthMapping.builder().groups(List.of("system:masters")).build());
         cluster.getAwsAuth().addRoleMapping(workshopStudioRole,
                 AwsAuthMapping.builder().groups(List.of("system:masters")).build());
