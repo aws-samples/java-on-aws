@@ -24,9 +24,10 @@ import software.amazon.awscdk.services.iam.User;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.constructs.Construct;
+import software.amazon.awscdk.services.iam.PolicyStatement;
+import software.amazon.awscdk.services.iam.Effect;
 
 import java.util.List;
-import software.amazon.awscdk.services.iam.PolicyStatement;
 
 public class InfrastructureStack extends Stack {
 
@@ -126,6 +127,16 @@ public class InfrastructureStack extends Stack {
             "unicornstore-apprunner-ecr-access-role-" + "AWSAppRunnerServicePolicyForECRAccess",
             "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"));
 
+        PolicyStatement AWSOpenTelemetryPolicy = PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("logs:PutLogEvents", "logs:CreateLogGroup", "logs:CreateLogStream",
+                    "logs:DescribeLogStreams", "logs:DescribeLogGroups",
+                    "logs:PutRetentionPolicy", "xray:PutTraceSegments",
+                    "xray:PutTelemetryRecords", "xray:GetSamplingRules",
+                    "xray:GetSamplingTargets", "xray:GetSamplingStatisticSummaries",
+                    "cloudwatch:PutMetricData", "ssm:GetParameters"))
+            .resources(List.of("*")).build();
+
         Role unicornStoreEscTaskRole = Role.Builder.create(this, "unicornstore-ecs-task-role")
             .roleName("unicornstore-ecs-task-role")
             .assumedBy(new ServicePrincipal("ecs-tasks.amazonaws.com")).build();
@@ -133,6 +144,13 @@ public class InfrastructureStack extends Stack {
             .actions(List.of("xray:PutTraceSegments"))
             .resources(List.of("*"))
             .build());
+        unicornStoreEscTaskRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+            "unicornstore-" + "CloudWatchLogsFullAccess",
+            "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"));
+        unicornStoreEscTaskRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+            "unicornstore-" + "AmazonSSMReadOnlyAccess",
+            "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"));
+        unicornStoreEscTaskRole.addToPolicy(AWSOpenTelemetryPolicy);
 
         Role unicornStoreEscTaskExecutionRole = Role.Builder.create(this, "unicornstore-ecs-task-execution-role")
             .roleName("unicornstore-ecs-task-execution-role")
@@ -144,6 +162,13 @@ public class InfrastructureStack extends Stack {
         unicornStoreEscTaskExecutionRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
             "unicornstore-" + "AmazonECSTaskExecutionRolePolicy",
             "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"));
+        unicornStoreEscTaskExecutionRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+            "unicornstore-" + "CloudWatchLogsFullAccess",
+            "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"));
+        unicornStoreEscTaskExecutionRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+            "unicornstore-" + "AmazonSSMReadOnlyAccess",
+            "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"));
+        unicornStoreEscTaskExecutionRole.addToPolicy(AWSOpenTelemetryPolicy);
 
         getEventBridge().grantPutEventsTo(unicornStoreApprunnerRole);
         getEventBridge().grantPutEventsTo(unicornStoreEscTaskRole);
