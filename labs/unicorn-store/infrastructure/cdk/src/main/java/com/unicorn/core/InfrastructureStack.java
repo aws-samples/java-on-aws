@@ -145,10 +145,10 @@ public class InfrastructureStack extends Stack {
             .resources(List.of("*"))
             .build());
         unicornStoreEscTaskRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
-            "unicornstore-" + "CloudWatchLogsFullAccess",
+            "unicornstore-ecs-task-role-" + "CloudWatchLogsFullAccess",
             "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"));
         unicornStoreEscTaskRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
-            "unicornstore-" + "AmazonSSMReadOnlyAccess",
+            "unicornstore-ecs-task-role-" + "AmazonSSMReadOnlyAccess",
             "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"));
         unicornStoreEscTaskRole.addToPolicy(AWSOpenTelemetryPolicy);
 
@@ -160,13 +160,13 @@ public class InfrastructureStack extends Stack {
             .resources(List.of("*"))
             .build());
         unicornStoreEscTaskExecutionRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
-            "unicornstore-" + "AmazonECSTaskExecutionRolePolicy",
+            "unicornstore-ecs-task-execution-role-" + "AmazonECSTaskExecutionRolePolicy",
             "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"));
         unicornStoreEscTaskExecutionRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
-            "unicornstore-" + "CloudWatchLogsFullAccess",
+            "unicornstore-ecs-task-execution-role-" + "CloudWatchLogsFullAccess",
             "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"));
         unicornStoreEscTaskExecutionRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
-            "unicornstore-" + "AmazonSSMReadOnlyAccess",
+            "unicornstore-ecs-task-execution-role-" + "AmazonSSMReadOnlyAccess",
             "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"));
         unicornStoreEscTaskExecutionRole.addToPolicy(AWSOpenTelemetryPolicy);
 
