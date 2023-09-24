@@ -109,24 +109,6 @@ spec:
             name: unicorn-store-spring
 EOF
 
-echo Create the Kubernetes External Secret resources
-cat <<EOF | envsubst | kubectl create -f -
-apiVersion: external-secrets.io/v1beta1
-kind: SecretStore
-metadata:
-  name: unicorn-store-spring-secret-store
-  namespace: unicorn-store-spring
-spec:
-  provider:
-    aws:
-      service: SecretsManager
-      region: $AWS_REGION
-      auth:
-        jwt:
-          serviceAccountRef:
-            name: unicorn-store-spring
-EOF
-
 cat <<EOF | kubectl create -f -
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
