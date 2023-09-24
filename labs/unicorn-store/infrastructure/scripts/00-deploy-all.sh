@@ -10,7 +10,7 @@ rm -vf ${HOME}/.aws/credentials
 
 RED='\033[0;31m'
 NC='\033[0m' # No Color
-aws sts get-caller-identity --query Arn | grep java-on-aws-workshop-admin -q && echo "IAM role is valid" || printf "${RED}IAM role is NOT valid. To execute the scripts please switch to java-on-aws-workshop-admin profile$n"
+aws sts get-caller-identity --query Arn | grep java-on-aws-workshop-admin -q && echo "IAM role is valid" || printf "${RED}IAM role is NOT valid. To execute the scripts please switch to java-on-aws-workshop-admin profile" && echo
 
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/10-deploy-ci.sh
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/11-deploy-ecs.sh

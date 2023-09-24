@@ -20,7 +20,7 @@ kubectl delete namespace unicorn-store-spring
 pushd ~/environment/java-on-aws/labs/unicorn-store/infrastructure/cdk
 cdk destroy UnicornStoreSpringEKS --force
 
-eksctl delete cluster --name unicorn-store-spring
+eksctl delete cluster --name unicorn-store
 
 aws elbv2 delete-load-balancer --load-balancer-arn $(aws elbv2 describe-load-balancers --query 'LoadBalancers[?LoadBalancerName==`unicorn-store-spring`].LoadBalancerArn' --output text)
 aws elbv2 delete-target-group --target-group-arn $(aws elbv2 describe-target-groups --query 'TargetGroups[?TargetGroupName==`unicorn-store-spring`].TargetGroupArn' --output text)

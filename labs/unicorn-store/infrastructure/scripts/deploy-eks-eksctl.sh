@@ -2,7 +2,7 @@
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
 
-# define VPC
+# Get the existing VPC and Subnet IDs to inform EKS where to create the new cluster
 export UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
 export UNICORN_SUBNET_PRIVATE_1=$(aws ec2 describe-subnets \
 --filters "Name=vpc-id,Values=$UNICORN_VPC_ID" "Name=tag:Name,Values=UnicornStoreVpc/UnicornVpc/PrivateSubnet1" --query 'Subnets[0].SubnetId' --output text)
@@ -13,7 +13,13 @@ export UNICORN_SUBNET_PUBLIC_1=$(aws ec2 describe-subnets \
 export UNICORN_SUBNET_PUBLIC_2=$(aws ec2 describe-subnets \
 --filters "Name=vpc-id,Values=$UNICORN_VPC_ID" "Name=tag:Name,Values=UnicornStoreVpc/UnicornVpc/PublicSubnet2" --query 'Subnets[0].SubnetId' --output text)
 
-# create EKS cluster
+aws ec2 create-tags --resources $UNICORN_SUBNET_PRIVATE_1 $UNICORN_SUBNET_PRIVATE_2 \
+--tags Key=kubernetes.io/cluster/unicorn-store,Value=shared Key=kubernetes.io/role/internal-elb,Value=1
+
+aws ec2 create-tags --resources $UNICORN_SUBNET_PUBLIC_1 $UNICORN_SUBNET_PUBLIC_2 \
+--tags Key=kubernetes.io/cluster/unicorn-store,Value=shared Key=kubernetes.io/role/elb,Value=1
+
+# Create the cluster with eksctl
 eksctl create cluster \
 --name unicorn-store \
 --version 1.27 --region $AWS_REGION \
@@ -22,14 +28,15 @@ eksctl create cluster \
 --vpc-private-subnets $UNICORN_SUBNET_PRIVATE_1,$UNICORN_SUBNET_PRIVATE_2 \
 --vpc-public-subnets $UNICORN_SUBNET_PUBLIC_1,$UNICORN_SUBNET_PUBLIC_2
 
-# add our IAM role to the list of administrators in EKS cluster to get access to the cluster from AWS Console.
+# Add the Participant IAM role to the list of the EKS cluster administrators to get access from the AWS Console..
 eksctl create iamidentitymapping --cluster unicorn-store --region=$AWS_REGION \
     --arn arn:aws:iam::$ACCOUNT_ID:role/WSParticipantRole --username admin --group system:masters \
     --no-duplicate-arns
 
-# Create IAM Policy and a Service Account
+# Create a Kubernetes namespace for the application:
 kubectl create namespace unicorn-store-spring
 
+# Create an IAM-Policy with the proper permissions to publish to EventBridge, retrieve secrets & parameters and basic monitoring
 cat <<EOF > service-account-policy.json
 {
     "Version": "2012-10-17",
@@ -67,8 +74,10 @@ cat <<EOF > service-account-policy.json
 EOF
 aws iam create-policy --policy-name unicorn-eks-service-account-policy --policy-document file://service-account-policy.json
 
+# Create a Kubernetes Service Account with a reference to the previous created IAM policy
 eksctl create iamserviceaccount --cluster=unicorn-store --name=unicorn-store-spring --namespace=unicorn-store-spring \
---attach-policy-arn=$(aws iam list-policies --query 'Policies[?PolicyName==`unicorn-eks-service-account-policy`].Arn' --output text) --approve --region=$AWS_REGION
+   --attach-policy-arn=$(aws iam list-policies --query 'Policies[?PolicyName==`unicorn-eks-service-account-policy`].Arn' --output text) --approve --region=$AWS_REGION
+rm service-account-policy.json
 
 # use External Secrets and install it via Helm
 helm repo add external-secrets https://charts.external-secrets.io
@@ -80,6 +89,25 @@ external-secrets/external-secrets \
 --set webhook.port=9443 \
 --wait
 
+# Install the External Secrets Operator
+cat <<EOF | envsubst | kubectl create -f -
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: unicorn-store-spring-secret-store
+  namespace: unicorn-store-spring
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: $AWS_REGION
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: unicorn-store-spring
+EOF
+
+# Create the Kubernetes External Secret resources
 cat <<EOF | envsubst | kubectl create -f -
 apiVersion: external-secrets.io/v1beta1
 kind: SecretStore
@@ -117,3 +145,5 @@ spec:
         key: unicornstore-db-secret
         property: password
 EOF
+
+echo $(date '+%Y.%m.%d %H:%M:%S')

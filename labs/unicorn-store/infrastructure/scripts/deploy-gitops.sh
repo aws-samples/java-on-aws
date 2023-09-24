@@ -12,9 +12,9 @@ export GITOPSC_REPO_NAME=unicorn-store-gitops
 # aws iam attach-user-policy --user-name $GITOPS_USER --policy-arn $CC_POLICY_ARN
 
 aws codecommit create-repository --repository-name $GITOPSC_REPO_NAME --repository-description "GitOps repository"
+export GITOPS_REPO_URL=$(aws codecommit get-repository --repository-name $GITOPSC_REPO_NAME --query 'repositoryMetadata.cloneUrlHttp' --output text)
 
 aws iam create-service-specific-credential --user-name $GITOPS_USER --service-name codecommit.amazonaws.com
-export GITOPS_REPO_URL=$(aws codecommit get-repository --repository-name $GITOPSC_REPO_NAME --query 'repositoryMetadata.cloneUrlHttp' --output text)
 export SSC_ID=$(aws iam list-service-specific-credentials --user-name $GITOPS_USER --query 'ServiceSpecificCredentials[0].ServiceSpecificCredentialId' --output text)
 export SSC_USER=$(aws iam list-service-specific-credentials --user-name $GITOPS_USER --query 'ServiceSpecificCredentials[0].ServiceUserName' --output text)
 export SSC_PWD=$(aws iam reset-service-specific-credential --user-name $GITOPS_USER --service-specific-credential-id $SSC_ID --query 'ServiceSpecificCredential.ServicePassword' --output text)
@@ -53,7 +53,12 @@ export imagepolicy=\$imagepolicy
 envsubst < ./apps/deployment.yaml > ./apps/deployment_new.yaml
 mv ./apps/deployment_new.yaml ./apps/deployment.yaml
 
-git add . && git commit -m "initial commit" && git push
+git -C ~/environment/unicorn-store-gitops pull
+git -C ~/environment/unicorn-store-gitops add .
+git -C ~/environment/unicorn-store-gitops commit -m "initial commit"
+git -C ~/environment/unicorn-store-gitops push
+
+# git add . && git commit -m "initial commit" && git push
 
 cat <<EOF | envsubst | kubectl create -f -
 apiVersion: image.toolkit.fluxcd.io/v1beta2
