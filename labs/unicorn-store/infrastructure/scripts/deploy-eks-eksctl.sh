@@ -2,6 +2,8 @@
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
 
+cd ~/environment
+
 # Get the existing VPC and Subnet IDs to inform EKS where to create the new cluster
 export UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
 export UNICORN_SUBNET_PRIVATE_1=$(aws ec2 describe-subnets \
