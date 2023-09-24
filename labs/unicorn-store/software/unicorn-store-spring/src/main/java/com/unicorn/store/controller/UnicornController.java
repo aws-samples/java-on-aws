@@ -93,6 +93,6 @@ public class UnicornController {
     }
     @GetMapping("/")
     public ResponseEntity<String> getWelcomeMessage() {
-        return new ResponseEntity<>("Welcome!", HttpStatus.OK);
+        return new ResponseEntity<>("Welcome to the Unicorn Store!", HttpStatus.OK);
     }
 }

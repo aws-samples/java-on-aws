@@ -15,7 +15,7 @@ docker push $ECR_URI:$IMAGE_TAG
 docker push $ECR_URI:latest
 
 flux reconcile image repository unicorn-store-spring
-git -C ~/environment/unicorn-store-spring-gitops pull
+git -C ~/environment/unicorn-store-gitops pull
 flux reconcile source git flux-system
 flux reconcile kustomization apps
 kubectl wait deployment -n unicorn-store-spring unicorn-store-spring --for condition=Available=True --timeout=120s
