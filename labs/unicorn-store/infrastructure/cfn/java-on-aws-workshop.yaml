@@ -407,8 +407,8 @@ Resources:
                 - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-infrastructure.sh &>> /home/ec2-user/setup-infra.log"
                 - echo '=== Install cfn-signal and report status ==='
                 - yum update -y aws-cfn-bootstrap
-                - echo '=== PREPARE REBOOT in 1 minute with at ==='
-                - FILE=$(mktemp) && echo $FILE && echo '#!/bin/bash' > $FILE && echo 'reboot -f' >> $FILE && at now + 1 minute -f $FILE
+                # - echo '=== PREPARE REBOOT in 1 minute with at ==='
+                # - FILE=$(mktemp) && echo $FILE && echo '#!/bin/bash' > $FILE && echo 'reboot -f' >> $FILE && at now + 1 minute -f $FILE
                 - if [ "$?" -ne 0 ]; then export BOOTSTRAP_RESULT=false; else export BOOTSTRAP_RESULT=true; fi
                 - "/opt/aws/bin/cfn-signal -e $? -s $BOOTSTRAP_RESULT '{{ WaitHandleUrl }}' "
                 - echo "Bootstrap completed with return code $?"
