@@ -102,11 +102,11 @@
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-exporter-otlp</artifactId>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/io.opentelemetry/opentelemetry-semconv -->
+        <!-- https://search.maven.org/artifact/io.opentelemetry.semconv/opentelemetry-semconv/1.21.0-alpha/jar -->
         <dependency>
-            <groupId>io.opentelemetry</groupId>
+            <groupId>io.opentelemetry.semconv</groupId>
             <artifactId>opentelemetry-semconv</artifactId>
-            <version>1.29.0-alpha</version>
+            <version>1.21.0-alpha</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.opentelemetry.instrumentation/opentelemetry-aws-sdk-2.2 -->
         <dependency>
