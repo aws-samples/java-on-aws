@@ -11,6 +11,6 @@ public class HelloController {
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     public String hello() {
-        return "Welcome to Unicorn Store - Quarkus!";
+        return "Welcome to Unicorn Store!";
     }
 }

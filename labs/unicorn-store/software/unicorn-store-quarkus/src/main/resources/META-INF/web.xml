@@ -11,10 +11,6 @@
     <servlet-name>Faces Servlet</servlet-name>
     <url-pattern>*.xhtml</url-pattern>
   </servlet-mapping>
-  <servlet-mapping>
-    <servlet-name>Faces Servlet</servlet-name>
-    <url-pattern>/index.xhtml</url-pattern>
-  </servlet-mapping>
 
   <!-- Date Converter use system time zone instead of UTC -->
   <context-param>
