@@ -6,13 +6,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
-
 import com.unicorn.store.exceptions.ResourceNotFoundException;
 import com.unicorn.store.model.Unicorn;
 
 @ApplicationScoped
-public class UnicornRepository implements PanacheRepository<Unicorn> {
+public class UnicornRepository {
     @Inject
     EntityManager entityManager;
 

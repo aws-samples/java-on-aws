@@ -15,6 +15,9 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 @Path("unicorns")
 public class UnicornController {
     @Inject
@@ -22,8 +25,10 @@ public class UnicornController {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public List<Unicorn> getAllUnicorns() {
-        return this.unicornService.getAllUnicorns();
+    public String getAllUnicorns() {
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        String jsonOutput = gson.toJson(this.unicornService.getAllUnicorns());
+        return jsonOutput;
     }
 
     @GET
