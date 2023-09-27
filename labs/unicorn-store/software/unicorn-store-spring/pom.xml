@@ -210,7 +210,7 @@
                         <artifactId>jib-maven-plugin</artifactId>
                         <version>3.3.2</version>
                         <configuration>
-                            <from><image>public.ecr.aws/docker/library/eclipse-temurin:latest</image></from>
+                            <from><image>public.ecr.aws/docker/library/amazoncorretto:17-alpine3.18</image></from>
                             <container>
                                 <user>1000</user>
                             </container>
