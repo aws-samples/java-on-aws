@@ -144,8 +144,24 @@ flux reconcile kustomization apps -n flux-system
 sleep 10
 git -C ~/environment/$GITOPSC_REPO_NAME pull
 
+echo Verify that the application is running properly:
 kubectl wait deployment -n $APP_NAME $APP_NAME --for condition=Available=True --timeout=120s
-kubectl -n $APP_NAME get all
-echo "App URL: http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')"
+kubectl get deploy -n $APP_NAME
+export SVC_URL=http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
+while [[ $(curl -s -o /dev/null -w "%{http_code}" $SVC_URL/) != "200" ]]; do echo "Service not yet available ..." &&  sleep 5; done
+echo $SVC_URL
+echo Service is Ready!
+
+echo Get the Load Balancer URL and make an example API call:
+export SVC_URL=http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
+curl --location --request POST $SVC_URL'/unicorns' --header 'Content-Type: application/json' --data-raw '{
+    "name": "'"Something-$(date +%s)"'",
+    "age": "20",
+    "type": "Animal",
+    "size": "Very big"
+}' | jq
+
+echo $SVC_URL
+curl --location $SVC_URL; echo
 
 popd

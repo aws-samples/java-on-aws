@@ -36,8 +36,13 @@ echo "export AWS_REGION=${AWS_REGION}" >> ~/.bashrc
 export CDK_DEFAULT_REGION=${AWS_REGION}
 echo "export CDK_DEFAULT_REGION=${CDK_DEFAULT_REGION}" >> ~/.bashrc
 
+export CLUSTER_NAME=unicorn-store
+echo "export CLUSTER_NAME=${CLUSTER_NAME}" >> ~/.bashrc
+export APP_NAME=unicorn-store-spring
+echo "export APP_NAME=${APP_NAME}" >> ~/.bashrc
+
 aws ec2 create-tags --resources $UNICORN_SUBNET_PRIVATE_1 $UNICORN_SUBNET_PRIVATE_2 \
---tags Key=kubernetes.io/cluster/unicorn-store,Value=shared Key=kubernetes.io/role/internal-elb,Value=1
+--tags Key=kubernetes.io/cluster/$CLUSTER_NAME,Value=shared Key=kubernetes.io/role/internal-elb,Value=1
 
 aws ec2 create-tags --resources $UNICORN_SUBNET_PUBLIC_1 $UNICORN_SUBNET_PUBLIC_2 \
---tags Key=kubernetes.io/cluster/unicorn-store,Value=shared Key=kubernetes.io/role/elb,Value=1
+--tags Key=kubernetes.io/cluster/$CLUSTER_NAME,Value=shared Key=kubernetes.io/role/elb,Value=1
