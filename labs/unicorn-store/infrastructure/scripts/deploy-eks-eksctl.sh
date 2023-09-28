@@ -142,7 +142,7 @@ spec:
         property: password
 EOF
 
-aws eks --region $AWS_REGION update-kubeconfig --name unicorn-store
+aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
 
