@@ -1,6 +1,7 @@
 #bin/sh
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
+start_time=`date +%s`
 
 cd ~/environment
 
@@ -131,3 +132,5 @@ spec:
 EOF
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
+
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "eks" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
