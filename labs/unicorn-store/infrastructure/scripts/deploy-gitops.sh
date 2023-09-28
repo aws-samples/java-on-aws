@@ -1,12 +1,15 @@
 #bin/sh
 
+export CLUSTER_NAME=unicorn-store
+export APP_NAME=unicorn-store-spring
+export GITOPS_USER=unicorn-store-gitops
+export GITOPSC_REPO_NAME=unicorn-store-gitops
+
 echo $(date '+%Y.%m.%d %H:%M:%S')
 
 pushd ~/environment
 
 echo Create a repository which will contain Kubernetes manifests.
-export GITOPS_USER=unicorn-store-gitops
-export GITOPSC_REPO_NAME=unicorn-store-gitops
 # export CC_POLICY_ARN=$(aws iam list-policies --query 'Policies[?PolicyName==`AWSCodeCommitPowerUser`].{ARN:Arn}' --output text)
 
 # aws iam create-user --user-name $GITOPS_USER
@@ -27,7 +30,7 @@ export SSC_PWD=$(aws iam reset-service-specific-credential --user-name $GITOPS_U
 export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
 export AWS_REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 
-aws eks --region $AWS_REGION update-kubeconfig --name unicorn-store
+aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 
 sleep 20
 
@@ -52,21 +55,21 @@ git config pull.rebase true
 
 echo Prepare new deployment files
 export SPRING_DATASOURCE_URL=$(aws ssm get-parameter --name databaseJDBCConnectionString | jq --raw-output '.Parameter.Value')
-export ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring | jq --raw-output '.repositories[0].repositoryUri')
+export ECR_URI=$(aws ecr describe-repositories --repository-names $APP_NAME | jq --raw-output '.repositories[0].repositoryUri')
 export imagepolicy=\$imagepolicy
 
 envsubst < ./apps/deployment.yaml > ./apps/deployment_new.yaml
 mv ./apps/deployment_new.yaml ./apps/deployment.yaml
 
 echo Delete the manual deployment.
-kubectl delete service unicorn-store-spring -n unicorn-store-spring
-kubectl delete deployment unicorn-store-spring -n unicorn-store-spring
+kubectl delete service $APP_NAME -n $APP_NAME
+kubectl delete deployment $APP_NAME -n $APP_NAME
 
 echo Commit changes to the Git repository. Flux will trigger a new deployment
-git -C ~/environment/unicorn-store-gitops pull
-git -C ~/environment/unicorn-store-gitops add .
-git -C ~/environment/unicorn-store-gitops commit -m "initial commit"
-git -C ~/environment/unicorn-store-gitops push
+git -C ~/environment/$GITOPSC_REPO_NAME pull
+git -C ~/environment/$GITOPSC_REPO_NAME add .
+git -C ~/environment/$GITOPSC_REPO_NAME commit -m "initial commit"
+git -C ~/environment/$GITOPSC_REPO_NAME push
 
 # git add . && git commit -m "initial commit" && git push
 
@@ -75,7 +78,7 @@ cat <<EOF | envsubst | kubectl create -f -
 apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImageRepository
 metadata:
-  name: unicorn-store-spring
+  name: $APP_NAME
   namespace: flux-system
 spec:
   provider: aws
@@ -91,11 +94,11 @@ cat <<EOF | kubectl create -f -
 apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImagePolicy
 metadata:
-  name: unicorn-store-spring
+  name: $APP_NAME
   namespace: flux-system
 spec:
   imageRepositoryRef:
-    name: unicorn-store-spring
+    name: $APP_NAME
   filterTags:
     pattern: '^i[a-fA-F0-9]'
   policy:
@@ -107,7 +110,7 @@ cat <<EOF | kubectl create -f -
 apiVersion: image.toolkit.fluxcd.io/v1beta1
 kind: ImageUpdateAutomation
 metadata:
-  name: unicorn-store-spring
+  name: $APP_NAME
   namespace: flux-system
 spec:
   git:
@@ -133,16 +136,16 @@ EOF
 
 echo check the status of the deployment
 # flux get kustomization --watch
-# kubectl -n unicorn-store-spring get all
-# kubectl get events -n unicorn-store-spring
+# kubectl -n $APP_NAME get all
+# kubectl get events -n $APP_NAME
 flux reconcile source git flux-system -n flux-system
 sleep 10
 flux reconcile kustomization apps -n flux-system
 sleep 10
-git -C ~/environment/unicorn-store-gitops pull
+git -C ~/environment/$GITOPSC_REPO_NAME pull
 
-kubectl wait deployment -n unicorn-store-spring unicorn-store-spring --for condition=Available=True --timeout=120s
-kubectl -n unicorn-store-spring get all
-echo "App URL: http://$(kubectl get svc unicorn-store-spring -n unicorn-store-spring -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')"
+kubectl wait deployment -n $APP_NAME $APP_NAME --for condition=Available=True --timeout=120s
+kubectl -n $APP_NAME get all
+echo "App URL: http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')"
 
 popd
