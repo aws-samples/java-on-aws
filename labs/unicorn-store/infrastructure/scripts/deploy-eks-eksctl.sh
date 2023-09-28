@@ -1,11 +1,12 @@
 #bin/sh
 
+export CLUSTER_NAME=unicorn-store
+export APP_NAME=unicorn-store-spring
+
 echo $(date '+%Y.%m.%d %H:%M:%S')
 start_time=`date +%s`
 
 cd ~/environment
-
-export CLUSTER_NAME=unicorn-store
 
 echo Get the existing VPC and Subnet IDs to inform EKS where to create the new cluster
 export UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
@@ -47,9 +48,9 @@ eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
     --no-duplicate-arns
 
 echo Create a Kubernetes namespace for the application:
-kubectl create namespace unicorn-store-spring
+kubectl create namespace $APP_NAME
 
-echo Create an IAM-Policy with the proper permissions to publish to EventBridge, retrieve secrets & parameters and basic monitoring
+echo Create an IAM-Policy with the proper permissions to publish to EventBridge, retrieve secrets and parameters and basic monitoring
 cat <<EOF > service-account-policy.json
 {
     "Version": "2012-10-17",
@@ -88,7 +89,7 @@ EOF
 aws iam create-policy --policy-name unicorn-eks-service-account-policy --policy-document file://service-account-policy.json
 
 echo Create a Kubernetes Service Account with a reference to the previous created IAM policy
-eksctl create iamserviceaccount --cluster=$CLUSTER_NAME --name=unicorn-store-spring --namespace=unicorn-store-spring \
+eksctl create iamserviceaccount --cluster=$CLUSTER_NAME --name=$APP_NAME --namespace=$APP_NAME \
    --attach-policy-arn=$(aws iam list-policies --query 'Policies[?PolicyName==`unicorn-eks-service-account-policy`].Arn' --output text) --approve --region=$AWS_REGION
 rm service-account-policy.json
 
@@ -107,8 +108,8 @@ cat <<EOF | envsubst | kubectl create -f -
 apiVersion: external-secrets.io/v1beta1
 kind: SecretStore
 metadata:
-  name: unicorn-store-spring-secret-store
-  namespace: unicorn-store-spring
+  name: $APP_NAME-secret-store
+  namespace: $APP_NAME
 spec:
   provider:
     aws:
@@ -117,19 +118,19 @@ spec:
       auth:
         jwt:
           serviceAccountRef:
-            name: unicorn-store-spring
+            name: $APP_NAME
 EOF
 
 cat <<EOF | kubectl create -f -
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
-  name: unicorn-store-spring-external-secret
-  namespace: unicorn-store-spring
+  name: $APP_NAME-external-secret
+  namespace: $APP_NAME
 spec:
   refreshInterval: 1h
   secretStoreRef:
-    name: unicorn-store-spring-secret-store
+    name: $APP_NAME-secret-store
     kind: SecretStore
   target:
     name: unicornstore-db-secret
