@@ -8,7 +8,7 @@ import jakarta.persistence.PersistenceContext;
 @ApplicationScoped
 public class EntityManagerProducer {
 
-    // @Produces
-    @PersistenceContext
-    EntityManager entityManager;
+  @PersistenceContext
+  @Produces
+  EntityManager entityManager;
 }
