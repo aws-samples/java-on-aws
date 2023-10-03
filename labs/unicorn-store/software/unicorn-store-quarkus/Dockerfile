@@ -14,6 +14,7 @@ RUN mvn clean package
 RUN rm -rf ~/.m2/repository
 
 FROM public.ecr.aws/amazoncorretto/amazoncorretto:17
+
 RUN yum install -y shadow-utils
 
 COPY --from=builder target/quarkus-app quarkus-app

@@ -29,13 +29,14 @@
         <groupId>jakarta.platform</groupId>
         <artifactId>jakarta.jakartaee-api</artifactId>
         <version>10.0.0</version>
-        <!--<scope>provided</scope>-->
+        <scope>compile</scope>
         </dependency>
 
         <dependency>
         <groupId>org.primefaces</groupId>
         <artifactId>primefaces</artifactId>
         <version>${primefaces.version}</version>
+        <scope>compile</scope>
         <classifier>jakarta</classifier>
         </dependency>
     </dependencies>
