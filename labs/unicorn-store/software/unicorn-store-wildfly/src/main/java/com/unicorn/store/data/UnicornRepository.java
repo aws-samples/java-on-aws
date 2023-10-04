@@ -6,34 +6,46 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 
+import com.unicorn.store.exceptions.ResourceNotFoundException;
 import com.unicorn.store.model.Unicorn;
 
 @ApplicationScoped
 public class UnicornRepository {
-  @Inject
-  EntityManager entityManager;
+    @Inject
+    EntityManager entityManager;
 
-  public void persist(Unicorn unicorn) {
-    this.entityManager.persist(unicorn);
-  }
-
-  public Unicorn merge(Unicorn unicorn) {
-    return this.entityManager.merge(unicorn);
-  }
-
-  public void removeById(String id) {
-    Unicorn unicorn = findById(id);
-    if (unicorn != null)
-      this.entityManager.remove(unicorn);
-  }
-
-  public Unicorn findById(String id) {
-    return this.entityManager.find(Unicorn.class, id);
-  }
-
-  public List<Unicorn> findAll() {
+    public List<Unicorn> findAll() {
     return this.entityManager
-      .createQuery("select x from unicorns x", Unicorn.class)
-      .getResultList();
-  }
+        .createQuery("select x from unicorns x", Unicorn.class)
+        .getResultList();
+    }
+
+    public Unicorn findById(String id) {
+        Unicorn unicorn = this.entityManager.find(Unicorn.class, id);
+        if (unicorn == null) {
+            throw new ResourceNotFoundException();
+        } else {
+            return unicorn;
+        }
+    }
+
+    public Unicorn insert(Unicorn unicorn) {
+        this.entityManager.persist(unicorn);
+        this.entityManager.flush();
+        return unicorn;
+    }
+
+    public Unicorn update(Unicorn unicorn, String unicornId) {
+        unicorn.setId(unicornId);
+        return this.entityManager.merge(unicorn);
+    }
+
+    public void delete(String id) {
+        Unicorn unicorn = findById(id);
+        if (unicorn != null) {
+            this.entityManager.remove(unicorn);
+        } else {
+            throw new ResourceNotFoundException();
+        }
+    }
 }

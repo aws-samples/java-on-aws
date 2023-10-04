@@ -5,7 +5,7 @@
       xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
       xmlns:p="http://primefaces.org/ui">
 <h:head>
-    <title>Unicorn Store - Jakarta</title>
+    <title>Unicorn Store</title>
     <link rel="icon" type="image/x-icon" href="/images/favicon.ico"/>
 </h:head>
 
@@ -13,28 +13,12 @@
     <h:form id="form">
         <p:growl id="messages" showDetail="true"/>
 
-        <h2>Unicorns - Jakarta</h2>
+        <h2>Unicorns</h2>
 
         <p:dataTable id="dt-unicorns" widgetVar="dtUnicorns" var="unicorns" value="#{unicornPresenter.unicorns}"
                      reflow="true" styleClass="unicorns-table"
                      selection="#{unicornPresenter.selectedUnicorn}" rowKey="#{unicorns.id}" paginator="true"
                      rows="10" rowSelectMode="add" paginatorPosition="bottom">
-
-            <p:column headerText="Id">
-                <h:outputText value="#{unicorns.id}"/>
-            </p:column>
-            <p:column headerText="Name">
-                <h:outputText value="#{unicorns.name}"/>
-            </p:column>
-            <p:column headerText="Age">
-                <h:outputText value="#{unicorns.age}"/>
-            </p:column>
-            <p:column headerText="Size">
-                <h:outputText value="#{unicorns.size}"/>
-            </p:column>
-            <p:column headerText="Type">
-                <h:outputText value="#{unicorns.type}"/>
-            </p:column>
             <p:column exportable="false">
                 <f:facet name="header">
                     <p:commandButton icon="pi pi-plus" actionListener="#{unicornPresenter.openNew}"
@@ -54,7 +38,21 @@
                     <f:setPropertyActionListener value="#{unicorns}" target="#{unicornPresenter.selectedUnicorn}"/>
                 </p:commandButton>
             </p:column>
-
+            <p:column headerText="Id">
+                <h:outputText value="#{unicorns.id}"/>
+            </p:column>
+            <p:column headerText="Name">
+                <h:outputText value="#{unicorns.name}"/>
+            </p:column>
+            <p:column headerText="Age">
+                <h:outputText value="#{unicorns.age}"/>
+            </p:column>
+            <p:column headerText="Size">
+                <h:outputText value="#{unicorns.size}"/>
+            </p:column>
+            <p:column headerText="Type">
+                <h:outputText value="#{unicorns.type}"/>
+            </p:column>
         </p:dataTable>
 
         <p:dialog header="Unicorn Details" showEffect="fade" modal="true"

@@ -15,7 +15,7 @@
         <java.code.version>17</java.code.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <primefaces.version>12.0.0</primefaces.version>
+        <primefaces.version>13.0.0</primefaces.version>
         <wildfly.plugin.version>4.2.0.Final</wildfly.plugin.version>
         <wildfly.bootable.jar.version>10.0.0.Final</wildfly.bootable.jar.version>
         <wildfly.version>29.0.1.Final</wildfly.version>
@@ -23,6 +23,18 @@
     </properties>
 
     <packaging>war</packaging>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>2.20.126</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -38,6 +50,29 @@
         <version>${primefaces.version}</version>
         <scope>compile</scope>
         <classifier>jakarta</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>eventbridge</artifactId>
+            <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sts</artifactId>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 
