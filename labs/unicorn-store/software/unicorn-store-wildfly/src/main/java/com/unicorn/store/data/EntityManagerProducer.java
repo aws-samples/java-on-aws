@@ -8,7 +8,11 @@ import jakarta.persistence.PersistenceContext;
 @ApplicationScoped
 public class EntityManagerProducer {
 
-    @Produces
     @PersistenceContext(unitName = "unicorns")
-    EntityManager entityManager;
+    private EntityManager entityManager;
+
+    @Produces
+    public EntityManager entityManager(){
+      return entityManager;
+    }
 }

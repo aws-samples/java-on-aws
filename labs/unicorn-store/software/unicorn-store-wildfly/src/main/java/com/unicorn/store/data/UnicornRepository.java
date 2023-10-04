@@ -11,6 +11,7 @@ import com.unicorn.store.model.Unicorn;
 
 @ApplicationScoped
 public class UnicornRepository {
+
     @Inject
     EntityManager entityManager;
 
