@@ -6,7 +6,7 @@ RUN yum install -y tar gzip
 COPY ./scripts/installdeps.sh ./installdeps.sh
 RUN ./installdeps.sh
 
-COPY ./pom.xml ./pom.xml
+COPY ./quarkus/pom.xml ./pom.xml
 RUN mvn dependency:go-offline -f ./pom.xml
 
 COPY src ./src/

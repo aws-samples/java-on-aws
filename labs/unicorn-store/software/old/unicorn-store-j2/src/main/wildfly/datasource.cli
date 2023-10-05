@@ -1,1 +1,0 @@
-data-source add --name=unicorn-store --jndi-name=java:/jdbc/unicorn-store --driver-name=postgresql --connection-url=jdbc:postgresql://postgres:5432/unicorns --user-name=postgres --password=postgres

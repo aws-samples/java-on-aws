@@ -1,4 +1,0 @@
-embed-server --std-out=echo
-
-data-source add --name=unicorns --jndi-name=java:/jdbc/unicorns --driver-name=postgresql --connection-url=${env.DATASOURCE_JDBC_URL} --user-name=${env.DATASOURCE_USERNAME} --password=${env.DATASOURCE_PASSWORD}
-
