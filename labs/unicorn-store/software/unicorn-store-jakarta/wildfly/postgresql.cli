@@ -1,5 +1,0 @@
-embed-server --std-out=echo
-
-module add --name=org.postgresql --resources="${JBOSS_HOME}/postgresql.jar" --dependencies=javax.api,javax.transaction.api
-
-/subsystem=datasources/jdbc-driver=postgresql:add(driver-name="postgresql",driver-module-name="org.postgresql",driver-class-name=org.postgresql.Driver)
