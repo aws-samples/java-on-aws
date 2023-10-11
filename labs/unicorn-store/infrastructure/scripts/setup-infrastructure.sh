@@ -49,19 +49,6 @@ mvn dependency:go-offline -f ./pom.xml 1> /dev/null
 # Resolution for ECS Service Unavailable
 aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
 
-# Copy the Spring Boot Java Application source code Lambda labs
-cd ~/environment
-mkdir unicorn-store-lambda
-
-rsync -av java-on-aws/labs/unicorn-store/software/unicorn-store-spring/ unicorn-store-lambda --exclude target
-cp -R java-on-aws/labs/unicorn-store/software/scripts unicorn-store-lambda
-echo "target" > unicorn-store-lambda/.gitignore
-rm unicorn-store-lambda/buildspec*
-rm unicorn-store-lambda/Dockerfile
-rm unicorn-store-lambda/scripts/deploy2eks.sh
-rm unicorn-store-lambda/scripts/installdeps.sh
-rm -rf unicorn-store-lambda/config
-
 # Disable Temporary credentials on login
 echo 'aws cloud9 update-environment --environment-id $C9_PID --managed-credentials-action DISABLE --region $AWS_REGION &> /dev/null' | tee -a /home/ec2-user/.bash_profile
 echo 'rm -vf ${HOME}/.aws/credentials  &> /dev/null' | tee -a /home/ec2-user/.bash_profile

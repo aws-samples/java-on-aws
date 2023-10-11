@@ -1,6 +1,10 @@
 #bin/sh
 
+export CLUSTER_NAME=unicorn-store
+export APP_NAME=unicorn-store-spring
+
 echo $(date '+%Y.%m.%d %H:%M:%S')
+start_time=`date +%s`
 
 cd ~/environment
 
@@ -16,14 +20,14 @@ export UNICORN_SUBNET_PUBLIC_2=$(aws ec2 describe-subnets \
 --filters "Name=vpc-id,Values=$UNICORN_VPC_ID" "Name=tag:Name,Values=UnicornStoreVpc/UnicornVpc/PublicSubnet2" --query 'Subnets[0].SubnetId' --output text)
 
 aws ec2 create-tags --resources $UNICORN_SUBNET_PRIVATE_1 $UNICORN_SUBNET_PRIVATE_2 \
---tags Key=kubernetes.io/cluster/unicorn-store,Value=shared Key=kubernetes.io/role/internal-elb,Value=1
+--tags Key=kubernetes.io/cluster/$CLUSTER_NAME,Value=shared Key=kubernetes.io/role/internal-elb,Value=1
 
 aws ec2 create-tags --resources $UNICORN_SUBNET_PUBLIC_1 $UNICORN_SUBNET_PUBLIC_2 \
---tags Key=kubernetes.io/cluster/unicorn-store,Value=shared Key=kubernetes.io/role/elb,Value=1
+--tags Key=kubernetes.io/cluster/$CLUSTER_NAME,Value=shared Key=kubernetes.io/role/elb,Value=1
 
 echo Create the cluster with eksctl
 eksctl create cluster \
---name unicorn-store \
+--name $CLUSTER_NAME \
 --version 1.27 --region $AWS_REGION \
 --nodegroup-name managed-node-group-x64 --managed --node-type m5.xlarge --nodes 2 --nodes-min 2 --nodes-max 4 \
 --with-oidc --full-ecr-access --alb-ingress-access \
@@ -31,14 +35,22 @@ eksctl create cluster \
 --vpc-public-subnets $UNICORN_SUBNET_PUBLIC_1,$UNICORN_SUBNET_PUBLIC_2
 
 echo Add the Participant IAM role to the list of the EKS cluster administrators to get access from the AWS Console..
-eksctl create iamidentitymapping --cluster unicorn-store --region=$AWS_REGION \
+eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
     --arn arn:aws:iam::$ACCOUNT_ID:role/WSParticipantRole --username admin --group system:masters \
     --no-duplicate-arns
 
-echo Create a Kubernetes namespace for the application:
-kubectl create namespace unicorn-store-spring
+eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
+    --arn arn:aws:iam::$ACCOUNT_ID:role/java-on-aws-workshop-user --username admin --group system:masters \
+    --no-duplicate-arns
 
-echo Create an IAM-Policy with the proper permissions to publish to EventBridge, retrieve secrets & parameters and basic monitoring
+eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
+    --arn arn:aws:iam::$ACCOUNT_ID:role/java-on-aws-workshop-admin --username admin --group system:masters \
+    --no-duplicate-arns
+
+echo Create a Kubernetes namespace for the application:
+kubectl create namespace $APP_NAME
+
+echo Create an IAM-Policy with the proper permissions to publish to EventBridge, retrieve secrets and parameters and basic monitoring
 cat <<EOF > service-account-policy.json
 {
     "Version": "2012-10-17",
@@ -77,7 +89,7 @@ EOF
 aws iam create-policy --policy-name unicorn-eks-service-account-policy --policy-document file://service-account-policy.json
 
 echo Create a Kubernetes Service Account with a reference to the previous created IAM policy
-eksctl create iamserviceaccount --cluster=unicorn-store --name=unicorn-store-spring --namespace=unicorn-store-spring \
+eksctl create iamserviceaccount --cluster=$CLUSTER_NAME --name=$APP_NAME --namespace=$APP_NAME \
    --attach-policy-arn=$(aws iam list-policies --query 'Policies[?PolicyName==`unicorn-eks-service-account-policy`].Arn' --output text) --approve --region=$AWS_REGION
 rm service-account-policy.json
 
@@ -96,8 +108,8 @@ cat <<EOF | envsubst | kubectl create -f -
 apiVersion: external-secrets.io/v1beta1
 kind: SecretStore
 metadata:
-  name: unicorn-store-spring-secret-store
-  namespace: unicorn-store-spring
+  name: $APP_NAME-secret-store
+  namespace: $APP_NAME
 spec:
   provider:
     aws:
@@ -106,19 +118,19 @@ spec:
       auth:
         jwt:
           serviceAccountRef:
-            name: unicorn-store-spring
+            name: $APP_NAME
 EOF
 
 cat <<EOF | kubectl create -f -
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
-  name: unicorn-store-spring-external-secret
-  namespace: unicorn-store-spring
+  name: $APP_NAME-external-secret
+  namespace: $APP_NAME
 spec:
   refreshInterval: 1h
   secretStoreRef:
-    name: unicorn-store-spring-secret-store
+    name: $APP_NAME-secret-store
     kind: SecretStore
   target:
     name: unicornstore-db-secret
@@ -130,4 +142,8 @@ spec:
         property: password
 EOF
 
+aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
+
 echo $(date '+%Y.%m.%d %H:%M:%S')
+
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "eks" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)

@@ -1,38 +1,40 @@
 #bin/sh
 
+export APP_NAME=unicorn-store-spring
+
 echo $(date '+%Y.%m.%d %H:%M:%S')
 
 echo Create a new directory k8s in the application folder:
-mkdir ~/environment/unicorn-store-spring/k8s
-cd ~/environment/unicorn-store-spring/k8s
+mkdir ~/environment/$APP_NAME/k8s
+cd ~/environment/$APP_NAME/k8s
 
 echo Create a manifest file for a deployment and service:
-export ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring \
+export ECR_URI=$(aws ecr describe-repositories --repository-names $APP_NAME \
   | jq --raw-output '.repositories[0].repositoryUri')
 export SPRING_DATASOURCE_URL=$(aws ssm get-parameter --name databaseJDBCConnectionString \
   | jq --raw-output '.Parameter.Value')
 
-cat <<EOF > ~/environment/unicorn-store-spring/k8s/deployment.yaml
+cat <<EOF > ~/environment/$APP_NAME/k8s/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: unicorn-store-spring
-  namespace: unicorn-store-spring
+  name: $APP_NAME
+  namespace: $APP_NAME
   labels:
-    app: unicorn-store-spring
+    app: $APP_NAME
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: unicorn-store-spring
+      app: $APP_NAME
   template:
     metadata:
       labels:
-        app: unicorn-store-spring
+        app: $APP_NAME
     spec:
-      serviceAccountName: unicorn-store-spring
+      serviceAccountName: $APP_NAME
       containers:
-        - name: unicorn-store-spring
+        - name: $APP_NAME
           resources:
             requests:
               cpu: "1"
@@ -69,14 +71,14 @@ spec:
             allowPrivilegeEscalation: false
 EOF
 
-cat <<EOF > ~/environment/unicorn-store-spring/k8s/service.yaml
+cat <<EOF > ~/environment/$APP_NAME/k8s/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: unicorn-store-spring
-  namespace: unicorn-store-spring
+  name: $APP_NAME
+  namespace: $APP_NAME
   labels:
-    app: unicorn-store-spring
+    app: $APP_NAME
 spec:
   type: LoadBalancer
   ports:
@@ -84,23 +86,23 @@ spec:
       targetPort: 8080
       protocol: TCP
   selector:
-    app: unicorn-store-spring
+    app: $APP_NAME
 EOF
 
 echo Deploy the template to EKS cluster:
-kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
-kubectl apply -f ~/environment/unicorn-store-spring/k8s/service.yaml
+kubectl apply -f ~/environment/$APP_NAME/k8s/deployment.yaml
+kubectl apply -f ~/environment/$APP_NAME/k8s/service.yaml
 
 echo Verify that the application is running properly:
-kubectl wait deployment -n unicorn-store-spring unicorn-store-spring --for condition=Available=True --timeout=120s
-kubectl get deploy -n unicorn-store-spring
-export SVC_URL=http://$(kubectl get svc unicorn-store-spring -n unicorn-store-spring -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
+kubectl wait deployment -n $APP_NAME $APP_NAME --for condition=Available=True --timeout=120s
+kubectl get deploy -n $APP_NAME
+export SVC_URL=http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
 while [[ $(curl -s -o /dev/null -w "%{http_code}" $SVC_URL/) != "200" ]]; do echo "Service not yet available ..." &&  sleep 5; done
 echo $SVC_URL
 echo Service is Ready!
 
 echo Get the Load Balancer URL and make an example API call:
-export SVC_URL=http://$(kubectl get svc unicorn-store-spring -n unicorn-store-spring -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
+export SVC_URL=http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
 curl --location --request POST $SVC_URL'/unicorns' --header 'Content-Type: application/json' --data-raw '{
     "name": "'"Something-$(date +%s)"'",
     "age": "20",
