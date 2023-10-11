@@ -83,6 +83,13 @@ chmod +x ~/.docker/cli-plugins/docker-buildx
 docker run --privileged --rm tonistiigi/binfmt --install all
 docker buildx create --use --driver=docker-container
 
+# Install docker compose
+DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+mkdir -p $DOCKER_CONFIG/cli-plugins
+curl -SL https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
+chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+docker compose version
+
 ## eksctl
 # for ARM systems, set ARCH to: `arm64`, `armv6` or `armv7`
 ARCH=amd64

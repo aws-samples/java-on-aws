@@ -1,0 +1,20 @@
+version: '3'
+services:
+  db:
+    image: postgres:13.11
+    ports:
+      - "5435:5432"
+    environment:
+      - POSTGRES_DB=unicorns
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+  app:
+    image: unicorn-store-quarkus:latest
+    environment:
+      - QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://db:5432/unicorns
+      - QUARKUS_DATASOURCE_PASSWORD=postgres
+      - QUARKUS_DATASOURCE_USERNAME=postgres
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
