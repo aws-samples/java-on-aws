@@ -1,4 +1,4 @@
-FROM maven:3-amazoncorretto-17 as builder
+FROM maven:3-amazoncorretto-21 as builder
 RUN yum install -y unzip
 
 COPY ./pom.xml ./pom.xml
