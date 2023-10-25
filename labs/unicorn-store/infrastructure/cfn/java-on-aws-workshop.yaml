@@ -406,12 +406,15 @@ Resources:
                 - echo '=== Setup Infrastructure components ==='
                 - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-infrastructure.sh &>> /home/ec2-user/setup-infra.log"
                 - echo '=== Install cfn-signal and report status ==='
-                - yum update -y aws-cfn-bootstrap
-                # - echo '=== PREPARE REBOOT in 1 minute with at ==='
-                # - FILE=$(mktemp) && echo $FILE && echo '#!/bin/bash' > $FILE && echo 'reboot -f' >> $FILE && at now + 1 minute -f $FILE
+                - cd /home/ec2-user/
+                - wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.zip > /dev/null 2>&1
+                - unzip aws-cfn-bootstrap-py3-latest.zip > /dev/null 2>&1
+                - cd aws-cfn-bootstrap-2.0/
+                - python3 setup.py install &>> /home/ec2-user/setup-aws-cfn-bootstrap.log
                 - if [ "$?" -ne 0 ]; then export BOOTSTRAP_RESULT=false; else export BOOTSTRAP_RESULT=true; fi
                 - "/opt/aws/bin/cfn-signal -e $? -s $BOOTSTRAP_RESULT '{{ WaitHandleUrl }}' "
                 - echo "Bootstrap completed with return code $?"
+                - shutdown -r -t 60
 
   C9BootstrapAssociation:
     Type: AWS::SSM::Association
