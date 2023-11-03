@@ -1,5 +1,10 @@
-FROM maven:3-amazoncorretto-17 as builder
-RUN yum install -y unzip
+FROM public.ecr.aws/docker/library/amazoncorretto:17.0.9-al2023 as builder
+
+RUN yum install -y shadow-utils tar gzip unzip
+
+## Install Additional dependencies
+COPY ./scripts/installdeps.sh ./installdeps.sh
+RUN ./installdeps.sh
 
 COPY ./pom.xml ./pom.xml
 RUN mvn dependency:go-offline -f ./pom.xml
@@ -21,7 +26,7 @@ RUN export JAVA_TOOL_OPTIONS=\"-Djdk.lang.Process.launchMechanism=vfork\" && \
     --no-header-files --no-man-pages --output custom-jre \
     --add-modules $(cat jre-deps.info)
 
-FROM public.ecr.aws/amazonlinux/amazonlinux:2023
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023.2.20231026.0
 RUN yum install -y shadow-utils
 
 COPY --from=builder target/store-spring.jar store-spring.jar

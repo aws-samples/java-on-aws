@@ -1,6 +1,7 @@
-FROM public.ecr.aws/amazoncorretto/amazoncorretto:17 as builder
+FROM public.ecr.aws/amazoncorretto/amazoncorretto:17.0.9-al2023 as builder
 
 RUN yum install -y shadow-utils tar gzip
+
 ## Install Additional dependencies
 COPY ./scripts/installdeps.sh ./installdeps.sh
 RUN ./installdeps.sh

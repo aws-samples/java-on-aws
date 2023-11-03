@@ -1,4 +1,4 @@
-FROM public.ecr.aws/amazoncorretto/amazoncorretto:17
+FROM public.ecr.aws/docker/library/amazoncorretto:17.0.9-al2023 as builder
 
 RUN yum install -y shadow-utils
 
