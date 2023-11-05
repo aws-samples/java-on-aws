@@ -15,16 +15,22 @@ docker push $ECR_URI:$IMAGE_TAG
 docker push $ECR_URI:latest
 
 flux reconcile image repository unicorn-store-spring
-git -C ~/environment/unicorn-store-gitops pull
 flux reconcile source git flux-system
 flux reconcile kustomization apps
 kubectl wait deployment -n unicorn-store-spring unicorn-store-spring --for condition=Available=True --timeout=120s
 kubectl -n unicorn-store-spring get pods
+git -C ~/environment/unicorn-store-gitops pull
+
+export SVC_URL=http://$(kubectl get svc unicorn-store-spring -n unicorn-store-spring -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
+while [[ $(curl -s -o /dev/null -w "%{http_code}" $SVC_URL/) != "200" ]]; do echo "Service not yet available ..." &&  sleep 5; done
+echo $SVC_URL
+echo Service is Ready!
+curl --location --request GET $SVC_URL'/' --header 'Content-Type: application/json'; echo
 
 date
 echo Built and deployed in $(~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timediff.sh $start $(date +%s))
 echo "App URL: http://$(kubectl get svc unicorn-store-spring -n unicorn-store-spring -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')"
 
-sleep 2
-echo Hit Ctrl+C to stop the logs stream ...
-kubectl -n unicorn-store-spring logs -f deployment/unicorn-store-spring
+# sleep 2
+# echo Hit Ctrl+C to stop the logs stream ...
+# kubectl -n unicorn-store-spring logs -f deployment/unicorn-store-spring
