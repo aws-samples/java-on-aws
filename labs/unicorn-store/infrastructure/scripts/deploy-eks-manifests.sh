@@ -103,12 +103,7 @@ echo Service is Ready!
 
 echo Get the Load Balancer URL and make an example API call:
 export SVC_URL=http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
-curl --location --request POST $SVC_URL'/unicorns' --header 'Content-Type: application/json' --data-raw '{
-    "name": "'"Something-$(date +%s)"'",
-    "age": "20",
-    "type": "Animal",
-    "size": "Very big"
-}' | jq
-
 echo $SVC_URL
 curl --location $SVC_URL; echo
+
+kubectl delete deployment unicorn-store-spring -n unicorn-store-spring
