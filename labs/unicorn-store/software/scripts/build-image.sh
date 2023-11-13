@@ -7,7 +7,7 @@ export ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URI >/dev/null 2>&1
 
 cd ~/environment/unicorn-store-spring
-sed -i '/.*Welcome to the Unicorn Store.*/c\        return new ResponseEntity<>("Welcome to the Unicorn Store1!", HttpStatus.OK);' ~/environment/unicorn-store-spring/src/main/java/com/unicorn/store/controller/UnicornController.java
+sed -i '/.*Welcome to the Unicorn Store.*/c\        return new ResponseEntity<>("Welcome to the Unicorn Store !", HttpStatus.OK);' ~/environment/unicorn-store-spring/src/main/java/com/unicorn/store/controller/UnicornController.java
 
 mvn clean package
 
