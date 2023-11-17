@@ -62,6 +62,12 @@ spec:
             httpGet:
               path: /actuator/health/readiness
               port: 8080
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            failureThreshold: 6
+            periodSeconds: 10
           lifecycle:
             preStop:
               exec:
