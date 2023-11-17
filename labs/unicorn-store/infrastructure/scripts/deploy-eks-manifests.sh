@@ -43,6 +43,7 @@ spec:
               cpu: "1"
               memory: "2Gi"
           image: ${ECR_URI}:latest
+          imagePullPolicy: Always
           env:
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
