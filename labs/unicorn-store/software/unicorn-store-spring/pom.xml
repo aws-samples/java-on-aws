@@ -105,7 +105,7 @@
         <dependency>
             <groupId>io.opentelemetry.semconv</groupId>
             <artifactId>opentelemetry-semconv</artifactId>
-            <version>1.22.0-alpha</version>
+            <version>1.23.1-alpha</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.opentelemetry.instrumentation/opentelemetry-aws-sdk-2.2 -->
         <dependency>
