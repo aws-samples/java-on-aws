@@ -26,7 +26,7 @@ RUN export JAVA_TOOL_OPTIONS=\"-Djdk.lang.Process.launchMechanism=vfork\" && \
     --no-header-files --no-man-pages --output custom-jre \
     --add-modules $(cat jre-deps.info)
 
-FROM public.ecr.aws/amazonlinux/amazonlinux:2023.2.20231026.0
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023.2.20231113.0
 RUN yum install -y shadow-utils
 
 COPY --from=builder target/store-spring.jar store-spring.jar
