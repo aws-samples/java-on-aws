@@ -28,7 +28,7 @@ aws ec2 create-tags --resources $UNICORN_SUBNET_PUBLIC_1 $UNICORN_SUBNET_PUBLIC_
 echo Create the cluster with eksctl
 eksctl create cluster \
 --name $CLUSTER_NAME \
---version 1.27 --region $AWS_REGION \
+--version 1.28 --region $AWS_REGION \
 --nodegroup-name managed-node-group-x64 --managed --node-type m5.xlarge --nodes 2 --nodes-min 2 --nodes-max 4 \
 --with-oidc --full-ecr-access --alb-ingress-access \
 --vpc-private-subnets $UNICORN_SUBNET_PRIVATE_1,$UNICORN_SUBNET_PRIVATE_2 \

@@ -56,7 +56,7 @@ public class UnicornStoreEKS extends Construct {
                 .clusterLogging(Arrays.asList(ClusterLoggingTypes.API, ClusterLoggingTypes.AUDIT,
                         ClusterLoggingTypes.AUTHENTICATOR, ClusterLoggingTypes.CONTROLLER_MANAGER,
                         ClusterLoggingTypes.SCHEDULER))
-                .version(KubernetesVersion.of("1.27"))
+                .version(KubernetesVersion.of("1.28"))
                 .kubectlLayer(new KubectlV25Layer(scope, projectName + "-cluster-kubectl-layer"))
                 .albController(
                         AlbControllerOptions.builder().version(AlbControllerVersion.V2_4_1).build())
