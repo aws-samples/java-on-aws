@@ -18,7 +18,6 @@
     <description>Unicorn storage service</description>
     <properties>
         <java.version>17</java.version>
-        <snakeyaml.version>2.1</snakeyaml.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
