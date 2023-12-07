@@ -28,7 +28,8 @@ export SSC_PWD=$(aws iam reset-service-specific-credential --user-name $GITOPS_U
 #   --query 'Stacks[0].Outputs[?OutputKey==`UnicornStoreEksKubeconfig`].OutputValue' --output text)
 
 export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
-export AWS_REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 
 aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 

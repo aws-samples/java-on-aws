@@ -4,7 +4,11 @@ echo $(date '+%Y.%m.%d %H:%M:%S')
 
 export UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreInfrastructure --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
 
-export CLOUD9_VPC_ID=$(curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/$( ip address show dev eth0 | grep ether | awk ' { print $2  } ' )/vpc-id)
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.privateIp')
+INTERFACE_NAME=$(ip address | grep $IP | awk ' { print $10 } ')
+MAC=$(ip address show dev $INTERFACE_NAME | grep ether | awk ' { print $2 } ')
+export CLOUD9_VPC_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/network/interfaces/macs/$MAC/vpc-id)
 
 export VPC_PEERING_ID=$(aws ec2 create-vpc-peering-connection --vpc-id $CLOUD9_VPC_ID \
 --peer-vpc-id $UNICORN_VPC_ID \

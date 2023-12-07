@@ -31,7 +31,8 @@ echo "export ACCOUNT_ID=${ACCOUNT_ID}" >> ~/.bashrc
 export CDK_DEFAULT_ACCOUNT=${ACCOUNT_ID}
 echo "export CDK_DEFAULT_ACCOUNT=${CDK_DEFAULT_ACCOUNT}" >> ~/.bashrc
 
-export AWS_REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 echo "export AWS_REGION=${AWS_REGION}" >> ~/.bashrc
 export CDK_DEFAULT_REGION=${AWS_REGION}
 echo "export CDK_DEFAULT_REGION=${CDK_DEFAULT_REGION}" >> ~/.bashrc

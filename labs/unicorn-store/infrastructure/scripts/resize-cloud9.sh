@@ -6,15 +6,16 @@ echo $(date '+%Y.%m.%d %H:%M:%S')
 SIZE=${1:-20}
 
 # Get the ID of the environment host Amazon EC2 instance.
-INSTANCEID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
-REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/\(.*\)[a-z]/\1/')
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+INSTANCEID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.instanceId')
 
 # Get the ID of the Amazon EBS volume associated with the instance.
 VOLUMEID=$(aws ec2 describe-instances \
   --instance-id $INSTANCEID \
   --query "Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId" \
   --output text \
-  --region $REGION)
+  --region $AWS_REGION)
 
 # Resize the EBS volume.
 aws ec2 modify-volume --volume-id $VOLUMEID --size $SIZE
@@ -39,7 +40,7 @@ then
   # Check if we're on AL2
   STR=$(cat /etc/os-release)
   SUB="VERSION_ID=\"2\""
-  if [[ "$STR" == *"$SUB"* ]]
+  if [[ "$STR" == *"$SUB"* ]] 
   then
     sudo xfs_growfs -d /
   else
@@ -51,10 +52,14 @@ else
   sudo growpart /dev/nvme0n1 1
 
   # Expand the size of the file system.
-  # Check if we're on AL2
+  # Check if we're on AL2 or AL2023
   STR=$(cat /etc/os-release)
   SUB="VERSION_ID=\"2\""
+  SUB2023="VERSION_ID=\"2023\""
   if [[ "$STR" == *"$SUB"* ]]
+  then
+    sudo xfs_growfs -d /
+  elif [[ "$STR" == *"$SUB2023"* ]]
   then
     sudo xfs_growfs -d /
   else
