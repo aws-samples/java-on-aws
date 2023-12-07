@@ -19,7 +19,7 @@ sleep 5
 aws ec2 accept-vpc-peering-connection --vpc-peering-connection-id $VPC_PEERING_ID --output text
 
 export CLOUD9_ROUTE_TABLE_ID=$(aws ec2 describe-route-tables \
---filters "Name=vpc-id,Values=$CLOUD9_VPC_ID" "Name=tag:Name,Values=java-on-aws-workshop Public Routes" \
+--filters "Name=vpc-id,Values=$CLOUD9_VPC_ID" "Name=tag:Name,Values=*java-on-aws-workshop*" \
 --query 'RouteTables[0].RouteTableId' --output text)
 
 export UNICORN_DB_ROUTE_TABLE_ID_1=$(aws ec2 describe-route-tables \
