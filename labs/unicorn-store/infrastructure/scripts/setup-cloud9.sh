@@ -55,8 +55,9 @@ rm ./aws-sam-cli-linux-x86_64.zip
 
 ## Install additional dependencies
 sudo yum install -y jq
-npm install -g aws-cdk --force
-npm install -g artillery
+sudo yum install -y npm
+sudo npm install -g aws-cdk --force
+sudo npm install -g artillery
 
 curl -Lo copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
 chmod +x copilot
@@ -134,9 +135,12 @@ git config --global user.name "Your Name"
 
 cd ~/environment
 export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
-export AWS_REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.bash_profile
+echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.bashrc
 echo "export AWS_REGION=${AWS_REGION}" | tee -a ~/.bash_profile
+echo "export AWS_REGION=${AWS_REGION}" | tee -a ~/.bashrc
 aws configure set default.region ${AWS_REGION}
 aws configure get default.region
 test -n "$AWS_REGION" && echo AWS_REGION is "$AWS_REGION" || echo AWS_REGION is not set

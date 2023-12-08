@@ -4,6 +4,9 @@ echo $(date '+%Y.%m.%d %H:%M:%S')
 start=`date +%s`
 
 export ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring | jq --raw-output '.repositories[0].repositoryUri')
+export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URI >/dev/null 2>&1
 
 cd ~/environment/unicorn-store-spring

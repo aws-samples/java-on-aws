@@ -8,6 +8,10 @@ start_time=`date +%s`
 
 cd ~/environment
 
+export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+
 echo Get the existing VPC and Subnet IDs to inform EKS where to create the new cluster
 export UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
 export UNICORN_SUBNET_PRIVATE_1=$(aws ec2 describe-subnets \
