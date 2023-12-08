@@ -55,7 +55,7 @@ rm ./aws-sam-cli-linux-x86_64.zip
 
 ## Install additional dependencies
 sudo yum install -y jq
-sudo yum install -y
+sudo yum install -y npm
 sudo npm install -g aws-cdk --force
 sudo npm install -g artillery
 
@@ -138,7 +138,9 @@ export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
 TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.bash_profile
+echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.bashrc
 echo "export AWS_REGION=${AWS_REGION}" | tee -a ~/.bash_profile
+echo "export AWS_REGION=${AWS_REGION}" | tee -a ~/.bashrc
 aws configure set default.region ${AWS_REGION}
 aws configure get default.region
 test -n "$AWS_REGION" && echo AWS_REGION is "$AWS_REGION" || echo AWS_REGION is not set
