@@ -3,6 +3,10 @@
 echo $(date '+%Y.%m.%d %H:%M:%S')
 start_time=`date +%s`
 
+export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+
 cd ~/environment/java-on-aws/labs/unicorn-store
 # Build the database setup function
 mvn clean package -f infrastructure/db-setup/pom.xml 1> /dev/null
