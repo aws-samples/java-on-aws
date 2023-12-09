@@ -408,6 +408,14 @@ Resources:
                 - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-cloud9.sh &>> /home/ec2-user/setup-cloud9.log"
                 - echo '=== Setup Infrastructure components ==='
                 - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-infrastructure.sh &>> /home/ec2-user/setup-infra.log"
+                # - echo '=== Setup Additional Modules ==='
+                # - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-modules.sh &>> /home/ec2-user/setup-modules.log"
+                - echo '=== Build image ==='
+                - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/unicorn-store-spring/scripts/build-image.sh &>> /home/ec2-user/build-image.log"
+                - echo '=== Deploy EKS with eksctl ==='
+                - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/deploy-eks-eksctl.sh &>> /home/ec2-user/deploy-eks-eksctl.log"
+                - echo '=== Deploy App manifests ==='
+                - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/deploy-eks-manifests.sh &>> /home/ec2-user/deploy-eks-manifests.log"
                 - echo '=== Install cfn-signal and report status ==='
                 - cd /home/ec2-user/
                 - wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.zip > /dev/null 2>&1
