@@ -53,7 +53,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [ 0, !GetAZs '' ]
-      CidrBlock: 10.10.10.0/24
+      CidrBlock: 192.168.10.0/16
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
