@@ -33,6 +33,7 @@ aws iam detach-user-policy --user-name $GITOPS_USER --policy-arn $CC_POLICY_ARN
 export SSC_ID=$(aws iam list-service-specific-credentials --user-name $GITOPS_USER --query 'ServiceSpecificCredentials[0].ServiceSpecificCredentialId' --output text)
 aws iam delete-service-specific-credential --user-name $GITOPS_USER --service-specific-credential-id $SSC_ID
 aws iam delete-user --user-name $GITOPS_USER
+aws iam delete-policy --policy-arn=$(aws iam list-policies --query 'Policies[?PolicyName==`unicorn-eks-service-account-policy`].{ARN:Arn}' --output text)
 aws codecommit delete-repository --repository-name $GITOPSC_REPO_NAME
 
 cdk destroy UnicornStoreSpringECS --force
