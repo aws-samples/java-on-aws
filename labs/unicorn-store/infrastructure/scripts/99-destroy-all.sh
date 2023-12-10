@@ -47,11 +47,27 @@ aws apprunner delete-vpc-connector --vpc-connector-arn $(aws apprunner list-vpc-
 
 TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.privateIp')
-INTERFACE_NAME=$(ip address | grep $IP | awk ' { print $8 } ')
-MAC=$(ip address show dev $INTERFACE_NAME | grep ether | awk ' { print $2 } ')
-export CLOUD9_VPC_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/network/interfaces/macs/$MAC/vpc-id)
 
-aws ec2 delete-vpc-peering-connection --vpc-peering-connection-id $(aws ec2 describe-vpc-peering-connections --filters "Name=requester-vpc-info.vpc-id,Values=$CLOUD9_VPC_ID" --query 'VpcPeeringConnections[0].VpcPeeringConnectionId' --output text)
+# Check if we're on AL2 or AL2023
+STR=$(cat /etc/os-release)
+SUB2="VERSION_ID=\"2\""
+SUB2023="VERSION_ID=\"2023\""
+if [[ "$STR" == *"$SUB2"* ]]
+    then
+        INTERFACE_NAME=$(ip address | grep $IP | awk ' { print $8 } ')
+    else
+        INTERFACE_NAME=$(ip address | grep $IP | awk ' { print $10 } ')
+fi
+
+MAC=$(ip address show dev $INTERFACE_NAME | grep ether | awk ' { print $2 } ')
+export IDE_VPC_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/network/interfaces/macs/$MAC/vpc-id)
+
+echo IP = $IP
+echo INTERFACE_NAME = $INTERFACE_NAME
+echo MAC = $MAC
+echo IDE_VPC_ID = $IDE_VPC_ID
+
+aws ec2 delete-vpc-peering-connection --vpc-peering-connection-id $(aws ec2 describe-vpc-peering-connections --filters "Name=requester-vpc-info.vpc-id,Values=$IDE_VPC_ID" --query 'VpcPeeringConnections[0].VpcPeeringConnectionId' --output text)
 
 aws codecommit delete-repository --repository-name unicorn-store-spring
 aws ecr delete-repository --repository-name unicorn-store-spring

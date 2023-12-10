@@ -24,6 +24,8 @@ download_and_verify () {
 cd /tmp
 
 sudo yum update
+sudo yum install -y jq
+sudo yum install -y npm
 
 ## Ensure AWS CLI v2 is installed
 sudo yum -y remove aws-cli
@@ -32,12 +34,14 @@ unzip -q awscliv2.zip
 sudo ./aws/install
 rm awscliv2.zip
 
-sudo yum install -y jq
-
-## Resize disk
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/resize-cloud9.sh 50
-
-cd /tmp
+## Set JDK 17 as default
+sudo yum -y install java-17-amazon-corretto-devel
+sudo update-alternatives --set java /usr/lib/jvm/java-17-amazon-corretto.x86_64/bin/java
+sudo update-alternatives --set javac /usr/lib/jvm/java-17-amazon-corretto.x86_64/bin/javac
+export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto.x86_64
+echo "export JAVA_HOME=${JAVA_HOME}" | tee -a ~/.bash_profile
+echo "export JAVA_HOME=${JAVA_HOME}" | tee -a ~/.bashrc
+java -version
 
 ## Install Maven
 export MVN_VERSION=3.9.4
@@ -58,7 +62,6 @@ rm -rf ./sam-installation/
 rm ./aws-sam-cli-linux-x86_64.zip
 
 ## Install additional dependencies
-sudo yum install -y npm
 sudo npm install -g aws-cdk --force
 sudo npm install -g artillery
 
@@ -70,13 +73,6 @@ copilot --version
 wget https://github.com/mikefarah/yq/releases/download/v4.33.3/yq_linux_amd64.tar.gz -O - |\
   tar xz && sudo mv yq_linux_amd64 /usr/bin/yq
 yq --version
-
-## Set JDK 17 as default
-sudo yum -y install java-17-amazon-corretto-devel
-sudo update-alternatives --set java /usr/lib/jvm/java-17-amazon-corretto.x86_64/bin/java
-sudo update-alternatives --set javac /usr/lib/jvm/java-17-amazon-corretto.x86_64/bin/javac
-export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto.x86_64
-java -version
 
 # Install docker buildx
 export BUILDX_VERSION=$(curl --silent "https://api.github.com/repos/docker/buildx/releases/latest" |jq -r .tag_name)
@@ -148,4 +144,4 @@ aws configure set default.region ${AWS_REGION}
 aws configure get default.region
 test -n "$AWS_REGION" && echo AWS_REGION is "$AWS_REGION" || echo AWS_REGION is not set
 
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-cloud9" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-ide" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)

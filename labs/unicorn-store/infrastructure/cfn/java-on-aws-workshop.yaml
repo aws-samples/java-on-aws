@@ -53,7 +53,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [ 0, !GetAZs '' ]
-      CidrBlock: 192.168.10.0/24
+      CidrBlock: 192.168.0.0/24
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -404,8 +404,10 @@ Resources:
                 - . /home/ec2-user/.bashrc
                 - echo '=== Clone Git repository ==='
                 - sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws.git /home/ec2-user/environment/java-on-aws/"
-                - echo '=== Setup Cloud9 ==='
-                - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-cloud9.sh &>> /home/ec2-user/setup-cloud9.log"
+                - echo '=== Setup IDE ==='
+                - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-ide.sh &>> /home/ec2-user/setup-ide.log"
+                - echo '=== Resize disk ==='
+                - sudo -H -i -u ec2-user bash -c "~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/resize-disk.sh 50 &>> /home/ec2-user/resize-disk.log"
                 - echo '=== Setup Infrastructure components ==='
                 - sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-infrastructure.sh &>> /home/ec2-user/setup-infra.log"
                 - echo '=== Install cfn-signal and report status ==='
