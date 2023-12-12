@@ -1,4 +1,4 @@
-FROM public.ecr.aws/amazoncorretto/amazoncorretto:17 as builder
+FROM public.ecr.aws/amazoncorretto/amazoncorretto:21 as builder
 
 RUN yum install -y tar gzip
 
@@ -13,7 +13,7 @@ COPY src ./src/
 RUN mvn clean package
 RUN rm -rf ~/.m2/repository
 
-FROM public.ecr.aws/amazoncorretto/amazoncorretto:17
+FROM public.ecr.aws/amazoncorretto/amazoncorretto:21
 
 RUN yum install -y shadow-utils
 
