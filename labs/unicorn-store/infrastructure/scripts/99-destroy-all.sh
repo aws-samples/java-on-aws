@@ -42,8 +42,28 @@ cdk destroy UnicornStoreSpringCI --force
 aws cloudformation delete-stack --stack-name $(aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE --query 'StackSummaries[?contains(StackName,`ECS-Console-V2-Service-unicorn-store-spring-unicorn-store-spring`)==`true`].StackName' --output text)
 aws cloudformation delete-stack --stack-name $(aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE --query 'StackSummaries[?contains(StackName,`Infra-ECS-Cluster-unicorn-store-spring`)==`true`].StackName' --output text)
 
-aws apprunner delete-service --service-arn $(aws apprunner list-services --query 'ServiceSummaryList[?ServiceName==`uss-app-env-dev-uss-svc`].ServiceArn' --output text)
-aws apprunner delete-vpc-connector --vpc-connector-arn $(aws apprunner list-vpc-connectors  --query "VpcConnectors[?VpcConnectorName == 'unicornstore-vpc-connector'].VpcConnectorArn" --output text)
+APPRUNNER_ARN=$(aws apprunner list-services --query 'ServiceSummaryList[?ServiceName==`hello-app-runner`].ServiceArn' --output text)
+aws apprunner delete-service --service-arn $APPRUNNER_ARN --no-cli-pager
+if [[ "$APPRUNNER_ARN" != "" ]]
+    then
+        while [[ $(aws apprunner list-services --query 'ServiceSummaryList[?ServiceName==`hello-app-runner`].ServiceArn' --output text) == $APPRUNNER_ARN ]] && [[ $(aws apprunner list-operations --service-arn $APPRUNNER_ARN) != "SUCCEEDED" ]]; do echo "Service not yet deleted ..." &&  sleep 10; done
+fi
+
+APPRUNNER_ARN=$(aws apprunner list-services --query 'ServiceSummaryList[?ServiceName==`unicorn-store-spring`].ServiceArn' --output text)
+aws apprunner delete-service --service-arn $APPRUNNER_ARN --no-cli-pager
+if [[ "$APPRUNNER_ARN" != "" ]]
+    then
+        while [[ $(aws apprunner list-services --query 'ServiceSummaryList[?ServiceName==`unicorn-store-spring`].ServiceArn' --output text) == $APPRUNNER_ARN ]] && [[ $(aws apprunner list-operations --service-arn $APPRUNNER_ARN) != "SUCCEEDED" ]]; do echo "Service not yet deleted ..." &&  sleep 10; done
+fi
+
+APPRUNNER_ARN=$(aws apprunner list-services --query 'ServiceSummaryList[?ServiceName==`uss-app-env-dev-uss-svcr`].ServiceArn' --output text)
+aws apprunner delete-service --service-arn $APPRUNNER_ARN --no-cli-pager
+if [[ "$APPRUNNER_ARN" != "" ]]
+    then
+        while [[ $(aws apprunner list-services --query 'ServiceSummaryList[?ServiceName==`uss-app-env-dev-uss-svcr`].ServiceArn' --output text) == $APPRUNNER_ARN ]] && [[ $(aws apprunner list-operations --service-arn $APPRUNNER_ARN) != "SUCCEEDED" ]]; do echo "Service not yet deleted ..." &&  sleep 10; done
+fi
+
+aws apprunner delete-vpc-connector --vpc-connector-arn $(aws apprunner list-vpc-connectors  --query "VpcConnectors[?VpcConnectorName == 'unicornstore-vpc-connector'].VpcConnectorArn" --output text) --no-cli-pager
 
 TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.privateIp')

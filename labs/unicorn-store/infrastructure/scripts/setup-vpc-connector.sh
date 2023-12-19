@@ -16,4 +16,37 @@ export UNICORN_SUBNET_PRIVATE_2=$(aws ec2 describe-subnets \
 --query 'Subnets[0].SubnetId' --output text)
 
 aws apprunner create-vpc-connector --vpc-connector-name unicornstore-vpc-connector \
---subnets $UNICORN_SUBNET_PRIVATE_1 $UNICORN_SUBNET_PRIVATE_2
+--subnets $UNICORN_SUBNET_PRIVATE_1 $UNICORN_SUBNET_PRIVATE_2 --no-cli-pager
+
+export CONNECTOR_ARN=$(aws apprunner list-vpc-connectors  --query "VpcConnectors[?VpcConnectorName == 'unicornstore-vpc-connector'].VpcConnectorArn" --output text)
+
+cat > hello-app-runner-source.json <<EOF
+{
+    "ImageRepository": {
+        "ImageIdentifier": "public.ecr.aws/aws-containers/hello-app-runner:latest",
+        "ImageConfiguration": {
+            "Port": "8000"
+        },
+        "ImageRepositoryType": "ECR_PUBLIC"
+    },
+    "AutoDeploymentsEnabled": false
+}
+EOF
+
+cat > hello-app-runner-network.json <<EOF
+{
+  "EgressConfiguration": {
+    "EgressType": "VPC",
+    "VpcConnectorArn": "$CONNECTOR_ARN"
+  },
+  "IngressConfiguration": {
+    "IsPubliclyAccessible": true
+  },
+  "IpAddressType": "IPV4"
+}
+EOF
+
+aws apprunner create-service --service-name hello-app-runner \
+    --source-configuration file://hello-app-runner-source.json \
+    --network-configuration file://hello-app-runner-network.json \
+    --no-cli-pager
