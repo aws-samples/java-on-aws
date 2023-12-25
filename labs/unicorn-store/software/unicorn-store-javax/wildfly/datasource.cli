@@ -1,0 +1,7 @@
+embed-server --std-out=echo
+
+module add --name=org.postgresql --resources="${JBOSS_HOME}/postgresql.jar" --dependencies=javax.api,javax.transaction.api
+
+/subsystem=datasources/jdbc-driver=postgresql:add(driver-name="postgresql",driver-module-name="org.postgresql",driver-class-name=org.postgresql.Driver)
+
+data-source add --name=unicorns --jndi-name=java:/jdbc/unicorns --driver-name=postgresql --connection-url=${env.DATASOURCE_JDBC_URL} --user-name=${env.DATASOURCE_USERNAME} --password=${env.DATASOURCE_PASSWORD}
