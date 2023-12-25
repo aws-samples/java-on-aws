@@ -36,11 +36,11 @@ public class UnicornPublisher {
     public void publish(Unicorn unicorn, UnicornEventType unicornEventType) {
         try {
             var unicornJson = objectMapper.writeValueAsString(unicorn);
-            var eventsRequest = createEventRequestEntry(unicornEventType, unicornJson);
-
-            eventBridgeClient.putEvents(eventsRequest).get();
-            logger.info("Publishing ...");
+            logger.info("Publishing ... " +  unicornEventType.toString());
             logger.info(unicornJson);
+
+            var eventsRequest = createEventRequestEntry(unicornEventType, unicornJson);
+            eventBridgeClient.putEvents(eventsRequest).get();
         } catch (JsonProcessingException e) {
             logger.error("Error JsonProcessingException ...");
             logger.error(e.getMessage());

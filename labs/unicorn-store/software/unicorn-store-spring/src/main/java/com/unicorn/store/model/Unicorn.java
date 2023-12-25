@@ -16,6 +16,16 @@ public class Unicorn {
     private String size;
     private String type;
 
+    public Unicorn() {
+    }
+
+    public Unicorn(String name, String age, String size, String type) {
+        this.name = name;
+        this.age = age;
+        this.size = size;
+        this.type = type;
+    }
+
     public String getId() {
         return id;
     }
