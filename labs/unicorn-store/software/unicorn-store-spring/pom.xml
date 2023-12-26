@@ -78,12 +78,6 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
@@ -107,11 +101,6 @@
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.7.0</version>
-        </dependency> -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
@@ -240,12 +229,6 @@
                                 </configuration>
                             </execution>
                         </executions>
-                        <!-- <configuration>
-                            <id>repackage</id>
-                            <classifier>exec</classifier>
-                            <mainClass>com.unicorn.store.StoreApplication</mainClass>
-                            <layout>JAR</layout>
-                        </configuration> -->
                     </plugin>
                     <plugin>
                         <groupId>com.google.cloud.tools</groupId>
