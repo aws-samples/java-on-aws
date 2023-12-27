@@ -23,14 +23,9 @@ aws iam create-service-specific-credential --user-name $GITOPS_USER --service-na
 export SSC_ID=$(aws iam list-service-specific-credentials --user-name $GITOPS_USER --query 'ServiceSpecificCredentials[0].ServiceSpecificCredentialId' --output text)
 export SSC_USER=$(aws iam list-service-specific-credentials --user-name $GITOPS_USER --query 'ServiceSpecificCredentials[0].ServiceUserName' --output text)
 export SSC_PWD=$(aws iam reset-service-specific-credential --user-name $GITOPS_USER --service-specific-credential-id $SSC_ID --query 'ServiceSpecificCredential.ServicePassword' --output text)
-
-# $(aws cloudformation describe-stacks --stack-name UnicornStoreEKS \
-#   --query 'Stacks[0].Outputs[?OutputKey==`UnicornStoreEksKubeconfig`].OutputValue' --output text)
-
 export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
 TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
-
 aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 
 sleep 20
@@ -51,7 +46,6 @@ git clone ${GITOPS_REPO_URL}
 cp -R ~/environment/java-on-aws/labs/unicorn-store/infrastructure/gitops/apps "${GITOPS_REPO_URL##*/}"
 cp -R ~/environment/java-on-aws/labs/unicorn-store/infrastructure/gitops/apps.yaml "${GITOPS_REPO_URL##*/}"
 cd "${GITOPS_REPO_URL##*/}"
-
 git config pull.rebase true
 
 echo Prepare new deployment files
@@ -62,8 +56,7 @@ export imagepolicy=\$imagepolicy
 envsubst < ./apps/deployment.yaml > ./apps/deployment_new.yaml
 mv ./apps/deployment_new.yaml ./apps/deployment.yaml
 
-echo Delete the manual deployment.
-kubectl delete service $APP_NAME -n $APP_NAME
+echo Delete the manual deployment
 kubectl delete deployment $APP_NAME -n $APP_NAME
 
 echo Commit changes to the Git repository. Flux will trigger a new deployment
@@ -135,7 +128,7 @@ spec:
     strategy: Setters
 EOF
 
-echo check the status of the deployment
+echo Check the status of the deployment
 # flux get kustomization --watch
 # kubectl -n $APP_NAME get all
 # kubectl get events -n $APP_NAME
@@ -145,7 +138,7 @@ flux reconcile kustomization apps -n flux-system
 sleep 10
 git -C ~/environment/$GITOPSC_REPO_NAME pull
 
-echo Verify that the application is running properly:
+echo Verify that the application is running properly
 kubectl wait deployment -n $APP_NAME $APP_NAME --for condition=Available=True --timeout=120s
 kubectl get deploy -n $APP_NAME
 export SVC_URL=http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
@@ -153,15 +146,7 @@ while [[ $(curl -s -o /dev/null -w "%{http_code}" $SVC_URL/) != "200" ]]; do ech
 echo $SVC_URL
 echo Service is Ready!
 
-echo Get the Load Balancer URL and make an example API call:
-export SVC_URL=http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
-curl --location --request POST $SVC_URL'/unicorns' --header 'Content-Type: application/json' --data-raw '{
-    "name": "'"Something-$(date +%s)"'",
-    "age": "20",
-    "type": "Animal",
-    "size": "Very big"
-}' | jq
-
+echo Get the Load Balancer URL and make an example API call
 echo $SVC_URL
 curl --location $SVC_URL; echo
 
