@@ -6,11 +6,11 @@
 version: 2
 updates:
   - package-ecosystem: maven
-    directory: "/labs/unicorn-store/infrastructure/cdk" 
+    directory: "/labs/unicorn-store/infrastructure/cdk"
     schedule:
       interval: "monthly"
   - package-ecosystem: maven
-    directory: "/labs/unicorn-store/infrastructure/db-setup" 
+    directory: "/labs/unicorn-store/infrastructure/db-setup"
     schedule:
       interval: "monthly"
   - package-ecosystem: docker
@@ -21,19 +21,7 @@ updates:
     directory: "/labs/unicorn-store/software/unicorn-store-spring"
     schedule:
       interval: "monthly"
-  - package-ecosystem: maven
-    directory: "/labs/unicorn-store/software/unicorn-store-jakarta/quarkus"
-    schedule:
-      interval: "monthly"
   - package-ecosystem: docker
-    directory: "/labs/unicorn-store/software/unicorn-store-jakarta/quarkus"
-    schedule:
-      interval: "monthly"
-  - package-ecosystem: maven
-    directory: "/labs/unicorn-store/software/unicorn-store-jakarta/wildfly"
-    schedule:
-      interval: "monthly"
-  - package-ecosystem: docker
-    directory: "/labs/unicorn-store/software/unicorn-store-jakarta/wildfly"
+    directory: "/labs/unicorn-store/software/unicorn-store-spring"
     schedule:
       interval: "monthly"
