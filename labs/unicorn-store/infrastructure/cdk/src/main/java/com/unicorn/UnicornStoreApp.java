@@ -58,9 +58,7 @@ public class UnicornStoreApp {
             new NagPackSuppression.Builder().id("AwsSolutions-RDS2").reason("Workshop non-sensitive test database does not need encryption at rest").build(),
             new NagPackSuppression.Builder().id("AwsSolutions-APIG3").reason("Workshop API Gateways do not need AWS WAF assigned" ).build(),
             new NagPackSuppression.Builder().id("AwsSolutions-S1").reason("Workshop S3 bucket does not need Access Logs" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-RDS13").reason("Workshop Database does not need backups" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-SF1").reason("Workshop Step Function does not need X-Ray tracing and Logging" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-SF2").reason("Workshop Step Function does not need X-Ray tracing and Logging" ).build()
+            new NagPackSuppression.Builder().id("AwsSolutions-RDS13").reason("Workshop Database does not need backups" ).build()
         );
 
         NagSuppressions.addStackSuppressions(infrastructureStack, suppression);
@@ -78,7 +76,9 @@ public class UnicornStoreApp {
                 new NagPackSuppression.Builder().id("AwsSolutions-IAM5").reason("Workshop environment use CDK default execution role for Kubectl Lamdas" ).build(),
                 new NagPackSuppression.Builder().id("AwsSolutions-L1").reason("Workshop environment use CDK default Labdas for Kubectl" ).build(),
                 new NagPackSuppression.Builder().id("AwsSolutions-EKS1").reason("Workshop non-sensitive EKS cluster uses public access" ).build(),
-                new NagPackSuppression.Builder().id("CdkNagValidationFailure").reason("Intrinsic function is used for Workshop definition").build()
+                new NagPackSuppression.Builder().id("CdkNagValidationFailure").reason("Intrinsic function is used for Workshop definition").build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-SF1").reason("Workshop Step Function does not need X-Ray tracing and Logging" ).build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-SF2").reason("Workshop Step Function does not need X-Ray tracing and Logging" ).build()
         );
 
         NagSuppressions.addStackSuppressions(unicornStoreSpringCI, suppressionCICD);
