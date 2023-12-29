@@ -38,7 +38,7 @@ eksctl create cluster \
 --vpc-private-subnets $UNICORN_SUBNET_PRIVATE_1,$UNICORN_SUBNET_PRIVATE_2 \
 --vpc-public-subnets $UNICORN_SUBNET_PUBLIC_1,$UNICORN_SUBNET_PUBLIC_2
 
-echo Add the Participant IAM role to the list of the EKS cluster administrators to get access from the AWS Console..
+echo Add the workshop IAM roles to the list of the EKS cluster administrators to get access from the AWS Console
 eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
     --arn arn:aws:iam::$ACCOUNT_ID:role/WSParticipantRole --username admin --group system:masters \
     --no-duplicate-arns
@@ -51,7 +51,11 @@ eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
     --arn arn:aws:iam::$ACCOUNT_ID:role/java-on-aws-workshop-admin --username admin --group system:masters \
     --no-duplicate-arns
 
-echo Create a Kubernetes namespace for the application:
+echo Get access to the cluster
+aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
+kubectl get nodes
+
+echo Create a Kubernetes namespace for the application
 kubectl create namespace $APP_NAME
 
 echo Create an IAM-Policy with the proper permissions to publish to EventBridge, retrieve secrets and parameters and basic monitoring
@@ -97,7 +101,7 @@ eksctl create iamserviceaccount --cluster=$CLUSTER_NAME --name=$APP_NAME --names
    --attach-policy-arn=$(aws iam list-policies --query 'Policies[?PolicyName==`unicorn-eks-service-account-policy`].Arn' --output text) --approve --region=$AWS_REGION
 rm service-account-policy.json
 
-echo use External Secrets and install it via Helm
+echo Install the External Secrets Operator
 helm repo add external-secrets https://charts.external-secrets.io
 helm install external-secrets \
 external-secrets/external-secrets \
@@ -107,7 +111,7 @@ external-secrets/external-secrets \
 --set webhook.port=9443 \
 --wait
 
-echo Install the External Secrets Operator
+echo Create the Kubernetes External Secret resources
 cat <<EOF | envsubst | kubectl create -f -
 apiVersion: external-secrets.io/v1beta1
 kind: SecretStore
@@ -145,8 +149,6 @@ spec:
         key: unicornstore-db-secret
         property: password
 EOF
-
-aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
 

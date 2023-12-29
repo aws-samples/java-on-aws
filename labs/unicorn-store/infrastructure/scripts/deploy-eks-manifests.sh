@@ -4,11 +4,11 @@ export APP_NAME=unicorn-store-spring
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
 
-echo Create a new directory k8s in the application folder:
+echo Create a new directory k8s in the application folder
 mkdir ~/environment/$APP_NAME/k8s
 cd ~/environment/$APP_NAME/k8s
 
-echo Create a manifest file for a deployment and service:
+echo Create Kubernetes manifest files for the deployment and the service
 export ECR_URI=$(aws ecr describe-repositories --repository-names $APP_NAME \
   | jq --raw-output '.repositories[0].repositoryUri')
 export SPRING_DATASOURCE_URL=$(aws ssm get-parameter --name databaseJDBCConnectionString \
@@ -96,11 +96,11 @@ spec:
     app: $APP_NAME
 EOF
 
-echo Deploy the template to EKS cluster:
+echo Deploy the template to EKS cluster
 kubectl apply -f ~/environment/$APP_NAME/k8s/deployment.yaml
 kubectl apply -f ~/environment/$APP_NAME/k8s/service.yaml
 
-echo Verify that the application is running properly:
+echo Verify that the application is running properly
 kubectl wait deployment -n $APP_NAME $APP_NAME --for condition=Available=True --timeout=120s
 kubectl get deploy -n $APP_NAME
 export SVC_URL=http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
@@ -108,7 +108,6 @@ while [[ $(curl -s -o /dev/null -w "%{http_code}" $SVC_URL/) != "200" ]]; do ech
 echo $SVC_URL
 echo Service is Ready!
 
-echo Get the Load Balancer URL and make an example API call:
-export SVC_URL=http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
+echo Get the Load Balancer URL and make an example API call
 echo $SVC_URL
 curl --location $SVC_URL; echo
