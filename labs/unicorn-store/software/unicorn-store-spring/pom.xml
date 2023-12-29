@@ -34,7 +34,7 @@
             <dependency>
                 <groupId>io.opentelemetry</groupId>
                 <artifactId>opentelemetry-bom</artifactId>
-                <version>1.31.0</version>
+                <version>1.33.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -131,25 +131,25 @@
         <dependency>
             <groupId>io.opentelemetry.semconv</groupId>
             <artifactId>opentelemetry-semconv</artifactId>
-            <version>1.22.0-alpha</version>
+            <version>1.23.1-alpha</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.opentelemetry.instrumentation/opentelemetry-aws-sdk-2.2 -->
         <dependency>
             <groupId>io.opentelemetry.instrumentation</groupId>
             <artifactId>opentelemetry-aws-sdk-2.2</artifactId>
-            <version>1.31.0-alpha</version>
+            <version>1.32.0-alpha</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.opentelemetry.contrib/opentelemetry-aws-xray -->
         <dependency>
             <groupId>io.opentelemetry.contrib</groupId>
             <artifactId>opentelemetry-aws-xray</artifactId>
-            <version>1.31.0</version>
+            <version>1.32.0</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.opentelemetry.contrib/opentelemetry-aws-xray-propagator -->
         <dependency>
             <groupId>io.opentelemetry.contrib</groupId>
             <artifactId>opentelemetry-aws-xray-propagator</artifactId>
-            <version>1.31.0-alpha</version>
+            <version>1.32.0-alpha</version>
         </dependency>
     </dependencies>
     <profiles>

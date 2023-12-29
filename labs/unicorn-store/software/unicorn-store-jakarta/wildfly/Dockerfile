@@ -13,7 +13,7 @@ COPY src ./src/
 RUN mvn clean package
 RUN rm -rf ~/.m2/repository
 
-FROM quay.io/wildfly/wildfly:29.0.1.Final-jdk17
+FROM quay.io/wildfly/wildfly:30.0.1.Final-jdk17
 
 # RUN /opt/jboss/wildfly/bin/add-user.sh admin wildfly! --silent
 
