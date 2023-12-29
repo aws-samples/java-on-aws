@@ -58,7 +58,8 @@ public class UnicornStoreApp {
             new NagPackSuppression.Builder().id("AwsSolutions-RDS2").reason("Workshop non-sensitive test database does not need encryption at rest").build(),
             new NagPackSuppression.Builder().id("AwsSolutions-APIG3").reason("Workshop API Gateways do not need AWS WAF assigned" ).build(),
             new NagPackSuppression.Builder().id("AwsSolutions-S1").reason("Workshop S3 bucket does not need Access Logs" ).build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-RDS13").reason("Workshop Database does not need backups" ).build()
+            new NagPackSuppression.Builder().id("AwsSolutions-RDS13").reason("Workshop Database does not need backups" ).build(),
+            new NagPackSuppression.Builder().id("AwsSolutions-SF2").reason("Workshop Step Function does not need X-Ray tracing and Logging" ).build()
         );
 
         NagSuppressions.addStackSuppressions(infrastructureStack, suppression);
