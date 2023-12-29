@@ -1,4 +1,4 @@
-package com.unicorn.store;
+package com.unicorn.store.integration;
 
 import org.springframework.boot.devtools.restart.RestartScope;
 import org.springframework.boot.test.context.TestConfiguration;

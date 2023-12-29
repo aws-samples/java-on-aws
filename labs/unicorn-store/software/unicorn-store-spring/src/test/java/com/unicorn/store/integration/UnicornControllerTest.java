@@ -1,4 +1,4 @@
-package com.unicorn.store;
+package com.unicorn.store.integration;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.hasSize;
@@ -53,7 +53,6 @@ class UnicornControllerTest {
     }
 
     static String id1;
-    static String id2;
 
     @Test
     @Order(2)
@@ -72,6 +71,8 @@ class UnicornControllerTest {
                 .path("id");
          System.out.println(id1);
     }
+
+    static String id2;
 
     @Test
     @Order(3)

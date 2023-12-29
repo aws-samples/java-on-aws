@@ -1,4 +1,4 @@
-package com.unicorn.store;
+package com.unicorn.store.integration;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
