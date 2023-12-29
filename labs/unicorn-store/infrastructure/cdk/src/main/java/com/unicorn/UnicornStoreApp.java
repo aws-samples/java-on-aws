@@ -59,6 +59,7 @@ public class UnicornStoreApp {
             new NagPackSuppression.Builder().id("AwsSolutions-APIG3").reason("Workshop API Gateways do not need AWS WAF assigned" ).build(),
             new NagPackSuppression.Builder().id("AwsSolutions-S1").reason("Workshop S3 bucket does not need Access Logs" ).build(),
             new NagPackSuppression.Builder().id("AwsSolutions-RDS13").reason("Workshop Database does not need backups" ).build(),
+            new NagPackSuppression.Builder().id("AwsSolutions-SF1").reason("Workshop Step Function does not need X-Ray tracing and Logging" ).build(),
             new NagPackSuppression.Builder().id("AwsSolutions-SF2").reason("Workshop Step Function does not need X-Ray tracing and Logging" ).build()
         );
 
