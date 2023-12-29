@@ -1,4 +1,4 @@
-FROM public.ecr.aws/amazoncorretto/amazoncorretto:17 as builder
+FROM public.ecr.aws/amazoncorretto/amazoncorretto:21 as builder
 
 RUN yum install -y tar gzip
 
