@@ -1,4 +1,4 @@
-FROM public.ecr.aws/amazoncorretto/amazoncorretto:17.0.9-al2023 as builder
+FROM public.ecr.aws/amazoncorretto/amazoncorretto:21.0.1-al2023 as builder
 
 RUN yum install -y shadow-utils tar gzip
 
