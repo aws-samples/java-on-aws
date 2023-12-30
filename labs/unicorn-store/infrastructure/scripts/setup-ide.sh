@@ -63,6 +63,7 @@ rm ./aws-sam-cli-linux-x86_64.zip
 
 ## Install additional dependencies
 sudo npm install -g aws-cdk --force
+cdk version
 sudo npm install -g artillery
 
 curl -Lo copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
