@@ -14,7 +14,7 @@ ENV MAVEN_OPTS='-Xmx8g'
 
 RUN bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && mvn -Dmaven.test.skip=true clean package -Pnative"
 
-FROM public.ecr.aws/amazonlinux/amazonlinux:2023.2.20231113.0
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023.3.20231218.0
 RUN yum install -y shadow-utils
 
 RUN groupadd --system spring -g 1000
