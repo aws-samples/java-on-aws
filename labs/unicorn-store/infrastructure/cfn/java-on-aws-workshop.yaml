@@ -457,7 +457,7 @@ Resources:
     Properties:
       Description: !Sub  AWS Cloud9 instance for ${EnvironmentName}
       SubnetId: !Ref PublicSubnet1
-      ImageId: amazonlinux-2-x86_64
+      ImageId: amazonlinux-2023-x86_64
       #ConnectionType: CONNECT_SSM
 
       AutomaticStopTimeMinutes: 3600
