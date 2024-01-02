@@ -8,7 +8,7 @@
     <groupId>com.unicorn</groupId>
     <artifactId>store-wildfly</artifactId>
     <version>1.0.0</version>
-    <name>store</name>
+    <name>store-wildfly</name>
     <description>Unicorn storage service</description>
 
     <properties>

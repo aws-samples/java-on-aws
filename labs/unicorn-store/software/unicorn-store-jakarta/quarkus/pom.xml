@@ -6,9 +6,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.unicorn</groupId>
-    <artifactId>store</artifactId>
+    <artifactId>store-quarkus</artifactId>
     <version>1.0.0</version>
-    <name>store</name>
+    <name>store-quarkus</name>
     <description>Unicorn storage service</description>
 
     <properties>
