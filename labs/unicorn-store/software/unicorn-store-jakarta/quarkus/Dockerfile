@@ -1,10 +1,6 @@
-FROM public.ecr.aws/amazoncorretto/amazoncorretto:17 as builder
+FROM public.ecr.aws/docker/library/maven:3.9-amazoncorretto-17-al2023 as builder
 
 RUN yum install -y tar gzip
-
-## Install Additional dependencies
-COPY ./scripts/installdeps.sh ./installdeps.sh
-RUN ./installdeps.sh
 
 COPY ./quarkus/pom.xml ./pom.xml
 RUN mvn dependency:go-offline -f ./pom.xml
@@ -13,8 +9,7 @@ COPY src ./src/
 RUN mvn clean package
 RUN rm -rf ~/.m2/repository
 
-FROM public.ecr.aws/amazoncorretto/amazoncorretto:17
-
+FROM public.ecr.aws/docker/library/amazoncorretto:17.0.9-al2023
 RUN yum install -y shadow-utils
 
 COPY --from=builder target/quarkus-app quarkus-app

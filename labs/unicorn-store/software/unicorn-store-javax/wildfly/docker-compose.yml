@@ -9,7 +9,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
   app:
-    image: unicorn-store-wildfly:latest
+    image: unicorn-store-javax:latest
     environment:
       - DATASOURCE_JDBC_URL=jdbc:postgresql://db:5432/unicorns
       - DATASOURCE_PASSWORD=postgres

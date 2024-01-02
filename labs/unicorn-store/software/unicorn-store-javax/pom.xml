@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.unicorn</groupId>
-    <artifactId>store</artifactId>
+    <artifactId>store-javax</artifactId>
     <version>1.0.0</version>
     <name>store</name>
     <description>Unicorn storage service</description>
@@ -20,8 +20,6 @@
 
         <wildfly.plugin.version>4.2.1.Final</wildfly.plugin.version>
         <wildfly.version>26.1.2.Final</wildfly.version>
-
-        <maven.compiler.release>8</maven.compiler.release>
     </properties>
 
     <packaging>war</packaging>

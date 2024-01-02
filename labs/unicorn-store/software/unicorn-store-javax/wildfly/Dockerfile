@@ -1,11 +1,6 @@
-FROM public.ecr.aws/amazoncorretto/amazoncorretto:8 as builder
-FROM public.ecr.aws/amazoncorretto/amazoncorretto:17 as builder
+FROM public.ecr.aws/docker/library/maven:3.9-amazoncorretto-8-al2023 as builder
 
 RUN yum install -y tar gzip wget
-
-## Install Additional dependencies
-COPY ./scripts/installdeps.sh ./installdeps.sh
-RUN ./installdeps.sh
 
 ENV POSTGRESQL_JDBC_DRIVER_VERSION 42.6.0
 RUN wget "https://repo1.maven.org/maven2/org/postgresql/postgresql/${POSTGRESQL_JDBC_DRIVER_VERSION}/postgresql-${POSTGRESQL_JDBC_DRIVER_VERSION}.jar" -O ./postgresql.jar
@@ -30,6 +25,6 @@ COPY ./wildfly/datasource.cli $JBOSS_HOME/datasource.cli
 RUN /opt/jboss/wildfly/bin/jboss-cli.sh --echo-command --file="$JBOSS_HOME/datasource.cli" --properties="$JBOSS_HOME/env.properties"
 RUN rm /opt/jboss/wildfly/standalone/configuration/standalone_xml_history/current/*
 
-COPY --from=builder target/store.war $JBOSS_HOME/standalone/deployments/store.war
+COPY --from=builder target/store-javax.war $JBOSS_HOME/standalone/deployments/store-javax.war
 
 CMD ["/opt/jboss/wildfly/bin/standalone.sh", "-b", "0.0.0.0", "-bmanagement", "0.0.0.0"]

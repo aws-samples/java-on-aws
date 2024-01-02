@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.unicorn</groupId>
-    <artifactId>store</artifactId>
+    <artifactId>store-wildfly</artifactId>
     <version>1.0.0</version>
     <name>store</name>
     <description>Unicorn storage service</description>
