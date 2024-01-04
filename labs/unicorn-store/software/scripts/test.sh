@@ -4,6 +4,11 @@ app=$1
 
 location=""
 
+if [ $app == "local" ]
+then
+  location=localhost:8080
+fi
+
 if [ $app == "apprunner" ]
 then
   location=https://$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName == 'unicorn-store-spring'].ServiceUrl" --output text)
