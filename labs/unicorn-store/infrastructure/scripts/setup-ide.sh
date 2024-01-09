@@ -78,7 +78,8 @@ yq --version
 # Install SOCI related packages and change config
 export SOCI_VERSION=0.4.0
 wget -q https://github.com/awslabs/soci-snapshotter/releases/download/v$SOCI_VERSION/soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz
-cat | sudo tee /etc/docker/daemon.json << EOF
+sudo tar -C /usr/local/bin -xvf soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz soci soci-snapshotter-grpc
+cat << EOF | sudo tee /etc/docker/daemon.json
 {
   "experimental": true,
   "features": {
