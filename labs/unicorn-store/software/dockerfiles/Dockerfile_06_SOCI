@@ -1,17 +1,10 @@
-FROM public.ecr.aws/docker/library/amazoncorretto:17.0.9-al2023 as builder
-
-RUN yum install -y shadow-utils tar gzip
-
-## Install Additional dependencies
-COPY ./scripts/installdeps.sh ./installdeps.sh
-RUN ./installdeps.sh
+FROM public.ecr.aws/docker/library/maven:3.9-amazoncorretto-17-al2023 as builder
 
 COPY ./pom.xml ./pom.xml
 RUN mvn dependency:go-offline -f ./pom.xml
 
 COPY src ./src/
 RUN mvn clean package -Psoci && \
-    ls -la target && \
     mv target/store-spring-1.0.0.jar store-spring.jar && \
     java -Djarmode=layertools -jar store-spring.jar extract
 
