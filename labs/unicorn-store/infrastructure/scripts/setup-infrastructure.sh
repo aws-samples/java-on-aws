@@ -69,7 +69,3 @@ source ~/.bashrc
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-connector.sh
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-peering.sh
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-vpc" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
-
-## Create Code Artifact repo
-aws codeartifact create-domain --domain unicorn
-aws codeartifact create-repository --domain unicorn --domain-owner $AWS_REGION --repository unicorn
