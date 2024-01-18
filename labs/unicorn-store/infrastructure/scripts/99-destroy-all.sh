@@ -103,6 +103,13 @@ aws codepipeline delete-pipeline --name unicorn-store-spring-deploy-ecs
 aws ecs delete-service --cluster unicorn-store-spring --service unicorn-store-spring --force 1> /dev/null
 aws ecs delete-cluster --cluster unicorn-store-spring 1> /dev/null
 
+##remove ec2 module resources
+export INSTANCE_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=*unicorn-store" --query "Reservations[*].Instances[*].InstanceId" --output text)
+aws ec2 terminate-instances --instance-ids $INSTANCE_ID
+
+aws codeartifact delete-repository --domain unicorn --repository unicorn
+aws codeartifact delete-domain --domain unicorn
+
 cdk destroy UnicornStoreInfrastructure --force
 cdk destroy UnicornStoreVpc --force
 

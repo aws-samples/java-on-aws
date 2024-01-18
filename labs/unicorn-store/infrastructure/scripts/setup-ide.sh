@@ -150,4 +150,5 @@ curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64b
 sudo yum install -y session-manager-plugin.rpm
 ## Test Session Manager plugin Installation
 session-manager-plugin
+rm session-manager-plugin.rpm
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-ide" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
