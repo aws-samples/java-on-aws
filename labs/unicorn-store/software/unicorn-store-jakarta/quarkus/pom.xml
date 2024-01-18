@@ -20,7 +20,7 @@
         <primefaces-quarkus.version>3.13.7</primefaces-quarkus.version>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.6.4</quarkus.platform.version>
+        <quarkus.platform.version>3.6.6</quarkus.platform.version>
         <failsafe.useModulePath>false</failsafe.useModulePath>
     </properties>
 
