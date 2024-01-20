@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unicorn.store.model.Unicorn;
 import com.unicorn.store.model.UnicornEventType;
-import com.unicorn.store.otel.TracingRequestInterceptor;
+// import com.unicorn.store.otel.TracingRequestInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -22,7 +22,7 @@ public class UnicornPublisher {
 
     private final ObjectMapper objectMapper;
 
-    private Logger logger = LoggerFactory.getLogger(TracingRequestInterceptor.class);
+    private Logger logger = LoggerFactory.getLogger(UnicornPublisher.class);
 
     private static final EventBridgeAsyncClient eventBridgeClient = EventBridgeAsyncClient
             .builder()
@@ -36,7 +36,7 @@ public class UnicornPublisher {
     public void publish(Unicorn unicorn, UnicornEventType unicornEventType) {
         try {
             var unicornJson = objectMapper.writeValueAsString(unicorn);
-            logger.info("Publishing ... " +  unicornEventType.toString());
+            logger.info("Publishing ... " + unicornEventType.toString());
             logger.info(unicornJson);
 
             var eventsRequest = createEventRequestEntry(unicornEventType, unicornJson);
