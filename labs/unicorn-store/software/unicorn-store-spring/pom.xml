@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project
-        xmlns="http://maven.apache.org/POM/4.0.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.2.1</version>
-        <relativePath/>
+        <relativePath />
         <!-- lookup parent from repository -->
     </parent>
     <groupId>com.unicorn</groupId>
@@ -87,11 +87,11 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-testcontainers</artifactId>
-			<scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -111,48 +111,103 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-sdk</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.opentelemetry.instrumentation</groupId>
-            <artifactId>opentelemetry-instrumentation-annotations</artifactId>
-            <version>1.32.0</version>
-        </dependency>
-        <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-exporter-otlp</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.opentelemetry.semconv</groupId>
-            <artifactId>opentelemetry-semconv</artifactId>
-            <version>1.23.1-alpha</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/io.opentelemetry.instrumentation/opentelemetry-aws-sdk-2.2 -->
-        <dependency>
-            <groupId>io.opentelemetry.instrumentation</groupId>
-            <artifactId>opentelemetry-aws-sdk-2.2</artifactId>
-            <version>1.32.0-alpha</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/io.opentelemetry.contrib/opentelemetry-aws-xray -->
-        <dependency>
-            <groupId>io.opentelemetry.contrib</groupId>
-            <artifactId>opentelemetry-aws-xray</artifactId>
-            <version>1.32.0</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/io.opentelemetry.contrib/opentelemetry-aws-xray-propagator -->
-        <dependency>
-            <groupId>io.opentelemetry.contrib</groupId>
-            <artifactId>opentelemetry-aws-xray-propagator</artifactId>
-            <version>1.32.0-alpha</version>
-        </dependency>
     </dependencies>
     <profiles>
+        <profile>
+            <id>otel-manual</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                        <version>3.5.1</version>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>shade</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>repackage</id>
+                                <configuration>
+                                    <classifier>exec</classifier>
+                                    <mainClass>com.unicorn.store.StoreApplication</mainClass>
+                                    <layout>JAR</layout>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <version>3.4.0</version>
+                        <configuration>
+                            <from>
+                                <image>public.ecr.aws/docker/library/amazoncorretto:17-alpine3.18</image>
+                            </from>
+                            <container>
+                                <user>1000</user>
+                            </container>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            <dependencies>
+                <dependency>
+                    <groupId>io.opentelemetry</groupId>
+                    <artifactId>opentelemetry-api</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>io.opentelemetry</groupId>
+                    <artifactId>opentelemetry-sdk</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>io.opentelemetry.instrumentation</groupId>
+                    <artifactId>opentelemetry-instrumentation-annotations</artifactId>
+                    <version>1.32.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>io.opentelemetry</groupId>
+                    <artifactId>opentelemetry-exporter-otlp</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>io.opentelemetry.semconv</groupId>
+                    <artifactId>opentelemetry-semconv</artifactId>
+                    <version>1.23.1-alpha</version>
+                </dependency>
+                <!--
+                https://mvnrepository.com/artifact/io.opentelemetry.instrumentation/opentelemetry-aws-sdk-2.2 -->
+                <dependency>
+                    <groupId>io.opentelemetry.instrumentation</groupId>
+                    <artifactId>opentelemetry-aws-sdk-2.2</artifactId>
+                    <version>1.32.0-alpha</version>
+                </dependency>
+                <!--
+                https://mvnrepository.com/artifact/io.opentelemetry.contrib/opentelemetry-aws-xray -->
+                <dependency>
+                    <groupId>io.opentelemetry.contrib</groupId>
+                    <artifactId>opentelemetry-aws-xray</artifactId>
+                    <version>1.32.0</version>
+                </dependency>
+                <!--
+                https://mvnrepository.com/artifact/io.opentelemetry.contrib/opentelemetry-aws-xray-propagator -->
+                <dependency>
+                    <groupId>io.opentelemetry.contrib</groupId>
+                    <artifactId>opentelemetry-aws-xray-propagator</artifactId>
+                    <version>1.32.0-alpha</version>
+                </dependency>
+            </dependencies>
+        </profile>
         <profile>
             <id>native</id>
             <build>
@@ -184,8 +239,10 @@
                             <buildArgs>
                                 <arg>--verbose</arg>
                                 <arg>-Ob</arg>
-                                <arg>-H:ReflectionConfigurationFiles=./src/main/resources/META-INF/native-image/reflect-config.json</arg>
-                                <arg>--initialize-at-build-time=org.apache.commons.logging.LogFactory,org.apache.commons.logging.LogFactoryService</arg>
+                                <arg>
+                                    -H:ReflectionConfigurationFiles=./src/main/resources/META-INF/native-image/reflect-config.json</arg>
+                                <arg>
+                                    --initialize-at-build-time=org.apache.commons.logging.LogFactory,org.apache.commons.logging.LogFactoryService</arg>
                             </buildArgs>
                         </configuration>
                     </plugin>
@@ -241,7 +298,9 @@
                         <artifactId>jib-maven-plugin</artifactId>
                         <version>3.4.0</version>
                         <configuration>
-                            <from><image>public.ecr.aws/docker/library/amazoncorretto:17-alpine3.18</image></from>
+                            <from>
+                                <image>public.ecr.aws/docker/library/amazoncorretto:17-alpine3.18</image>
+                            </from>
                             <container>
                                 <user>1000</user>
                             </container>
