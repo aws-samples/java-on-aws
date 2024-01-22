@@ -28,4 +28,4 @@ COPY --from=builder application/ ./
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-Dserver.port=8080", "org.springframework.boot.loader.JarLauncher"]
+ENTRYPOINT ["java", "-Dserver.port=8080", "org.springframework.boot.loader.launch.JarLauncher"]
