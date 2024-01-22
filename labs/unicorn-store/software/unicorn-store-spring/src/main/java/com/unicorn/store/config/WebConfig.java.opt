@@ -1,5 +1,7 @@
 package com.unicorn.store.config;
 
+import java.util.Arrays;
+
 import com.unicorn.store.otel.*;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.AttributeKey;
@@ -15,10 +17,10 @@ import io.opentelemetry.exporter.otlp.metrics.OtlpGrpcMetricExporter;
 import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.instrumentation.awssdk.v2_2.AwsSdkTelemetry;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
-import io.opentelemetry.sdk.resources.Resource;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.metrics.export.PeriodicMetricReader;
+import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,10 +30,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.services.eventbridge.EventBridgeAsyncClient;
-
-import java.util.Arrays;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -62,10 +63,10 @@ public class WebConfig implements WebMvcConfigurer {
         }
         // https://opentelemetry.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/#otel_exporter_otlp_endpoint
         String exporterEndpoint = System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT");
-        if (exporterEndpoint == null){
+        if (exporterEndpoint == null) {
             exporterEndpoint = "http://localhost:4317";
         }
-        
+
         Resource resource = Resource.getDefault().merge(
                 Resource.create(builder.build()));
         return OpenTelemetrySdk.builder()
@@ -75,7 +76,8 @@ public class WebConfig implements WebMvcConfigurer {
                                 TextMapPropagator.composite(
                                         W3CTraceContextPropagator.getInstance(), AwsXrayPropagator.getInstance())))
 
-                // This provides basic configuration of a TracerProvider which generates X-Ray compliant IDs
+                // This provides basic configuration of a TracerProvider which generates X-Ray
+                // compliant IDs
                 .setTracerProvider(
                         SdkTracerProvider.builder()
                                 .setResource(resource)
@@ -83,14 +85,16 @@ public class WebConfig implements WebMvcConfigurer {
                                         BatchSpanProcessor.builder(
                                                 OtlpGrpcSpanExporter.builder()
                                                         .setEndpoint(exporterEndpoint)
-                                                        .build()
-                                        ).build())
+                                                        .build())
+                                                .build())
                                 .setIdGenerator(AwsXrayIdGenerator.getInstance())
                                 .build())
                 .setMeterProvider(SdkMeterProvider.builder()
-                      .registerMetricReader(PeriodicMetricReader.builder(OtlpGrpcMetricExporter.builder().setEndpoint(exporterEndpoint).build()).build())
-                      .setResource(resource)
-                      .build())
+                        .registerMetricReader(PeriodicMetricReader
+                                .builder(OtlpGrpcMetricExporter.builder().setEndpoint(exporterEndpoint).build())
+                                .build())
+                        .setResource(resource)
+                        .build())
                 .buildAndRegisterGlobal();
     }
 
@@ -99,8 +103,8 @@ public class WebConfig implements WebMvcConfigurer {
         return otel.getTracer("unicornstore");
     }
 
-
     private Tracer tracer;
+
     @Autowired
     public void setTracer(@Lazy Tracer tracer) {
         this.tracer = tracer;
@@ -109,7 +113,7 @@ public class WebConfig implements WebMvcConfigurer {
     private OpenTelemetry openTelemetry;
 
     @Autowired
-    public void setOpenTelemetry(@Lazy OpenTelemetry otel){
+    public void setOpenTelemetry(@Lazy OpenTelemetry otel) {
         this.openTelemetry = otel;
     }
 
@@ -130,27 +134,29 @@ public class WebConfig implements WebMvcConfigurer {
     }
 
     /*
-    @Bean
-    public S3AsyncClient amazonS3(OpenTelemetry otel) {
-        return S3AsyncClient.builder()
-                .overrideConfiguration(
-                        ClientOverrideConfiguration.builder()
-                                .addExecutionInterceptor(AwsSdkTelemetry.create(otel).newExecutionInterceptor())
-                                .build())
-                .build();
-    }
-
-    @Bean
-    public DynamoDbAsyncClient amazonDynamoDB(OpenTelemetry otel) {
-
-        return DynamoDbAsyncClient.builder()
-                .overrideConfiguration(
-                        ClientOverrideConfiguration.builder()
-                                .addExecutionInterceptor(AwsSdkTelemetry.create(otel).newExecutionInterceptor())
-                                .build())
-                .build();
-    }
-    */
+     * @Bean
+     * public S3AsyncClient amazonS3(OpenTelemetry otel) {
+     * return S3AsyncClient.builder()
+     * .overrideConfiguration(
+     * ClientOverrideConfiguration.builder()
+     * .addExecutionInterceptor(AwsSdkTelemetry.create(otel).newExecutionInterceptor
+     * ())
+     * .build())
+     * .build();
+     * }
+     * 
+     * @Bean
+     * public DynamoDbAsyncClient amazonDynamoDB(OpenTelemetry otel) {
+     * 
+     * return DynamoDbAsyncClient.builder()
+     * .overrideConfiguration(
+     * ClientOverrideConfiguration.builder()
+     * .addExecutionInterceptor(AwsSdkTelemetry.create(otel).newExecutionInterceptor
+     * ())
+     * .build())
+     * .build();
+     * }
+     */
 
     @Bean
     public MetricEmitter metricEmitter(OpenTelemetry otel) {

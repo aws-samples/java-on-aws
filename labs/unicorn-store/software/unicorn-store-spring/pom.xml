@@ -38,6 +38,13 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>io.opentelemetry.instrumentation</groupId>
+                <artifactId>opentelemetry-instrumentation-bom-alpha</artifactId>
+                <version>1.32.0-alpha</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -115,92 +122,21 @@
     <profiles>
         <profile>
             <id>otel-manual</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-shade-plugin</artifactId>
-                        <version>3.5.1</version>
-                        <configuration>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>shade</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>repackage</id>
-                                <configuration>
-                                    <classifier>exec</classifier>
-                                    <mainClass>com.unicorn.store.StoreApplication</mainClass>
-                                    <layout>JAR</layout>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>com.google.cloud.tools</groupId>
-                        <artifactId>jib-maven-plugin</artifactId>
-                        <version>3.4.0</version>
-                        <configuration>
-                            <from>
-                                <image>public.ecr.aws/docker/library/amazoncorretto:17-alpine3.18</image>
-                            </from>
-                            <container>
-                                <user>1000</user>
-                            </container>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
             <dependencies>
                 <dependency>
-                    <groupId>io.opentelemetry</groupId>
-                    <artifactId>opentelemetry-api</artifactId>
-                </dependency>
-                <dependency>
-                    <groupId>io.opentelemetry</groupId>
-                    <artifactId>opentelemetry-sdk</artifactId>
-                </dependency>
-                <dependency>
                     <groupId>io.opentelemetry.instrumentation</groupId>
-                    <artifactId>opentelemetry-instrumentation-annotations</artifactId>
-                    <version>1.32.0</version>
+                    <artifactId>opentelemetry-spring-boot-starter</artifactId>
                 </dependency>
-                <dependency>
-                    <groupId>io.opentelemetry</groupId>
-                    <artifactId>opentelemetry-exporter-otlp</artifactId>
-                </dependency>
-                <dependency>
-                    <groupId>io.opentelemetry.semconv</groupId>
-                    <artifactId>opentelemetry-semconv</artifactId>
-                    <version>1.23.1-alpha</version>
-                </dependency>
-                <!--
-                https://mvnrepository.com/artifact/io.opentelemetry.instrumentation/opentelemetry-aws-sdk-2.2 -->
                 <dependency>
                     <groupId>io.opentelemetry.instrumentation</groupId>
                     <artifactId>opentelemetry-aws-sdk-2.2</artifactId>
                     <version>1.32.0-alpha</version>
                 </dependency>
-                <!--
-                https://mvnrepository.com/artifact/io.opentelemetry.contrib/opentelemetry-aws-xray -->
                 <dependency>
                     <groupId>io.opentelemetry.contrib</groupId>
                     <artifactId>opentelemetry-aws-xray</artifactId>
                     <version>1.32.0</version>
                 </dependency>
-                <!--
-                https://mvnrepository.com/artifact/io.opentelemetry.contrib/opentelemetry-aws-xray-propagator -->
                 <dependency>
                     <groupId>io.opentelemetry.contrib</groupId>
                     <artifactId>opentelemetry-aws-xray-propagator</artifactId>
