@@ -1,0 +1,31 @@
+FROM public.ecr.aws/docker/library/maven:3.9-amazoncorretto-17-al2023 as builder
+
+COPY ./pom.xml ./pom.xml
+RUN mvn dependency:go-offline -f ./pom.xml
+
+COPY src ./src/
+RUN mvn clean package -Psoci && \
+    mv target/store-spring-1.0.0.jar store-spring.jar && \
+    java -Djarmode=layertools -jar store-spring.jar extract
+
+RUN rm -rf ~/.m2/repository
+
+FROM public.ecr.aws/docker/library/amazoncorretto:17.0.9-al2023
+RUN yum install -y shadow-utils
+
+COPY --from=builder store-spring.jar store-spring.jar
+
+RUN groupadd --system spring -g 1000
+RUN adduser spring -u 1000 -g 1000
+
+USER 1000:1000
+
+EXPOSE 8080
+COPY --from=builder dependencies/ ./
+COPY --from=builder spring-boot-loader/ ./
+COPY --from=builder snapshot-dependencies/ ./
+COPY --from=builder application/ ./
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-Dserver.port=8080", "org.springframework.boot.loader.launch.JarLauncher"]

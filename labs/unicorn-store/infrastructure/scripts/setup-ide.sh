@@ -75,6 +75,23 @@ wget https://github.com/mikefarah/yq/releases/download/v4.33.3/yq_linux_amd64.ta
   tar xz && sudo mv yq_linux_amd64 /usr/bin/yq
 yq --version
 
+# Install SOCI related packages and change config
+export SOCI_VERSION=0.4.0
+wget -q https://github.com/awslabs/soci-snapshotter/releases/download/v$SOCI_VERSION/soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz
+sudo tar -C /usr/local/bin -xvf soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz soci soci-snapshotter-grpc
+cat << EOF | sudo tee /etc/docker/daemon.json
+{
+  "experimental": true,
+  "features": {
+    "containerd-snapshotter": true
+  }
+}
+EOF
+
+sudo systemctl restart docker
+docker info --format '{{json .Driver}}'
+docker info --format '{{json .DriverStatus}}'
+
 # Install docker buildx
 export BUILDX_VERSION=$(curl --silent "https://api.github.com/repos/docker/buildx/releases/latest" |jq -r .tag_name)
 curl -JLO "https://github.com/docker/buildx/releases/download/$BUILDX_VERSION/buildx-$BUILDX_VERSION.linux-amd64"
