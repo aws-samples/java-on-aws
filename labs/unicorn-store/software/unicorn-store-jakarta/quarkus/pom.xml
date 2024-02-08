@@ -15,7 +15,9 @@
         <java.code.version>17</java.code.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+
         <primefaces.version>13.0.5</primefaces.version>
+
         <myfaces.version>4.0.2</myfaces.version>
         <primefaces-quarkus.version>3.13.8</primefaces-quarkus.version>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
@@ -27,16 +29,16 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>${quarkus.platform.group-id}</groupId>
-                <artifactId>${quarkus.platform.artifact-id}</artifactId>
-                <version>${quarkus.platform.version}</version>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>2.23.16</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>software.amazon.awssdk</groupId>
-                <artifactId>bom</artifactId>
-                <version>2.23.16</version>
+                <groupId>${quarkus.platform.group-id}</groupId>
+                <artifactId>${quarkus.platform.artifact-id}</artifactId>
+                <version>${quarkus.platform.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -45,15 +47,35 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.myfaces.core.extensions.quarkus</groupId>
-            <artifactId>myfaces-quarkus</artifactId>
-            <version>${myfaces.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.primefaces</groupId>
             <artifactId>primefaces</artifactId>
             <version>${primefaces.version}</version>
             <classifier>jakarta</classifier>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>eventbridge</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sts</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.myfaces.core.extensions.quarkus</groupId>
+            <artifactId>myfaces-quarkus</artifactId>
+            <version>${myfaces.version}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkiverse.primefaces</groupId>
@@ -65,7 +87,6 @@
             <artifactId>quarkus-primefaces-extensions</artifactId>
             <version>${primefaces-quarkus.version}</version>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-resteasy-jsonb</artifactId>
@@ -96,27 +117,8 @@
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>2.10.1</version>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>eventbridge</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-logging</groupId>
-                    <artifactId>commons-logging</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>sts</artifactId>
-        </dependency>
     </dependencies>
+
     <build>
         <plugins>
             <plugin>

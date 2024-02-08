@@ -47,7 +47,7 @@ public class UnicornPresenter implements Serializable {
     if (this.selectedUnicorn.getId() == null) {
         this.unicornService.createUnicorn(this.selectedUnicorn);
         this.unicorns.add(this.selectedUnicorn);
-        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("Unicorn added"));
+        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("Unicorn created"));
     } else {
         this.unicornService.updateUnicorn(this.selectedUnicorn, this.selectedUnicorn.getId());
         FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("Unicorn updated"));
@@ -60,7 +60,7 @@ public class UnicornPresenter implements Serializable {
         this.unicornService.deleteUnicorn(this.selectedUnicorn.getId());
         this.unicorns.remove(this.selectedUnicorn);
         this.selectedUnicorn = null;
-        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("Unicorn removed"));
+        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("Unicorn deleted"));
         PrimeFaces.current().ajax().update("form:messages", "form:dt-unicorns");
     }
 }

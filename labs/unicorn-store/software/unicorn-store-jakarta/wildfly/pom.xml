@@ -20,7 +20,6 @@
 
         <wildfly.plugin.version>4.2.2.Final</wildfly.plugin.version>
         <wildfly.version>29.0.1.Final</wildfly.version>
-
         <wildfly.bootable.jar.version>10.0.0.Final</wildfly.bootable.jar.version>
         <wildfly.datasources.galleon.pack.version>5.0.0.Final</wildfly.datasources.galleon.pack.version>
     </properties>
@@ -41,30 +40,19 @@
 
     <dependencies>
         <dependency>
-        <groupId>jakarta.platform</groupId>
-        <artifactId>jakarta.jakartaee-api</artifactId>
-        <version>10.0.0</version>
-        <scope>compile</scope>
+            <groupId>org.primefaces</groupId>
+            <artifactId>primefaces</artifactId>
+            <version>${primefaces.version}</version>
+            <classifier>jakarta</classifier>
         </dependency>
-
-        <dependency>
-        <groupId>org.primefaces</groupId>
-        <artifactId>primefaces</artifactId>
-        <version>${primefaces.version}</version>
-        <scope>compile</scope>
-        <classifier>jakarta</classifier>
-        </dependency>
-
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>eventbridge</artifactId>
-            <scope>compile</scope>
             <exclusions>
                 <exclusion>
                     <groupId>commons-logging</groupId>
@@ -75,7 +63,12 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>sts</artifactId>
-            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.platform</groupId>
+            <artifactId>jakarta.jakartaee-api</artifactId>
+            <version>10.0.0</version>
         </dependency>
     </dependencies>
 
