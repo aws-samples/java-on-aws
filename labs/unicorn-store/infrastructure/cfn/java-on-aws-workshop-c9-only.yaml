@@ -1,0 +1,146 @@
+Description: Cloud9 for Java on AWS Workshop
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: "java-on-aws-workshop"
+
+  C9InstanceType:
+    Description: Cloud9 instance type
+    Type: String
+    Default: t3.large
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+    ConstraintDescription: Must be a valid Cloud9 instance type
+
+Resources:
+  ################## VPC #################
+  VPC:
+    Type: AWS::EC2::VPC
+    # Metadata:
+    #   cfn_nag:
+    #     rules_to_suppress:
+    #       - id: W60
+    #         reason: "No need for Flow logs in this workshop"
+    Properties:
+      CidrBlock: 192.168.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 192.168.0.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Routes
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  C9SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    # Metadata:
+    #   cfn_nag:
+    #     rules_to_suppress:
+    #       - id: W5
+    #         reason: "Outbound access to the world is needed to download dependencies in C9"
+    Properties:
+      GroupName: cloud9-ingress-8080
+      GroupDescription: "Security group with ingress 8080 rule"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+          Description: "8080 Inbound traffic"
+
+  ################## INSTANCE #####################
+  C9Instance:
+    Type: AWS::Cloud9::EnvironmentEC2
+    Properties:
+      Description: !Sub  AWS Cloud9 instance for ${EnvironmentName}
+      SubnetId: !Ref PublicSubnet1
+      ImageId: amazonlinux-2023-x86_64
+      #ConnectionType: CONNECT_SSM
+
+      AutomaticStopTimeMinutes: 3600
+      InstanceType:
+        Ref: C9InstanceType
+      Name: java-on-aws-workshop
+      Tags:
+        -
+          Key: Environment
+          Value: !Sub ${EnvironmentName}
+
+Outputs:
+  VPC:
+    Description: A reference to the created VPC
+    Value: !Ref VPC
+
+  PublicSubnets:
+    Description: A list of the public subnets
+    Value: !Join [ ",", [ !Ref PublicSubnet1 ]]
+
+  PublicSubnet1:
+    Description: A reference to the public subnet in the 1st Availability Zone
+    Value: !Ref PublicSubnet1
+
+  C9SecurityGroup:
+    Description: Security group with ingress 8080 rule
+    Value: !Ref C9SecurityGroup
+
+  Cloud9IDE:
+    Value:
+      Fn::Join:
+        - ''
+        - - https://
+          - Ref: AWS::Region
+          - ".console.aws.amazon.com/cloud9/ide/"
+          - Ref: C9Instance
+          - "?region="
+          - Ref: AWS::Region
