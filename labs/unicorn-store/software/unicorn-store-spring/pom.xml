@@ -45,6 +45,11 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency><!-- temp fix for https://github.com/spring-projects/spring-data-commons/issues/3025 -->
+                <groupId>org.springframework.data</groupId>
+                <artifactId>spring-data-commons</artifactId>
+                <version>3.2.1</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -176,8 +181,6 @@
                                 <arg>--verbose</arg>
                                 <arg>-Ob</arg>
                                 <arg>
-                                    -H:ReflectionConfigurationFiles=./src/main/resources/META-INF/native-image/reflect-config.json</arg>
-                                <arg>
                                     --initialize-at-build-time=org.apache.commons.logging.LogFactory,org.apache.commons.logging.LogFactoryService</arg>
                             </buildArgs>
                         </configuration>
@@ -192,18 +195,18 @@
                 </plugins>
             </build>
         </profile>
-	<profile>
+        <profile>
             <id>soci</id>
             <build>
                 <plugins>
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
-                         <configuration>
-                             <layers>
-                                 <enabled>true</enabled>
-                             </layers>
-                        </configuration> 
+                        <configuration>
+                            <layers>
+                                <enabled>true</enabled>
+                            </layers>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
