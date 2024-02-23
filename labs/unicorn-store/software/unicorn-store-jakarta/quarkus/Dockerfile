@@ -2,7 +2,7 @@ FROM public.ecr.aws/docker/library/maven:3.9-amazoncorretto-17-al2023 as builder
 
 RUN yum install -y tar gzip
 
-COPY ./quarkus/pom.xml ./pom.xml
+COPY ./pom.xml ./pom.xml
 RUN mvn dependency:go-offline -f ./pom.xml
 
 COPY src ./src/
@@ -14,8 +14,8 @@ RUN yum install -y shadow-utils
 
 COPY --from=builder target/quarkus-app quarkus-app
 
-RUN groupadd --system spring -g 1000
-RUN adduser spring -u 1000 -g 1000
+RUN groupadd --system quarkus -g 1000
+RUN adduser quarkus -u 1000 -g 1000
 
 USER 1000:1000
 

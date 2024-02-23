@@ -19,7 +19,7 @@
         <primefaces.version>13.0.5</primefaces.version>
 
         <wildfly.plugin.version>4.2.2.Final</wildfly.plugin.version>
-        <wildfly.version>29.0.1.Final</wildfly.version>
+        <wildfly.version>31.0.0.Final</wildfly.version>
         <wildfly.bootable.jar.version>10.0.0.Final</wildfly.bootable.jar.version>
         <wildfly.datasources.galleon.pack.version>5.0.0.Final</wildfly.datasources.galleon.pack.version>
     </properties>
@@ -81,16 +81,12 @@
                 <artifactId>wildfly-maven-plugin</artifactId>
                 <version>${wildfly.plugin.version}</version>
 
-                <!-- <configuration>
-                    <hostname>localhost</hostname>
+                 <configuration>
+                    <hostname>appserver</hostname>
                     <port>9990</port>
                     <username>admin</username>
                     <password>wildfly!</password>
-
-                    <scripts>
-                        <script>src/main/wildfly/datasource.cli</script>
-                    </scripts>
-                </configuration> -->
+                </configuration>
 
             <!--    <feature-packs>-->
             <!--      <feature-pack>-->
