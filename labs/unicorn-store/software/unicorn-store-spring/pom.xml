@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.2</version>
+        <version>3.2.3</version>
         <relativePath />
         <!-- lookup parent from repository -->
     </parent>
@@ -21,6 +21,7 @@
         <testcontainers.version>1.19.3</testcontainers.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <hibernate.version>6.4.2.Final</hibernate.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -44,11 +45,6 @@
                 <version>1.32.0-alpha</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-            <dependency><!-- temp fix for https://github.com/spring-projects/spring-data-commons/issues/3025 -->
-                <groupId>org.springframework.data</groupId>
-                <artifactId>spring-data-commons</artifactId>
-                <version>3.2.1</version>
             </dependency>
             <dependency>
                 <groupId>org.postgresql</groupId>
@@ -103,13 +99,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
-            <exclusions>
-                <exclusion><!-- temp exclusion due to CVE-2023-51074 -->
-                    <groupId>com.jayway.jsonpath</groupId>
-                    <artifactId>json-path</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
+        <dependency>
+			<groupId>org.crac</groupId>
+			<artifactId>crac</artifactId>
+			<version>1.4.0</version>
+		</dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-testcontainers</artifactId>
@@ -190,7 +185,6 @@
                             </metadataRepository>
                             <buildArgs>
                                 <arg>--verbose</arg>
-                                <arg>-Ob</arg>
                                 <arg>
                                     --initialize-at-build-time=org.apache.commons.logging.LogFactory,org.apache.commons.logging.LogFactoryService</arg>
                             </buildArgs>
