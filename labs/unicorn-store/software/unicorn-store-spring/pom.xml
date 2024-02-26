@@ -46,11 +46,6 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency>
-                <groupId>org.postgresql</groupId>
-                <artifactId>postgresql</artifactId>
-                <version>42.7.2</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
