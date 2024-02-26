@@ -57,7 +57,12 @@ spec:
               exec:
                 command: ["sh", "-c", "sleep 10"]
           securityContext:
-            runAsNonRoot: true
+            capabilities:
+              add:
+                - CHECKPOINT_RESTORE
+                - SYS_PTRACE
+            privileged: false
+            runAsUser: 0
             allowPrivilegeEscalation: false
       # - name: otel
       #   image: "amazon/aws-otel-collector:latest"
