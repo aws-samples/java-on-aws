@@ -5,8 +5,6 @@ COPY src ./src/
 
 ENV MAVEN_OPTS='-Xmx6g'
 
-# > /dev/null 2>&1 used for sdkman because sdkmans uses stderr for progress bar. 
-# Neither is a best practice, this is done to reduce the log lines produced.
 RUN apt-get --fix-missing -qq update \
     && apt-get -qq -y install zip curl > /dev/null \
     && curl -s "https://get.sdkman.io" | bash > /dev/null 2>&1 \
@@ -17,6 +15,6 @@ RUN apt-get --fix-missing -qq update \
     
 FROM azul/zulu-openjdk:17-jdk-crac
 
-COPY scripts/* /opt/scripts/
-RUN chmod a+x /opt/scripts/*.sh
+COPY scripts/checkpint.sh /opt/scripts/
+RUN chmod a+x /opt/scripts/checkpint.sh
 COPY --from=builder store-spring.jar store-spring.jar
