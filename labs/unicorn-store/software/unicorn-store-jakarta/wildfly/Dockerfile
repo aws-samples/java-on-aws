@@ -24,4 +24,6 @@ RUN rm /opt/jboss/wildfly/standalone/configuration/standalone_xml_history/curren
 
 COPY --from=builder target/store-wildfly.war $JBOSS_HOME/standalone/deployments/store-wildfly.war
 
+USER 1000:1000
+
 CMD ["/opt/jboss/wildfly/bin/standalone.sh", "-b", "0.0.0.0", "-bmanagement", "0.0.0.0"]
