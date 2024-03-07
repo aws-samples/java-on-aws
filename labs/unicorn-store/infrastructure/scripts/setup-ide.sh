@@ -149,6 +149,14 @@ mvn dependency:go-offline -f software/unicorn-store-spring/pom.xml 1> /dev/null
 
 git config --global user.email "you@workshops.aws"
 git config --global user.name "Your Name"
+git config --global --add --bool push.autoSetupRemote true
+git config --global credential.helper '!aws codecommit credential-helper $@'
+git config --global credential.UseHttpPath true
+
+curl -O https://bootstrap.pypa.io/get-pip.py
+python3 get-pip.py --user
+rm get-pip.py
+pip install git-remote-codecommit
 
 cd ~/environment
 export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
