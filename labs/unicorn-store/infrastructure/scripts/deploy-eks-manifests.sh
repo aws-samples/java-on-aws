@@ -1,8 +1,55 @@
 #bin/sh
 
+export CLUSTER_NAME=unicorn-store
 export APP_NAME=unicorn-store-spring
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
+
+echo Create a Kubernetes namespace for the application
+kubectl create namespace $APP_NAME
+
+echo Create a Kubernetes Service Account with a reference to the previous created IAM policy
+eksctl create iamserviceaccount --cluster=$CLUSTER_NAME --name=$APP_NAME --namespace=$APP_NAME \
+   --attach-policy-arn=$(aws iam list-policies --query 'Policies[?PolicyName==`unicorn-eks-service-account-policy`].Arn' --output text) --approve --region=$AWS_REGION
+
+echo Create the Kubernetes External Secret resources
+cat <<EOF | envsubst | kubectl create -f -
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: $APP_NAME-secret-store
+  namespace: $APP_NAME
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: $AWS_REGION
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: $APP_NAME
+EOF
+
+cat <<EOF | kubectl create -f -
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: $APP_NAME-external-secret
+  namespace: $APP_NAME
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: $APP_NAME-secret-store
+    kind: SecretStore
+  target:
+    name: unicornstore-db-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: password
+      remoteRef:
+        key: unicornstore-db-secret
+        property: password
+EOF
 
 echo Create a new directory k8s in the application folder
 mkdir ~/environment/$APP_NAME/k8s

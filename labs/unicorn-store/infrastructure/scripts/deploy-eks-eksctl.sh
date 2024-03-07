@@ -55,9 +55,6 @@ echo Get access to the cluster
 aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 kubectl get nodes
 
-echo Create a Kubernetes namespace for the application
-kubectl create namespace $APP_NAME
-
 echo Create an IAM-Policy with the proper permissions to publish to EventBridge, retrieve secrets and parameters and basic monitoring
 cat <<EOF > service-account-policy.json
 {
@@ -95,10 +92,6 @@ cat <<EOF > service-account-policy.json
 }
 EOF
 aws iam create-policy --policy-name unicorn-eks-service-account-policy --policy-document file://service-account-policy.json
-
-echo Create a Kubernetes Service Account with a reference to the previous created IAM policy
-eksctl create iamserviceaccount --cluster=$CLUSTER_NAME --name=$APP_NAME --namespace=$APP_NAME \
-   --attach-policy-arn=$(aws iam list-policies --query 'Policies[?PolicyName==`unicorn-eks-service-account-policy`].Arn' --output text) --approve --region=$AWS_REGION
 rm service-account-policy.json
 
 echo Install the External Secrets Operator
@@ -110,45 +103,6 @@ external-secrets/external-secrets \
 --set installCRDs=true \
 --set webhook.port=9443 \
 --wait
-
-echo Create the Kubernetes External Secret resources
-cat <<EOF | envsubst | kubectl create -f -
-apiVersion: external-secrets.io/v1beta1
-kind: SecretStore
-metadata:
-  name: $APP_NAME-secret-store
-  namespace: $APP_NAME
-spec:
-  provider:
-    aws:
-      service: SecretsManager
-      region: $AWS_REGION
-      auth:
-        jwt:
-          serviceAccountRef:
-            name: $APP_NAME
-EOF
-
-cat <<EOF | kubectl create -f -
-apiVersion: external-secrets.io/v1beta1
-kind: ExternalSecret
-metadata:
-  name: $APP_NAME-external-secret
-  namespace: $APP_NAME
-spec:
-  refreshInterval: 1h
-  secretStoreRef:
-    name: $APP_NAME-secret-store
-    kind: SecretStore
-  target:
-    name: unicornstore-db-secret
-    creationPolicy: Owner
-  data:
-    - secretKey: password
-      remoteRef:
-        key: unicornstore-db-secret
-        property: password
-EOF
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
 
