@@ -56,9 +56,6 @@ spec:
             preStop:
               exec:
                 command: ["sh", "-c", "sleep 10"]
-          securityContext:
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
       # - name: otel
       #   image: "amazon/aws-otel-collector:latest"
       #   resources:

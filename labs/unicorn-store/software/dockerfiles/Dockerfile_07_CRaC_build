@@ -1,0 +1,20 @@
+FROM azul/zulu-openjdk:17-jdk-crac as builder
+
+COPY ./pom.xml ./pom.xml
+COPY src ./src/
+
+ENV MAVEN_OPTS='-Xmx6g'
+
+RUN apt-get --fix-missing -qq update \
+    && apt-get -qq -y install zip curl > /dev/null \
+    && curl -s "https://get.sdkman.io" | bash > /dev/null 2>&1 \
+    && bash -c "source $HOME/.sdkman/bin/sdkman-init.sh; \
+       sdk install maven > /dev/null 2>&1; \
+       mvn --no-transfer-progress -Dmaven.test.skip=true clean package; \
+       mv target/store-spring-1.0.0-exec.jar store-spring.jar;"
+    
+FROM azul/zulu-openjdk:17-jdk-crac
+
+COPY scripts/checkpint.sh /opt/scripts/
+RUN chmod a+x /opt/scripts/checkpint.sh
+COPY --from=builder store-spring.jar store-spring.jar
