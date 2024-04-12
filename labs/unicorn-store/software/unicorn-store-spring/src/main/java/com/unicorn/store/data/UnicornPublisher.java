@@ -47,12 +47,9 @@ public class UnicornPublisher implements Resource {
             logger.info(unicornJson);
 
             var eventsRequest = createEventRequestEntry(unicornEventType, unicornJson);
-            // eventBridgeClient.putEvents(eventsRequest).get();
-        } catch (JsonProcessingException e) {
-            logger.error("Error JsonProcessingException ...");
-            logger.error(e.getMessage());
-        } catch (EventBridgeException e) {
-            logger.error("Error EventBridgeException | ExecutionException ...");
+            eventBridgeClient.putEvents(eventsRequest).get();
+        } catch (Exception e) {
+            logger.error("Error ...");
             logger.error(e.getMessage());
         }
     }
@@ -81,11 +78,10 @@ public class UnicornPublisher implements Resource {
         logger.info("Executing afterRestore ...");
         createClient();
     }
-     
 
     private void createClient() {
         logger.info("Creating EventBridgeAsyncClient");
-        
+
         eventBridgeClient = EventBridgeAsyncClient
                 .builder()
                 .credentialsProvider(DefaultCredentialsProvider.create())
