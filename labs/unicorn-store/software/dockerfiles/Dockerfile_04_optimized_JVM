@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/maven:3.9-amazoncorretto-21-al2023 as builder
+FROM public.ecr.aws/docker/library/maven:3.9-amazoncorretto-17-al2023 as builder
 
 RUN yum install -y tar gzip unzip
 
@@ -9,7 +9,7 @@ COPY src ./src/
 RUN mvn clean package && mv target/store-spring-1.0.0-exec.jar target/store-spring.jar && cd target && unzip store-spring.jar
 
 RUN jdeps --ignore-missing-deps \
-    --multi-release 21 --print-module-deps \
+    --multi-release 17 --print-module-deps \
     --class-path="target/BOOT-INF/lib/*" \
     target/store-spring.jar > jre-deps.info
 
@@ -22,7 +22,7 @@ RUN export JAVA_TOOL_OPTIONS=\"-Djdk.lang.Process.launchMechanism=vfork\" && \
     --no-header-files --no-man-pages --output custom-jre \
     --add-modules $(cat jre-deps.info)
 
-FROM public.ecr.aws/amazonlinux/amazonlinux:2023
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023.3.20231218.0
 RUN yum install -y shadow-utils
 
 COPY --from=builder target/store-spring.jar store-spring.jar
