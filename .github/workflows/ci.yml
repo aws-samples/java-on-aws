@@ -20,17 +20,23 @@ jobs:
       AWS_REGION: 'us-east-1'
     steps:
     - uses: actions/checkout@v4
-    - name: Set up JDK 17
+    - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:
         distribution: 'corretto'
-        java-version: 17
+        java-version: 21
         cache: maven
+    - name: Java version
+      run: java --version
+      working-directory: ./labs/unicorn-store/software/unicorn-store-spring/
     - name: Build unicorn-store-spring with Maven
       run: mvn -B clean package --file pom.xml
       working-directory: ./labs/unicorn-store/software/unicorn-store-spring/
     - name: Install AWS CDK
       run: npm install -g aws-cdk
+      working-directory: ./labs/unicorn-store/infrastructure/cdk/
+    - name: AWS CDK version
+      run: cdk version
       working-directory: ./labs/unicorn-store/infrastructure/cdk/
     - name: Build CDK db-setup with Maven
       run: mvn -B clean package --file pom.xml
