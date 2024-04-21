@@ -1,4 +1,4 @@
-FROM ghcr.io/graalvm/graalvm-community:21 AS build-aot
+FROM ghcr.io/graalvm/graalvm-community:22 AS build-aot
 
 RUN microdnf install -y unzip zip
 
