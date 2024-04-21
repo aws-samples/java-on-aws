@@ -18,7 +18,7 @@
 
         <primefaces.version>13.0.7</primefaces.version>
 
-        <wildfly.plugin.version>4.2.2.Final</wildfly.plugin.version>
+        <wildfly.plugin.version>5.0.0.Final</wildfly.plugin.version>
         <wildfly.version>26.1.2.Final</wildfly.version>
     </properties>
 
