@@ -13,7 +13,6 @@ RUN mvn clean package
 RUN rm -rf ~/.m2/repository
 
 FROM quay.io/wildfly/wildfly:26.1.2.Final
-# FROM quay.io/wildfly/wildfly:26.1.2.Final-jdk17
 
 # RUN /opt/jboss/wildfly/bin/add-user.sh admin wildfly! --silent
 

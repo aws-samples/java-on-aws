@@ -12,9 +12,9 @@
     <description>Unicorn storage service</description>
 
     <properties>
-        <java.code.version>17</java.code.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <java.code.version>21</java.code.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
 
         <primefaces.version>13.0.7</primefaces.version>
 

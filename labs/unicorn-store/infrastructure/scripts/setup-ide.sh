@@ -4,8 +4,8 @@ start_time=`date +%s`
 export init_time=$start_time
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
 
-flux_version='2.0.1'
-flux_checksum='bff7a54421a591eaae0c13d1f7bd6420b289dd76d0642cb3701897c9d02c6df7'
+flux_version='2.2.3'
+flux_checksum='9a705df552df5ac638f93d7fc43d9d8cda6a78f01a16736ae6f355f4a84ebdb3'
 
 download_and_verify () {
   url=$1
@@ -33,18 +33,19 @@ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip
 unzip -q awscliv2.zip
 sudo ./aws/install
 rm awscliv2.zip
+aws --version
 
-## Set JDK 17 as default
-sudo yum -y install java-17-amazon-corretto-devel
-sudo update-alternatives --set java /usr/lib/jvm/java-17-amazon-corretto.x86_64/bin/java
-sudo update-alternatives --set javac /usr/lib/jvm/java-17-amazon-corretto.x86_64/bin/javac
-export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto.x86_64
+## Set JDK 21 as default
+sudo yum -y install java-21-amazon-corretto-devel
+sudo update-alternatives --set java /usr/lib/jvm/java-21-amazon-corretto.x86_64/bin/java
+sudo update-alternatives --set javac /usr/lib/jvm/java-21-amazon-corretto.x86_64/bin/javac
+export JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto.x86_64
 echo "export JAVA_HOME=${JAVA_HOME}" | tee -a ~/.bash_profile
 echo "export JAVA_HOME=${JAVA_HOME}" | tee -a ~/.bashrc
 java -version
 
 ## Install Maven
-export MVN_VERSION=3.9.4
+export MVN_VERSION=3.9.6
 export MVN_FOLDERNAME=apache-maven-${MVN_VERSION}
 export MVN_FILENAME=apache-maven-${MVN_VERSION}-bin.tar.gz
 curl -4 -L https://archive.apache.org/dist/maven/maven-3/${MVN_VERSION}/binaries/${MVN_FILENAME} | tar -xvz
@@ -52,7 +53,7 @@ sudo mv $MVN_FOLDERNAME /usr/lib/maven
 export M2_HOME=/usr/lib/maven
 export PATH=${PATH}:${M2_HOME}/bin
 sudo ln -s /usr/lib/maven/bin/mvn /usr/local/bin
-mvn --version
+/usr/lib/maven/bin/mvn --version
 
 # Install newer version of AWS SAM CLI
 wget -q https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
@@ -60,18 +61,19 @@ unzip -q aws-sam-cli-linux-x86_64.zip -d sam-installation
 sudo ./sam-installation/install --update
 rm -rf ./sam-installation/
 rm ./aws-sam-cli-linux-x86_64.zip
+/usr/local/bin/sam --version
 
 ## Install additional dependencies
-sudo npm install -g aws-cdk --force
+npm install -g aws-cdk --force
 cdk version
-sudo npm install -g artillery
+npm install -g artillery
 
 curl -Lo copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
 chmod +x copilot
 sudo mv copilot /usr/local/bin/copilot
 copilot --version
 
-wget https://github.com/mikefarah/yq/releases/download/v4.33.3/yq_linux_amd64.tar.gz -O - |\
+wget https://github.com/mikefarah/yq/releases/download/v4.43.1/yq_linux_amd64.tar.gz -O - |\
   tar xz && sudo mv yq_linux_amd64 /usr/bin/yq
 yq --version
 
@@ -104,7 +106,7 @@ docker buildx create --use --driver=docker-container
 # Install docker compose
 DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
 mkdir -p $DOCKER_CONFIG/cli-plugins
-curl -SL https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
+curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
 chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
 docker compose version
 
@@ -121,7 +123,7 @@ eksctl version
 
 ## kubectl
 # https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
-curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.28.2/2023-10-17/bin/linux/amd64/kubectl
+curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.29.0/2024-01-04/bin/linux/amd64/kubectl
 chmod +x ./kubectl
 mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
 echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
@@ -176,4 +178,5 @@ sudo yum install -y session-manager-plugin.rpm
 ## Test Session Manager plugin Installation
 session-manager-plugin
 rm session-manager-plugin.rpm
+
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-ide" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
