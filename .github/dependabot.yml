@@ -6,46 +6,22 @@
 version: 2
 updates:
   - package-ecosystem: maven
-    directory: "/labs/unicorn-store/infrastructure/cdk"
-    schedule:
-      interval: "monthly"
-  - package-ecosystem: maven
-    directory: "/labs/unicorn-store/infrastructure/db-setup"
-    schedule:
-      interval: "monthly"
-  - package-ecosystem: docker
-    directory: "/labs/unicorn-store/software/dockerfiles"
-    schedule:
-      interval: "monthly"
-  - package-ecosystem: maven
-    directory: "/labs/unicorn-store/software/unicorn-store-spring"
+    directories:
+      - "/labs/unicorn-store/infrastructure/cdk"
+      - "/labs/unicorn-store/infrastructure/db-setup"
+      - "/labs/unicorn-store/software/unicorn-store-spring"
+      - "/labs/unicorn-store/software/unicorn-store-jakarta/quarkus"
+      - "/labs/unicorn-store/software/unicorn-store-jakarta/wildfly"
+      - "/labs/unicorn-store/software/unicorn-store-javax"
     schedule:
       interval: "monthly"
   - package-ecosystem: docker
-    directory: "/labs/unicorn-store/software/unicorn-store-spring"
-    schedule:
-      interval: "monthly"
-  - package-ecosystem: maven
-    directory: "/labs/unicorn-store/software/unicorn-store-jakarta/quarkus"
-    schedule:
-      interval: "monthly"
-  - package-ecosystem: docker
-    directory: "/labs/unicorn-store/software/unicorn-store-jakarta/quarkus"
-    schedule:
-      interval: "monthly"
-  - package-ecosystem: maven
-    directory: "/labs/unicorn-store/software/unicorn-store-jakarta/wildfly"
-    schedule:
-      interval: "monthly"
-  - package-ecosystem: docker
-    directory: "/labs/unicorn-store/software/unicorn-store-jakarta/wildfly"
-    schedule:
-      interval: "monthly"
-  - package-ecosystem: maven
-    directory: "/labs/unicorn-store/software/unicorn-store-javax"
-    schedule:
-      interval: "monthly"
-  - package-ecosystem: docker
-    directory: "/labs/unicorn-store/software/unicorn-store-javax/wildfly"
+    directories:
+      - "/labs/unicorn-store/software/dockerfiles"
+      - "/labs/unicorn-store/software/dockerfiles/crac"
+      - "/labs/unicorn-store/software/unicorn-store-spring"
+      - "/labs/unicorn-store/software/unicorn-store-jakarta/quarkus"
+      - "/labs/unicorn-store/software/unicorn-store-jakarta/wildfly"
+      - "/labs/unicorn-store/software/unicorn-store-javax/wildfly"
     schedule:
       interval: "monthly"
