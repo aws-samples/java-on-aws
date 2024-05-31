@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.5</version>
+        <version>3.3.0</version>
         <relativePath/>
         <!-- lookup parent from repository -->
     </parent>
@@ -21,7 +21,9 @@
         <testcontainers.version>1.19.3</testcontainers.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!--
         <hibernate.version>6.4.2.Final</hibernate.version>
+        -->
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -203,6 +205,35 @@
                                 <enabled>true</enabled>
                             </layers>
                         </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>buildpacks</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration>
+                            <image>
+                                <name>unicorn-store-spring:latest</name>
+                                <buildpacks>
+                                    <buildpack>gcr.io/paketo-buildpacks/java:14.1.0</buildpack>
+                                    <buildpack>gcr.io/paketo-buildpacks/syft:1.47.0</buildpack>
+                                    <buildpack>gcr.io/paketo-buildpacks/executable-jar:6.10.0</buildpack>
+                                    <buildpack>gcr.io/paketo-buildpacks/spring-boot:5.30.0</buildpack>
+                                </buildpacks>
+                                <env>
+                                    <SPRING_DATASOURCE_URL>${env.SPRING_DATASOURCE_URL}</SPRING_DATASOURCE_URL>
+                                    <SPRING_DATASOURCE_PASSWORD>${env.SPRING_DATASOURCE_PASSWORD}</SPRING_DATASOURCE_PASSWORD>
+                                    <BP_JVM_VERSION>21</BP_JVM_VERSION>
+                                    <BP_JVM_CDS_ENABLED>true</BP_JVM_CDS_ENABLED>
+                                    <BP_SPRING_AOT_ENABLED>true</BP_SPRING_AOT_ENABLED>
+                                </env>
+                            </image>
+                    </configuration>
                     </plugin>
                 </plugins>
             </build>
