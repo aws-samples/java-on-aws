@@ -7,7 +7,7 @@ COPY src ./src/
 RUN mvn clean package && mv target/store-spring-1.0.0-exec.jar store-spring.jar
 RUN rm -rf ~/.m2/repository
 
-FROM public.ecr.aws/docker/library/amazoncorretto:21.0.2-al2023
+FROM public.ecr.aws/docker/library/amazoncorretto:21-al2023
 RUN yum install -y shadow-utils
 
 COPY --from=builder store-spring.jar store-spring.jar

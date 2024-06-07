@@ -9,7 +9,7 @@ COPY src ./src/
 RUN mvn clean package
 RUN rm -rf ~/.m2/repository
 
-FROM public.ecr.aws/docker/library/amazoncorretto:21.0.2-al2023
+FROM public.ecr.aws/docker/library/amazoncorretto:21-al2023
 RUN yum install -y shadow-utils
 
 COPY --from=builder target/quarkus-app quarkus-app
