@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/maven:3.9-amazoncorretto-21-al2023 AS builder
+FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-21-al2023 AS builder
 
 RUN yum install -y shadow-utils
 
