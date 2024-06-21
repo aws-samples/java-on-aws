@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/maven:3.9-amazoncorretto-8-al2023 as builder
+FROM public.ecr.aws/docker/library/maven:3.9-amazoncorretto-8-al2023 AS builder
 
 RUN yum install -y tar gzip wget
 
