@@ -13,7 +13,7 @@ FROM quay.io/wildfly/wildfly:32.0.1.Final-jdk17
 
 # RUN /opt/jboss/wildfly/bin/add-user.sh admin wildfly! --silent
 
-ENV POSTGRESQL_JDBC_DRIVER_VERSION 42.7.2
+ENV POSTGRESQL_JDBC_DRIVER_VERSION=42.7.2
 RUN wget "https://repo1.maven.org/maven2/org/postgresql/postgresql/${POSTGRESQL_JDBC_DRIVER_VERSION}/postgresql-${POSTGRESQL_JDBC_DRIVER_VERSION}.jar" -O $JBOSS_HOME/postgresql.jar
 RUN printenv > $JBOSS_HOME/env.properties
 

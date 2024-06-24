@@ -2,14 +2,13 @@
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
 
-export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
-TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
+TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+AWS_REGION=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 
-export UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreInfrastructure --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
+UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreInfrastructure --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
 
-TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.privateIp')
+IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.privateIp')
 
 # Check if we're on AL2 or AL2023
 STR=$(cat /etc/os-release)
@@ -23,7 +22,7 @@ if [[ "$STR" == *"$SUB2"* ]]
 fi
 
 MAC=$(ip address show dev $INTERFACE_NAME | grep ether | awk ' { print $2 } ')
-export IDE_VPC_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/network/interfaces/macs/$MAC/vpc-id)
+IDE_VPC_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/network/interfaces/macs/$MAC/vpc-id)
 
 echo ACCOUNT_ID = $ACCOUNT_ID
 echo AWS_REGION = $AWS_REGION
@@ -33,7 +32,7 @@ echo MAC = $MAC
 echo UNICORN_VPC_ID = $UNICORN_VPC_ID
 echo IDE_VPC_ID = $IDE_VPC_ID
 
-export VPC_PEERING_ID=$(aws ec2 create-vpc-peering-connection --vpc-id $IDE_VPC_ID \
+VPC_PEERING_ID=$(aws ec2 create-vpc-peering-connection --vpc-id $IDE_VPC_ID \
 --peer-vpc-id $UNICORN_VPC_ID \
 --query 'VpcPeeringConnection.VpcPeeringConnectionId' --output text)
 
@@ -41,14 +40,14 @@ sleep 5
 
 aws ec2 accept-vpc-peering-connection --vpc-peering-connection-id $VPC_PEERING_ID --output text
 
-export IDE_ROUTE_TABLE_ID=$(aws ec2 describe-route-tables \
+IDE_ROUTE_TABLE_ID=$(aws ec2 describe-route-tables \
 --filters "Name=vpc-id,Values=$IDE_VPC_ID" "Name=tag:Name,Values=*java-on-aws-workshop*" \
 --query 'RouteTables[0].RouteTableId' --output text)
 
-export UNICORN_DB_ROUTE_TABLE_ID_1=$(aws ec2 describe-route-tables \
+UNICORN_DB_ROUTE_TABLE_ID_1=$(aws ec2 describe-route-tables \
 --filters "Name=vpc-id,Values=$UNICORN_VPC_ID" "Name=tag:Name,Values=UnicornStoreVpc/UnicornVpc/PrivateSubnet1" \
 --query 'RouteTables[0].RouteTableId' --output text)
-export UNICORN_DB_ROUTE_TABLE_ID_2=$(aws ec2 describe-route-tables \
+UNICORN_DB_ROUTE_TABLE_ID_2=$(aws ec2 describe-route-tables \
 --filters "Name=vpc-id,Values=$UNICORN_VPC_ID" "Name=tag:Name,Values=UnicornStoreVpc/UnicornVpc/PrivateSubnet2" \
 --query 'RouteTables[0].RouteTableId' --output text)
 

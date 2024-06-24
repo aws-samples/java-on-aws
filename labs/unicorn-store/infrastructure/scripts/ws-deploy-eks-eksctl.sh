@@ -1,26 +1,25 @@
 #bin/sh
 
-export CLUSTER_NAME=unicorn-store
-export APP_NAME=unicorn-store-spring
-
 echo $(date '+%Y.%m.%d %H:%M:%S')
 start_time=`date +%s`
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started ws-deploy-eks-eksctl ..." $start_time
 
-cd ~/environment
+CLUSTER_NAME=unicorn-store
+APP_NAME=unicorn-store-spring
 
-export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
-TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
+TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+AWS_REGION=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 
 echo Get the existing VPC and Subnet IDs to inform EKS where to create the new cluster
-export UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
-export UNICORN_SUBNET_PRIVATE_1=$(aws ec2 describe-subnets \
+UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
+UNICORN_SUBNET_PRIVATE_1=$(aws ec2 describe-subnets \
 --filters "Name=vpc-id,Values=$UNICORN_VPC_ID" "Name=tag:Name,Values=UnicornStoreVpc/UnicornVpc/PrivateSubnet1" --query 'Subnets[0].SubnetId' --output text)
-export UNICORN_SUBNET_PRIVATE_2=$(aws ec2 describe-subnets \
+UNICORN_SUBNET_PRIVATE_2=$(aws ec2 describe-subnets \
 --filters "Name=vpc-id,Values=$UNICORN_VPC_ID" "Name=tag:Name,Values=UnicornStoreVpc/UnicornVpc/PrivateSubnet2" --query 'Subnets[0].SubnetId' --output text)
-export UNICORN_SUBNET_PUBLIC_1=$(aws ec2 describe-subnets \
+UNICORN_SUBNET_PUBLIC_1=$(aws ec2 describe-subnets \
 --filters "Name=vpc-id,Values=$UNICORN_VPC_ID" "Name=tag:Name,Values=UnicornStoreVpc/UnicornVpc/PublicSubnet1" --query 'Subnets[0].SubnetId' --output text)
-export UNICORN_SUBNET_PUBLIC_2=$(aws ec2 describe-subnets \
+UNICORN_SUBNET_PUBLIC_2=$(aws ec2 describe-subnets \
 --filters "Name=vpc-id,Values=$UNICORN_VPC_ID" "Name=tag:Name,Values=UnicornStoreVpc/UnicornVpc/PublicSubnet2" --query 'Subnets[0].SubnetId' --output text)
 
 aws ec2 create-tags --resources $UNICORN_SUBNET_PRIVATE_1 $UNICORN_SUBNET_PRIVATE_2 \
@@ -106,4 +105,5 @@ external-secrets/external-secrets \
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
 
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Finished ws-deploy-eks-eksctl." $start_time
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "eks" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)

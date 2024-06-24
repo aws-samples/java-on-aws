@@ -3,9 +3,9 @@
 echo $(date '+%Y.%m.%d %H:%M:%S')
 start_time=`date +%s`
 
-export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
-TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
+TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+AWS_REGION=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 
 cd ~/environment/java-on-aws/labs/unicorn-store
 # Build the database setup function
@@ -43,16 +43,14 @@ aws codecommit create-repository --repository-name unicorn-store-spring --reposi
 # create Amazon ECR for images
 aws ecr create-repository --repository-name unicorn-store-spring
 
-export ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring | jq --raw-output '.repositories[0].repositoryUri')
-echo "export ECR_URI=${ECR_URI}" | tee -a ~/.bash_profile
-echo "export ECR_URI=${ECR_URI}" >> ~/.bashrc
-
 # Navigate to the application folder and download dependencies via Maven:
 cd ~/environment/unicorn-store-spring
 mvn dependency:go-offline -f ./pom.xml 1> /dev/null
 
 # Resolution for ECS Service Unavailable
 aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
+# Resolution for When creating the first service in the account
+aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com
 
 # Disable Temporary credentials on login
 echo 'aws cloud9 update-environment --environment-id $C9_PID --managed-credentials-action DISABLE --region $AWS_REGION &> /dev/null' | tee -a /home/ec2-user/.bash_profile
@@ -64,7 +62,6 @@ echo 'rm -vf ${HOME}/.aws/credentials  &> /dev/null' | tee -a /home/ec2-user/.ba
 start_time=`date +%s`
 
 cd ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-env-vars.sh
 source ~/.bashrc
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-connector.sh
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-peering.sh

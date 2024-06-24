@@ -1,9 +1,11 @@
 #bin/sh
 
-export CLUSTER_NAME=unicorn-store
-export APP_NAME=unicorn-store-spring
-
 echo $(date '+%Y.%m.%d %H:%M:%S')
+start_time=`date +%s`
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started ws-deploy-eks-manifests ..." $start_time
+
+CLUSTER_NAME=unicorn-store
+APP_NAME=unicorn-store-spring
 
 echo Create a Kubernetes namespace for the application
 kubectl create namespace $APP_NAME
@@ -53,12 +55,11 @@ EOF
 
 echo Create a new directory k8s in the application folder
 mkdir ~/environment/$APP_NAME/k8s
-cd ~/environment/$APP_NAME/k8s
 
 echo Create Kubernetes manifest files for the deployment and the service
-export ECR_URI=$(aws ecr describe-repositories --repository-names $APP_NAME \
+ECR_URI=$(aws ecr describe-repositories --repository-names $APP_NAME \
   | jq --raw-output '.repositories[0].repositoryUri')
-export SPRING_DATASOURCE_URL=$(aws ssm get-parameter --name databaseJDBCConnectionString \
+SPRING_DATASOURCE_URL=$(aws ssm get-parameter --name databaseJDBCConnectionString \
   | jq --raw-output '.Parameter.Value')
 
 cat <<EOF > ~/environment/$APP_NAME/k8s/deployment.yaml
@@ -150,11 +151,15 @@ kubectl apply -f ~/environment/$APP_NAME/k8s/service.yaml
 echo Verify that the application is running properly
 kubectl wait deployment -n $APP_NAME $APP_NAME --for condition=Available=True --timeout=120s
 kubectl get deploy -n $APP_NAME
-export SVC_URL=http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
+SVC_URL=http://$(kubectl get svc $APP_NAME -n $APP_NAME -o json | jq --raw-output '.status.loadBalancer.ingress[0].hostname')
 while [[ $(curl -s -o /dev/null -w "%{http_code}" $SVC_URL/) != "200" ]]; do echo "Service not yet available ..." &&  sleep 5; done
 echo $SVC_URL
-echo Service is Ready!
-
-echo Get the Load Balancer URL and make an example API call
-echo $SVC_URL
 curl --location $SVC_URL; echo
+curl --location --request POST $SVC_URL'/unicorns' --header 'Content-Type: application/json' --data-raw '{
+    "name": "'"Something-$(date +%s)"'",
+    "age": "20",
+    "type": "Animal",
+    "size": "Very big"
+}' | jq
+
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Finished ws-deploy-eks-manifests." $start_time

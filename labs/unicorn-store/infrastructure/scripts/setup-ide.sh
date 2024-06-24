@@ -45,9 +45,9 @@ echo "export JAVA_HOME=${JAVA_HOME}" | tee -a ~/.bashrc
 java -version
 
 ## Install Maven
-export MVN_VERSION=3.9.6
-export MVN_FOLDERNAME=apache-maven-${MVN_VERSION}
-export MVN_FILENAME=apache-maven-${MVN_VERSION}-bin.tar.gz
+MVN_VERSION=3.9.6
+MVN_FOLDERNAME=apache-maven-${MVN_VERSION}
+MVN_FILENAME=apache-maven-${MVN_VERSION}-bin.tar.gz
 curl -4 -L https://archive.apache.org/dist/maven/maven-3/${MVN_VERSION}/binaries/${MVN_FILENAME} | tar -xvz
 sudo mv $MVN_FOLDERNAME /usr/lib/maven
 export M2_HOME=/usr/lib/maven
@@ -78,7 +78,7 @@ wget https://github.com/mikefarah/yq/releases/download/v4.43.1/yq_linux_amd64.ta
 yq --version
 
 # Install SOCI related packages and change config
-export SOCI_VERSION=0.4.0
+SOCI_VERSION=0.4.0
 wget -q https://github.com/awslabs/soci-snapshotter/releases/download/v$SOCI_VERSION/soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz
 sudo tar -C /usr/local/bin -xvf soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz soci soci-snapshotter-grpc
 cat << EOF | sudo tee /etc/docker/daemon.json
@@ -95,7 +95,7 @@ docker info --format '{{json .Driver}}'
 docker info --format '{{json .DriverStatus}}'
 
 # Install docker buildx
-export BUILDX_VERSION=$(curl --silent "https://api.github.com/repos/docker/buildx/releases/latest" |jq -r .tag_name)
+BUILDX_VERSION=$(curl --silent "https://api.github.com/repos/docker/buildx/releases/latest" |jq -r .tag_name)
 curl -JLO "https://github.com/docker/buildx/releases/download/$BUILDX_VERSION/buildx-$BUILDX_VERSION.linux-amd64"
 mkdir -p ~/.docker/cli-plugins
 mv "buildx-$BUILDX_VERSION.linux-amd64" ~/.docker/cli-plugins/docker-buildx
@@ -166,8 +166,14 @@ TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-meta
 export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.bash_profile
 echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.bashrc
+echo "export CDK_DEFAULT_ACCOUNT=${ACCOUNT_ID}" | tee -a ~/.bash_profile
+echo "export CDK_DEFAULT_ACCOUNT=${ACCOUNT_ID}" | tee -a ~/.bashrc
 echo "export AWS_REGION=${AWS_REGION}" | tee -a ~/.bash_profile
 echo "export AWS_REGION=${AWS_REGION}" | tee -a ~/.bashrc
+echo "export AWS_DEFAULT_REGION=${AWS_REGION}" | tee -a ~/.bash_profile
+echo "export AWS_DEFAULT_REGION=${AWS_REGION}" | tee -a ~/.bashrc
+echo "export CDK_DEFAULT_REGION=${AWS_REGION}" | tee -a ~/.bash_profile
+echo "export CDK_DEFAULT_REGION=${AWS_REGION}" | tee -a ~/.bashrc
 aws configure set default.region ${AWS_REGION}
 aws configure get default.region
 test -n "$AWS_REGION" && echo AWS_REGION is "$AWS_REGION" || echo AWS_REGION is not set
