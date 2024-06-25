@@ -61,8 +61,8 @@ aws ecs register-task-definition --family $APP_NAME --no-cli-pager \
     --execution-role-arn arn:aws:iam::$ACCOUNT_ID:role/unicornstore-ecs-task-execution-role \
     --container-definitions file://~/environment/$APP_NAME/esc-container-definitions.json \
     --runtime-platform '{"cpuArchitecture":"X86_64","operatingSystemFamily":"LINUX"}'
-    
-echo Create ECS cluster    
+
+echo Create ECS cluster
 
 aws ecs create-cluster --cluster-name $APP_NAME --capacity-providers FARGATE --no-cli-pager
 
@@ -132,7 +132,7 @@ aws ec2 authorize-security-group-ingress \
   --source-group $SECURITY_GROUP_ALB_ID
 
 echo Create ECS service
-  
+
 TASK_DEFINITION_ARN=$(aws ecs describe-task-definition --task-definition $APP_NAME --query 'taskDefinition.taskDefinitionArn' --output text)
 aws ecs create-service --no-cli-pager \
   --cluster $APP_NAME \

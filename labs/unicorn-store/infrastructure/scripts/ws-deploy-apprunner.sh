@@ -62,7 +62,7 @@ echo Deploy the App Runner service
 
 aws apprunner create-service --service-name $APP_NAME --no-cli-pager \
     --cli-input-json file://~/environment/$APP_NAME/input.json
-    
+
 echo Testing the application on AWS App Runner
 
 SVC_URL=https://$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName == 'unicorn-store-spring'].ServiceUrl" --output text)
