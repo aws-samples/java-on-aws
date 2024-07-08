@@ -278,7 +278,7 @@
                     <plugin>
                         <groupId>com.google.cloud.tools</groupId>
                         <artifactId>jib-maven-plugin</artifactId>
-                        <version>3.4.2</version>
+                        <version>3.4.3</version>
                         <configuration>
                             <from>
                                 <image>public.ecr.aws/docker/library/amazoncorretto:21.0.2-alpine3.18</image>
