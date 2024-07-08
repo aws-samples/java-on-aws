@@ -7,21 +7,12 @@ version: 2
 updates:
   - package-ecosystem: maven
     directories:
-      - "/labs/unicorn-store/infrastructure/cdk"
-      - "/labs/unicorn-store/infrastructure/db-setup"
-      - "/labs/unicorn-store/software/unicorn-store-spring"
-      - "/labs/unicorn-store/software/unicorn-store-jakarta/quarkus"
-      - "/labs/unicorn-store/software/unicorn-store-jakarta/wildfly"
-      - "/labs/unicorn-store/software/unicorn-store-javax"
+      - "**/*"
     schedule:
       interval: "monthly"
+    open-pull-requests-limit: 20
   - package-ecosystem: docker
     directories:
-      - "/labs/unicorn-store/software/dockerfiles"
-      - "/labs/unicorn-store/software/dockerfiles/crac"
-      - "/labs/unicorn-store/software/unicorn-store-spring"
-      - "/labs/unicorn-store/software/unicorn-store-jakarta/quarkus"
-      - "/labs/unicorn-store/software/unicorn-store-jakarta/wildfly"
-      - "/labs/unicorn-store/software/unicorn-store-javax/wildfly"
+      - "**/*"
     schedule:
       interval: "monthly"
