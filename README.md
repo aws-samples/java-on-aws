@@ -12,7 +12,7 @@ In this workshop you will learn how to build cloud-native Java applications, bes
 # Modules and paths
 The workshop is structured in multiple independent modules that can be chosen in any kind of order - with a few exceptions that mention a prerequisite of another module. While you can feel free to chose the path to your own preferences, we prepared three example paths through this workshop based on your experience:
 
-![Java on AWS](resources/paths.png)
+![Java on AWS](resources/paths-new.png)
 
 #### Containerize and run locally (30 minutes)
 
@@ -23,13 +23,13 @@ The workshop is structured in multiple independent modules that can be chosen in
 #### Deploy a container image to AWS App Runner (30 minutes)
 
 - Deploy your Java application in the cloud.
-- Use the AWS Console for the deployment.
+- Use AWS Command Line Interface (CLI) or the AWS Console for the deployment.
 - Test your Java app running on AWS App Runner.
 
 #### Deploy a container image to Amazon ECS (30 minutes)
 
 - Deploy your Java application in the cloud with more infrastructure control.
-- Use the AWS Console for the deployment.
+- Use AWS Command Line Interface (CLI) or the AWS Console for the deployment.
 - Test your Java app running on Amazon ECS.
 
 #### Deploy a container image to Amazon EKS (60 minutes)
@@ -58,7 +58,6 @@ The workshop is structured in multiple independent modules that can be chosen in
 - Setting up AWS Distro for OpenTelemetry Collector.
 - Use manual and automatic instrumentation
 
-
 #### CI/CD/Gitops (60+ minutes)
 
 - Push you source code to AWS CodeCommit.
@@ -67,10 +66,10 @@ The workshop is structured in multiple independent modules that can be chosen in
 - User a GitOps approach with Flux to deploy to Amazon EKS
 - Automatically build multi-arch container images (x86 + arm)
 
-#### Modern development workflow  (20 minutes)
+<!-- #### Modern development workflow  (20 minutes)
 
 - Leverage the power of Generative AI on AWS
-- Use Amazon CodeWhisperer in your development workflow.
+- Use Amazon CodeWhisperer in your development workflow. -->
 
 ## Security
 
