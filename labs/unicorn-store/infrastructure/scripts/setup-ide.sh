@@ -144,6 +144,11 @@ chmod 700 get_helm.sh
 ./get_helm.sh
 helm version
 
+# install eks-node-viewer
+wget -O eks-node-viewer https://github.com/awslabs/eks-node-viewer/releases/download/v0.6.0/eks-node-viewer_Linux_x86_64
+chmod +x eks-node-viewer
+sudo mv -v eks-node-viewer /usr/local/bin
+
 ## Pre-Download Maven dependencies for Unicorn Store
 cd ~/environment/java-on-aws/labs/unicorn-store
 mvn dependency:go-offline -f infrastructure/db-setup/pom.xml 1> /dev/null

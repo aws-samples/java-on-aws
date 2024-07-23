@@ -16,6 +16,9 @@ import java.util.List;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 @RestController
 public class UnicornController {
     private final UnicornService unicornService;
@@ -94,5 +97,16 @@ public class UnicornController {
     @GetMapping("/")
     public ResponseEntity<String> getWelcomeMessage() {
         return new ResponseEntity<>("Welcome to the Unicorn Store!", HttpStatus.OK);
+    }
+    @GetMapping("/hostname")
+    public ResponseEntity<String> getHostname() {
+        try {
+            InetAddress inetAddress = InetAddress.getLocalHost();
+            return new ResponseEntity<>(inetAddress.getHostName(), HttpStatus.OK);
+        } catch (UnknownHostException e) {
+            String errorMsg = "Error getHostname";
+            logger.error(errorMsg, e);
+            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, errorMsg, e);
+        }
     }
 }

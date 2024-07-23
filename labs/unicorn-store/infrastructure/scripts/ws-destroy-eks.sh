@@ -26,19 +26,19 @@ aws codecommit delete-repository --repository-name $GITOPSC_REPO_NAME
 
 echo Deleting EKS cluster ...
 
-kubectl delete deployment $APP_NAME -n $APP_NAME
+kubectl delete deployment $APP_NAME -n $APP_NAME --cascade=foreground
 kubectl delete service $APP_NAME -n $APP_NAME
 eksctl delete iamserviceaccount --cluster=$CLUSTER_NAME --name=$APP_NAME --namespace=$APP_NAME --region=$AWS_REGION
 kubectl delete sa $APP_NAME -n $APP_NAME
 kubectl delete namespace $APP_NAME
 
-kubectl delete deployment $CLUSTER_NAME-wildfly -n $CLUSTER_NAME-wildfly
+kubectl delete deployment $CLUSTER_NAME-wildfly -n $CLUSTER_NAME-wildfly --cascade=foreground
 kubectl delete service $CLUSTER_NAME-wildfly -n $CLUSTER_NAME-wildfly
 eksctl delete iamserviceaccount --cluster=$CLUSTER_NAME --name=$CLUSTER_NAME-wildfly --namespace=$CLUSTER_NAME-wildfly --region=$AWS_REGION
 kubectl delete sa $CLUSTER_NAME-wildfly -n $CLUSTER_NAME-wildfly
 kubectl delete namespace $CLUSTER_NAME-wildfly
 
-kubectl delete deployment $CLUSTER_NAME-quarkus -n $CLUSTER_NAME-quarkus
+kubectl delete deployment $CLUSTER_NAME-quarkus -n $CLUSTER_NAME-quarkus --cascade=foreground
 kubectl delete service $CLUSTER_NAME-quarkus -n $CLUSTER_NAME-quarkus
 eksctl delete iamserviceaccount --cluster=$CLUSTER_NAME --name=$CLUSTER_NAME-quarkus --namespace=$CLUSTER_NAME-quarkus --region=$AWS_REGION
 kubectl delete sa $CLUSTER_NAME-quarkus -n $CLUSTER_NAME-quarkus
@@ -48,9 +48,18 @@ kubectl delete namespace $CLUSTER_NAME-quarkus
 # cdk destroy UnicornStoreSpringEKS --force
 # popd
 
+kubectl delete nodeclaims --all
+
+helm uninstall external-secrets --namespace external-secrets
+helm uninstall karpenter --namespace karpenter
+
 eksctl delete cluster --name $CLUSTER_NAME
 
 aws iam delete-policy --policy-arn=$(aws iam list-policies --query 'Policies[?PolicyName==`unicorn-eks-service-account-policy`].{ARN:Arn}' --output text)
+
+aws iam remove-role-from-instance-profile --instance-profile-name $(aws iam list-instance-profiles --query 'InstanceProfiles[?starts_with(InstanceProfileName, `unicorn-store`)].InstanceProfileName' --output text) --role-name eksctl-KarpenterNodeRole-unicorn-store
+aws iam delete-role --role-name eksctl-KarpenterNodeRole-unicorn-store
+aws cloudformation delete-stack --stack-name eksctl-unicorn-store-karpenter
 
 echo Deleting AppMod data ...
 
