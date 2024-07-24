@@ -18,8 +18,8 @@ cdk bootstrap
 cdk deploy UnicornStoreVpc --require-approval never --outputs-file target/output-vpc.json
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-vpc" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
 
-echo Deploy EKS cluster in background ...
-nohup /home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh >> /home/ec2-user/ws-deploy-eks-eksctl-karpenter.log 2>&1 &
+# echo Deploy EKS cluster in background ...
+# nohup /home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh >> /home/ec2-user/ws-deploy-eks-eksctl-karpenter.log 2>&1 &
 
 cdk deploy UnicornStoreInfrastructure --require-approval never --outputs-file target/output-infra.json
 cdk deploy UnicornStoreLambdaApp --require-approval never --outputs-file target/output-lambda.json
@@ -71,5 +71,5 @@ source ~/.bashrc
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-peering.sh
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-infrastructure" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
 
-until [ -f /home/ec2-user/ws-deploy-eks-eksctl.completed ]; do sleep 10; done
-echo EKS cluster deployment is finished.
+# until [ -f /home/ec2-user/ws-deploy-eks-eksctl.completed ]; do sleep 10; done
+# echo EKS cluster deployment is finished.
