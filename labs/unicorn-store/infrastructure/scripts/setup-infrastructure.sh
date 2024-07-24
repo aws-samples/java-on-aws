@@ -11,14 +11,16 @@ cd ~/environment/java-on-aws/labs/unicorn-store
 # Build the database setup function
 mvn clean package -f infrastructure/db-setup/pom.xml 1> /dev/null
 
-# Build the unicorn application
-mvn clean package -f software/unicorn-store-spring/pom.xml 1> /dev/null
-
 # Deploy the infrastructure
 pushd infrastructure/cdk
 
 cdk bootstrap
 cdk deploy UnicornStoreVpc --require-approval never --outputs-file target/output-vpc.json
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-vpc" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
+
+echo Deploy EKS cluster in background ...
+nohup /home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh >> /home/ec2-user/ws-deploy-eks-eksctl-karpenter.log 2>&1 &
+
 cdk deploy UnicornStoreInfrastructure --require-approval never --outputs-file target/output-infra.json
 cdk deploy UnicornStoreLambdaApp --require-approval never --outputs-file target/output-lambda.json
 
@@ -44,8 +46,12 @@ aws codecommit create-repository --repository-name unicorn-store-spring --reposi
 aws ecr create-repository --repository-name unicorn-store-spring
 
 # Navigate to the application folder and download dependencies via Maven:
+# cd ~/environment/unicorn-store-spring
+# mvn dependency:go-offline -f ./pom.xml 1> /dev/null
+
+# Build the unicorn application
 cd ~/environment/unicorn-store-spring
-mvn dependency:go-offline -f ./pom.xml 1> /dev/null
+mvn clean package 1> /dev/null
 
 # Resolution for ECS Service Unavailable
 aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
@@ -56,8 +62,6 @@ aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com
 echo 'aws cloud9 update-environment --environment-id $C9_PID --managed-credentials-action DISABLE --region $AWS_REGION &> /dev/null' | tee -a /home/ec2-user/.bash_profile
 echo 'rm -vf ${HOME}/.aws/credentials  &> /dev/null' | tee -a /home/ec2-user/.bash_profile
 
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-infrastructure" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
-
 # additional modules setup
 start_time=`date +%s`
 
@@ -65,4 +69,7 @@ cd ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts
 source ~/.bashrc
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-connector.sh
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-peering.sh
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-vpc" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-infrastructure" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
+
+until [ -f /home/ec2-user/ws-deploy-eks-eksctl-karpenter.completed ]; do sleep 10; done
+echo EKS cluster deployment is finished.

@@ -2,7 +2,7 @@
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
 start_time=`date +%s`
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started ws-deploy-eks-eksctl ..." $start_time
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started ws-deploy-eks-eksctl-karpenter ..." $start_time
 
 CLUSTER_NAME=unicorn-store
 APP_NAME=unicorn-store-spring
@@ -10,6 +10,10 @@ APP_NAME=unicorn-store-spring
 ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
 TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 AWS_REGION=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+
+# Disable Temporary credentials in Cloud9
+aws cloud9 update-environment --environment-id $C9_PID --managed-credentials-action DISABLE --region $AWS_REGION &> /dev/null
+rm -vf ${HOME}/.aws/credentials  &> /dev/null
 
 echo Get the existing VPC and Subnet IDs to inform EKS where to create the new cluster
 UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
@@ -197,7 +201,9 @@ external-secrets/external-secrets \
 --set webhook.port=9443 \
 --wait
 
+if [ "$?" -ne 0 ]; then touch /home/ec2-user/ws-deploy-eks-eksctl.failed; else touch /home/ec2-user/ws-deploy-eks-eksctl.completed; fi
+
 echo $(date '+%Y.%m.%d %H:%M:%S')
 
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Finished ws-deploy-eks-eksctl." $start_time
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Finished ws-deploy-eks-eksctl-karpenter." $start_time
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "eks" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
