@@ -71,5 +71,5 @@ source ~/.bashrc
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-peering.sh
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-infrastructure" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
 
-until [ -f /home/ec2-user/ws-deploy-eks-eksctl-karpenter.completed ]; do sleep 10; done
+until [ -f /home/ec2-user/ws-deploy-eks-eksctl.completed ]; do sleep 10; done
 echo EKS cluster deployment is finished.
