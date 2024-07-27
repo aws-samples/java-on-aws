@@ -77,7 +77,7 @@ iam:
     roleName: ${CLUSTER_NAME}-karpenter
     permissionPolicyARNs:
     - arn:aws:iam::${ACCOUNT_ID}:policy/KarpenterControllerPolicy-${CLUSTER_NAME}
-    
+
 iamIdentityMappings:
 - arn: "arn:aws:iam::${ACCOUNT_ID}:role/KarpenterNodeRole-${CLUSTER_NAME}"
   username: system:node:{{EC2PrivateDNSName}}
@@ -93,7 +93,7 @@ managedNodeGroups:
   desiredCapacity: 2
   minSize: 1
   maxSize: 2
-  
+
 addons:
 - name: eks-pod-identity-agent
 EOF
