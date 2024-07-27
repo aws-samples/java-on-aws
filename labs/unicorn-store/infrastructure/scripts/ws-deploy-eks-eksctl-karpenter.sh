@@ -134,7 +134,7 @@ spec:
           values: ["spot"]
         - key: karpenter.k8s.aws/instance-category
           operator: In
-          values: ["c", "m", "r"]
+          values: ["c", "m"]
         - key: karpenter.k8s.aws/instance-generation
           operator: Gt
           values: ["2"]
