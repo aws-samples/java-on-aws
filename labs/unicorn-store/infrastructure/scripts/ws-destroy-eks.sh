@@ -50,16 +50,15 @@ kubectl delete namespace $CLUSTER_NAME-quarkus
 
 kubectl delete nodeclaims --all
 
+helm uninstall karpenter --namespace kube-system
 helm uninstall external-secrets --namespace external-secrets
-helm uninstall karpenter --namespace karpenter
 
 eksctl delete cluster --name $CLUSTER_NAME
 
 aws iam delete-policy --policy-arn=$(aws iam list-policies --query 'Policies[?PolicyName==`unicorn-eks-service-account-policy`].{ARN:Arn}' --output text)
-
-aws iam remove-role-from-instance-profile --instance-profile-name $(aws iam list-instance-profiles --query 'InstanceProfiles[?starts_with(InstanceProfileName, `unicorn-store`)].InstanceProfileName' --output text) --role-name eksctl-KarpenterNodeRole-unicorn-store
-aws iam delete-role --role-name eksctl-KarpenterNodeRole-unicorn-store
-aws cloudformation delete-stack --stack-name eksctl-unicorn-store-karpenter
+aws iam remove-role-from-instance-profile --instance-profile-name $(aws iam list-instance-profiles --query 'InstanceProfiles[?starts_with(InstanceProfileName, `unicorn-store`)].InstanceProfileName' --output text) --role-name KarpenterNodeRole-unicorn-store
+aws iam delete-role --role-name KarpenterNodeRole-unicorn-store
+aws cloudformation delete-stack --stack-name unicorn-store-karpenter
 
 echo Deleting AppMod data ...
 

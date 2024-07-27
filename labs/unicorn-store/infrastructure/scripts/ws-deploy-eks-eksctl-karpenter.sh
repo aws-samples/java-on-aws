@@ -32,9 +32,18 @@ aws ec2 create-tags --resources $UNICORN_SUBNET_PRIVATE_1 $UNICORN_SUBNET_PRIVAT
 aws ec2 create-tags --resources $UNICORN_SUBNET_PUBLIC_1 $UNICORN_SUBNET_PUBLIC_2 \
 --tags Key=kubernetes.io/cluster/$CLUSTER_NAME,Value=shared Key=kubernetes.io/role/elb,Value=1
 
-echo Create the cluster with eksctl and Karpenter
+echo Create the cluster with eksctl and settings required for Karpenter
 K8S_VERSION="1.30"
 KARPENTER_VERSION="0.37.0"
+KARPENTER_NAMESPACE="kube-system"
+TEMPOUT="$(mktemp)"
+
+curl -fsSL https://raw.githubusercontent.com/aws/karpenter-provider-aws/v"${KARPENTER_VERSION}"/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml  > "${TEMPOUT}" \
+&& aws cloudformation deploy \
+  --stack-name "${CLUSTER_NAME}-karpenter" \
+  --template-file "${TEMPOUT}" \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides "ClusterName=${CLUSTER_NAME}"
 
 eksctl create cluster --alb-ingress-access -f - <<EOF
 ---
@@ -62,27 +71,48 @@ vpc:
 
 iam:
   withOIDC: true
-
-karpenter:
-  version: ${KARPENTER_VERSION}
-  withSpotInterruptionQueue: true
+  podIdentityAssociations:
+  - namespace: "${KARPENTER_NAMESPACE}"
+    serviceAccountName: karpenter
+    roleName: ${CLUSTER_NAME}-karpenter
+    permissionPolicyARNs:
+    - arn:aws:iam::${ACCOUNT_ID}:policy/KarpenterControllerPolicy-${CLUSTER_NAME}
+    
+iamIdentityMappings:
+- arn: "arn:aws:iam::${ACCOUNT_ID}:role/KarpenterNodeRole-${CLUSTER_NAME}"
+  username: system:node:{{EC2PrivateDNSName}}
+  groups:
+  - system:bootstrappers
+  - system:nodes
 
 managedNodeGroups:
 - instanceType: c5.large
   name: mng-x64
+  amiFamily: AmazonLinux2023
   privateNetworking: true
   desiredCapacity: 2
   minSize: 1
   maxSize: 2
+  
+addons:
+- name: eks-pod-identity-agent
 EOF
 
-echo Create service linked role and tag subnets for Karpenter nodes
+echo Create service linked role, tag subnets for Karpenter nodes and install Karpenter
 aws iam create-service-linked-role --aws-service-name spot.amazonaws.com || true
 aws ec2 create-tags --resources $UNICORN_SUBNET_PRIVATE_1 $UNICORN_SUBNET_PRIVATE_2 \
 --tags Key=karpenter.sh/discovery,Value=unicorn-store
 
+helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter --version "${KARPENTER_VERSION}" --namespace "${KARPENTER_NAMESPACE}" --create-namespace \
+  --set "settings.clusterName=${CLUSTER_NAME}" \
+  --set "settings.interruptionQueue=${CLUSTER_NAME}" \
+  --set controller.resources.requests.cpu=1 \
+  --set controller.resources.requests.memory=1Gi \
+  --set controller.resources.limits.cpu=1 \
+  --set controller.resources.limits.memory=1Gi \
+  --wait
+
 echo Create Karpenter EC2NodeClass and NodePool
-export AMD_AMI_ID="$(aws ssm get-parameter --name /aws/service/eks/optimized-ami/${K8S_VERSION}/amazon-linux-2/recommended/image_id --query Parameter.Value --output text)"
 
 cat <<EOF | envsubst | kubectl apply -f -
 apiVersion: karpenter.sh/v1beta1
@@ -123,16 +153,14 @@ kind: EC2NodeClass
 metadata:
   name: default
 spec:
-  amiFamily: AL2 # Amazon Linux 2
-  role: "eksctl-KarpenterNodeRole-${CLUSTER_NAME}" # replace with your cluster name
+  amiFamily: AL2023
+  role: "KarpenterNodeRole-${CLUSTER_NAME}"
   subnetSelectorTerms:
     - tags:
-        karpenter.sh/discovery: "${CLUSTER_NAME}" # replace with your cluster name
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
   securityGroupSelectorTerms:
     - tags:
-        aws:eks:cluster-name: "${CLUSTER_NAME}" # replace with your cluster name
-  amiSelectorTerms:
-    - id: "${AMD_AMI_ID}"
+        aws:eks:cluster-name: "${CLUSTER_NAME}"
 EOF
 
 echo Add the workshop IAM roles to the list of the EKS cluster administrators to get access from the AWS Console

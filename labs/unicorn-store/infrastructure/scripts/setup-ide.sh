@@ -149,11 +149,6 @@ wget -O eks-node-viewer https://github.com/awslabs/eks-node-viewer/releases/down
 chmod +x eks-node-viewer
 sudo mv -v eks-node-viewer /usr/local/bin
 
-## Pre-Download Maven dependencies for Unicorn Store
-# cd ~/environment/java-on-aws/labs/unicorn-store
-# mvn dependency:go-offline -f infrastructure/db-setup/pom.xml 1> /dev/null
-# mvn dependency:go-offline -f software/unicorn-store-spring/pom.xml 1> /dev/null
-
 git config --global user.email "you@workshops.aws"
 git config --global user.name "Your Name"
 git config --global --add --bool push.autoSetupRemote true
