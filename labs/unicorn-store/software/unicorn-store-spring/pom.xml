@@ -281,7 +281,7 @@
                         <version>3.4.3</version>
                         <configuration>
                             <from>
-                                <image>public.ecr.aws/docker/library/amazoncorretto:21.0.2-alpine3.18</image>
+                                <image>public.ecr.aws/docker/library/amazoncorretto:21-alpine</image>
                             </from>
                             <container>
                                 <user>1000</user>
