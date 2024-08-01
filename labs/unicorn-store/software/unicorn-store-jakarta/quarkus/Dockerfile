@@ -3,8 +3,6 @@ FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-21-al2023 AS builder
 RUN yum install -y tar gzip
 
 COPY ./pom.xml ./pom.xml
-RUN mvn dependency:go-offline -f ./pom.xml
-
 COPY src ./src/
 RUN mvn clean package
 RUN rm -rf ~/.m2/repository

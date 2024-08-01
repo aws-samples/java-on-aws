@@ -1,9 +1,11 @@
 # cd unicorn-store-jakarta
 
 mv ./src/main/java/com/unicorn/store/data/EntityManagerProducer.java ./src/main/java/com/unicorn/store/data/EntityManagerProducer.java.wf
+cp ./quarkus/pom.xml ./pom.xml
 docker build --no-cache -f quarkus/Dockerfile -t unicorn-store-quarkus:latest .
 docker compose -f quarkus/docker-compose.yml up
 docker rm $(docker ps -a | grep "quarkus" | awk '{print $1}')
+rm ./pom.xml
 
 # docker build -t unicorn-store-quarkus:latest .
 
