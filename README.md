@@ -15,7 +15,7 @@ The workshop is structured in multiple independent modules that can be chosen in
 
 ![Java on AWS](resources/paths-t.png)
 
-#### Containerize and run locally (30 minutes)
+<!-- #### Containerize and run locally (30 minutes)
 
 - Build a container image locally using Docker.
 - Run and test your Java application container locally and optimize your Dockerfile with a multi-stage build.
@@ -47,6 +47,12 @@ The workshop is structured in multiple independent modules that can be chosen in
 - Leverage AWS Lambda SnapStart to drastically reduce Cold-Starts
 - Build a new event driven AWS Lambda function in plain Java.
 
+#### Migration and Modernization of Jakarta EE Application (60 minutes)
+
+- Rehost to Amazon EC2
+- Replatform to Amazon EKS
+- Refactor to Quarkus
+
 #### ARM64 with AWS Graviton (45 minutes)
 
 - AWS Graviton processors are designed by AWS to deliver the best price performance for your cloud workloads.
@@ -56,7 +62,7 @@ The workshop is structured in multiple independent modules that can be chosen in
 
 - Leverage native AWS services for logging, metrics & tracing.
 - Setting up AWS Distro for OpenTelemetry Collector.
-- Use manual and automatic instrumentation
+- Use manual and automatic instrumentation -->
 
 <!-- #### CI/CD/Gitops (60+ minutes)
 
