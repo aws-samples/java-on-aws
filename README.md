@@ -5,9 +5,10 @@
 This project contains the supporting code for the Java on AWS Immersion Day. You can find the instructions for the hands-on lab [here](https://catalog.workshops.aws/java-on-aws).
 
 # Overview
-In this workshop you will learn how to build cloud-native Java applications, best practices and performance optimizations techniques. You will also learn how to migrate your existing Java application to container services such as AWS AppRunner, Amazon ECS and Amazon EKS or how to to run them as Serverless AWS Lambda functions. Below you can find an overview of the components and services involved.
+In this workshop you will learn how to build cloud-native Java applications, best practices and performance optimizations techniques. You will also learn how to migrate your existing Java application to container services such as AWS AppRunner, Amazon ECS and Amazon EKS or how to to run them as Serverless AWS Lambda functions.
+<!-- Below you can find an overview of the components and services involved.
 
-<!-- ![Java on AWS](resources/java-on-aws-overview.png) -->
+![Java on AWS](resources/java-on-aws-overview.png) -->
 
 # Modules and paths
 The workshop is structured in multiple independent modules that can be chosen in any kind of order - with a few exceptions that mention a prerequisite of another module. While you can feel free to chose the path to your own preferences, we prepared three example paths through this workshop based on your experience:
@@ -32,7 +33,7 @@ The workshop is structured in multiple independent modules that can be chosen in
 - Use AWS Command Line Interface (CLI) or the AWS Console for the deployment.
 - Test your Java app running on Amazon ECS.
 
-#### Deploy a container image to Amazon EKS (60 minutes)
+#### Deploy a container image to Amazon EKS (30 minutes)
 
 - Deploy and test the Java application with Amazon EKS.
 
@@ -46,12 +47,12 @@ The workshop is structured in multiple independent modules that can be chosen in
 - Leverage AWS Lambda SnapStart to drastically reduce Cold-Starts
 - Build a new event driven AWS Lambda function in plain Java.
 
-#### ARM64 with AWS Graviton  (30 minutes)
+#### ARM64 with AWS Graviton (45 minutes)
 
 - AWS Graviton processors are designed by AWS to deliver the best price performance for your cloud workloads.
 - Understand how to build multi-arch images and leverage AWS Graviton on different compute platforms.
 
-#### Observability (60+ minutes)
+#### Observability (60 minutes)
 
 - Leverage native AWS services for logging, metrics & tracing.
 - Setting up AWS Distro for OpenTelemetry Collector.
