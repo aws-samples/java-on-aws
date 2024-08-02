@@ -26,14 +26,14 @@ public class UnicornStoreApp {
 
         var stackName = "UnicornStoreSpring";
         var projectName = "unicorn-store-spring";
-        var unicornStoreSpringCI = new UnicornStoreCIStack(app, stackName + "CI", StackProps.builder()
-                .build(), infrastructureStack, projectName);
+        // var unicornStoreSpringCI = new UnicornStoreCIStack(app, stackName + "CI", StackProps.builder()
+        //         .build(), infrastructureStack, projectName);
 
-        var unicornStoreSpringECS = new UnicornStoreECSStack(app, stackName + "ECS", StackProps.builder()
-                .build(), infrastructureStack, projectName);
+        // var unicornStoreSpringECS = new UnicornStoreECSStack(app, stackName + "ECS", StackProps.builder()
+        //         .build(), infrastructureStack, projectName);
 
-        var unicornStoreSpringEKS = new UnicornStoreEKSStack(app, stackName + "EKS", StackProps.builder()
-                .build(), infrastructureStack, projectName);
+        // var unicornStoreSpringEKS = new UnicornStoreEKSStack(app, stackName + "EKS", StackProps.builder()
+        //         .build(), infrastructureStack, projectName);
 
         //Add CDK-NAG checks: https://github.com/cdklabs/cdk-nag
         //Add suppression to exclude certain findings that are not needed for Workshop environment
@@ -81,9 +81,9 @@ public class UnicornStoreApp {
                 new NagPackSuppression.Builder().id("AwsSolutions-SF2").reason("Workshop Step Function does not need X-Ray tracing and Logging" ).build()
         );
 
-        NagSuppressions.addStackSuppressions(unicornStoreSpringCI, suppressionCICD);
-        NagSuppressions.addStackSuppressions(unicornStoreSpringECS, suppressionCICD);
-        NagSuppressions.addStackSuppressions(unicornStoreSpringEKS, suppressionCICD, true);
+        // NagSuppressions.addStackSuppressions(unicornStoreSpringCI, suppressionCICD);
+        // NagSuppressions.addStackSuppressions(unicornStoreSpringECS, suppressionCICD);
+        // NagSuppressions.addStackSuppressions(unicornStoreSpringEKS, suppressionCICD, true);
 
         app.synth();
     }

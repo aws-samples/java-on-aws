@@ -105,12 +105,12 @@ public class InfrastructureStack extends Stack {
 
         new DatabaseSetupConstruct(this, "UnicornDatabaseConstruct");
 
-        User unicornStoreGitOpsUser = User.Builder.create(this, "unicorn-store-gitops")
-            .userName("unicorn-store-gitops")
-            .build();
-        unicornStoreGitOpsUser.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
-            "unicornStoreGitOpsUser-" + "AWSCodeCommitPowerUser",
-            "arn:aws:iam::aws:policy/AWSCodeCommitPowerUser"));
+        // User unicornStoreGitOpsUser = User.Builder.create(this, "unicorn-store-gitops")
+        //     .userName("unicorn-store-gitops")
+        //     .build();
+        // unicornStoreGitOpsUser.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+        //     "unicornStoreGitOpsUser-" + "AWSCodeCommitPowerUser",
+        //     "arn:aws:iam::aws:policy/AWSCodeCommitPowerUser"));
 
         Role unicornStoreApprunnerRole = Role.Builder.create(this, "unicornstore-apprunner-role")
             .roleName("unicornstore-apprunner-role")

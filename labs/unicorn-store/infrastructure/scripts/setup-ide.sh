@@ -4,9 +4,6 @@ start_time=`date +%s`
 export init_time=$start_time
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
 
-flux_version='2.2.3'
-flux_checksum='9a705df552df5ac638f93d7fc43d9d8cda6a78f01a16736ae6f355f4a84ebdb3'
-
 download_and_verify () {
   url=$1
   checksum=$2
@@ -68,10 +65,10 @@ sudo npm install -g aws-cdk --force
 cdk version
 sudo npm install -g artillery
 
-curl -Lo copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
-chmod +x copilot
-sudo mv copilot /usr/local/bin/copilot
-copilot --version
+# curl -Lo copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
+# chmod +x copilot
+# sudo mv copilot /usr/local/bin/copilot
+# copilot --version
 
 wget https://github.com/mikefarah/yq/releases/download/v4.43.1/yq_linux_amd64.tar.gz -O - |\
   tar xz && sudo mv yq_linux_amd64 /usr/bin/yq
@@ -104,11 +101,11 @@ docker run --privileged --rm tonistiigi/binfmt --install all
 docker buildx create --use --driver=docker-container
 
 # Install docker compose
-DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-mkdir -p $DOCKER_CONFIG/cli-plugins
-curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
-chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
-docker compose version
+# DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+# mkdir -p $DOCKER_CONFIG/cli-plugins
+# curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
+# chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+# docker compose version
 
 ## eksctl
 # for ARM systems, set ARCH to: `arm64`, `armv6` or `armv7`
@@ -131,12 +128,14 @@ kubectl version --output=yaml
 
 # install Flux
 # flux
-download_and_verify "https://github.com/fluxcd/flux2/releases/download/v${flux_version}/flux_${flux_version}_linux_amd64.tar.gz" "$flux_checksum" "flux.tar.gz"
-tar zxf flux.tar.gz
-chmod +x flux
-sudo mv ./flux /usr/local/bin
-rm -rf flux.tar.gz
-flux --version
+# flux_version='2.2.3'
+# flux_checksum='9a705df552df5ac638f93d7fc43d9d8cda6a78f01a16736ae6f355f4a84ebdb3'
+# download_and_verify "https://github.com/fluxcd/flux2/releases/download/v${flux_version}/flux_${flux_version}_linux_amd64.tar.gz" "$flux_checksum" "flux.tar.gz"
+# tar zxf flux.tar.gz
+# chmod +x flux
+# sudo mv ./flux /usr/local/bin
+# rm -rf flux.tar.gz
+# flux --version
 
 # install Helm
 curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
@@ -149,16 +148,16 @@ wget -O eks-node-viewer https://github.com/awslabs/eks-node-viewer/releases/down
 chmod +x eks-node-viewer
 sudo mv -v eks-node-viewer /usr/local/bin
 
-git config --global user.email "you@workshops.aws"
-git config --global user.name "Your Name"
-git config --global --add --bool push.autoSetupRemote true
-git config --global credential.helper '!aws codecommit credential-helper $@'
-git config --global credential.UseHttpPath true
+# git config --global user.email "you@workshops.aws"
+# git config --global user.name "Your Name"
+# git config --global --add --bool push.autoSetupRemote true
+# git config --global credential.helper '!aws codecommit credential-helper $@'
+# git config --global credential.UseHttpPath true
 
-curl -O https://bootstrap.pypa.io/get-pip.py
-python3 get-pip.py --user
-rm get-pip.py
-pip install git-remote-codecommit
+# curl -O https://bootstrap.pypa.io/get-pip.py
+# python3 get-pip.py --user
+# rm get-pip.py
+# pip install git-remote-codecommit
 
 cd ~/environment
 export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)

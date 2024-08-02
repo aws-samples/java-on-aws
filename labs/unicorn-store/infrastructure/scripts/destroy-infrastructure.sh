@@ -33,7 +33,7 @@ for x in `aws ecr list-images --repository-name unicorn-store-spring --query 'im
 for x in `aws ecr list-images --repository-name unicorn-store-spring --query 'imageIds[*][imageDigest]' --output text`; do aws ecr batch-delete-image --repository-name unicorn-store-spring --image-ids imageDigest=$x; done
 aws ecr delete-repository --repository-name unicorn-store-spring
 
-aws codecommit delete-repository --repository-name unicorn-store-spring
+# aws codecommit delete-repository --repository-name unicorn-store-spring
 
 echo Deleting core infrastructure ...
 

@@ -40,7 +40,23 @@ rm ~/environment/unicorn-store-spring/src/main/resources/schema.sql
 echo "target" > unicorn-store-spring/.gitignore
 
 # create AWS CodeCommit for Java Sources
-aws codecommit create-repository --repository-name unicorn-store-spring --repository-description "Java application sources"
+# aws codecommit create-repository --repository-name unicorn-store-spring --repository-description "Java application sources"
+
+# setup local git repository in unicorn-store-spring
+cd ~/environment/unicorn-store-spring/
+git init -b main
+git config --global user.email "you@workshops.aws"
+git config --global user.name "Your Name"
+
+echo "crac-files/*" > .gitignore
+echo "target/*" >> .gitignore
+echo "*.jar" >> .gitignore
+echo "dockerfiles/*" >> .gitignore
+echo "Dockerfile_*" >> .gitignore
+echo "k8s/*" >> .gitignore
+echo "scripts/*" >> .gitignore
+git add .
+git commit -m "initial commit"
 
 # create Amazon ECR for images
 aws ecr create-repository --repository-name unicorn-store-spring
@@ -55,8 +71,8 @@ aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
 aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com
 
 # Disable Temporary credentials on login
-echo 'aws cloud9 update-environment --environment-id $C9_PID --managed-credentials-action DISABLE --region $AWS_REGION &> /dev/null' | tee -a /home/ec2-user/.bash_profile
-echo 'rm -vf ${HOME}/.aws/credentials  &> /dev/null' | tee -a /home/ec2-user/.bash_profile
+# echo 'aws cloud9 update-environment --environment-id $C9_PID --managed-credentials-action DISABLE --region $AWS_REGION &> /dev/null' | tee -a /home/ec2-user/.bash_profile
+# echo 'rm -vf ${HOME}/.aws/credentials  &> /dev/null' | tee -a /home/ec2-user/.bash_profile
 
 # additional modules setup
 start_time=`date +%s`
