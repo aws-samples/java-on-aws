@@ -156,4 +156,6 @@ curl --location --request POST $SVC_URL'/unicorns' --header 'Content-Type: appli
     "size": "Very big"
 }' | jq
 
+rm ~/environment/$APP_NAME/esc-container-definitions.json
+
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Finished ws-deploy-ecs." $start_time

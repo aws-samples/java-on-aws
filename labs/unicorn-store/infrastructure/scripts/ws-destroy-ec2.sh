@@ -25,6 +25,8 @@ aws ec2 terminate-instances --instance-ids $INSTANCE_ID
 INSTANCE_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=*rehost-dbserver-instance" --query "Reservations[*].Instances[*].InstanceId" --output text)
 aws ec2 terminate-instances --instance-ids $INSTANCE_ID
 
+sleep 60
+
 UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
 aws ec2 delete-security-group --group-id $(aws ec2 describe-security-groups --filters "Name=vpc-id,Values='$UNICORN_VPC_ID'" --query 'SecurityGroups[?GroupName==`rehost-dbserver-sg`].GroupId' --output text)
 aws ec2 delete-security-group --group-id $(aws ec2 describe-security-groups --filters "Name=vpc-id,Values='$UNICORN_VPC_ID'" --query 'SecurityGroups[?GroupName==`rehost-appserver-sg`].GroupId' --output text)
