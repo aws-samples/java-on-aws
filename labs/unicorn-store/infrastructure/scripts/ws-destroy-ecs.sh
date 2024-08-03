@@ -27,7 +27,12 @@ aws elbv2 delete-target-group --target-group-arn $(aws elbv2 describe-target-gro
 aws elbv2 delete-load-balancer --load-balancer-arn $ALB_ARN
 
 aws ecs delete-service --cluster $APP_NAME --service $APP_NAME --force --no-cli-pager
-while [[ $(aws ecs describe-services --cluster $APP_NAME --services $APP_NAME --query 'services[0].status' --output text) != "INACTIVE" ]]; do echo "Service is in $(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring --query 'services[0].status' --output text) status. Waiting ... " &&  sleep 10; done
+CLUSTER_NAME=$(aws ecs list-clusters --query "clusterArns[?contains(@, '$APP_NAME')] | [0]" --output text)
+if [ "$CLUSTER_NAME" != "None" ]; then
+    while [[ $(aws ecs describe-services --cluster $APP_NAME --services $APP_NAME --query 'services[0].status' --output text) != "INACTIVE" ]]; do echo "Service is in $(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring --query 'services[0].status' --output text) status. Waiting ... " &&  sleep 10; done
+else
+    echo "The cluster name is $CLUSTER_NAME"
+fi
 aws ecs delete-cluster --cluster $APP_NAME --no-cli-pager
 
 TASK_DEFINITION_ARNS=$(aws ecs list-task-definitions --family-prefix $APP_NAME --query 'taskDefinitionArns' --output text)
