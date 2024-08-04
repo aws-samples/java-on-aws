@@ -178,12 +178,6 @@ Resources:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
-      SecurityGroupIngress:
-        - CidrIp: 0.0.0.0/0
-          Description: from 0.0.0.0/0:8080
-          FromPort: 8080
-          IpProtocol: tcp
-          ToPort: 8080
       VpcId:
         Ref: javaonawsworkshopIdeVPC0F0320A4
   javaonawsworkshopIdeSecurityGroupfromIndirectPeer8035641892:

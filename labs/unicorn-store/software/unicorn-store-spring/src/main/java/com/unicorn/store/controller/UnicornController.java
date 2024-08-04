@@ -98,15 +98,4 @@ public class UnicornController {
     public ResponseEntity<String> getWelcomeMessage() {
         return new ResponseEntity<>("Welcome to the Unicorn Store!", HttpStatus.OK);
     }
-    @GetMapping("/hostname")
-    public ResponseEntity<String> getHostname() {
-        try {
-            InetAddress inetAddress = InetAddress.getLocalHost();
-            return new ResponseEntity<>(inetAddress.getHostName(), HttpStatus.OK);
-        } catch (UnknownHostException e) {
-            String errorMsg = "Error getHostname";
-            logger.error(errorMsg, e);
-            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, errorMsg, e);
-        }
-    }
 }
