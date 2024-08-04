@@ -3,9 +3,8 @@ FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-21-al2023 AS builder
 RUN yum install -y tar gzip unzip
 
 COPY ./pom.xml ./pom.xml
-RUN mvn dependency:go-offline -f ./pom.xml
-
 COPY src ./src/
+
 RUN mvn clean package && mv target/store-spring-1.0.0-exec.jar target/store-spring.jar && cd target && unzip store-spring.jar
 
 RUN jdeps --ignore-missing-deps \
