@@ -715,6 +715,7 @@ Resources:
                       waitConditionHandleUrl:
                         Ref: javaonawsworkshopBootstrapWaitConditionHandle62920104
                       customBootstrapScript: |
+                        
                         date
                       installGitea:
                         Fn::Sub:
@@ -747,10 +748,6 @@ Resources:
         Ref: javaonawsworkshopBootstrapDocumentA39E080E
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  CDKMetadata:
-    Type: AWS::CDK::Metadata
-    Properties:
-      Analytics: v2:deflate64:H4sIAAAAAAAA/32R0W7CMAxFv4X3kLX8AQKN8URVJvY4uakLhtSBxBlCVf99KtCViWlPvvfG0rGdiU7TRKcjOIexKQ9jS4Vu1gLmoOAcPhs0E91sjkbNKt5kM5XFwpJZx4JRumxQuYuC71BYHPIhm4bgDIGQ45/mTixZ0DPKAgTPcLlj7m4qAmZXI4tao4me5LLwLh6vgH+DJW89hqCWHATY3FE33SqCWje5u03a1/45864ii62yUBcl6OY1sunn7nWrjHWxrLxj0c3K05Y4x1PEIJmzZK6L/BmD2eHQ8mjnFMRTEXvWo29VCHX3MZ54m4GHGgV91/XLzJ2J3bnaVuUYXPTd5jGIqwdb8aP+AJKZ45I6yhtwaZ/jJ8wqyjFKq9iVqPfh5WuS6DTRyWgfiMY+slCNOr/Vb+6SOLJiAgAA
 Parameters:
   SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
