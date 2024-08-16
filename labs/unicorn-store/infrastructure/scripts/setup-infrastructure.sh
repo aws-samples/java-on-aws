@@ -86,7 +86,7 @@ start_time=`date +%s`
 cd ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts
 source ~/.bashrc
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-connector.sh
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-peering.sh
+# ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-peering.sh
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-infrastructure" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
 
 # Check if --with-eks is present in the arguments
