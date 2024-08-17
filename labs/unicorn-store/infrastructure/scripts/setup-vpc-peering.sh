@@ -16,33 +16,19 @@ else
   echo AWS_REGION was set to $AWS_REGION
 fi
 
-UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreInfrastructure --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
+UNICORN_VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=*UnicornVPC*" --query "Vpcs[*].VpcId" --output text)
+while [ -z "${UNICORN_VPC_ID}" ]; do
+  echo Waiting for UnicornVPC to be created...
+  sleep 10
+  UNICORN_VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=*UnicornVPC*" --query "Vpcs[*].VpcId" --output text)
+done
 
-if [[ -z "${IDE_VPC_ID}" ]]; then
-  TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-  IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.privateIp')
-
-  # Check if we're on AL2 or AL2023
-  STR=$(cat /etc/os-release)
-  SUB2="VERSION_ID=\"2\""
-  SUB2023="VERSION_ID=\"2023\""
-  if [[ "$STR" == *"$SUB2"* ]]
-      then
-          INTERFACE_NAME=$(ip address | grep $IP | awk ' { print $8 } ')
-      else
-          INTERFACE_NAME=$(ip address | grep $IP | awk ' { print $10 } ')
-  fi
-
-  MAC=$(ip address show dev $INTERFACE_NAME | grep ether | awk ' { print $2 } ')
-  IDE_VPC_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/network/interfaces/macs/$MAC/vpc-id)
-
-  echo IP = $IP
-  echo INTERFACE_NAME = $INTERFACE_NAME
-  echo MAC = $MAC
-  echo IDE_VPC_ID is set to $IDE_VPC_ID
-else
-  echo IDE_VPC_ID was set to $IDE_VPC_ID
-fi
+IDE_VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=*IdeVPC*" --query "Vpcs[*].VpcId" --output text)
+while [ -z "${IDE_VPC_ID}" ]; do
+  echo Waiting for IdeVPC to be created...
+  sleep 10
+  IDE_VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=*IdeVPC*" --query "Vpcs[*].VpcId" --output text)
+done
 
 echo UNICORN_VPC_ID = $UNICORN_VPC_ID
 echo IDE_VPC_ID = $IDE_VPC_ID
@@ -51,7 +37,7 @@ VPC_PEERING_ID=$(aws ec2 create-vpc-peering-connection --vpc-id $IDE_VPC_ID \
 --peer-vpc-id $UNICORN_VPC_ID \
 --query 'VpcPeeringConnection.VpcPeeringConnectionId' --output text)
 
-sleep 5
+sleep 10
 
 aws ec2 accept-vpc-peering-connection --vpc-peering-connection-id $VPC_PEERING_ID --output text
 
