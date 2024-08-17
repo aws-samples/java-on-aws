@@ -44,7 +44,7 @@ KARPENTER_VERSION="1.0.0"
 KARPENTER_NAMESPACE="kube-system"
 TEMPOUT="$(mktemp)"
 
-curl -fsSL https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}"/website/content/en/v1.0/getting-started/getting-started-with-karpenter/cloudformation.yaml  > "${TEMPOUT}" \
+curl -fsSL https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/website/content/en/v1.0/getting-started/getting-started-with-karpenter/cloudformation.yaml  > "${TEMPOUT}" \
 && aws cloudformation deploy \
   --stack-name "${CLUSTER_NAME}-karpenter" \
   --template-file "${TEMPOUT}" \
