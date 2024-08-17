@@ -168,6 +168,8 @@ spec:
   securityGroupSelectorTerms:
     - tags:
         aws:eks:cluster-name: "${CLUSTER_NAME}"
+  amiSelectorTerms:
+    - alias: al2023@latest
 EOF
 
 echo Add the workshop IAM roles to the list of the EKS cluster administrators to get access from the AWS Console
@@ -214,7 +216,7 @@ cat <<EOF > service-account-policy.json
                 "secretsmanager:GetSecretValue",
                 "secretsmanager:DescribeSecret"
             ],
-            "Resource": "$(DB_SECRET_ARN)",
+            "Resource": "$DB_SECRET_ARN",
             "Effect": "Allow"
         },
         {

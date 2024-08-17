@@ -44,7 +44,7 @@ aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com
 start_time=`date +%s`
 
 cd ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts
-source ~/.bashrc
+
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-connector.sh
 # ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-peering.sh
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-infrastructure" $start_time 2>&1 | tee >(cat >> ~/setup-timing.log)
