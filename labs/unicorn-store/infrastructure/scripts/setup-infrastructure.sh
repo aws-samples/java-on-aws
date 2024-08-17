@@ -3,10 +3,6 @@
 echo $(date '+%Y.%m.%d %H:%M:%S')
 start_time=`date +%s`
 
-ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
-TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-AWS_REGION=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
-
 cd ~/environment/java-on-aws/labs/unicorn-store
 # Build the database setup function
 mvn clean package -f infrastructure/db-setup/pom.xml 1> /dev/null
@@ -16,13 +12,13 @@ pushd infrastructure/cdk
 
 cdk bootstrap
 cdk deploy UnicornStoreVpc --require-approval never --outputs-file target/output-vpc.json
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-vpc" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-vpc" $start_time 2>&1 | tee >(cat >> ~/setup-timing.log)
 
 # Check if --with-eks is present in the arguments
 if [[ "$*" == *"--with-eks"* ]]; then
     echo "--with-eks parameter is present"
     # Deploy EKS cluster in background ...
-    nohup /home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh >> /home/ec2-user/ws-deploy-eks-eksctl-karpenter.log 2>&1 &
+    nohup ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh >> ~/ws-deploy-eks-eksctl-karpenter.log 2>&1 &
 else
     echo "--with-eks parameter is not present"
 fi
@@ -76,10 +72,6 @@ aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
 # Resolution for When creating the first service in the account
 aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com
 
-# Disable Temporary credentials on login
-# echo 'aws cloud9 update-environment --environment-id $C9_PID --managed-credentials-action DISABLE --region $AWS_REGION &> /dev/null' | tee -a /home/ec2-user/.bash_profile
-# echo 'rm -vf ${HOME}/.aws/credentials  &> /dev/null' | tee -a /home/ec2-user/.bash_profile
-
 # additional modules setup
 start_time=`date +%s`
 
@@ -87,12 +79,12 @@ cd ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts
 source ~/.bashrc
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-connector.sh
 # ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-peering.sh
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-infrastructure" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-infrastructure" $start_time 2>&1 | tee >(cat >> ~/setup-timing.log)
 
 # Check if --with-eks is present in the arguments
 if [[ "$*" == *"--with-eks"* ]]; then
     echo "--with-eks parameter is present"
-    until [ -f /home/ec2-user/ws-deploy-eks-eksctl.completed ]; do sleep 10; done
+    until [ -f ~/ws-deploy-eks-eksctl.completed ]; do sleep 10; done
     echo EKS cluster deployment is finished.
 else
     echo "--with-eks parameter is not present"
