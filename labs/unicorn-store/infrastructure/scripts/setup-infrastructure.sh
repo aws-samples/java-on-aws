@@ -19,7 +19,7 @@ if [[ "$*" == *"--with-eks"* ]]; then
     echo "--with-eks parameter is present"
     # Deploy EKS cluster in background ...
     # nohup ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh >> ~/ws-deploy-eks-eksctl-karpenter.log 2>&1 &
-    nohup ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh 2>&1 &
+    ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh &
 else
     echo "--with-eks parameter is not present"
 fi
