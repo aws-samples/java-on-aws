@@ -26,6 +26,8 @@ import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.constructs.Construct;
 import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.iam.Effect;
+import software.amazon.awscdk.services.ecr.Repository;
+import software.amazon.awscdk.RemovalPolicy;
 
 import java.util.List;
 
@@ -119,6 +121,13 @@ public class InfrastructureStack extends Stack {
             .actions(List.of("xray:PutTraceSegments"))
             .resources(List.of("*"))
             .build());
+
+        // create ECR repository
+        Repository unicornStoreECR = Repository.Builder.create(this, "unicornstore-ecr")
+            .repositoryName("unicorn-store-spring")
+            .imageScanOnPush(false)
+            .removalPolicy(RemovalPolicy.DESTROY)
+            .build();
 
         Role appRunnerECRAccessRole = Role.Builder.create(this, "unicornstore-apprunner-ecr-access-role")
             .roleName("unicornstore-apprunner-ecr-access-role")

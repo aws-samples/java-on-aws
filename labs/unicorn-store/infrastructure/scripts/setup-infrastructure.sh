@@ -35,9 +35,6 @@ popd
 # create AWS CodeCommit for Java Sources
 # aws codecommit create-repository --repository-name unicorn-store-spring --repository-description "Java application sources"
 
-# create Amazon ECR for images
-aws ecr create-repository --repository-name unicorn-store-spring
-
 # Resolution for ECS Service Unavailable
 aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
 # Resolution for When creating the first service in the account
