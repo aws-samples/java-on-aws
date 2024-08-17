@@ -189,11 +189,11 @@ echo Get access to the cluster
 aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 kubectl get nodes
 
-DB_SECRET_ARN=$(aws secretsmanager list-secrets --filters Key=name,Values=unicornstore-db-secret --query 'SecretList[*].ARN' --output text)
+DB_SECRET_ARN=$(aws secretsmanager list-secrets --query 'SecretList[?Name==`unicornstore-db-secret`].ARN' --output text)
 while [ -z "${DB_SECRET_ARN}" ]; do
   echo Waiting for DB_SECRET_ARN to be created...
   sleep 10
-  DB_SECRET_ARN=$(aws secretsmanager list-secrets --filters Key=name,Values=unicornstore-db-secret --query 'SecretList[*].ARN' --output text)
+  DB_SECRET_ARN=$(aws secretsmanager list-secrets --query 'SecretList[?Name==`unicornstore-db-secret`].ARN' --output text)
 done
 
 echo Create an IAM-Policy with the proper permissions to publish to EventBridge, retrieve secrets and parameters and basic monitoring
