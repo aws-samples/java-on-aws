@@ -9,10 +9,16 @@ APP_NAME=unicorn-store-spring
 
 if [[ -z "${ACCOUNT_ID}" ]]; then
   export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
+  echo ACCOUNT_ID is set to $ACCOUNT_ID
+else
+  echo ACCOUNT_ID was set to $ACCOUNT_ID
 fi
 if [[ -z "${AWS_REGION}" ]]; then
   TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
   export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+  echo AWS_REGION is set to $AWS_REGION
+else
+  echo AWS_REGION was set to $AWS_REGION
 fi
 
 echo Get the existing VPC and Subnet IDs to inform EKS where to create the new cluster

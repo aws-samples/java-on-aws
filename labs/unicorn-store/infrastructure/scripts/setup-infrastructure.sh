@@ -5,7 +5,7 @@ start_time=`date +%s`
 
 cd ~/environment/java-on-aws/labs/unicorn-store
 # Build the database setup function
-mvn clean package -f infrastructure/db-setup/pom.xml 1> /dev/null
+mvn clean package -f infrastructure/db-setup/pom.xml #1> /dev/null
 
 # Deploy the infrastructure
 pushd infrastructure/cdk
@@ -18,7 +18,7 @@ cdk deploy UnicornStoreVpc --require-approval never --outputs-file target/output
 if [[ "$*" == *"--with-eks"* ]]; then
     echo "--with-eks parameter is present"
     # Deploy EKS cluster in background ...
-    nohup ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh >> ~/ws-deploy-eks-eksctl-karpenter.log 2>&1 &
+    nohup ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh #>> ~/ws-deploy-eks-eksctl-karpenter.log 2>&1 &
 else
     echo "--with-eks parameter is not present"
 fi
@@ -39,7 +39,7 @@ rsync -av java-on-aws/labs/unicorn-store/software/unicorn-store-spring/ unicorn-
 cp -R java-on-aws/labs/unicorn-store/software/dockerfiles unicorn-store-spring
 cp -R java-on-aws/labs/unicorn-store/software/scripts unicorn-store-spring
 rm ~/environment/unicorn-store-spring/src/main/resources/schema.sql
-echo "target" > unicorn-store-spring/.gitignore
+echo "target" >> unicorn-store-spring/.gitignore
 
 # create AWS CodeCommit for Java Sources
 # aws codecommit create-repository --repository-name unicorn-store-spring --repository-description "Java application sources"
@@ -50,7 +50,7 @@ git init -b main
 git config --global user.email "you@workshops.aws"
 git config --global user.name "Your Name"
 
-echo "crac-files/*" > .gitignore
+echo "crac-files/*" >> .gitignore
 echo "target/*" >> .gitignore
 echo "*.jar" >> .gitignore
 echo "dockerfiles/*" >> .gitignore
