@@ -5,7 +5,7 @@ start_time=`date +%s`
 
 cd ~/environment/java-on-aws/labs/unicorn-store
 # Build the database setup function
-mvn clean package -f infrastructure/db-setup/pom.xml #1> /dev/null
+mvn clean package -f infrastructure/db-setup/pom.xml 1> /dev/null
 
 # Deploy the infrastructure
 pushd infrastructure/cdk
@@ -18,7 +18,8 @@ cdk deploy UnicornStoreVpc --require-approval never --outputs-file target/output
 if [[ "$*" == *"--with-eks"* ]]; then
     echo "--with-eks parameter is present"
     # Deploy EKS cluster in background ...
-    nohup ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh #>> ~/ws-deploy-eks-eksctl-karpenter.log 2>&1 &
+    # nohup ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh >> ~/ws-deploy-eks-eksctl-karpenter.log 2>&1 &
+    nohup ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh 2>&1 &
 else
     echo "--with-eks parameter is not present"
 fi
@@ -31,41 +32,11 @@ aws lambda invoke --function-name $(cat target/output-infra.json | jq -r '.Unico
 
 popd
 
-# Copy the Spring Boot Java Application source code to your local directory
-cd ~/environment
-mkdir unicorn-store-spring
-
-rsync -av java-on-aws/labs/unicorn-store/software/unicorn-store-spring/ unicorn-store-spring --exclude target --exclude src/test
-cp -R java-on-aws/labs/unicorn-store/software/dockerfiles unicorn-store-spring
-cp -R java-on-aws/labs/unicorn-store/software/scripts unicorn-store-spring
-rm ~/environment/unicorn-store-spring/src/main/resources/schema.sql
-echo "target" >> unicorn-store-spring/.gitignore
-
 # create AWS CodeCommit for Java Sources
 # aws codecommit create-repository --repository-name unicorn-store-spring --repository-description "Java application sources"
 
-# setup local git repository in unicorn-store-spring
-cd ~/environment/unicorn-store-spring/
-git init -b main
-git config --global user.email "you@workshops.aws"
-git config --global user.name "Your Name"
-
-echo "crac-files/*" >> .gitignore
-echo "target/*" >> .gitignore
-echo "*.jar" >> .gitignore
-echo "dockerfiles/*" >> .gitignore
-echo "Dockerfile_*" >> .gitignore
-echo "k8s/*" >> .gitignore
-echo "scripts/*" >> .gitignore
-git add .
-git commit -m "initial commit"
-
 # create Amazon ECR for images
 aws ecr create-repository --repository-name unicorn-store-spring
-
-# Build the unicorn application
-cd ~/environment/unicorn-store-spring
-mvn clean package 1> /dev/null
 
 # Resolution for ECS Service Unavailable
 aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com

@@ -190,4 +190,34 @@ sudo yum install -y session-manager-plugin.rpm
 session-manager-plugin
 rm session-manager-plugin.rpm
 
+# Copy the Spring Boot Java Application source code to your local directory
+cd ~/environment
+mkdir unicorn-store-spring
+
+rsync -av java-on-aws/labs/unicorn-store/software/unicorn-store-spring/ unicorn-store-spring --exclude target --exclude src/test
+cp -R java-on-aws/labs/unicorn-store/software/dockerfiles unicorn-store-spring
+cp -R java-on-aws/labs/unicorn-store/software/scripts unicorn-store-spring
+rm ~/environment/unicorn-store-spring/src/main/resources/schema.sql
+echo "target" >> unicorn-store-spring/.gitignore
+
+# setup local git repository in unicorn-store-spring
+cd ~/environment/unicorn-store-spring/
+git init -b main
+git config --global user.email "you@workshops.aws"
+git config --global user.name "Your Name"
+
+echo "crac-files/*" >> .gitignore
+echo "target/*" >> .gitignore
+echo "*.jar" >> .gitignore
+echo "dockerfiles/*" >> .gitignore
+echo "Dockerfile_*" >> .gitignore
+echo "k8s/*" >> .gitignore
+echo "scripts/*" >> .gitignore
+git add .
+git commit -m "initial commit"
+
+# Build the unicorn application
+cd ~/environment/unicorn-store-spring
+mvn clean package 1> /dev/null
+
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-ide" $start_time 2>&1 | tee >(cat >> ~/setup-timing.log)
