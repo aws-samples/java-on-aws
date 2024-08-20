@@ -21,13 +21,43 @@ else
   echo AWS_REGION was set to $AWS_REGION
 fi
 
-echo Get the existing VPC and Subnet IDs to inform EKS where to create the new cluster
-UNICORN_VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=*UnicornVPC*" --query "Vpcs[*].VpcId" --output text)
-while [ -z "${UNICORN_VPC_ID}" ]; do
-  echo Waiting for UnicornVPC to be created...
-  sleep 10
-  UNICORN_VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=*UnicornVPC*" --query "Vpcs[*].VpcId" --output text)
+stack_name="UnicornStoreVpc"
+
+# Function to check stack status
+check_stack_status() {
+    stack_status=$(aws cloudformation describe-stacks --stack-name "$stack_name" --query 'Stacks[0].StackStatus' --output text 2>/dev/null)
+    if [ -z "$stack_status" ]; then
+        echo "Stack $stack_name does not exist"
+        return 1
+    elif [ "$stack_status" == "CREATE_COMPLETE" ] || [ "$stack_status" == "UPDATE_COMPLETE" ]; then
+        echo "Stack $stack_name is $stack_status"
+        return 0
+    else
+        echo "Stack $stack_name is $stack_status"
+        return 2
+    fi
+}
+
+# Wait for stack to exist and complete
+while true; do
+    check_stack_status
+    case $? in
+        0) # Stack exists and is completed
+            break
+            ;;
+        1) # Stack does not exist
+            echo "Waiting for stack to be created..."
+            sleep 10
+            ;;
+        2) # Stack exists but is not completed
+            echo "Waiting for stack to complete..."
+            sleep 10
+            ;;
+    esac
 done
+
+echo Get the existing VPC and Subnet IDs to inform EKS where to create the new cluster
+UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
 UNICORN_SUBNET_PRIVATE_1=$(aws ec2 describe-subnets \
 --filters "Name=vpc-id,Values=$UNICORN_VPC_ID" "Name=tag:Name,Values=UnicornStoreVpc/UnicornVpc/PrivateSubnet1" --query 'Subnets[0].SubnetId' --output text)
 UNICORN_SUBNET_PRIVATE_2=$(aws ec2 describe-subnets \
