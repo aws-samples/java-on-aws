@@ -212,13 +212,13 @@ eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
     --arn arn:aws:iam::$ACCOUNT_ID:role/WSParticipantRole --username admin --group system:masters \
     --no-duplicate-arns
 
-# eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
-#     --arn arn:aws:iam::$ACCOUNT_ID:role/java-on-aws-workshop-user --username admin --group system:masters \
-#     --no-duplicate-arns
+eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
+    --arn arn:aws:iam::$ACCOUNT_ID:role/java-on-aws-workshop-user --username admin --group system:masters \
+    --no-duplicate-arns
 
-# eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
-#     --arn arn:aws:iam::$ACCOUNT_ID:role/java-on-aws-workshop-admin --username admin --group system:masters \
-#     --no-duplicate-arns
+eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
+    --arn arn:aws:iam::$ACCOUNT_ID:role/java-on-aws-workshop-admin --username admin --group system:masters \
+    --no-duplicate-arns
 
 echo Get access to the cluster
 aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
