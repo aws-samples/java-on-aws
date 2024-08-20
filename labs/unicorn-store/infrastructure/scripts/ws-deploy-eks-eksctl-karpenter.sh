@@ -22,7 +22,12 @@ else
 fi
 
 echo Get the existing VPC and Subnet IDs to inform EKS where to create the new cluster
-UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
+UNICORN_VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=*UnicornVPC*" --query "Vpcs[*].VpcId" --output text)
+while [ -z "${UNICORN_VPC_ID}" ]; do
+  echo Waiting for UnicornVPC to be created...
+  sleep 10
+  UNICORN_VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=*UnicornVPC*" --query "Vpcs[*].VpcId" --output text)
+done
 UNICORN_SUBNET_PRIVATE_1=$(aws ec2 describe-subnets \
 --filters "Name=vpc-id,Values=$UNICORN_VPC_ID" "Name=tag:Name,Values=UnicornStoreVpc/UnicornVpc/PrivateSubnet1" --query 'Subnets[0].SubnetId' --output text)
 UNICORN_SUBNET_PRIVATE_2=$(aws ec2 describe-subnets \
@@ -177,13 +182,13 @@ eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
     --arn arn:aws:iam::$ACCOUNT_ID:role/WSParticipantRole --username admin --group system:masters \
     --no-duplicate-arns
 
-eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
-    --arn arn:aws:iam::$ACCOUNT_ID:role/java-on-aws-workshop-user --username admin --group system:masters \
-    --no-duplicate-arns
+# eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
+#     --arn arn:aws:iam::$ACCOUNT_ID:role/java-on-aws-workshop-user --username admin --group system:masters \
+#     --no-duplicate-arns
 
-eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
-    --arn arn:aws:iam::$ACCOUNT_ID:role/java-on-aws-workshop-admin --username admin --group system:masters \
-    --no-duplicate-arns
+# eksctl create iamidentitymapping --cluster $CLUSTER_NAME --region=$AWS_REGION \
+#     --arn arn:aws:iam::$ACCOUNT_ID:role/java-on-aws-workshop-admin --username admin --group system:masters \
+#     --no-duplicate-arns
 
 echo Get access to the cluster
 aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
