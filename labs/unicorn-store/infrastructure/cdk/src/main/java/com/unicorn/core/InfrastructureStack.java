@@ -1,6 +1,7 @@
 package com.unicorn.core;
 
 import com.unicorn.constructs.DatabaseSetupConstruct;
+import software.constructs.Construct;
 import software.amazon.awscdk.CfnOutput;
 import software.amazon.awscdk.CfnOutputProps;
 import software.amazon.awscdk.Duration;
@@ -23,9 +24,9 @@ import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.iam.User;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
-import software.constructs.Construct;
 import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.iam.Effect;
+import software.amazon.awscdk.services.iam.ArnPrincipal;
 import software.amazon.awscdk.services.ecr.Repository;
 import software.amazon.awscdk.RemovalPolicy;
 
@@ -178,6 +179,43 @@ public class InfrastructureStack extends Stack {
             "unicornstore-ecs-task-execution-role-" + "AmazonSSMReadOnlyAccess",
             "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"));
         unicornStoreEscTaskExecutionRole.addToPolicy(AWSOpenTelemetryPolicy);
+
+        ServicePrincipal eksPods = new ServicePrincipal("pods.eks.amazonaws.com");
+
+        Role unicornStoreEksEsoRole = Role.Builder.create(this, "unicornstore-eks-eso-role")
+            .roleName("unicornstore-eks-eso-role")
+            .assumedBy(eksPods.withSessionTags())
+            .build();
+        ArnPrincipal unicornStoreEksEsoRolePrincipal = new ArnPrincipal(unicornStoreEksEsoRole.getRoleArn());
+
+        Role unicornStoreEksEsoSmRole = Role.Builder.create(this, "unicornstore-eks-eso-sm-role")
+            .roleName("unicornstore-eks-eso-sm-role")
+            .assumedBy(unicornStoreEksEsoRolePrincipal.withSessionTags())
+            .build();
+        unicornStoreEksEsoSmRole.addToPolicy(PolicyStatement.Builder.create()
+            .actions(List.of("secretsmanager:ListSecrets"))
+            .resources(List.of("*"))
+            .build());
+        unicornStoreEksEsoSmRole.addToPolicy(PolicyStatement.Builder.create()
+            .actions(List.of(
+                "secretsmanager:GetResourcePolicy",
+                "secretsmanager:DescribeSecret",
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:ListSecretVersionIds"
+            ))
+            .resources(List.of(databaseSecret.getSecretFullArn()))
+            .build());
+
+        Role unicornStoreEksPodRole = Role.Builder.create(this, "unicornstore-eks-pod-role")
+            .roleName("unicornstore-eks-pod-role")
+            .assumedBy(eksPods.withSessionTags())
+            .build();
+        unicornStoreEksPodRole.addToPolicy(PolicyStatement.Builder.create()
+            .actions(List.of("xray:PutTraceSegments"))
+            .resources(List.of("*"))
+            .build());
+        getEventBridge().grantPutEventsTo(unicornStoreEksPodRole);
+        getParamJdbsc().grantRead(unicornStoreEksPodRole);
 
         getEventBridge().grantPutEventsTo(unicornStoreApprunnerRole);
         getEventBridge().grantPutEventsTo(unicornStoreEscTaskRole);

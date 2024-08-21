@@ -224,61 +224,78 @@ echo Get access to the cluster
 aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 kubectl get nodes
 
-DB_SECRET_ARN=$(aws secretsmanager list-secrets --query 'SecretList[?Name==`unicornstore-db-secret`].ARN' --output text)
-while [ -z "${DB_SECRET_ARN}" ]; do
-  echo Waiting for DB_SECRET_ARN to be created...
-  sleep 10
-  DB_SECRET_ARN=$(aws secretsmanager list-secrets --query 'SecretList[?Name==`unicornstore-db-secret`].ARN' --output text)
-done
+# DB_SECRET_ARN=$(aws secretsmanager list-secrets --query 'SecretList[?Name==`unicornstore-db-secret`].ARN' --output text)
+# while [ -z "${DB_SECRET_ARN}" ]; do
+#   echo Waiting for DB_SECRET_ARN to be created...
+#   sleep 10
+#   DB_SECRET_ARN=$(aws secretsmanager list-secrets --query 'SecretList[?Name==`unicornstore-db-secret`].ARN' --output text)
+# done
 
-echo Create an IAM-Policy with the proper permissions to publish to EventBridge, retrieve secrets and parameters and basic monitoring
-cat <<EOF > service-account-policy.json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Action": "xray:PutTraceSegments",
-            "Resource": "*",
-            "Effect": "Allow"
-        },
-        {
-            "Action": "events:PutEvents",
-            "Resource": "arn:aws:events:$AWS_REGION:$ACCOUNT_ID:event-bus/unicorns",
-            "Effect": "Allow"
-        },
-        {
-            "Action": [
-                "secretsmanager:GetSecretValue",
-                "secretsmanager:DescribeSecret"
-            ],
-            "Resource": "$DB_SECRET_ARN",
-            "Effect": "Allow"
-        },
-        {
-            "Action": [
-                "ssm:DescribeParameters",
-                "ssm:GetParameters",
-                "ssm:GetParameter",
-                "ssm:GetParameterHistory"
-            ],
-            "Resource": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/databaseJDBCConnectionString",
-            "Effect": "Allow"
-        }
-    ]
-}
-EOF
-aws iam create-policy --policy-name unicorn-eks-service-account-policy --policy-document file://service-account-policy.json
-rm service-account-policy.json
+# echo Create an IAM-Policy with the proper permissions to publish to EventBridge, retrieve secrets and parameters and basic monitoring
+# cat <<EOF > service-account-policy.json
+# {
+#     "Version": "2012-10-17",
+#     "Statement": [
+#         {
+#             "Action": "xray:PutTraceSegments",
+#             "Resource": "*",
+#             "Effect": "Allow"
+#         },
+#         {
+#             "Action": "events:PutEvents",
+#             "Resource": "arn:aws:events:$AWS_REGION:$ACCOUNT_ID:event-bus/unicorns",
+#             "Effect": "Allow"
+#         },
+#         {
+#             "Action": [
+#                 "secretsmanager:GetSecretValue",
+#                 "secretsmanager:DescribeSecret"
+#             ],
+#             "Resource": "$DB_SECRET_ARN",
+#             "Effect": "Allow"
+#         },
+#         {
+#             "Action": [
+#                 "ssm:DescribeParameters",
+#                 "ssm:GetParameters",
+#                 "ssm:GetParameter",
+#                 "ssm:GetParameterHistory"
+#             ],
+#             "Resource": "arn:aws:ssm:$AWS_REGION:$ACCOUNT_ID:parameter/databaseJDBCConnectionString",
+#             "Effect": "Allow"
+#         }
+#     ]
+# }
+# EOF
+# aws iam create-policy --policy-name unicorn-eks-service-account-policy --policy-document file://service-account-policy.json
+# rm service-account-policy.json
 
 echo Install the External Secrets Operator
+
+aws eks create-pod-identity-association --cluster-name unicorn-store \
+  --namespace external-secrets --service-account external-secrets \
+  --role-arn arn:aws:iam::$ACCOUNT_ID:role/unicornstore-eks-eso-role
+
 helm repo add external-secrets https://charts.external-secrets.io
-helm install external-secrets \
-external-secrets/external-secrets \
--n external-secrets \
---create-namespace \
---set installCRDs=true \
---set webhook.port=9443 \
---wait
+helm install external-secrets external-secrets/external-secrets -n external-secrets --create-namespace --wait
+
+cat <<EOF | envsubst | kubectl create -f -
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterSecretStore
+metadata:
+  name: unicorn-store
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: $AWS_REGION
+      role: arn:aws:iam::$ACCOUNT_ID:role/unicornstore-eks-eso-sm-role
+EOF
+
+echo Get access to the cluster
+aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
+kubectl get ns
+kubectl get all -A
 
 if [ "$?" -ne 0 ]; then touch ~/ws-deploy-eks-eksctl.failed; else touch ~/ws-deploy-eks-eksctl.completed; fi
 
