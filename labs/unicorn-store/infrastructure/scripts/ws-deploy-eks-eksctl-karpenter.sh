@@ -178,7 +178,7 @@ spec:
           values: ["c", "m"]
         - key: karpenter.k8s.aws/instance-generation
           operator: Gt
-          values: ["2"]
+          values: ["5"]
       nodeClassRef:
         group: karpenter.k8s.aws
         kind: EC2NodeClass
@@ -275,6 +275,8 @@ echo Install the External Secrets Operator
 aws eks create-pod-identity-association --cluster-name unicorn-store \
   --namespace external-secrets --service-account external-secrets \
   --role-arn arn:aws:iam::$ACCOUNT_ID:role/unicornstore-eks-eso-role
+
+sleep 10
 
 helm repo add external-secrets https://charts.external-secrets.io
 helm install external-secrets external-secrets/external-secrets -n external-secrets --create-namespace --wait
