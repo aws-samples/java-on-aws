@@ -2,7 +2,7 @@
 
 start_time=`date +%s`
 export init_time=$start_time
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started" $start_time 2>&1 | tee >(cat >> ~/setup-timing.log)
 
 download_and_verify () {
   url=$1
@@ -160,9 +160,15 @@ sudo mv -v eks-node-viewer /usr/local/bin
 # pip install git-remote-codecommit
 
 cd ~/environment
-export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
-TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+
+if [[ -z "${ACCOUNT_ID}" ]]; then
+  export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
+fi
+if [[ -z "${AWS_REGION}" ]]; then
+  TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+  export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+fi
+
 echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.bash_profile
 echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.bashrc
 echo "export CDK_DEFAULT_ACCOUNT=${ACCOUNT_ID}" | tee -a ~/.bash_profile
@@ -184,4 +190,34 @@ sudo yum install -y session-manager-plugin.rpm
 session-manager-plugin
 rm session-manager-plugin.rpm
 
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-ide" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
+# Copy the Spring Boot Java Application source code to your local directory
+cd ~/environment
+mkdir unicorn-store-spring
+
+rsync -av java-on-aws/labs/unicorn-store/software/unicorn-store-spring/ unicorn-store-spring --exclude target --exclude src/test
+cp -R java-on-aws/labs/unicorn-store/software/dockerfiles unicorn-store-spring
+cp -R java-on-aws/labs/unicorn-store/software/scripts unicorn-store-spring
+rm ~/environment/unicorn-store-spring/src/main/resources/schema.sql
+echo "target" >> unicorn-store-spring/.gitignore
+
+# setup local git repository in unicorn-store-spring
+cd ~/environment/unicorn-store-spring/
+git init -b main
+git config --global user.email "you@workshops.aws"
+git config --global user.name "Your Name"
+
+echo "crac-files/*" >> .gitignore
+echo "target/*" >> .gitignore
+echo "*.jar" >> .gitignore
+echo "dockerfiles/*" >> .gitignore
+echo "Dockerfile_*" >> .gitignore
+echo "k8s/*" >> .gitignore
+echo "scripts/*" >> .gitignore
+git add .
+git commit -m "initial commit"
+
+# Build the unicorn application
+cd ~/environment/unicorn-store-spring
+mvn clean package 1> /dev/null
+
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "setup-ide" $start_time 2>&1 | tee >(cat >> ~/setup-timing.log)

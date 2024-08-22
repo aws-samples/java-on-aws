@@ -7,13 +7,19 @@ start_time=`date +%s`
 CLUSTER_NAME=unicorn-store
 APP_NAME=unicorn-store-spring
 
-ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
-TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-AWS_REGION=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
-
-# Disable Temporary credentials in Cloud9
-aws cloud9 update-environment --environment-id $C9_PID --managed-credentials-action DISABLE --region $AWS_REGION &> /dev/null
-rm -vf ${HOME}/.aws/credentials  &> /dev/null
+if [[ -z "${ACCOUNT_ID}" ]]; then
+  export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
+  echo ACCOUNT_ID is set to $ACCOUNT_ID
+else
+  echo ACCOUNT_ID was set to $ACCOUNT_ID
+fi
+if [[ -z "${AWS_REGION}" ]]; then
+  TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+  export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+  echo AWS_REGION is set to $AWS_REGION
+else
+  echo AWS_REGION was set to $AWS_REGION
+fi
 
 echo Get the existing VPC and Subnet IDs to inform EKS where to create the new cluster
 UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
@@ -107,9 +113,9 @@ external-secrets/external-secrets \
 --set webhook.port=9443 \
 --wait
 
-if [ "$?" -ne 0 ]; then touch /home/ec2-user/ws-deploy-eks-eksctl.failed; else touch /home/ec2-user/ws-deploy-eks-eksctl.completed; fi
+if [ "$?" -ne 0 ]; then touch ~/ws-deploy-eks-eksctl.failed; else touch ~/ws-deploy-eks-eksctl.completed; fi
 
 echo $(date '+%Y.%m.%d %H:%M:%S')
 
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Finished ws-deploy-eks-eksctl." $start_time
-~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "eks" $start_time 2>&1 | tee >(cat >> /home/ec2-user/setup-timing.log)
+~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "eks" $start_time 2>&1 | tee >(cat >> ~/setup-timing.log)
