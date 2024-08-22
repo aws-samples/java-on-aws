@@ -16,7 +16,7 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
 
-        <primefaces.version>14.0.3</primefaces.version>
+        <primefaces.version>14.0.4</primefaces.version>
 
         <wildfly.plugin.version>5.0.0.Final</wildfly.plugin.version>
         <wildfly.version>26.1.2.Final</wildfly.version>
