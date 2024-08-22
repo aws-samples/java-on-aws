@@ -35,10 +35,10 @@ popd
 # create AWS CodeCommit for Java Sources
 # aws codecommit create-repository --repository-name unicorn-store-spring --repository-description "Java application sources"
 
-# Resolution for ECS Service Unavailable
-aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
 # Resolution for When creating the first service in the account
+aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
 aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com
+aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com
 
 # additional modules setup
 start_time=`date +%s`
