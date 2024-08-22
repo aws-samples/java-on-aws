@@ -5,44 +5,32 @@ start_time=`date +%s`
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started ws-deploy-eks-manifests ..." $start_time
 
 CLUSTER_NAME=unicorn-store
-APP_NAME=unicorn-store-spring
+aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
+kubectl get ns
+kubectl get all -A
 
 echo Create a Kubernetes namespace for the application
 kubectl create namespace $APP_NAME
 
-echo Create a Kubernetes Service Account with a reference to the previous created IAM policy
-eksctl create iamserviceaccount --cluster=$CLUSTER_NAME --name=$APP_NAME --namespace=$APP_NAME \
-   --attach-policy-arn=$(aws iam list-policies --query 'Policies[?PolicyName==`unicorn-eks-service-account-policy`].Arn' --output text) --approve --region=$AWS_REGION
+echo Create a Kubernetes Service Account and associate the previously created IAM role with access to EventBridge and Parameter Store
+kubectl create sa unicorn-store-spring -n unicorn-store-spring
 
-echo Create the Kubernetes External Secret resources
-cat <<EOF | envsubst | kubectl create -f -
-apiVersion: external-secrets.io/v1beta1
-kind: SecretStore
-metadata:
-  name: $APP_NAME-secret-store
-  namespace: $APP_NAME
-spec:
-  provider:
-    aws:
-      service: SecretsManager
-      region: $AWS_REGION
-      auth:
-        jwt:
-          serviceAccountRef:
-            name: $APP_NAME
-EOF
+aws eks create-pod-identity-association --cluster-name unicorn-store \
+  --namespace unicorn-store-spring --service-account unicorn-store-spring \
+  --role-arn arn:aws:iam::$ACCOUNT_ID:role/unicornstore-eks-pod-role
 
+echo Create the Kubernetes External Secret resources in the application namespace to access the database password
 cat <<EOF | kubectl create -f -
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
-  name: $APP_NAME-external-secret
-  namespace: $APP_NAME
+  name: unicorn-store-db-secret
+  namespace: unicorn-store-spring
 spec:
   refreshInterval: 1h
   secretStoreRef:
-    name: $APP_NAME-secret-store
-    kind: SecretStore
+    name: unicorn-store
+    kind: ClusterSecretStore
   target:
     name: unicornstore-db-secret
     creationPolicy: Owner
@@ -52,6 +40,7 @@ spec:
         key: unicornstore-db-secret
         property: password
 EOF
+kubectl get ExternalSecret -n unicorn-store-spring
 
 echo Create a new directory k8s in the application folder
 mkdir ~/environment/$APP_NAME/k8s
