@@ -5,6 +5,7 @@ start_time=`date +%s`
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started ws-deploy-eks-manifests ..." $start_time
 
 CLUSTER_NAME=unicorn-store
+APP_NAME=unicorn-store-spring
 aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 kubectl get ns
 kubectl get all -A
