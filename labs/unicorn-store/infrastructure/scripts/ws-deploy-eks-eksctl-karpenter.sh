@@ -5,7 +5,6 @@ start_time=`date +%s`
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started ws-deploy-eks-eksctl-karpenter ..." $start_time
 
 CLUSTER_NAME=unicorn-store
-APP_NAME=unicorn-store-spring
 
 if [[ -z "${ACCOUNT_ID}" ]]; then
   export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
@@ -142,7 +141,7 @@ EOF
 echo Create service linked role, tag subnets for Karpenter nodes and install Karpenter
 aws iam create-service-linked-role --aws-service-name spot.amazonaws.com || true
 aws ec2 create-tags --resources $UNICORN_SUBNET_PRIVATE_1 $UNICORN_SUBNET_PRIVATE_2 \
---tags Key=karpenter.sh/discovery,Value=unicorn-store
+--tags Key=karpenter.sh/discovery,Value=$CLUSTER_NAME
 
 helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter --version "${KARPENTER_VERSION}" --namespace "${KARPENTER_NAMESPACE}" --create-namespace \
   --set "settings.clusterName=${CLUSTER_NAME}" \
@@ -272,7 +271,7 @@ kubectl get nodes
 
 echo Install the External Secrets Operator
 
-aws eks create-pod-identity-association --cluster-name unicorn-store \
+aws eks create-pod-identity-association --cluster-name $CLUSTER_NAME \
   --namespace external-secrets --service-account external-secrets \
   --role-arn arn:aws:iam::$ACCOUNT_ID:role/unicornstore-eks-eso-role
 
