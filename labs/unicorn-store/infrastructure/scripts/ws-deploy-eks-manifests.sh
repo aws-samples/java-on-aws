@@ -14,10 +14,10 @@ echo Create a Kubernetes namespace for the application
 kubectl create namespace $APP_NAME
 
 echo Create a Kubernetes Service Account and associate the previously created IAM role with access to EventBridge and Parameter Store
-kubectl create sa unicorn-store-spring -n unicorn-store-spring
+kubectl create sa $APP_NAME -n $APP_NAME
 
-aws eks create-pod-identity-association --cluster-name unicorn-store \
-  --namespace unicorn-store-spring --service-account unicorn-store-spring \
+aws eks create-pod-identity-association --cluster-name $CLUSTER_NAME \
+  --namespace $APP_NAME --service-account $APP_NAME \
   --role-arn arn:aws:iam::$ACCOUNT_ID:role/unicornstore-eks-pod-role
 
 echo Create the Kubernetes External Secret resources in the application namespace to access the database password
@@ -26,7 +26,7 @@ apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
   name: unicorn-store-db-secret
-  namespace: unicorn-store-spring
+  namespace: $APP_NAME
 spec:
   refreshInterval: 1h
   secretStoreRef:
@@ -41,7 +41,7 @@ spec:
         key: unicornstore-db-secret
         property: password
 EOF
-kubectl get ExternalSecret -n unicorn-store-spring
+kubectl get ExternalSecret -n $APP_NAME
 
 echo Create a new directory k8s in the application folder
 mkdir ~/environment/$APP_NAME/k8s
