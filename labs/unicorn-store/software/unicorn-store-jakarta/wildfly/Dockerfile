@@ -7,7 +7,7 @@ COPY src ./src/
 RUN mvn clean package
 RUN rm -rf ~/.m2/repository
 
-FROM quay.io/wildfly/wildfly:33.0.0.Final-2-jdk21
+FROM quay.io/wildfly/wildfly:33.0.1.Final-jdk21
 
 ENV POSTGRESQL_JDBC_DRIVER_VERSION=42.7.3
 RUN wget "https://repo1.maven.org/maven2/org/postgresql/postgresql/${POSTGRESQL_JDBC_DRIVER_VERSION}/postgresql-${POSTGRESQL_JDBC_DRIVER_VERSION}.jar" -O $JBOSS_HOME/postgresql.jar
