@@ -6,9 +6,33 @@ start_time=`date +%s`
 
 CLUSTER_NAME=unicorn-store
 APP_NAME=unicorn-store-spring
+
+check_cluster() {
+    cluster_status=$(aws eks describe-cluster --name "$CLUSTER_NAME" --query "cluster.status" --output text 2>/dev/null)
+    if [ "$cluster_status" != "ACTIVE" ]; then
+        echo "EKS cluster is not active. Current status: $cluster_status ..."
+        return 1
+    fi
+    echo "EKS cluster is active."
+    return 0
+}
+
+check_secret_store() {
+    secret_store_exists=$(kubectl get ClusterSecretStore 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        echo "ClusterSecretStore does not exist ..."
+        return 1
+    fi
+    echo "ClusterSecretStore exists."
+    return 0
+}
+
+while ! check_cluster; do sleep 10; done
+
 aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 kubectl get ns
-kubectl get all -A
+
+while ! check_secret_store; do sleep 10; done
 
 echo Create a Kubernetes namespace for the application
 kubectl create namespace $APP_NAME
