@@ -211,7 +211,7 @@ echo "target/*" >> .gitignore
 echo "*.jar" >> .gitignore
 echo "dockerfiles/*" >> .gitignore
 echo "Dockerfile_*" >> .gitignore
-echo "k8s/*" >> .gitignore
+# echo "k8s/*" >> .gitignore
 echo "scripts/*" >> .gitignore
 git add .
 git commit -m "initial commit"
