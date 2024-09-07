@@ -11,8 +11,8 @@ cd ~/environment/unicorn-store-spring
 sed -i '/.*Welcome to the Unicorn Store*/c\        return new ResponseEntity<>("Welcome to the Unicorn Store!", HttpStatus.OK);' ~/environment/unicorn-store-spring/src/main/java/com/unicorn/store/controller/UnicornController.java
 mvn clean package && mv target/store-spring-1.0.0-exec.jar store-spring.jar
 
-cp dockerfiles/Dockerfile_02_multistage Dockerfile
-docker buildx build --load -t unicorn-store-spring:latest .
+cp dockerfiles/Dockerfile_01_original Dockerfile
+docker build -t unicorn-store-spring:latest .
 
 ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring | jq --raw-output '.repositories[0].repositoryUri')
 echo $ECR_URI
