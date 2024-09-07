@@ -4,7 +4,7 @@ echo $(date '+%Y.%m.%d %H:%M:%S')
 start_time=`date +%s`
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started ws-deploy-eks-eksctl-karpenter ..." $start_time
 
-CLUSTER_NAME=unicorn-store
+export CLUSTER_NAME=unicorn-store
 
 if [[ -z "${ACCOUNT_ID}" ]]; then
   export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)

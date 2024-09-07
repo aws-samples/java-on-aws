@@ -4,8 +4,8 @@ echo $(date '+%Y.%m.%d %H:%M:%S')
 start_time=`date +%s`
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Started ws-deploy-eks-manifests ..." $start_time
 
-CLUSTER_NAME=unicorn-store
-APP_NAME=unicorn-store-spring
+export CLUSTER_NAME=unicorn-store
+export APP_NAME=unicorn-store-spring
 
 check_cluster() {
     cluster_status=$(aws eks describe-cluster --name "$CLUSTER_NAME" --query "cluster.status" --output text 2>/dev/null)
