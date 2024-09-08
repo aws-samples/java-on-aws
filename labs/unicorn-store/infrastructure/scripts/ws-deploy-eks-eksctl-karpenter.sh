@@ -292,11 +292,12 @@ spec:
       region: $AWS_REGION
       role: arn:aws:iam::$ACCOUNT_ID:role/unicornstore-eks-eso-sm-role
 EOF
-
+1
 echo Get access to the cluster
 aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 kubectl get ns
 kubectl get all -A
+kubectl get ClusterSecretStore
 
 if [ "$?" -ne 0 ]; then touch ~/ws-deploy-eks-eksctl.failed; else touch ~/ws-deploy-eks-eksctl.completed; fi
 

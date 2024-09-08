@@ -33,6 +33,7 @@ aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 kubectl get ns
 
 while ! check_secret_store; do sleep 10; done
+kubectl get ClusterSecretStore
 
 echo Create a Kubernetes namespace for the application
 kubectl create namespace $APP_NAME
@@ -69,6 +70,8 @@ spec:
         property: password
 EOF
 
+sleep 10
+kubectl get ClusterSecretStore
 kubectl apply -f ~/environment/$APP_NAME/k8s/secret.yaml
 kubectl get ExternalSecret -n $APP_NAME
 
