@@ -61,7 +61,7 @@ check_cluster() {
 }
 
 check_secret_store() {
-    secret_store_exists=$(kubectl get ClusterSecretStore 2>/dev/null)
+    secret_store_exists=$(kubectl get ClusterSecretStore unicorn-store 2>/dev/null)
     if [ $? -ne 0 ]; then
         echo "ClusterSecretStore does not exist ..."
         return 1
@@ -79,7 +79,10 @@ while ! aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME; do
     sleep 10
 done
 
-kubectl get ns
+while ! kubectl get ns; do
+    echo "Failed to get namespaces. Retrying in 10 seconds..."
+    sleep 10
+done
 
 while ! check_secret_store; do sleep 10; done
 kubectl get ClusterSecretStore unicorn-store
