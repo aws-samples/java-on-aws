@@ -29,7 +29,11 @@ check_secret_store() {
 
 while ! check_cluster; do sleep 10; done
 
-aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
+while ! aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME; do
+    echo "Failed to update kubeconfig. Retrying in 10 seconds..."
+    sleep 10
+done
+
 kubectl get ns
 
 while ! check_secret_store; do sleep 10; done
