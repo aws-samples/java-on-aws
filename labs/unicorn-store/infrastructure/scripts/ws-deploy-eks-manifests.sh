@@ -158,6 +158,9 @@ spec:
     app: $APP_NAME
 EOF
 
+git -C ~/environment/unicorn-store-spring add .
+git -C ~/environment/unicorn-store-spring commit -m "add k8s manifests"
+
 echo Deploy the template to EKS cluster
 kubectl apply -f ~/environment/$APP_NAME/k8s/deployment.yaml
 kubectl apply -f ~/environment/$APP_NAME/k8s/service.yaml
