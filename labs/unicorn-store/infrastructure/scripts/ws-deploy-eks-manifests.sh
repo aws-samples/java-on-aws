@@ -158,9 +158,6 @@ spec:
             requests:
               cpu: "1"
               memory: "2Gi"
-            limits:
-              cpu: "1"
-              memory: "2Gi"
           image: ${ECR_URI}:latest
           imagePullPolicy: Always
           env:

@@ -297,7 +297,7 @@ echo Get access to the cluster
 aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
 kubectl get ns
 kubectl get all -A
-kubectl get ClusterSecretStore
+kubectl get ClusterSecretStore unicorn-store
 
 if [ "$?" -ne 0 ]; then touch ~/ws-deploy-eks-eksctl.failed; else touch ~/ws-deploy-eks-eksctl.completed; fi
 
