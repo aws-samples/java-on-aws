@@ -21,6 +21,35 @@ else
   echo AWS_REGION was set to $AWS_REGION
 fi
 
+STACK_NAME="eksctl-$CLUSTER_NAME-podidentityrole-kube-system-karpenter"
+
+check_stack() {
+    STATUS=$(aws cloudformation describe-stacks \
+        --stack-name "$STACK_NAME" \
+        --region "$AWS_REGION" \
+        --query "Stacks[0].StackStatus" \
+        --output text 2>/dev/null)
+
+    case $STATUS in
+        CREATE_COMPLETE|UPDATE_COMPLETE)
+            echo "Stack $STACK_NAME is ready."
+            return 0
+            ;;
+        CREATE_IN_PROGRESS|UPDATE_IN_PROGRESS|UPDATE_COMPLETE_CLEANUP_IN_PROGRESS)
+            echo "Stack $STACK_NAME is still in progress. Current status: $STATUS"
+            return 1
+            ;;
+        *)
+            if [ -z "$STATUS" ]; then
+                echo "Stack $STACK_NAME does not exist or an error occurred while checking."
+            else
+                echo "Stack $STACK_NAME is in an unexpected state: $STATUS"
+            fi
+            return 1
+            ;;
+    esac
+}
+
 check_cluster() {
     cluster_status=$(aws eks describe-cluster --name "$CLUSTER_NAME" --query "cluster.status" --output text 2>/dev/null)
     if [ "$cluster_status" != "ACTIVE" ]; then
@@ -43,6 +72,8 @@ check_secret_store() {
 
 while ! check_cluster; do sleep 10; done
 
+while ! check_stack; do sleep 10; done
+
 while ! aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME; do
     echo "Failed to update kubeconfig. Retrying in 10 seconds..."
     sleep 10
@@ -51,7 +82,7 @@ done
 kubectl get ns
 
 while ! check_secret_store; do sleep 10; done
-kubectl get ClusterSecretStore
+kubectl get ClusterSecretStore unicorn-store
 
 echo Create a Kubernetes namespace for the application
 kubectl create namespace $APP_NAME
@@ -89,9 +120,9 @@ spec:
 EOF
 
 sleep 10
-kubectl get ClusterSecretStore
+kubectl get ClusterSecretStore unicorn-store
 kubectl apply -f ~/environment/$APP_NAME/k8s/secret.yaml
-kubectl get ExternalSecret -n $APP_NAME
+kubectl get ExternalSecret unicorn-store-db-secret -n $APP_NAME
 
 echo Create Kubernetes manifest files for the deployment and the service
 ECR_URI=$(aws ecr describe-repositories --repository-names $APP_NAME \
