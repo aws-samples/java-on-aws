@@ -44,8 +44,11 @@ aws eks create-pod-identity-association --cluster-name $CLUSTER_NAME \
   --namespace $APP_NAME --service-account $APP_NAME \
   --role-arn arn:aws:iam::$ACCOUNT_ID:role/unicornstore-eks-pod-role
 
+echo Create a new directory k8s in the application folder
+mkdir ~/environment/$APP_NAME/k8s
+
 echo Create the Kubernetes External Secret resources in the application namespace to access the database password
-cat <<EOF | kubectl create -f -
+cat <<EOF > ~/environment/$APP_NAME/k8s/secret.yaml
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
@@ -65,10 +68,9 @@ spec:
         key: unicornstore-db-secret
         property: password
 EOF
-kubectl get ExternalSecret -n $APP_NAME
 
-echo Create a new directory k8s in the application folder
-mkdir ~/environment/$APP_NAME/k8s
+kubectl apply -f ~/environment/$APP_NAME/k8s/secret.yaml
+kubectl get ExternalSecret -n $APP_NAME
 
 echo Create Kubernetes manifest files for the deployment and the service
 ECR_URI=$(aws ecr describe-repositories --repository-names $APP_NAME \
