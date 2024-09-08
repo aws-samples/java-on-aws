@@ -229,9 +229,4 @@ curl --location --request POST $SVC_URL'/unicorns' --header 'Content-Type: appli
     "size": "Very big"
 }' | jq
 
-echo Clean up
-docker images --format "{{.Repository}}:{{.Tag}}" | grep unicorn-store-spring | xargs -r docker rmi
-for x in `aws ecr list-images --repository-name unicorn-store-spring --query 'imageIds[*][imageDigest]' --output text`; do aws ecr batch-delete-image --repository-name unicorn-store-spring --image-ids imageDigest=$x; done
-for x in `aws ecr list-images --repository-name unicorn-store-spring --query 'imageIds[*][imageDigest]' --output text`; do aws ecr batch-delete-image --repository-name unicorn-store-spring --image-ids imageDigest=$x; done
-
 ~/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/timeprint.sh "Finished ws-deploy-eks-manifests." $start_time
