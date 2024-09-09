@@ -6,6 +6,15 @@ start_time=`date +%s`
 
 export CLUSTER_NAME=unicorn-store
 
+# Check if script received a parameter and use it as instance type
+if [ $# -ge 1 ] && [ -n "$1" ]; then
+  MNG_INSTANCE_TYPE="$1"
+else
+  MNG_INSTANCE_TYPE="c5.large"
+fi
+
+echo "MNG_INSTANCE_TYPE is set to: $MNG_INSTANCE_TYPE"
+
 if [[ -z "${ACCOUNT_ID}" ]]; then
   export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
   echo ACCOUNT_ID is set to $ACCOUNT_ID
@@ -126,7 +135,7 @@ iamIdentityMappings:
   - system:nodes
 
 managedNodeGroups:
-- instanceType: c5.large
+- instanceType: ${MNG_INSTANCE_TYPE}
   name: mng-x64
   amiFamily: AmazonLinux2023
   privateNetworking: true
