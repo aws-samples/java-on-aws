@@ -183,9 +183,9 @@ spec:
           values: ["spot"]
         - key: karpenter.k8s.aws/instance-category
           operator: In
-          values: ["c", "m"]
+          values: ["c"]
         - key: karpenter.k8s.aws/instance-generation
-          operator: Gt
+          operator: In
           values: ["5"]
       nodeClassRef:
         group: karpenter.k8s.aws
