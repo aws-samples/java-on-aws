@@ -183,13 +183,13 @@ spec:
           values: ["spot"]
         - key: karpenter.k8s.aws/instance-category
           operator: In
-          values: ["c", "m", "t"]
+          values: ["c", "t"]
         - key: karpenter.k8s.aws/instance-generation
           operator: In
           values: ["5", "3"]
         - key: node.kubernetes.io/instance-type
           operator: In
-          values: ["t3.medium"]
+          values: ["c5.xlarge"]
       nodeClassRef:
         group: karpenter.k8s.aws
         kind: EC2NodeClass
