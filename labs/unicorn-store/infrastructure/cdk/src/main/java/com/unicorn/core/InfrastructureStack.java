@@ -214,6 +214,9 @@ public class InfrastructureStack extends Stack {
             .actions(List.of("xray:PutTraceSegments"))
             .resources(List.of("*"))
             .build());
+        unicornStoreEksPodRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+            "unicornstore-eks-pod-role-" + "CloudWatchAgentServerPolicy",
+            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"));
         getEventBridge().grantPutEventsTo(unicornStoreEksPodRole);
         getParamJdbsc().grantRead(unicornStoreEksPodRole);
 
