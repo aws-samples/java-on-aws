@@ -1,4 +1,4 @@
-FROM azul/zulu-openjdk:21-jdk-crac AS builder
+FROM azul/zulu-openjdk:23-jdk-crac AS builder
 
 COPY ./pom.xml ./pom.xml
 COPY src ./src/
@@ -13,7 +13,7 @@ RUN apt-get --fix-missing -qq update \
        mvn --no-transfer-progress -Dmaven.test.skip=true clean package; \
        mv target/store-spring-1.0.0-exec.jar store-spring.jar;"
 
-FROM azul/zulu-openjdk:21-jdk-crac
+FROM azul/zulu-openjdk:23-jdk-crac
 
 COPY scripts/checkpoint.sh /opt/scripts/
 RUN chmod a+x /opt/scripts/checkpoint.sh
