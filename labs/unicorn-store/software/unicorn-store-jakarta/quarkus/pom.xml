@@ -16,7 +16,7 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
 
-        <primefaces.version>14.0.4</primefaces.version>
+        <primefaces.version>14.0.5</primefaces.version>
 
         <myfaces.version>4.0.2</myfaces.version>
         <primefaces-quarkus.version>3.14.4</primefaces-quarkus.version>
