@@ -795,28 +795,28 @@ Resources:
                         
                         date
                         echo '=== Clone Git repository ==='
-                        git clone https://github.com/aws-samples/java-on-aws.git /home/ec2-user/environment/java-on-aws/
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws.git /home/ec2-user/environment/java-on-aws/"
 
                         echo '=== Setup IDE ==='
-                        /home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-ide.sh
+                        sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-ide.sh 2>&1 | tee -a /home/ec2-user/setup-ide.log"
 
                         echo '=== Setup Infrastructure components ==='
-                        /home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-infrastructure.sh
+                        sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-infrastructure.sh 2>&1 | tee -a /home/ec2-user/setup-infrastructure.log"
 
                         echo '=== Setup VPC Peering ==='
-                        /home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-peering.sh
+                        sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-vpc-peering.sh 2>&1 | tee -a /home/ec2-user/setup-vpc-peering.log"
 
                         echo '=== Deploy EKS Cluster ==='
-                        /home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh
+                        sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-eksctl-karpenter.sh 2>&1 | tee -a /home/ec2-user/ws-deploy-eks-eksctl-karpenter.log"
 
                         echo '=== Change Instance profile ==='
-                        /home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-change2user.sh
+                        sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/setup-change2user.sh 2>&1 | tee -a /home/ec2-user/setup-change2user.log"
 
-                        echo '=== Create container image ==='
-                        /home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-containerize2.sh
+                        echo '=== Create a container image ==='
+                        sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-containerize2.sh 2>&1 | tee -a /home/ec2-user/ws-containerize.log"
 
-                        echo '=== Deploy container image ==='
-                        /home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-manifests.sh
+                        echo '=== Setup EKS Cluster and deploy a container image ==='
+                        sudo -H -i -u ec2-user bash -c "/home/ec2-user/environment/java-on-aws/labs/unicorn-store/infrastructure/scripts/ws-deploy-eks-manifests.sh 2>&1 | tee -a /home/ec2-user/ws-deploy-eks-manifests.log"
                       installGitea: ""
                       splashUrl: ""
                       readmeUrl: ""
