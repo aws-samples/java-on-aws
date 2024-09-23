@@ -29,5 +29,13 @@ then
   location=$(aws cloudformation describe-stacks --stack-name UnicornStoreLambdaApp | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "ApiEndpointSpring").OutputValue')
 fi
 
-artillery run -t http://$location -v '{ "url": "/unicorns" }' ~/environment/unicorn-store-spring/scripts/loadtest.yaml
+if [ -n "$2" ] && [ -n "$3" ]
+then
+  artillery run --overrides "{\"config\": { \"phases\": [{ \"duration\": $2, \"arrivalRate\": $3 }] } }" \
+  -t http://$location -v '{ "url": "/unicorns" }' ~/environment/unicorn-store-spring/scripts/loadtest.yaml
+else
+  artillery run \
+  -t http://$location -v '{ "url": "/unicorns" }' ~/environment/unicorn-store-spring/scripts/loadtest.yaml
+fi
+
 exit 0
