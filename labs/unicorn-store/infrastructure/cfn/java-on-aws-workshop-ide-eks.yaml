@@ -42,7 +42,7 @@ Resources:
       InstanceTenancy: default
       Tags:
         - Key: Name
-          Value: IdeFullStack/java-on-aws-workshop/IdeVPC
+          Value: IdeEksStack/java-on-aws-workshop/IdeVPC
   javaonawsworkshopIdeVPCPublicSubnet1Subnet6E964131:
     Type: AWS::EC2::Subnet
     Properties:
@@ -59,7 +59,7 @@ Resources:
         - Key: aws-cdk:subnet-type
           Value: Public
         - Key: Name
-          Value: IdeFullStack/java-on-aws-workshop/IdeVPC/PublicSubnet1
+          Value: IdeEksStack/java-on-aws-workshop/IdeVPC/PublicSubnet1
       VpcId:
         Ref: javaonawsworkshopIdeVPC0F0320A4
   javaonawsworkshopIdeVPCPublicSubnet1RouteTable28BB44D2:
@@ -67,7 +67,7 @@ Resources:
     Properties:
       Tags:
         - Key: Name
-          Value: IdeFullStack/java-on-aws-workshop/IdeVPC/PublicSubnet1
+          Value: IdeEksStack/java-on-aws-workshop/IdeVPC/PublicSubnet1
       VpcId:
         Ref: javaonawsworkshopIdeVPC0F0320A4
   javaonawsworkshopIdeVPCPublicSubnet1RouteTableAssociationB29B5B27:
@@ -92,7 +92,7 @@ Resources:
     Properties:
       Tags:
         - Key: Name
-          Value: IdeFullStack/java-on-aws-workshop/IdeVPC
+          Value: IdeEksStack/java-on-aws-workshop/IdeVPC
   javaonawsworkshopIdeVPCVPCGWA205EE37:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
@@ -305,7 +305,7 @@ Resources:
             Ref: javaonawsworkshopIdeVPCPublicSubnet1Subnet6E964131
       Tags:
         - Key: Name
-          Value: IdeFullStack/java-on-aws-workshop/java-on-aws-workshop
+          Value: IdeEksStack/java-on-aws-workshop/java-on-aws-workshop
       UserData:
         Fn::Base64: "#!/bin/bash"
     DependsOn:
@@ -475,7 +475,7 @@ Resources:
           CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
           Compress: true
           OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
-          TargetOriginId: IdeFullStackjavaonawsworkshopIdeDistributionOrigin1D6F6746E
+          TargetOriginId: IdeEksStackjavaonawsworkshopIdeDistributionOrigin1E28642F7
           ViewerProtocolPolicy: allow-all
         Enabled: true
         HttpVersion: http2
@@ -490,7 +490,7 @@ Resources:
               Fn::GetAtt:
                 - javaonawsworkshop508294B4641a0cee2d30d2eb
                 - PublicDnsName
-            Id: IdeFullStackjavaonawsworkshopIdeDistributionOrigin1D6F6746E
+            Id: IdeEksStackjavaonawsworkshopIdeDistributionOrigin1E28642F7
   javaonawsworkshopIdeBootstrapWaitConditionHandle1A57DDFC:
     Type: AWS::CloudFormation::WaitConditionHandle
   javaonawsworkshopIdeBootstrapWaitConditionF25513B8:
