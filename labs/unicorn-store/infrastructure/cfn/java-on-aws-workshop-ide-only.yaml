@@ -219,6 +219,14 @@ Resources:
       PolicyDocument:
         Statement:
           - Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - javaonawsworkshopIdeLogGroup382A3264
+                - Arn
+          - Action:
               - secretsmanager:DescribeSecret
               - secretsmanager:GetSecretValue
             Effect: Allow
@@ -409,7 +417,11 @@ Resources:
 
                       ssm.send_command(
                           InstanceIds=[instance_id],
-                          DocumentName=ssm_document)
+                          DocumentName=ssm_document,
+                          CloudWatchOutputConfig={
+                              'CloudWatchLogGroupName': event['ResourceProperties']['LogGroupName'],
+                              'CloudWatchOutputEnabled': True
+                          })
 
                       responseData = {'Success': 'Started bootstrapping for instance: '+instance_id}
                   except Exception as e:
@@ -419,9 +431,6 @@ Resources:
                       responseData = {'Error': tb_err}
                   finally:
                       cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
-      Environment:
-        Variables:
-          DiskSize: "50"
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
@@ -432,6 +441,12 @@ Resources:
     DependsOn:
       - javaonawsworkshopIdeBootstrapFunctionServiceRoleDefaultPolicy8A7A1363
       - javaonawsworkshopIdeBootstrapFunctionServiceRole551AE146
+  javaonawsworkshopIdeLogGroup382A3264:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
   javaonawsworkshopIdePasswordSecretA2625EE9:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -444,44 +459,6 @@ Resources:
         SecretStringTemplate: '{"password":""}'
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  javaonawsworkshopOriginRequestPolicyB49A7D86:
-    Type: AWS::CloudFront::OriginRequestPolicy
-    Properties:
-      OriginRequestPolicyConfig:
-        CookiesConfig:
-          CookieBehavior: all
-        HeadersConfig:
-          HeaderBehavior: allViewer
-        Name: IdeOnlyStackjavaonawsworkshopOriginRequestPolicyB9941E69
-        QueryStringsConfig:
-          QueryStringBehavior: all
-  javaonawsworkshopIdeCachePolicy3048C6DF:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        DefaultTTL: 86400
-        MaxTTL: 2592000
-        MinTTL: 1
-        Name: IdeOnlyStackjavaonawsworkshopIdeCachePolicyF5052158-us-east-1
-        ParametersInCacheKeyAndForwardedToOrigin:
-          CookiesConfig:
-            CookieBehavior: all
-          EnableAcceptEncodingBrotli: false
-          EnableAcceptEncodingGzip: false
-          HeadersConfig:
-            HeaderBehavior: whitelist
-            Headers:
-              - Accept-Charset
-              - Authorization
-              - Origin
-              - Accept
-              - Referer
-              - Host
-              - Accept-Language
-              - Accept-Encoding
-              - Accept-Datetime
-          QueryStringsConfig:
-            QueryStringBehavior: all
   javaonawsworkshopIdeDistribution35C8C24C:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -497,8 +474,7 @@ Resources:
             - DELETE
           CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
           Compress: true
-          OriginRequestPolicyId:
-            Ref: javaonawsworkshopOriginRequestPolicyB49A7D86
+          OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
           TargetOriginId: IdeOnlyStackjavaonawsworkshopIdeDistributionOrigin1F2FA3DDB
           ViewerProtocolPolicy: allow-all
         Enabled: true
@@ -524,6 +500,10 @@ Resources:
       Handle:
         Ref: javaonawsworkshopIdeBootstrapWaitConditionHandle1A57DDFC
       Timeout: "3600"
+    DependsOn:
+      - javaonawsworkshopIdeBootstrapDocument47452F5C
+      - javaonawsworkshopInstanceProfile3D31AAC7
+      - javaonawsworkshop508294B4641a0cee2d30d2eb
   javaonawsworkshopIdeBootstrapDocument47452F5C:
     Type: AWS::SSM::Document
     Properties:
@@ -544,16 +524,19 @@ Resources:
                     - |-
                       bash << 'HEREDOC'
                       set -e
-                      set -o xtrace
+
+                      echo "Retrieving IDE password..."
 
                       PASSWORD_SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id "${passwordName}" --query 'SecretString' --output text)
 
                       export IDE_PASSWORD=$(echo "$PASSWORD_SECRET_VALUE" | jq -r '.password')
 
+                      echo "Setting profile variables..."
+
                       # Set some useful variables
                       export TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
                       export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F\" '{print $4}')
-                      export EC2_PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/local-ipv4)
+                      export EC2_PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/local-ipv4)
 
                       tee /etc/profile.d/workshop.sh <<EOF
                       export INSTANCE_IAM_ROLE_NAME="${instanceIamRoleName}"
@@ -565,9 +548,13 @@ Resources:
                       export IDE_DOMAIN="${domain}"
                       export IDE_URL="https://${domain}"
                       export IDE_PASSWORD="$IDE_PASSWORD"
+
+                      alias code="code-server"
                       EOF
 
                       source /etc/profile.d/workshop.sh
+
+                      echo "Setting PS1..."
 
                       # Set PS1
                       tee /etc/profile.d/custom_prompt.sh <<EOF
@@ -576,19 +563,27 @@ Resources:
                       export PROMPT_COMMAND='export PS1="\u:\w:$ "'
                       EOF
 
+                      echo "Generating SSH key..."
+
                       # Generate an SSH key for ec2-user
                       sudo -u ec2-user bash -c "ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa -m pem <<< y"
 
+                      echo "Installing AWS CLI..."
+
                       # Install AWS CLI
-                      curl -L -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip
+                      curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip
                       unzip -q -d /tmp /tmp/aws-cli.zip
                       /tmp/aws/install --update
                       rm -rf /tmp/aws
 
+                      echo "Installing Docker..."
+
                       # Install docker and base package
-                      dnf install -y docker git
+                      dnf install -y -q docker git
                       service docker start
                       usermod -aG docker ec2-user
+
+                      echo "Installing code-server..."
 
                       # Install code-server
                       codeServer=$(dnf list installed code-server | wc -l)
@@ -606,38 +601,46 @@ Resources:
                       bind-addr: 127.0.0.1:8889
                       EOF
 
-                      STARTUP_EDITOR='none'
-
                       # Create default directory for workspace
                       sudo -u ec2-user bash -c 'mkdir -p ~/environment'
 
                       ENVIRONMENT_CONTENTS_ZIP=${environmentContentsZip}
 
                       if [ ! -z "$ENVIRONMENT_CONTENTS_ZIP" ]; then
+                        echo "Adding environments archive..."
+
                         if [[ $ENVIRONMENT_CONTENTS_ZIP == s3:* ]]; then
                           aws s3 cp $ENVIRONMENT_CONTENTS_ZIP /tmp/environment.zip
                         else
-                          curl -Lqs -o /tmp/environment.zip $ENVIRONMENT_CONTENTS_ZIP
+                          curl -LSsf -o /tmp/environment.zip $ENVIRONMENT_CONTENTS_ZIP
                         fi
 
-                        sudo -u ec2-user bash -c 'unzip /tmp/environment.zip -d ~/environment'
+                        sudo -u ec2-user bash -c 'unzip -q /tmp/environment.zip -d ~/environment'
 
                         rm -rf /tmp/environment.zip
                       fi
 
-                      README_URL=${readmeUrl}
+                      STARTUP_EDITOR='none'
+
+                      TERMINAL_ON_STARTUP="${terminalOnStartup}"
+                      README_URL="${readmeUrl}"
 
                       if [ ! -z "$README_URL" ]; then
+                        echo "Adding README..."
                         if [[ $README_URL == s3:* ]]; then
                           aws s3 cp $README_URL /home/ec2-user/environment/README.md
                         else
-                          curl -Lqs -o /home/ec2-user/environment/README.md $README_URL
+                          curl -LSsf -o /home/ec2-user/environment/README.md $README_URL
                         fi
                       fi
 
-                      if [ -f /home/ec2-user/environment/README.md ]; then
+                      if [ "$TERMINAL_ON_STARTUP" = "true" ]; then
+                        STARTUP_EDITOR='terminal'
+                      elif [ -f /home/ec2-user/environment/README.md ]; then
                         STARTUP_EDITOR='readme'
                       fi
+
+                      echo "Configuring code-server..."
 
                       sudo -u ec2-user bash -c 'mkdir -p ~/.local/share/code-server/User'
                       sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/User/settings.json'
@@ -663,6 +666,8 @@ Resources:
                       EOF
 
                       if [ ! -z "${splashUrl}" ]; then
+                      echo "Configuring splash URL..."
+
                       sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/User/tasks.json'
                       tee /home/ec2-user/.local/share/code-server/User/tasks.json << 'EOF'
                       {
@@ -694,6 +699,8 @@ Resources:
                       EOF
                       fi
 
+                      echo "Installing code-server extensions..."
+
                       EXTENSIONS="${extensions}"
 
                       IFS=',' read -ra array <<< "$EXTENSIONS"
@@ -709,18 +716,27 @@ Resources:
                         echo '{ "query": { "folder": "/home/ec2-user/environment" } }' > /home/ec2-user/.local/share/code-server/coder.json
                       fi
 
+                      echo "Restarting code-server..."
+
                       systemctl restart code-server@ec2-user
 
+                      echo "Installing Caddy..."
+
                       # Install caddy
-                      dnf copr enable -y @caddy/caddy epel-9-x86_64
-                      dnf install -y caddy
+                      dnf copr enable -y -q @caddy/caddy epel-9-x86_64
+                      dnf install -y -q caddy
                       systemctl enable --now caddy
 
                       tee /etc/caddy/Caddyfile <<EOF
                       http://${domain} {
-                        reverse_proxy 127.0.0.1:8889
+                        handle /* {
+                          reverse_proxy 127.0.0.1:8889
+                        }
+                        #GITEA
                       }
                       EOF
+
+                      echo "Restarting caddy..."
 
                       systemctl restart caddy
 
@@ -730,6 +746,9 @@ Resources:
                       fi
 
                       ${installGitea}
+
+                      echo "Running custom bootstrap script..."
+
                       ${customBootstrapScript}
                       HEREDOC
 
@@ -780,6 +799,7 @@ Resources:
                       readmeUrl: ""
                       environmentContentsZip: ""
                       extensions: amazonwebservices.aws-toolkit-vscode,amazonwebservices.amazon-q-vscode,ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
+                      terminalOnStartup: "true"
       DocumentFormat: YAML
       DocumentType: Command
       UpdateMethod: NewVersion
@@ -794,6 +814,8 @@ Resources:
         Ref: javaonawsworkshop508294B4641a0cee2d30d2eb
       SsmDocument:
         Ref: javaonawsworkshopIdeBootstrapDocument47452F5C
+      LogGroupName:
+        Ref: javaonawsworkshopIdeLogGroup382A3264
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   javaonawsworkshopIdePasswordExporterFunctionServiceRole97534784:
