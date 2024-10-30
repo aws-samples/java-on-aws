@@ -29,9 +29,9 @@ echo Deleteing vpc peering
 aws ec2 delete-vpc-peering-connection --vpc-peering-connection-id $(aws ec2 describe-vpc-peering-connections --filters "Name=requester-vpc-info.vpc-id,Values=$IDE_VPC_ID" --query 'VpcPeeringConnections[0].VpcPeeringConnectionId' --output text)
 
 echo Deleting ECR images ...
-for x in `aws ecr list-images --repository-name unicorn-store-spring --query 'imageIds[*][imageDigest]' --output text`; do aws ecr batch-delete-image --repository-name unicorn-store-spring --image-ids imageDigest=$x; done
-for x in `aws ecr list-images --repository-name unicorn-store-spring --query 'imageIds[*][imageDigest]' --output text`; do aws ecr batch-delete-image --repository-name unicorn-store-spring --image-ids imageDigest=$x; done
-aws ecr delete-repository --repository-name unicorn-store-spring
+# for x in `aws ecr list-images --repository-name unicorn-store-spring --query 'imageIds[*][imageDigest]' --output text`; do aws ecr batch-delete-image --repository-name unicorn-store-spring --image-ids imageDigest=$x; done
+# for x in `aws ecr list-images --repository-name unicorn-store-spring --query 'imageIds[*][imageDigest]' --output text`; do aws ecr batch-delete-image --repository-name unicorn-store-spring --image-ids imageDigest=$x; done
+aws ecr delete-repository --repository-name unicorn-store-spring --force
 
 # aws codecommit delete-repository --repository-name unicorn-store-spring
 
@@ -41,11 +41,6 @@ pushd ~/environment/java-on-aws/labs/unicorn-store/infrastructure/cdk
 cdk destroy UnicornStoreInfrastructure --force
 cdk destroy UnicornStoreVpc --force
 popd
-
-UNICORN_VPC_ID=$(aws cloudformation describe-stacks --stack-name UnicornStoreVpc --query 'Stacks[0].Outputs[?OutputKey==`idUnicornStoreVPC`].OutputValue' --output text)
-aws ec2 delete-security-group --group-id $(aws ec2 describe-security-groups --filters "Name=vpc-id,Values='$UNICORN_VPC_ID'" --query 'SecurityGroups[?GroupName==`rehost-dbserver-sg`].GroupId' --output text)
-aws ec2 delete-security-group --group-id $(aws ec2 describe-security-groups --filters "Name=vpc-id,Values='$UNICORN_VPC_ID'" --query 'SecurityGroups[?GroupName==`rehost-appserver-sg`].GroupId' --output text)
-aws ec2 delete-security-group --group-id $(aws ec2 describe-security-groups --filters "Name=vpc-id,Values='$UNICORN_VPC_ID'" --query 'SecurityGroups[?GroupName==`rehost-webserver-sg`].GroupId' --output text)
 
 # TODO: delete IAM roles, policies, etc.
 
