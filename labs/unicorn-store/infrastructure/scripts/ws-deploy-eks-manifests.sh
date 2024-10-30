@@ -171,10 +171,12 @@ spec:
             httpGet:
               path: /actuator/health/liveness
               port: 8080
+            failureThreshold: 6
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: 8080
+            failureThreshold: 6
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
