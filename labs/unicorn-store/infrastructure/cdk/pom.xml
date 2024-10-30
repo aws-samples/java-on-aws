@@ -10,8 +10,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <cdk.version>2.155.0</cdk.version>
-        <junit.version>5.11.0</junit.version>
+        <cdk.version>2.163.1</cdk.version>
+        <junit.version>5.11.3</junit.version>
     </properties>
 
     <build>
@@ -29,7 +29,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>3.4.1</version>
+                <version>3.5.0</version>
                 <configuration>
                     <mainClass>com.unicorn.UnicornStoreApp</mainClass>
                 </configuration>
@@ -48,13 +48,13 @@
         <dependency>
             <groupId>io.github.cdklabs</groupId>
             <artifactId>cdknag</artifactId>
-            <version>2.28.194</version>
+            <version>2.29.21</version>
         </dependency>
 
         <dependency>
             <groupId>org.cdk8s</groupId>
             <artifactId>cdk8s</artifactId>
-            <version>2.68.103</version>
+            <version>2.69.10</version>
         </dependency>
         <dependency>
             <groupId>org.cdk8s</groupId>
