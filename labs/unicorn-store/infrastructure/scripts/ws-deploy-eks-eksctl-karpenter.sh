@@ -82,8 +82,8 @@ aws ec2 create-tags --resources $UNICORN_SUBNET_PUBLIC_1 $UNICORN_SUBNET_PUBLIC_
 --tags Key=kubernetes.io/cluster/$CLUSTER_NAME,Value=shared Key=kubernetes.io/role/elb,Value=1
 
 echo Create the cluster with eksctl and settings required for Karpenter
-K8S_VERSION="1.30"
-KARPENTER_VERSION="1.0.0"
+K8S_VERSION="1.31"
+KARPENTER_VERSION="1.0.8"
 KARPENTER_NAMESPACE="kube-system"
 TEMPOUT="$(mktemp)"
 
