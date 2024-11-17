@@ -20,16 +20,29 @@ download_and_verify () {
 ## go to tmp directory
 cd /tmp
 
-sudo yum update
+# sudo yum update
 sudo yum install -y jq
-sudo yum install -y npm
+
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+nvm install node 22
+node -v
+# sudo yum install -y npm
+nvm install-latest-npm
+npm -v
+npm install -g aws-cdk
+cdk version
+npm install -g artillery
+artillery -v
 
 ## Ensure AWS CLI v2 is installed
-sudo yum -y remove aws-cli
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip -q awscliv2.zip
-sudo ./aws/install
-rm awscliv2.zip
+# sudo yum -y remove aws-cli
+# curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+# unzip -q awscliv2.zip
+# sudo ./aws/install
+# rm awscliv2.zip
 aws --version
 
 ## Set JDK 21 as default
@@ -42,7 +55,7 @@ echo "export JAVA_HOME=${JAVA_HOME}" | tee -a ~/.bashrc
 java -version
 
 ## Install Maven
-MVN_VERSION=3.9.6
+MVN_VERSION=3.9.9
 MVN_FOLDERNAME=apache-maven-${MVN_VERSION}
 MVN_FILENAME=apache-maven-${MVN_VERSION}-bin.tar.gz
 curl -4 -L https://archive.apache.org/dist/maven/maven-3/${MVN_VERSION}/binaries/${MVN_FILENAME} | tar -xvz
@@ -61,21 +74,21 @@ rm ./aws-sam-cli-linux-x86_64.zip
 /usr/local/bin/sam --version
 
 ## Install additional dependencies
-sudo npm install -g aws-cdk --force
-cdk version
-sudo npm install -g artillery
+# sudo npm install -g aws-cdk --force
+# cdk version
+# sudo npm install -g artillery
 
 # curl -Lo copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
 # chmod +x copilot
 # sudo mv copilot /usr/local/bin/copilot
 # copilot --version
 
-wget https://github.com/mikefarah/yq/releases/download/v4.43.1/yq_linux_amd64.tar.gz -O - |\
+wget https://github.com/mikefarah/yq/releases/download/v4.44.5/yq_linux_amd64.tar.gz -O - |\
   tar xz && sudo mv yq_linux_amd64 /usr/bin/yq
 yq --version
 
 # Install SOCI related packages and change config
-SOCI_VERSION=0.4.0
+SOCI_VERSION=0.8.0
 wget -q https://github.com/awslabs/soci-snapshotter/releases/download/v$SOCI_VERSION/soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz
 sudo tar -C /usr/local/bin -xvf soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz soci soci-snapshotter-grpc
 cat << EOF | sudo tee /etc/docker/daemon.json
@@ -120,7 +133,7 @@ eksctl version
 
 ## kubectl
 # https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
-curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.30.0/2024-05-12/bin/linux/amd64/kubectl
+curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.31.0/2024-09-12/bin/linux/amd64/kubectl
 chmod +x ./kubectl
 mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
 echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
@@ -144,7 +157,7 @@ chmod 700 get_helm.sh
 helm version
 
 # install eks-node-viewer
-wget -O eks-node-viewer https://github.com/awslabs/eks-node-viewer/releases/download/v0.6.0/eks-node-viewer_Linux_x86_64
+wget -O eks-node-viewer https://github.com/awslabs/eks-node-viewer/releases/download/v0.7.0/eks-node-viewer_Linux_x86_64
 chmod +x eks-node-viewer
 sudo mv -v eks-node-viewer /usr/local/bin
 
