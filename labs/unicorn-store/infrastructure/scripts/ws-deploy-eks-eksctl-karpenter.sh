@@ -167,29 +167,50 @@ cat <<EOF | envsubst | kubectl apply -f -
 apiVersion: karpenter.sh/v1
 kind: NodePool
 metadata:
+  name: dedicated
+spec:
+  weight: 50
+  template:
+    spec:
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["c5.xlarge"]
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      expireAfter: 720h # 30 * 24h = 720h
+  limits:
+    cpu: 20
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
   name: default
 spec:
+  # weight: 50
   template:
     spec:
       requirements:
         - key: kubernetes.io/arch
           operator: In
           values: ["amd64"]
-        - key: kubernetes.io/os
-          operator: In
-          values: ["linux"]
         - key: karpenter.sh/capacity-type
           operator: In
           values: ["spot", "on-demand"]
         - key: karpenter.k8s.aws/instance-category
           operator: In
-          values: ["c", "t"]
+          values: ["c"]
         - key: karpenter.k8s.aws/instance-generation
           operator: In
-          values: ["5", "3"]
-        - key: node.kubernetes.io/instance-type
-          operator: In
-          values: ["c5.xlarge"]
+          values: ["5"]
       nodeClassRef:
         group: karpenter.k8s.aws
         kind: EC2NodeClass
