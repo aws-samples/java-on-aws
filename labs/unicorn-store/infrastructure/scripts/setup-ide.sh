@@ -17,6 +17,9 @@ download_and_verify () {
   rm "$out_file.sha256"
 }
 
+# temporarily disable the libuv use of io_uring https://github.com/amazonlinux/amazon-linux-2023/issues/840
+export UV_USE_IO_URING=0
+
 ## go to tmp directory
 cd /tmp
 
@@ -74,9 +77,9 @@ rm ./aws-sam-cli-linux-x86_64.zip
 /usr/local/bin/sam --version
 
 ## Install additional dependencies
-# sudo npm install -g aws-cdk --force
+# sudo -E npm install -g aws-cdk --force
 # cdk version
-# sudo npm install -g artillery
+# sudo -E npm install -g artillery
 
 # curl -Lo copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
 # chmod +x copilot
