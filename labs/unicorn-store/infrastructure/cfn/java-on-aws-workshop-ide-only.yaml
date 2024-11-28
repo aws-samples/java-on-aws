@@ -261,6 +261,18 @@ Resources:
           - javaonawsworkshopIdePrefixListResource920A7F10
           - PrefixListId
       ToPort: 80
+  javaonawsworkshopIdeSecurityGroupfromInternet8080:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: HTTP 8080 from Internet
+      FromPort: 8080
+      GroupId:
+        Fn::GetAtt:
+          - javaonawsworkshopIdeSecurityGroup34BA1277
+          - GroupId
+      IpProtocol: tcp
+      CidrIp: 0.0.0.0/0
+      ToPort: 8080
   javaonawsworkshopInstanceProfile3D31AAC7:
     Type: AWS::IAM::InstanceProfile
     Properties:
