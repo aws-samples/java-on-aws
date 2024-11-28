@@ -788,7 +788,7 @@ Resources:
                         Fn::GetAtt:
                           - javaonawsworkshopIdeDistribution35C8C24C
                           - DomainName
-                      codeServerVersion: 4.91.1
+                      codeServerVersion: 4.95.3
                       waitConditionHandleUrl:
                         Ref: javaonawsworkshopIdeBootstrapWaitConditionHandle1A57DDFC
                       customBootstrapScript: |
