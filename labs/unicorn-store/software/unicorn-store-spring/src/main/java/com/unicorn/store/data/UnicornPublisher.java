@@ -1,5 +1,6 @@
 package com.unicorn.store.data;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unicorn.store.model.Unicorn;
 import com.unicorn.store.model.UnicornEventType;
@@ -14,10 +15,12 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.eventbridge.EventBridgeAsyncClient;
 import software.amazon.awssdk.services.eventbridge.model.PutEventsRequest;
 import software.amazon.awssdk.services.eventbridge.model.PutEventsRequestEntry;
+import software.amazon.awssdk.services.eventbridge.model.PutEventsResponse;
 
+import java.util.concurrent.CompletableFuture;
 
 @Service
-public class UnicornPublisher {
+public final class UnicornPublisher {
 
     private final ObjectMapper objectMapper;
 
@@ -34,30 +37,32 @@ public class UnicornPublisher {
         createClient();
     }
 
-    public void publish(Unicorn unicorn, UnicornEventType unicornEventType) {
+    public CompletableFuture<PutEventsResponse> publish(Unicorn unicorn, UnicornEventType unicornEventType) {
         try {
             var unicornJson = objectMapper.writeValueAsString(unicorn);
-            logger.info("Publishing ... " + unicornEventType.toString());
-            logger.info(unicornJson);
+            logger.info("Publishing event type: {}", unicornEventType);
+            logger.debug("Event payload: {}", unicornJson);
 
             var eventsRequest = createEventRequestEntry(unicornEventType, unicornJson);
-            eventBridgeClient.putEvents(eventsRequest).get();
-        } catch (Exception e) {
-            logger.error("Error ...");
-            logger.error(e.getMessage());
+            return eventBridgeClient.putEvents(eventsRequest)
+                    .exceptionally(throwable -> {
+                        logger.error("Failed to publish event", throwable);
+                        throw new RuntimeException("Failed to publish event", throwable);
+                    });
+        } catch (JsonProcessingException e) {
+            logger.error("Failed to serialize unicorn object", e);
+            return CompletableFuture.failedFuture(e);
         }
     }
-
+    
     private PutEventsRequest createEventRequestEntry(UnicornEventType unicornEventType, String unicornJson) {
-        var entry = PutEventsRequestEntry.builder()
-                .source("com.unicorn.store")
-                .eventBusName("unicorns")
-                .detailType(unicornEventType.name())
-                .detail(unicornJson)
-                .build();
-
         return PutEventsRequest.builder()
-                .entries(entry)
+                .entries(PutEventsRequestEntry.builder()
+                        .source("com.unicorn.store")
+                        .eventBusName("unicorns")
+                        .detailType(unicornEventType.name())
+                        .detail(unicornJson)
+                        .build())
                 .build();
     }
 
