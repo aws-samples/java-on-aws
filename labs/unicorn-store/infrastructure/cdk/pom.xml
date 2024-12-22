@@ -10,8 +10,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <cdk.version>2.173.2</cdk.version>
-        <junit.version>5.11.3</junit.version>
+        <cdk.version>2.171.2</cdk.version>
+        <junit.version>5.11.4</junit.version>
     </properties>
 
     <build>
@@ -48,13 +48,13 @@
         <dependency>
             <groupId>io.github.cdklabs</groupId>
             <artifactId>cdknag</artifactId>
-            <version>2.34.12</version>
+            <version>2.34.23</version>
         </dependency>
 
         <dependency>
             <groupId>org.cdk8s</groupId>
             <artifactId>cdk8s</artifactId>
-            <version>2.69.22</version>
+            <version>2.69.27</version>
         </dependency>
         <dependency>
             <groupId>org.cdk8s</groupId>
