@@ -54,12 +54,17 @@ public class InfrastructureCore extends Construct {
         database = createRDSPostgresInstance(vpc, databaseSecret);
         eventBridge = createEventBus();
         applicationSecurityGroup = new SecurityGroup(this, "ApplicationSecurityGroup",
-                SecurityGroupProps
-                        .builder()
-                        .securityGroupName("applicationSG")
-                        .vpc(vpc)
-                        .allowAllOutbound(true)
-                        .build());
+            SecurityGroupProps
+                .builder()
+                .securityGroupName("applicationSG")
+                .vpc(vpc)
+                .allowAllOutbound(false)
+                .build());
+        // Add ingress rule to allow all traffic from within the same security group
+        applicationSecurityGroup.getConnections().allowInternally(
+            Port.allTraffic(),
+            "Allow all internal traffic"
+        );
 
         paramJdbc = createParamJdbc();
         secretPassword = createSecretPassword();
