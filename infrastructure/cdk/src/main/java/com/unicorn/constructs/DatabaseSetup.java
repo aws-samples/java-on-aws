@@ -38,7 +38,7 @@ public class DatabaseSetup extends Construct{
                 .code(Code.fromInline(loadFile("/database-setup.py")))
                 .handler("index.lambda_handler")
                 .runtime(Runtime.PYTHON_3_13)
-                .functionName("unicornstore-database-setup")
+                .functionName("unicornstore-db-setup-lambda")
                 .timeout(Duration.minutes(3))
                 .vpc(infrastructureCore.getVpc())
                 .securityGroups(List.of(infrastructureCore.getApplicationSecurityGroup()))

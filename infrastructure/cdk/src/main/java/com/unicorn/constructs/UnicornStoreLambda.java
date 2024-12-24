@@ -1,8 +1,8 @@
 package com.unicorn.constructs;
 
 import com.unicorn.constructs.InfrastructureCore;
-import software.amazon.awscdk.CfnOutput;
-import software.amazon.awscdk.CfnOutputProps;
+// import software.amazon.awscdk.CfnOutput;
+// import software.amazon.awscdk.CfnOutputProps;
 // import software.amazon.awscdk.*;
 import software.amazon.awscdk.services.apigateway.LambdaRestApi;
 import software.amazon.awscdk.services.apigateway.RestApi;
@@ -41,7 +41,7 @@ public class UnicornStoreLambda extends Construct {
         infrastructureCore.getEventBridge().grantPutEventsTo(unicornStoreSpringLambda);
 
         var alias = Alias.Builder.create(this, "UnicornStoreSpringLambdaAlias")
-                .aliasName("unicorn-alias")
+                .aliasName("unicorn-store-spring-alias")
                 .version(unicornStoreSpringLambda.getLatestVersion())
                 .build();
         //Setup a Proxy-Rest API to access the Spring Lambda function
@@ -55,17 +55,18 @@ public class UnicornStoreLambda extends Construct {
                 .build();
 
         //Create output values for later reference
-        new CfnOutput(this, "unicorn-store-spring-function-arn", CfnOutputProps.builder()
-                .value(unicornStoreSpringLambda.getFunctionArn())
-                .build());
+        // Commented out in favour of using aws cli calls directtly to services and SSMparameters
+        // new CfnOutput(this, "unicorn-store-spring-function-arn", CfnOutputProps.builder()
+        //         .value(unicornStoreSpringLambda.getFunctionArn())
+        //         .build());
 
-        new CfnOutput(this, "ApiEndpointSpring", CfnOutputProps.builder()
-                .value(restApi.getUrl())
-                .build());
+        // new CfnOutput(this, "ApiEndpointSpring", CfnOutputProps.builder()
+        //         .value(restApi.getUrl())
+        //         .build());
 
-        new CfnOutput(this, "BucketLambdaCode", CfnOutputProps.builder()
-                .value(lambdaCodeBucket.getBucketName())
-                .build());
+        // new CfnOutput(this, "BucketLambdaCode", CfnOutputProps.builder()
+        //         .value(lambdaCodeBucket.getBucketName())
+        //         .build());
 
         paramBucketName = createParamBucketName();
     }
@@ -73,8 +74,8 @@ public class UnicornStoreLambda extends Construct {
     private StringParameter createParamBucketName() {
         return StringParameter.Builder.create(this, "SsmParameterUnicornStoreSpringBucketName")
             .allowedPattern(".*")
-            .description("UnicornStoreSpringBucketName")
-            .parameterName("unicorn-store-spring-bucket-name")
+            .description("Unicorn Store Lambda code bucket name")
+            .parameterName("unicornstore-lambda-bucket-name")
             .stringValue(lambdaCodeBucket.getBucketName())
             .tier(ParameterTier.STANDARD)
             .build();
@@ -86,7 +87,7 @@ public class UnicornStoreLambda extends Construct {
 
     private RestApi setupRestApi(Alias unicornStoreSpringLambdaAlias) {
         return LambdaRestApi.Builder.create(this, "UnicornStoreSpringApi")
-                .restApiName("UnicornStoreSpringApi")
+                .restApiName("unicorn-store-spring-api")
                 .handler(unicornStoreSpringLambdaAlias)
                 .build();
     }
@@ -96,7 +97,7 @@ public class UnicornStoreLambda extends Construct {
                 // .runtime(Runtime.JAVA_21)
                 // Runtime is placeholder and will be overwritten in the lab
                 .runtime(Runtime.PYTHON_3_13)
-                .functionName("unicorn-store-spring")
+                .functionName("unicorn-store-spring-lambda")
                 .memorySize(2048)
                 .timeout(Duration.seconds(29))
                 // Code is placeholder and will be overwritten in the lab

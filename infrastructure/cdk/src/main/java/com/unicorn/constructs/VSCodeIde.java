@@ -106,7 +106,7 @@ public class VSCodeIde extends Construct {
             .handler("index.lambda_handler")
             .runtime(Runtime.PYTHON_3_13)
             .timeout(Duration.minutes(3))
-            .functionName("unicornstore-vscode-ide-prefix-list")
+            .functionName("unicornstore-vscode-ide-prefix-list-lambda")
             .build();
 
         prefixListFunction.addToRolePolicy(PolicyStatement.Builder.create()
@@ -127,7 +127,7 @@ public class VSCodeIde extends Construct {
         SecurityGroup ideSecurityGroup = SecurityGroup.Builder.create(this, "IdeSecurityGroup")
             .vpc(props.getVpc())
             .allowAllOutbound(true)
-            .securityGroupName("IDE security group")
+            .securityGroupName("unicornstore-cloudfront-ide-sg")
             .description("IDE security group")
             .build();
 
@@ -182,7 +182,7 @@ public class VSCodeIde extends Construct {
             SecurityGroup appSecurityGroup = SecurityGroup.Builder.create(this, "AppSecurityGroup")
                 .vpc(props.getVpc())
                 .allowAllOutbound(true)
-                .securityGroupName("App security group")
+                .securityGroupName("unicornstore-cloudfront-app-sg")
                 .description("App security group")
                 .build();
 
@@ -257,7 +257,7 @@ public class VSCodeIde extends Construct {
                 .secretStringTemplate("{\"password\":\"\"}")
                 .excludeCharacters("\"@/\\\\")
                 .build())
-            .secretName("unicornstore-vscode-ide-password")
+            .secretName("unicornstore-vscode-ide-password-lambda")
             .build();
         ec2Instance.getNode().addDependency(ideSecretsManagerPassword);
 
@@ -322,7 +322,7 @@ public class VSCodeIde extends Construct {
             .handler("index.lambda_handler")
             .runtime(Runtime.PYTHON_3_13)
             .timeout(Duration.minutes(15))
-            .functionName("unicornstore-vscode-ide-bootstrap")
+            .functionName("unicornstore-vscode-ide-bootstrap-lambda")
             .build();
 
         bootstrapFunction.addToRolePolicy(PolicyStatement.Builder.create()
@@ -359,7 +359,7 @@ public class VSCodeIde extends Construct {
                 .handler("index.lambda_handler")
                 .runtime(Runtime.PYTHON_3_13)
                 .timeout(Duration.minutes(3))
-                .functionName("unicornstore-vscode-ide-password")
+                .functionName("unicornstore-vscode-ide-password-lambda")
                 .build();
 
             ideSecretsManagerPassword.grantRead(passwordFunction);

@@ -20,6 +20,7 @@ public class WorkshopIde extends Construct {
     private final InfrastructureCore infrastructureCore;
 
     private final Role ideRole;
+    private final String ideName;
     private final VSCodeIdeProps ideProps;
     private final SecurityGroup additionalSG;
 
@@ -35,13 +36,13 @@ public class WorkshopIde extends Construct {
 
         echo '=== Additional Setup ==='
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-app-setup.sh"
-        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-setup.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-setup.sh"
         # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-containerize.sh"
         # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-deploy-app.sh"
         # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-cleanup-app.sh"
         """;
 
-    public WorkshopIde(final Construct scope, final String id,
+    public WorkshopIde(final Construct scope, final String id, final String ideName,
         final InfrastructureCore infrastructureCore,
         final SecurityGroup additionalSG) {
         super(scope, id);
@@ -50,6 +51,7 @@ public class WorkshopIde extends Construct {
         this.infrastructureCore = infrastructureCore;
 
         this.additionalSG = additionalSG;
+        this.ideName = ideName;
 
         ideRole = createIdeRole();
         ideProps = createIdeProps();
@@ -61,6 +63,7 @@ public class WorkshopIde extends Construct {
         props.setBootstrapScript(bootstrapScript);
         props.setVpc(infrastructureCore.getVpc());
         props.setRole(ideRole);
+        props.setInstanceName(ideName);
         props.setEnableAppSecurityGroup(true);
         props.setInstanceType(InstanceType.of(InstanceClass.M5, InstanceSize.XLARGE));
         if (additionalSG != null) {
@@ -79,7 +82,7 @@ public class WorkshopIde extends Construct {
     private Role createIdeRole() {
         var role = Role.Builder.create(this, "IdeRole")
             .assumedBy(new ServicePrincipal("ec2.amazonaws.com"))
-            .roleName("workshop-ide-user")
+            .roleName("unicornstore-ide-user")
             .build();
         return role;
     }

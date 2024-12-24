@@ -21,7 +21,7 @@ public class UnicornStoreApp {
     public static void main(final String[] args) {
         App app = new App();
 
-        var unicornStoreInfrastructure = new UnicornStoreStack(app, "UnicornStoreInfrastructure");
+        var unicornStoreStack = new UnicornStoreStack(app, "unicornstore-stack");
 
         // var infrastructureStack = new InfrastructureStack(app, "UnicornStoreInfrastructure", StackProps.builder()
         //         .build());
@@ -76,7 +76,7 @@ public class UnicornStoreApp {
                 new NagPackSuppression.Builder().id("CdkNagValidationFailure").reason("Suppress warnings see: https://github.com/cdklabs/cdk-nag/issues/817").build()
         );
 
-        NagSuppressions.addStackSuppressions(unicornStoreInfrastructure, suppression);
+        NagSuppressions.addStackSuppressions(unicornStoreStack, suppression);
         // NagSuppressions.addStackSuppressions(infrastructureStack, suppression);
         // NagSuppressions.addStackSuppressions(unicornStoreSpring, suppression);
         // NagSuppressions.addStackSuppressions(unicornStoreMicronaut, suppression);

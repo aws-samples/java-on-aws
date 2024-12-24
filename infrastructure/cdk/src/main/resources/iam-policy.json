@@ -47,7 +47,6 @@
 			"Resource": [
 				"arn:aws:iam::{{.AccountId}}:role/*unicorn*",
 				"arn:aws:iam::{{.AccountId}}:policy/*unicorn*",
-				"arn:aws:iam::{{.AccountId}}:role/workshop-ide-user",
 				"arn:aws:iam::{{.AccountId}}:policy/*AWSLambdaTracerAccessExecutionRole*"
 			]
 		},

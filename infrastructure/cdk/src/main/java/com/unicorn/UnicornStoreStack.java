@@ -7,8 +7,8 @@ import com.unicorn.constructs.WorkshopIde;
 import com.unicorn.constructs.EksCluster;
 import com.unicorn.constructs.UnicornStoreLambda;
 import software.amazon.awscdk.CfnParameter;
-import software.amazon.awscdk.CfnOutput;
-import software.amazon.awscdk.CfnOutputProps;
+// import software.amazon.awscdk.CfnOutput;
+// import software.amazon.awscdk.CfnOutputProps;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -50,10 +50,10 @@ public class UnicornStoreStack extends Stack {
         databaseSetup.getNode().addDependency(infrastructureCore.getDatabase());
 
         // Create security group for IDE to talk to EKS Cluster
-        var eksIdeSecurityGroup = new SecurityGroup(this, "EksIdeSecurityGroup",
+        var eksIdeSecurityGroup = new SecurityGroup(this, "IdeEksSecurityGroup",
             SecurityGroupProps
                 .builder()
-                .securityGroupName("EKS IDE Security Group")
+                .securityGroupName("unicornstore-ide-eks-sg")
                 .vpc(infrastructureCore.getVpc())
                 .allowAllOutbound(false)
                 .build());
@@ -64,7 +64,7 @@ public class UnicornStoreStack extends Stack {
         );
 
         // Create Workshop IDE
-        var workshopIde = new WorkshopIde(this, "WorkshopIde", infrastructureCore, eksIdeSecurityGroup);
+        var workshopIde = new WorkshopIde(this, "WorkshopIde", "unicornstore-ide", infrastructureCore, eksIdeSecurityGroup);
         var ideRole = workshopIde.getIdeRole();
 
         // Create UnicornStoreLambda

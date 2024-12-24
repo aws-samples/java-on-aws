@@ -1,7 +1,7 @@
 package com.unicorn.constructs;
 
-import software.amazon.awscdk.CfnOutput;
-import software.amazon.awscdk.CfnOutputProps;
+// import software.amazon.awscdk.CfnOutput;
+// import software.amazon.awscdk.CfnOutputProps;
 // import software.amazon.awscdk.*;
 // import software.amazon.awscdk.services.ec2.*;
 import software.amazon.awscdk.services.ec2.IVpc;
@@ -56,7 +56,7 @@ public class InfrastructureCore extends Construct {
         applicationSecurityGroup = new SecurityGroup(this, "ApplicationSecurityGroup",
             SecurityGroupProps
                 .builder()
-                .securityGroupName("applicationSG")
+                .securityGroupName("unicornstore-application-sg")
                 .vpc(vpc)
                 .allowAllOutbound(true)
                 .build());
@@ -76,7 +76,7 @@ public class InfrastructureCore extends Construct {
 
     private SecurityGroup createDatabaseSecurityGroup(IVpc vpc) {
         var databaseSecurityGroup = SecurityGroup.Builder.create(this, "DatabaseSG")
-                .securityGroupName("DatabaseSG")
+                .securityGroupName("unicornstore-db-sg")
                 .allowAllOutbound(false)
                 .vpc(vpc)
                 .build();
@@ -104,13 +104,13 @@ public class InfrastructureCore extends Construct {
             .serverlessV2MinCapacity(0.5)
             .serverlessV2MaxCapacity(4)
             .writer(ClusterInstance.serverlessV2("UnicornStoreDatabaseWriter", ServerlessV2ClusterInstanceProps.builder()
-                .instanceIdentifier("UnicornStoreDatabaseWriter")
+                .instanceIdentifier("unicornstore-db-writer")
                 .autoMinorVersionUpgrade(true)
                 .build()))
             .enableDataApi(true)
             .defaultDatabaseName("unicorns")
-            .clusterIdentifier("UnicornStoreDatabaseCluster")
-            .instanceIdentifierBase("UnicornStoreDatabaseInstance")
+            .clusterIdentifier("unicornstore-db")
+            .instanceIdentifierBase("unicornstore-db-instance")
             .vpc(vpc)
             .vpcSubnets(SubnetSelection.builder()
                 .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
@@ -151,7 +151,7 @@ public class InfrastructureCore extends Construct {
         //         .natGateways(0)
         //         .build();
         IVpc vpc = Vpc.Builder.create(this, "UnicornVpc")
-            .vpcName("UnicornVpc")
+            .vpcName("unicornstore-vpc")
             .ipAddresses(IpAddresses.cidr("10.0.0.0/16"))
             .maxAzs(2)  // Use 2 Availability Zones
             .subnetConfiguration(Arrays.asList(
@@ -169,14 +169,14 @@ public class InfrastructureCore extends Construct {
             .natGateways(1)
             .build();
 
-        new CfnOutput(this, "UnicornStoreVpcId", CfnOutputProps.builder().value(vpc.getVpcId()).build());
+        // new CfnOutput(this, "UnicornStoreVpcId", CfnOutputProps.builder().value(vpc.getVpcId()).build());
         return vpc;
     }
 
     private Secret createSecretPassword() {
         // Separate password value for services which cannot get specific field from Secret json
         return Secret.Builder.create(this, "dbSecretPassword")
-            .secretName("unicornstore-db-secret-password")
+            .secretName("unicornstore-db-password-secret")
             .secretStringValue(SecretValue.secretsManager(databaseSecret.getSecretName(),
                 SecretsManagerSecretOptions.builder().jsonField("password").build()))
             .build();
@@ -189,7 +189,7 @@ public class InfrastructureCore extends Construct {
     private StringParameter createParamJdbc() {
         return StringParameter.Builder.create(this, "SsmParameterDatabaseJDBCConnectionString")
             .allowedPattern(".*")
-            .description("databaseJDBCConnectionString")
+            .description("database JDBC Connection String")
             .parameterName("unicornstore-db-connection-string")
             .stringValue(getDatabaseJDBCConnectionString())
             .tier(ParameterTier.STANDARD)

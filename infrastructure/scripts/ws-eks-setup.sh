@@ -155,6 +155,6 @@ EOF
 
 setup_namespace_and_service_account "unicorn-store-spring" "unicorn-store"
 setup_namespace_and_service_account "unicorn-store-wildfly" "unicorn-store"
-setup_namespace_and_service_account "unicorn-store-quarkus" "unicorn-quarkus"
+setup_namespace_and_service_account "unicorn-store-quarkus" "unicorn-store"
 
 echo "EKS cluster setup is complete."
