@@ -1,5 +1,5 @@
 {
-  "app": "./mvnw -e -q compile exec:java",
+  "app": "mvn -e -q compile exec:java",
   "watch": {
     "include": [
       "**"
