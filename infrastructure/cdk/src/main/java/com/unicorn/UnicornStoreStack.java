@@ -1,7 +1,12 @@
 package com.unicorn;
 
-import com.unicorn.core.InfrastructureConstruct;
-import com.unicorn.constructs.DatabaseSetupConstruct;
+import com.unicorn.constructs.InfrastructureCore;
+import com.unicorn.constructs.InfrastructureImmDay;
+import com.unicorn.constructs.DatabaseSetup;
+import com.unicorn.constructs.WorkshopIde;
+import com.unicorn.constructs.EksCluster;
+import com.unicorn.constructs.UnicornStoreLambda;
+import software.amazon.awscdk.CfnParameter;
 import software.amazon.awscdk.CfnOutput;
 import software.amazon.awscdk.CfnOutputProps;
 import software.amazon.awscdk.Duration;
@@ -23,7 +28,7 @@ import java.util.Map;
 
 public class UnicornStoreStack extends Stack {
 
-    private final InfrastructureConstruct infrastructureConstruct;
+    private final InfrastructureCore infrastructureCore;
 
     public UnicornStoreStack(final Construct scope, final String id) {
         // super(scope, id, props);
@@ -33,18 +38,35 @@ public class UnicornStoreStack extends Stack {
             .build()))
         .build());
 
-        // Create infrastructure
-        this.infrastructureConstruct = new InfrastructureConstruct(this, "InfrastructureConstruct");
+        // Create Core infrastructure
+        this.infrastructureCore = new InfrastructureCore(this, "InfrastructureCore");
+        var accountId = Stack.of(this).getAccount();
 
         // Execute Database setup
-        var databaseSetup = new DatabaseSetupConstruct(this, "UnicornDatabaseConstruct", infrastructureConstruct);
-        databaseSetup.getNode().addDependency(infrastructureConstruct.getDatabase());
-        databaseSetup.getNode().addDependency(infrastructureConstruct.getDatabaseSecret());
+        var databaseSetup = new DatabaseSetup(this, "UnicornDatabaseSetup", infrastructureCore);
+        databaseSetup.getNode().addDependency(infrastructureCore.getDatabase());
 
-        // Create UnicornStoreLambdaConstruct
-        new UnicornStoreLambdaConstruct(this, "UnicornStoreLambdaConstruct", infrastructureConstruct);
+        // Create Workshop IDE
+        var workshopIde = new WorkshopIde(this, "WorkshopIde", infrastructureCore);
+        var ideRole = workshopIde.getIdeRole();
 
+        // Create UnicornStoreLambda
+        new UnicornStoreLambda(this, "UnicornStoreLambda", infrastructureCore);
 
+        // Create Immersion Day additional infrastructure
+        new InfrastructureImmDay(this, "InfrastructureImmDay", infrastructureCore);
+
+        // Create EKS cluster for the workshop
+        var unicornStoreEksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.31",
+            infrastructureCore.getVpc(), infrastructureCore.getApplicationSecurityGroup());
+        unicornStoreEksCluster.createAccessEntry(ideRole.getRoleArn());
+        var isWorkshopStudioAccount = CfnParameter.Builder.create(this, "IsWorkshopStudioAccount")
+            .type("String")
+            .defaultValue("no")
+            .build();
+        if ("yes".equals(isWorkshopStudioAccount.getValueAsString())) {
+            unicornStoreEksCluster.createAccessEntry("arn:aws:iam::" + accountId + ":role/WSParticipantRole");
+        }
 
 
         // var eventBridge = infrastructureConstruct.getEventBridge();

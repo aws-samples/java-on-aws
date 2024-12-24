@@ -1,6 +1,6 @@
 package com.unicorn.constructs;
 
-import com.unicorn.core.InfrastructureConstruct;
+import com.unicorn.constructs.InfrastructureCore;
 // import software.amazon.awscdk.CfnOutput;
 // import software.amazon.awscdk.CfnOutputProps;
 import software.amazon.awscdk.Duration;
@@ -20,39 +20,41 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class DatabaseSetupConstruct extends Construct{
+public class DatabaseSetup extends Construct{
 
-    private final InfrastructureConstruct infrastructureConstruct;
+    private final InfrastructureCore infrastructureCore;
+
     private CustomResource databaseSetupResource;
 
-    public DatabaseSetupConstruct(final Construct scope, final String id,
-        final InfrastructureConstruct infrastructureConstruct) {
+    public DatabaseSetup(final Construct scope, final String id,
+        final InfrastructureCore infrastructureCore) {
         super(scope, id);
 
         // Get previously created infrastructure construct
-        this.infrastructureConstruct = infrastructureConstruct;
+        this.infrastructureCore = infrastructureCore;
 
         if (databaseSetupResource == null) {
             Function databaseSetupFunction = Function.Builder.create(this, "DatabaseSetupFunction")
                 .code(Code.fromInline(loadFile("/database-setup.py")))
                 .handler("index.lambda_handler")
                 .runtime(Runtime.PYTHON_3_13)
-                .functionName("database-setup")
+                .functionName("unicornstore-database-setup")
                 .timeout(Duration.minutes(3))
-                .vpc(infrastructureConstruct.getVpc())
-                .securityGroups(List.of(infrastructureConstruct.getApplicationSecurityGroup()))
+                .vpc(infrastructureCore.getVpc())
+                .securityGroups(List.of(infrastructureCore.getApplicationSecurityGroup()))
                 .build();
 
-            infrastructureConstruct.getDatabaseSecret().grantRead(databaseSetupFunction);
-            infrastructureConstruct.getDatabase().grantDataApiAccess(databaseSetupFunction);
+            infrastructureCore.getDatabaseSecret().grantRead(databaseSetupFunction);
+            infrastructureCore.getDatabase().grantDataApiAccess(databaseSetupFunction);
 
             databaseSetupResource = CustomResource.Builder.create(this, "DatabaseSetupResource")
                 .serviceToken(databaseSetupFunction.getFunctionArn())
                 .properties(Map.of(
-                    "SecretName", infrastructureConstruct.getDatabaseSecret().getSecretName(),
+                    "SecretName", infrastructureCore.getDatabaseSecret().getSecretName(),
                     "SqlStatements", loadFile("/schema.sql")
                 ))
                 .build();
+            databaseSetupResource.getNode().addDependency(infrastructureCore.getDatabase());
         }
 
         // var dbSetupLambdaFunction = createDbSetupLambdaFunction();

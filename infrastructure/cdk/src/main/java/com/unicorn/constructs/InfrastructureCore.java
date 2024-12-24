@@ -1,6 +1,4 @@
-package com.unicorn.core;
-
-import com.unicorn.constructs.DatabaseSetupConstruct;
+package com.unicorn.constructs;
 
 import software.amazon.awscdk.CfnOutput;
 import software.amazon.awscdk.CfnOutputProps;
@@ -28,21 +26,27 @@ import software.amazon.awscdk.services.rds.ClusterInstance;
 import software.amazon.awscdk.services.rds.DatabaseCluster;
 import software.amazon.awscdk.services.rds.DatabaseClusterEngine;
 import software.amazon.awscdk.services.rds.DatabaseSecret;
+import software.amazon.awscdk.services.ssm.ParameterTier;
+import software.amazon.awscdk.services.ssm.StringParameter;
+import software.amazon.awscdk.services.secretsmanager.Secret;
+import software.amazon.awscdk.SecretValue;
+import software.amazon.awscdk.SecretsManagerSecretOptions;
 import software.constructs.Construct;
 
 import java.util.Arrays;
 import java.util.List;
 
-public class InfrastructureConstruct extends Construct {
+public class InfrastructureCore extends Construct {
 
     private final DatabaseSecret databaseSecret;
     private final DatabaseCluster database;
     private final EventBus eventBridge;
     private final IVpc vpc;
     private final ISecurityGroup applicationSecurityGroup;
+    private final StringParameter paramJdbc;
+    private final Secret secretPassword;
 
-
-    public InfrastructureConstruct(final Construct scope, final String id) {
+    public InfrastructureCore(final Construct scope, final String id) {
         super(scope, id);
 
         vpc = createUnicornVpc();
@@ -56,10 +60,13 @@ public class InfrastructureConstruct extends Construct {
                         .vpc(vpc)
                         .allowAllOutbound(true)
                         .build());
+
+        paramJdbc = createParamJdbc();
+        secretPassword = createSecretPassword();
+
         // createEventBridgeVpcEndpoint();
         // createDynamoDBVpcEndpoint();
     }
-
 
     private EventBus createEventBus() {
         return EventBus.Builder.create(this, "UnicornEventBus")
@@ -164,6 +171,33 @@ public class InfrastructureConstruct extends Construct {
 
         new CfnOutput(this, "UnicornStoreVpcId", CfnOutputProps.builder().value(vpc.getVpcId()).build());
         return vpc;
+    }
+
+    private Secret createSecretPassword() {
+        // Separate password value for services which cannot get specific field from Secret json
+        return Secret.Builder.create(this, "dbSecretPassword")
+            .secretName("unicornstore-db-secret-password")
+            .secretStringValue(SecretValue.secretsManager(databaseSecret.getSecretName(),
+                SecretsManagerSecretOptions.builder().jsonField("password").build()))
+            .build();
+    }
+
+    public Secret getSecretPassword() {
+        return secretPassword;
+    }
+
+    private StringParameter createParamJdbc() {
+        return StringParameter.Builder.create(this, "SsmParameterDatabaseJDBCConnectionString")
+            .allowedPattern(".*")
+            .description("databaseJDBCConnectionString")
+            .parameterName("databaseJDBCConnectionString")
+            .stringValue(getDatabaseJDBCConnectionString())
+            .tier(ParameterTier.STANDARD)
+            .build();
+    }
+
+    public StringParameter getParamJdbc() {
+        return paramJdbc;
     }
 
     public EventBus getEventBridge() {

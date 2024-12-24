@@ -65,6 +65,14 @@ public class UnicornStoreApp {
                 new NagPackSuppression.Builder().id("AwsSolutions-S1").reason("Workshop S3 bucket does not need Access Logs").build(),
                 new NagPackSuppression.Builder().id("AwsSolutions-L1").reason("Workshop environment use CDK default Lambdas" ).build(),
                 new NagPackSuppression.Builder().id("AwsSolutions-RDS6").reason("Workshop environment uses user/password authentication").build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-EC28").reason("Workshop instance doesn't need autoscaling").build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-EC29").reason("Workshop instance doesn't need autoscaling").build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-CFR1").reason("Workshop environment should be accessible from any Geo").build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-CFR2").reason("Ephemeral workshop environment does not need WAF").build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-CFR3").reason("Ephemeral workshop environment does not need logging").build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-CFR4").reason("Workshop instance uses http").build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-CFR5").reason("Workshop instance uses http").build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-EKS1").reason("Workshop non-sensitive EKS cluster uses public access" ).build(),
                 new NagPackSuppression.Builder().id("CdkNagValidationFailure").reason("Suppress warnings see: https://github.com/cdklabs/cdk-nag/issues/817").build()
         );
 

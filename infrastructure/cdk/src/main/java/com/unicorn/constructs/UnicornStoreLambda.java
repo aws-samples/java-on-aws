@@ -1,6 +1,6 @@
-package com.unicorn;
+package com.unicorn.constructs;
 
-import com.unicorn.core.InfrastructureConstruct;
+import com.unicorn.constructs.InfrastructureCore;
 import software.amazon.awscdk.CfnOutput;
 import software.amazon.awscdk.CfnOutputProps;
 // import software.amazon.awscdk.*;
@@ -19,23 +19,22 @@ import software.constructs.Construct;
 import java.util.List;
 import java.util.Map;
 
-public class UnicornStoreLambdaConstruct extends Construct {
+public class UnicornStoreLambda extends Construct {
 
-    private final InfrastructureConstruct infrastructureConstruct;
+    private final InfrastructureCore infrastructureCore;
 
-    public UnicornStoreLambdaConstruct(final Construct scope, final String id,
-        final InfrastructureConstruct infrastructureConstruct) {
+    public UnicornStoreLambda(final Construct scope, final String id,
+        final InfrastructureCore infrastructureCore) {
         super(scope, id);
 
         // Get previously created infrastructure construct
-        this.infrastructureConstruct = infrastructureConstruct;
-        var eventBridge = infrastructureConstruct.getEventBridge();
+        this.infrastructureCore = infrastructureCore;
 
         //Create Spring Lambda function
         var unicornStoreSpringLambda = createUnicornLambdaFunction();
 
         //Permission for Spring Boot Lambda Function
-        eventBridge.grantPutEventsTo(unicornStoreSpringLambda);
+        infrastructureCore.getEventBridge().grantPutEventsTo(unicornStoreSpringLambda);
 
         var alias = Alias.Builder.create(this, "UnicornStoreSpringLambdaAlias")
                 .aliasName("unicorn-alias")
@@ -84,11 +83,11 @@ public class UnicornStoreLambdaConstruct extends Construct {
                 .code(Code.fromInline("def handler(event, context):\n    return 'placeholder'"))
                 // .code(Code.fromAsset("../../labs/unicorn-store/software/unicorn-store-spring/src"))
                 .handler("com.unicorn.store.StreamLambdaHandler::handleRequest")
-                .vpc(infrastructureConstruct.getVpc())
-                .securityGroups(List.of(infrastructureConstruct.getApplicationSecurityGroup()))
+                .vpc(infrastructureCore.getVpc())
+                .securityGroups(List.of(infrastructureCore.getApplicationSecurityGroup()))
                 .environment(Map.of(
-                    "SPRING_DATASOURCE_PASSWORD", infrastructureConstruct.getDatabaseSecretString(),
-                    "SPRING_DATASOURCE_URL", infrastructureConstruct.getDatabaseJDBCConnectionString(),
+                    "SPRING_DATASOURCE_PASSWORD", infrastructureCore.getDatabaseSecretString(),
+                    "SPRING_DATASOURCE_URL", infrastructureCore.getDatabaseJDBCConnectionString(),
                     "SPRING_DATASOURCE_HIKARI_maximumPoolSize", "1",
                     "AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME", "500",
                         "JAVA_TOOL_OPTIONS", "-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
