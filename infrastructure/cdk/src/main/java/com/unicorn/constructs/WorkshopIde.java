@@ -7,6 +7,7 @@ import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
+import software.amazon.awscdk.services.ec2.SecurityGroup;
 
 import java.util.Arrays;
 import java.util.List;
@@ -20,6 +21,7 @@ public class WorkshopIde extends Construct {
 
     private final Role ideRole;
     private final VSCodeIdeProps ideProps;
+    private final SecurityGroup additionalSG;
 
     private final String bootstrapScript = """
         date
@@ -40,17 +42,16 @@ public class WorkshopIde extends Construct {
         """;
 
     public WorkshopIde(final Construct scope, final String id,
-        final InfrastructureCore infrastructureCore) {
+        final InfrastructureCore infrastructureCore,
+        final SecurityGroup additionalSG) {
         super(scope, id);
 
         // Get previously created infrastructure construct
         this.infrastructureCore = infrastructureCore;
 
-        ideRole = createIdeRole();
-        infrastructureCore.getEventBridge().grantPutEventsTo(ideRole);
-        infrastructureCore.getParamJdbc().grantRead(ideRole);
-        infrastructureCore.getDatabaseSecret().grantRead(ideRole);
+        this.additionalSG = additionalSG;
 
+        ideRole = createIdeRole();
         ideProps = createIdeProps();
         var ideInstance = createIdeInstance();
     }
@@ -62,7 +63,9 @@ public class WorkshopIde extends Construct {
         props.setRole(ideRole);
         props.setEnableAppSecurityGroup(true);
         props.setInstanceType(InstanceType.of(InstanceClass.M5, InstanceSize.XLARGE));
-        props.setAdditionalSecurityGroups(List.of(infrastructureCore.getApplicationSecurityGroup()));
+        if (additionalSG != null) {
+            props.setAdditionalSecurityGroups(List.of(additionalSG));
+        }
         props.setExtensions(Arrays.asList(
             // "amazonwebservices.aws-toolkit-vscode",
             // "amazonwebservices.amazon-q-vscode",

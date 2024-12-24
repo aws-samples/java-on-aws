@@ -58,13 +58,8 @@ public class InfrastructureCore extends Construct {
                 .builder()
                 .securityGroupName("applicationSG")
                 .vpc(vpc)
-                .allowAllOutbound(false)
+                .allowAllOutbound(true)
                 .build());
-        // Add ingress rule to allow all traffic from within the same security group
-        applicationSecurityGroup.getConnections().allowInternally(
-            Port.allTraffic(),
-            "Allow all internal traffic"
-        );
 
         paramJdbc = createParamJdbc();
         secretPassword = createSecretPassword();
@@ -195,7 +190,7 @@ public class InfrastructureCore extends Construct {
         return StringParameter.Builder.create(this, "SsmParameterDatabaseJDBCConnectionString")
             .allowedPattern(".*")
             .description("databaseJDBCConnectionString")
-            .parameterName("databaseJDBCConnectionString")
+            .parameterName("unicornstore-db-connection-string")
             .stringValue(getDatabaseJDBCConnectionString())
             .tier(ParameterTier.STANDARD)
             .build();

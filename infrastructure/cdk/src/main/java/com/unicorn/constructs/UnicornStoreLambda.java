@@ -12,6 +12,8 @@ import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.s3.BlockPublicAccess;
 import software.amazon.awscdk.services.s3.Bucket;
+import software.amazon.awscdk.services.ssm.ParameterTier;
+import software.amazon.awscdk.services.ssm.StringParameter;
 import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Duration;
 import software.constructs.Construct;
@@ -22,6 +24,8 @@ import java.util.Map;
 public class UnicornStoreLambda extends Construct {
 
     private final InfrastructureCore infrastructureCore;
+    private final StringParameter paramBucketName;
+    private final Bucket lambdaCodeBucket;
 
     public UnicornStoreLambda(final Construct scope, final String id,
         final InfrastructureCore infrastructureCore) {
@@ -43,7 +47,7 @@ public class UnicornStoreLambda extends Construct {
         //Setup a Proxy-Rest API to access the Spring Lambda function
         var restApi = setupRestApi(alias);
 
-        var lambdaCodeBucket = Bucket.Builder
+        lambdaCodeBucket = Bucket.Builder
                 .create(this, "LambdaCodeBucket")
                 .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
                 .enforceSsl(true)
@@ -62,6 +66,22 @@ public class UnicornStoreLambda extends Construct {
         new CfnOutput(this, "BucketLambdaCode", CfnOutputProps.builder()
                 .value(lambdaCodeBucket.getBucketName())
                 .build());
+
+        paramBucketName = createParamBucketName();
+    }
+
+    private StringParameter createParamBucketName() {
+        return StringParameter.Builder.create(this, "SsmParameterUnicornStoreSpringBucketName")
+            .allowedPattern(".*")
+            .description("UnicornStoreSpringBucketName")
+            .parameterName("unicorn-store-spring-bucket-name")
+            .stringValue(lambdaCodeBucket.getBucketName())
+            .tier(ParameterTier.STANDARD)
+            .build();
+    }
+
+    public StringParameter getParamBucketName() {
+        return paramBucketName;
     }
 
     private RestApi setupRestApi(Alias unicornStoreSpringLambdaAlias) {

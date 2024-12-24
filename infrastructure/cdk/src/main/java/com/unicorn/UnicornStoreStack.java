@@ -18,6 +18,9 @@ import software.amazon.awscdk.services.lambda.Alias;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
+import software.amazon.awscdk.services.ec2.Port;
+import software.amazon.awscdk.services.ec2.SecurityGroup;
+import software.amazon.awscdk.services.ec2.SecurityGroupProps;
 import software.constructs.Construct;
 
 import software.amazon.awscdk.DefaultStackSynthesizer;
@@ -46,8 +49,22 @@ public class UnicornStoreStack extends Stack {
         var databaseSetup = new DatabaseSetup(this, "UnicornDatabaseSetup", infrastructureCore);
         databaseSetup.getNode().addDependency(infrastructureCore.getDatabase());
 
+        // Create security group for IDE to talk to EKS Cluster
+        var eksIdeSecurityGroup = new SecurityGroup(this, "EksIdeSecurityGroup",
+            SecurityGroupProps
+                .builder()
+                .securityGroupName("EKS IDE Security Group")
+                .vpc(infrastructureCore.getVpc())
+                .allowAllOutbound(false)
+                .build());
+        // Add ingress rule to allow all traffic from within the same security group
+        eksIdeSecurityGroup.getConnections().allowInternally(
+            Port.allTraffic(),
+            "Allow all internal traffic"
+        );
+
         // Create Workshop IDE
-        var workshopIde = new WorkshopIde(this, "WorkshopIde", infrastructureCore);
+        var workshopIde = new WorkshopIde(this, "WorkshopIde", infrastructureCore, eksIdeSecurityGroup);
         var ideRole = workshopIde.getIdeRole();
 
         // Create UnicornStoreLambda
@@ -58,7 +75,7 @@ public class UnicornStoreStack extends Stack {
 
         // Create EKS cluster for the workshop
         var unicornStoreEksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.31",
-            infrastructureCore.getVpc(), infrastructureCore.getApplicationSecurityGroup());
+            infrastructureCore.getVpc(), eksIdeSecurityGroup);
         unicornStoreEksCluster.createAccessEntry(ideRole.getRoleArn());
         var isWorkshopStudioAccount = CfnParameter.Builder.create(this, "IsWorkshopStudioAccount")
             .type("String")
