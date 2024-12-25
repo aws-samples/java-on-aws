@@ -246,6 +246,7 @@ public class VSCodeIde extends Construct {
             .description("Workshop IDE Url")
             .exportName("IdeUrl")
             .build();
+            outputIdeUrl.overrideLogicalId("IdeUrl");
 
         // Create password secret
         ideSecretsManagerPassword = Secret.Builder.create(this, "IdePasswordSecret")
@@ -268,6 +269,7 @@ public class VSCodeIde extends Construct {
             .exportName("IdePassword")
             .build();
         outputIdePassword.getNode().addDependency(ideSecretsManagerPassword);
+        outputIdePassword.overrideLogicalId("IdePassword");
 
         // Create SSM document
         Map<String, Object> parameters = new HashMap<>();
