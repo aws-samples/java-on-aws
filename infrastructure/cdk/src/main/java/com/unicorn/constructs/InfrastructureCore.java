@@ -109,7 +109,7 @@ public class InfrastructureCore extends Construct {
                 .build()))
             .enableDataApi(true)
             .defaultDatabaseName("unicorns")
-            .clusterIdentifier("unicornstore-db")
+            .clusterIdentifier("unicornstore-db-cluster")
             .instanceIdentifierBase("unicornstore-db-instance")
             .vpc(vpc)
             .vpcSubnets(SubnetSelection.builder()

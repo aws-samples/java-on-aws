@@ -86,10 +86,13 @@ public class UnicornStoreLambda extends Construct {
     }
 
     private RestApi setupRestApi(Alias unicornStoreSpringLambdaAlias) {
-        return LambdaRestApi.Builder.create(this, "UnicornStoreSpringApi")
+        var restApi = LambdaRestApi.Builder.create(this, "UnicornStoreSpringApi")
                 .restApiName("unicorn-store-spring-api")
                 .handler(unicornStoreSpringLambdaAlias)
+                .endpointExportName("ApiEndpointSpring")
                 .build();
+        restApi.getNode().tryRemoveChild("Endpoint");
+        return restApi;
     }
 
     private Function createUnicornLambdaFunction() {
@@ -97,7 +100,7 @@ public class UnicornStoreLambda extends Construct {
                 // .runtime(Runtime.JAVA_21)
                 // Runtime is placeholder and will be overwritten in the lab
                 .runtime(Runtime.PYTHON_3_13)
-                .functionName("unicorn-store-spring-lambda")
+                .functionName("unicorn-store-spring")
                 .memorySize(2048)
                 .timeout(Duration.seconds(29))
                 // Code is placeholder and will be overwritten in the lab
