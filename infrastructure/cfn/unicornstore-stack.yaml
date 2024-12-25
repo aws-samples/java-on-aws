@@ -663,6 +663,7 @@ Resources:
         Fn::GetAtt:
           - UnicornDatabaseSetupDatabaseSetupFunctionAA1BB8E9
           - Arn
+      SqlStatements: CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
       SecretName:
         Fn::Join:
           - "-"
@@ -693,7 +694,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: InfrastructureCorepostgresB0D0C6BB
-      SqlStatements: CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
     DependsOn:
       - InfrastructureCoreUnicornStoreDatabaseF56884BA
       - InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8
@@ -1539,9 +1539,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleName:
-                        Ref: WorkshopIdeIdeRoleF04F5802
-                      splashUrl: ""
+                    - splashUrl: ""
                       instanceIamRoleArn:
                         Fn::GetAtt:
                           - WorkshopIdeIdeRoleF04F5802
@@ -1619,6 +1617,8 @@ Resources:
                         # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-deploy-app.sh"
                         # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-cleanup-app.sh"
                       codeServerVersion: 4.96.2
+                      instanceIamRoleName:
+                        Ref: WorkshopIdeIdeRoleF04F5802
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1755,12 +1755,12 @@ Resources:
         Fn::GetAtt:
           - WorkshopIdeVSCodeIdeIdeBootstrapFunction6BAF9173
           - Arn
-      SsmDocument:
-        Ref: WorkshopIdeVSCodeIdeIdeBootstrapDocumentB5B6B111
       InstanceId:
         Ref: WorkshopIdeVSCodeIdeIdeEC2InstanceDAA2DFCF
       LogGroupName:
         Ref: WorkshopIdeVSCodeIdeIdeLogGroup4753F4D0
+      SsmDocument:
+        Ref: WorkshopIdeVSCodeIdeIdeBootstrapDocumentB5B6B111
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   UnicornStoreLambdaUnicornStoreSpringFunctionServiceRole8C031111:
