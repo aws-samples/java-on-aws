@@ -63,9 +63,12 @@ spec:
 EOF
 
 echo "Deploying External Secrets operator ..."
+
 aws eks create-pod-identity-association --cluster-name $CLUSTER_NAME \
   --namespace external-secrets --service-account external-secrets \
   --role-arn arn:aws:iam::$ACCOUNT_ID:role/unicornstore-eks-eso-role
+
+sleep 10
 
 helm repo add external-secrets https://charts.external-secrets.io
 helm install external-secrets external-secrets/external-secrets -n external-secrets --create-namespace --wait
@@ -82,7 +85,9 @@ spec:
       region: $AWS_REGION
       role: arn:aws:iam::$ACCOUNT_ID:role/unicornstore-eks-eso-sm-role
 EOF
+
 sleep 5
+
 kubectl get ClusterSecretStore unicorn-store
 
 cat <<EOF | envsubst | kubectl create -f -
