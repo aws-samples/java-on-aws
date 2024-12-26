@@ -30,7 +30,7 @@
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>bom</artifactId>
-                <version>2.29.6</version>
+                <version>2.29.37</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -132,17 +132,17 @@
                 <dependency>
                     <groupId>io.opentelemetry.instrumentation</groupId>
                     <artifactId>opentelemetry-aws-sdk-2.2</artifactId>
-                    <version>2.9.0-alpha</version>
+                    <version>2.10.0-alpha</version>
                 </dependency>
                 <dependency>
                     <groupId>io.opentelemetry.contrib</groupId>
                     <artifactId>opentelemetry-aws-xray</artifactId>
-                    <version>1.40.0</version>
+                    <version>1.42.0</version>
                 </dependency>
                 <dependency>
                     <groupId>io.opentelemetry.contrib</groupId>
                     <artifactId>opentelemetry-aws-xray-propagator</artifactId>
-                    <version>1.40.0-alpha</version>
+                    <version>1.42.0-alpha</version>
                 </dependency>
             </dependencies>
         </profile>
