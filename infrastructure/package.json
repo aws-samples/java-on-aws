@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "generate-unicornstore-stack": "cd ./cdk && mvn clean package && cdk synth && cdk synth unicornstore-stack --yaml --path-metadata false --version-reporting false | sed 's/arn:aws:iam::{{.AccountId}}:/!Sub arn:aws:iam::${AWS::AccountId}:/g' > ../cfn/unicornstore-stack.yaml"
+    "generate-unicornstore-stack": "cd ./cdk && mvn clean package && cdk synth && cdk synth unicornstore-stack --yaml --path-metadata false --version-reporting false | sed 's/arn:aws:iam::{{.AccountId}}:/!Sub arn:aws:iam::${AWS::AccountId}:/g' > ../cfn/unicornstore-stack.yaml",
+    "update-workshops-stacks": "cp cfn/unicornstore-stack.yaml ../../java-on-amazon-eks/static/ && cp cfn/unicornstore-stack.yaml ../../java-on-aws-immersion-day/static/"
   },
   "author": "",
   "license": "ISC",

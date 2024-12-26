@@ -80,9 +80,12 @@ public class InfrastructureImmDay extends Construct {
             "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"));
 
         // Create the App Runner service-linked role
+        Long tsLong = System.currentTimeMillis()/1000;
+        String timestamp = tsLong.toString();
         CfnServiceLinkedRole appRunnerServiceLinkedRole = CfnServiceLinkedRole.Builder.create(this, "AppRunnerServiceLinkedRole")
             .awsServiceName("apprunner.amazonaws.com")
             .description("Service-linked role for AWS App Runner service")
+            .customSuffix(timestamp)
             .build();
     }
 

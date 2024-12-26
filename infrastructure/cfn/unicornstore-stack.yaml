@@ -1294,8 +1294,8 @@ Resources:
         parameters:
           BootstrapScript:
             default: ""
-            type: String
             description: (Optional) Custom bootstrap script to run.
+            type: String
         mainSteps:
           - inputs:
               runCommand:
@@ -1541,34 +1541,19 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
-                      waitConditionHandleUrl:
-                        Ref: WorkshopIdeVSCodeIdeIdeBootstrapWaitConditionHandle711EF348
-                      readmeUrl: ""
+                    - splashUrl: ""
                       instanceIamRoleArn:
                         Fn::GetAtt:
                           - WorkshopIdeIdeRoleF04F5802
                           - Arn
-                      splashUrl: ""
-                      instanceIamRoleName:
-                        Ref: WorkshopIdeIdeRoleF04F5802
-                      codeServerVersion: 4.96.2
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup-ide.sh"
-
-                        echo '=== Additional Setup ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-app-setup.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-setup.sh"
-                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-containerize.sh"
-                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-deploy-app.sh"
-                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-cleanup-app.sh"
+                      readmeUrl: ""
+                      waitConditionHandleUrl:
+                        Ref: WorkshopIdeVSCodeIdeIdeBootstrapWaitConditionHandle711EF348
+                      extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
+                      domain: ""
+                      installGitea: echo bootstrapGitea was not provided
+                      terminalOnStartup: "true"
+                      environmentContentsZip: ""
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1617,10 +1602,25 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: WorkshopIdeVSCodeIdeIdePasswordSecret350BFDC8
-                      environmentContentsZip: ""
-                      terminalOnStartup: "true"
-                      installGitea: echo bootstrapGitea was not provided
-                      domain: ""
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup-ide.sh"
+
+                        echo '=== Additional Setup ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-app-setup.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-setup.sh"
+                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-containerize.sh"
+                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-deploy-app.sh"
+                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-cleanup-app.sh"
+                      codeServerVersion: 4.96.2
+                      instanceIamRoleName:
+                        Ref: WorkshopIdeIdeRoleF04F5802
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1759,10 +1759,10 @@ Resources:
           - Arn
       InstanceId:
         Ref: WorkshopIdeVSCodeIdeIdeEC2InstanceDAA2DFCF
-      SsmDocument:
-        Ref: WorkshopIdeVSCodeIdeIdeBootstrapDocumentB5B6B111
       LogGroupName:
         Ref: WorkshopIdeVSCodeIdeIdeLogGroup4753F4D0
+      SsmDocument:
+        Ref: WorkshopIdeVSCodeIdeIdeBootstrapDocumentB5B6B111
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   UnicornStoreLambdaUnicornStoreSpringFunctionServiceRole8C031111:
@@ -1826,6 +1826,9 @@ Resources:
               - - "{{resolve:secretsmanager:"
                 - Ref: InfrastructureCorepostgresB0D0C6BB
                 - :SecretString:password::}}
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
+          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
+          SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
           SPRING_DATASOURCE_URL:
             Fn::Join:
               - ""
@@ -1834,9 +1837,6 @@ Resources:
                     - InfrastructureCoreUnicornStoreDatabaseF56884BA
                     - Endpoint.Address
                 - :5432/unicorns
-          SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
-          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
-          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
       FunctionName: unicorn-store-spring
       Handler: com.unicorn.store.StreamLambdaHandler::handleRequest
       MemorySize: 2048
@@ -2186,6 +2186,7 @@ Resources:
     Type: AWS::IAM::ServiceLinkedRole
     Properties:
       AWSServiceName: apprunner.amazonaws.com
+      CustomSuffix: "1735236502"
       Description: Service-linked role for AWS App Runner service
   InfrastructureImmDayUnicornStoreEcsTaskRole507FE17B:
     Type: AWS::IAM::Role
