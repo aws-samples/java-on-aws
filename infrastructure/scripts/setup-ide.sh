@@ -132,6 +132,11 @@ source /etc/profile.d/workshop.sh
 aws configure set default.region ${AWS_REGION}
 aws configure get default.region
 
+# Resolution for When creating the first service in the account
+aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
+aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com 2>/dev/null || true
+aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
+
 # env
 
 echo "IDE setup is complete."

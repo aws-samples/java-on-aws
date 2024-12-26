@@ -3,7 +3,7 @@ package com.unicorn.constructs;
 import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.iam.ArnPrincipal;
-import software.amazon.awscdk.services.iam.CfnServiceLinkedRole;
+// import software.amazon.awscdk.services.iam.CfnServiceLinkedRole;
 import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
@@ -79,14 +79,14 @@ public class InfrastructureImmDay extends Construct {
             "UnicornStoreApprunnerEcrAccessRole-" + "AWSAppRunnerServicePolicyForECRAccess",
             "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"));
 
-        // Create the App Runner service-linked role
-        Long tsLong = System.currentTimeMillis()/1000;
-        String timestamp = tsLong.toString();
-        CfnServiceLinkedRole appRunnerServiceLinkedRole = CfnServiceLinkedRole.Builder.create(this, "AppRunnerServiceLinkedRole")
-            .awsServiceName("apprunner.amazonaws.com")
-            .description("Service-linked role for AWS App Runner service")
-            .customSuffix(timestamp)
-            .build();
+        // // Create the App Runner service-linked role
+        // Long tsLong = System.currentTimeMillis()/1000;
+        // String timestamp = tsLong.toString();
+        // CfnServiceLinkedRole appRunnerServiceLinkedRole = CfnServiceLinkedRole.Builder.create(this, "AppRunnerServiceLinkedRole")
+        //     .awsServiceName("apprunner.amazonaws.com")
+        //     .description("Service-linked role for AWS App Runner service")
+        //     .customSuffix(timestamp)
+        //     .build();
     }
 
     private void createRolesEcs() {

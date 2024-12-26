@@ -2182,12 +2182,6 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
       RoleName: unicornstore-apprunner-ecr-access-role
-  InfrastructureImmDayAppRunnerServiceLinkedRoleEE3034CE:
-    Type: AWS::IAM::ServiceLinkedRole
-    Properties:
-      AWSServiceName: apprunner.amazonaws.com
-      CustomSuffix: "1735236502"
-      Description: Service-linked role for AWS App Runner service
   InfrastructureImmDayUnicornStoreEcsTaskRole507FE17B:
     Type: AWS::IAM::Role
     Properties:
