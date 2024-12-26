@@ -1,0 +1,112 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "AllowedServicesEKS",
+			"Action": [
+				"cloudwatch:*",
+				"codewhisperer:*",
+				"ecr:*",
+				"eks:*",
+				"events:*",
+				"q:*",
+				"secretsmanager:*",
+				"ssm:*",
+				"sts:*"
+			],
+			"Resource": "*",
+			"Effect": "Allow"
+		},
+		{
+			"Sid": "PassRoleEKS",
+			"Action": [
+				"iam:PassRole"
+			],
+			"Resource": [
+				"arn:aws:iam::{{.AccountId}}:role/unicorn*"
+			],
+			"Effect": "Allow"
+		},
+		{
+			"Sid": "IamLimitedAccessForUnicorns",
+			"Effect": "Allow",
+			"Action": [
+				"iam:CreateRole",
+				"iam:TagRole",
+				"iam:DeleteRole",
+				"iam:CreatePolicy",
+				"iam:CreatePolicyVersion",
+				"iam:DeletePolicy",
+				"iam:DeletePolicyVersion",
+				"iam:AttachRolePolicy",
+				"iam:DetachRolePolicy",
+				"iam:PutRolePolicy",
+				"iam:DeleteRolePolicy",
+				"iam:PassRole"
+			],
+			"Resource": [
+				"arn:aws:iam::{{.AccountId}}:role/*unicorn*",
+				"arn:aws:iam::{{.AccountId}}:policy/*unicorn*",
+				"arn:aws:iam::{{.AccountId}}:policy/*AWSLambdaTracerAccessExecutionRole*"
+			]
+		},
+		{
+			"Sid": "AllowedServicesOthers",
+			"Effect": "Allow",
+			"Action": [
+				"cloudformation:*",
+				"codeartifact:*",
+				"apprunner:*",
+				"ec2:*",
+				"ecs:*",
+				"elasticloadbalancing:*",
+				"xray:*",
+				"logs:*",
+				"lambda:*",
+				"dynamodb:*",
+				"s3:*",
+				"tag:*",
+				"application-signals:*"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "DenyXXLInstances",
+			"Effect": "Deny",
+			"Action": "ec2:RunInstances",
+			"Condition": {
+			"StringLike": {
+				"ec2:InstanceType": [
+				"*4xlarge",
+				"*6xlarge",
+				"*8xlarge",
+				"*9xlarge",
+				"*10xlarge",
+				"*12xlarge",
+				"*16xlarge",
+				"*18xlarge",
+				"*24xlarge",
+				"f1*",
+				"x1*",
+				"z1*",
+				"*metal"
+				]
+			}
+			},
+			"Resource": ["arn:aws:ec2:*:*:instance/*"]
+		},
+		{
+			"Sid": "DenyReservations",
+			"Effect": "Deny",
+			"Action": [
+				"ec2:ModifyReservedInstances",
+				"ec2:PurchaseHostReservation",
+				"ec2:PurchaseReservedInstancesOffering",
+				"ec2:PurchaseScheduledInstances",
+				"rds:PurchaseReservedDBInstancesOffering",
+				"dynamodb:PurchaseReservedCapacityOfferings"
+			],
+			"Resource": "*"
+		}
+	]
+  }

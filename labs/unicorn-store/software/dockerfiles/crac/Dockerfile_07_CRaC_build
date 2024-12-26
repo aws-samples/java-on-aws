@@ -15,6 +15,6 @@ RUN apt-get --fix-missing -qq update \
 
 FROM azul/zulu-openjdk:21-jdk-crac
 
-COPY scripts/checkpoint.sh /opt/scripts/
+COPY ./checkpoint.sh /opt/scripts/
 RUN chmod a+x /opt/scripts/checkpoint.sh
 COPY --from=builder store-spring.jar store-spring.jar
