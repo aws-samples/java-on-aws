@@ -820,6 +820,8 @@ Resources:
             Resource:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/*unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:policy/*unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/*Unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*Unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:policy/*AWSLambdaTracerAccessExecutionRole*
             Sid: IamLimitedAccessForUnicorns
           - Action:
@@ -1291,9 +1293,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            description: (Optional) Custom bootstrap script to run.
             default: ""
             type: String
+            description: (Optional) Custom bootstrap script to run.
         mainSteps:
           - inputs:
               runCommand:
@@ -1539,7 +1541,16 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleName:
+                    - extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
+                      waitConditionHandleUrl:
+                        Ref: WorkshopIdeVSCodeIdeIdeBootstrapWaitConditionHandle711EF348
+                      readmeUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - WorkshopIdeIdeRoleF04F5802
+                          - Arn
+                      splashUrl: ""
+                      instanceIamRoleName:
                         Ref: WorkshopIdeIdeRoleF04F5802
                       codeServerVersion: 4.96.2
                       customBootstrapScript: |
@@ -1610,15 +1621,6 @@ Resources:
                       terminalOnStartup: "true"
                       installGitea: echo bootstrapGitea was not provided
                       domain: ""
-                      extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
-                      waitConditionHandleUrl:
-                        Ref: WorkshopIdeVSCodeIdeIdeBootstrapWaitConditionHandle711EF348
-                      readmeUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - WorkshopIdeIdeRoleF04F5802
-                          - Arn
-                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1818,6 +1820,12 @@ Resources:
               return 'placeholder'
       Environment:
         Variables:
+          SPRING_DATASOURCE_PASSWORD:
+            Fn::Join:
+              - ""
+              - - "{{resolve:secretsmanager:"
+                - Ref: InfrastructureCorepostgresB0D0C6BB
+                - :SecretString:password::}}
           SPRING_DATASOURCE_URL:
             Fn::Join:
               - ""
@@ -1829,12 +1837,6 @@ Resources:
           SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
           AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
           JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
-          SPRING_DATASOURCE_PASSWORD:
-            Fn::Join:
-              - ""
-              - - "{{resolve:secretsmanager:"
-                - Ref: InfrastructureCorepostgresB0D0C6BB
-                - :SecretString:password::}}
       FunctionName: unicorn-store-spring
       Handler: com.unicorn.store.StreamLambdaHandler::handleRequest
       MemorySize: 2048
