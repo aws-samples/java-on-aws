@@ -1,9 +1,5 @@
 package com.unicorn.constructs;
 
-import com.unicorn.constructs.InfrastructureCore;
-// import software.amazon.awscdk.CfnOutput;
-// import software.amazon.awscdk.CfnOutputProps;
-// import software.amazon.awscdk.*;
 import software.amazon.awscdk.services.apigateway.LambdaRestApi;
 import software.amazon.awscdk.services.apigateway.RestApi;
 import software.amazon.awscdk.services.lambda.Alias;

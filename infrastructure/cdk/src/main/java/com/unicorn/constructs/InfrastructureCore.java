@@ -1,9 +1,5 @@
 package com.unicorn.constructs;
 
-// import software.amazon.awscdk.CfnOutput;
-// import software.amazon.awscdk.CfnOutputProps;
-// import software.amazon.awscdk.*;
-// import software.amazon.awscdk.services.ec2.*;
 import software.amazon.awscdk.services.ec2.IVpc;
 import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.ec2.Port;
@@ -12,12 +8,10 @@ import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.SubnetConfiguration;
-import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.ISecurityGroup;
 import software.amazon.awscdk.services.ec2.SecurityGroupProps;
 import software.amazon.awscdk.services.ec2.IpAddresses;
 import software.amazon.awscdk.services.events.EventBus;
-// import software.amazon.awscdk.services.rds.*;
 import software.amazon.awscdk.services.rds.AuroraPostgresClusterEngineProps;
 import software.amazon.awscdk.services.rds.ServerlessV2ClusterInstanceProps;
 import software.amazon.awscdk.services.rds.AuroraPostgresEngineVersion;

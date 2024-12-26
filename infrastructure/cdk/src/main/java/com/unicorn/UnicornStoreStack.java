@@ -7,17 +7,8 @@ import com.unicorn.constructs.WorkshopIde;
 import com.unicorn.constructs.EksCluster;
 import com.unicorn.constructs.UnicornStoreLambda;
 import software.amazon.awscdk.CfnParameter;
-// import software.amazon.awscdk.CfnOutput;
-// import software.amazon.awscdk.CfnOutputProps;
-import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
-import software.amazon.awscdk.services.apigateway.LambdaRestApi;
-import software.amazon.awscdk.services.apigateway.RestApi;
-import software.amazon.awscdk.services.lambda.Alias;
-import software.amazon.awscdk.services.lambda.Code;
-import software.amazon.awscdk.services.lambda.Function;
-import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SecurityGroupProps;
@@ -25,9 +16,6 @@ import software.constructs.Construct;
 
 import software.amazon.awscdk.DefaultStackSynthesizer;
 import software.amazon.awscdk.DefaultStackSynthesizerProps;
-
-import java.util.List;
-import java.util.Map;
 
 public class UnicornStoreStack extends Stack {
 

@@ -7,8 +7,6 @@ import java.util.List;
 // import com.unicorn.alternatives.UnicornStoreQuarkus;
 // import com.unicorn.alternatives.UnicornStoreSpringGraalVM;
 // import com.unicorn.core.InfrastructureStack;
-import com.unicorn.UnicornStoreStack;
-
 import io.github.cdklabs.cdknag.AwsSolutionsChecks;
 import io.github.cdklabs.cdknag.NagPackSuppression;
 import io.github.cdklabs.cdknag.NagSuppressions;

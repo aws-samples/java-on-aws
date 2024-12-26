@@ -1,24 +1,17 @@
 package com.unicorn.constructs;
 
-import com.unicorn.constructs.InfrastructureCore;
-
-// import software.amazon.awscdk.CfnOutput;
-// import software.amazon.awscdk.CfnOutputProps;
 import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.iam.ArnPrincipal;
+import software.amazon.awscdk.services.iam.CfnServiceLinkedRole;
 import software.amazon.awscdk.services.iam.Effect;
-import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.ecr.Repository;
 import software.amazon.awscdk.RemovalPolicy;
-import software.amazon.awscdk.services.ec2.SubnetSelection;
-import software.amazon.awscdk.services.ec2.SubnetType;
-import software.amazon.awscdk.services.apprunner.alpha.VpcConnector;
+// import software.amazon.awscdk.services.apprunner.alpha.VpcConnector;
 import software.constructs.Construct;
 
-import java.util.Arrays;
 import java.util.List;
 
 // Additional infrastructure for Java on AWS Immersion Day
@@ -38,7 +31,7 @@ public class InfrastructureImmDay extends Construct {
         ecrRepository = createEcr();
 
         createRolesAppRunner();
-        createVpcConnector();
+        // createVpcConnector();
         createRolesEcs();
         createRolesEks();
     }
@@ -56,15 +49,15 @@ public class InfrastructureImmDay extends Construct {
         return ecrRepository;
     }
 
-    private void createVpcConnector() {
-        VpcConnector.Builder.create(this, "UnicornStoreVpcConnector")
-            .vpc(infrastructureCore.getVpc())
-            .vpcSubnets(SubnetSelection.builder()
-                .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
-                .build())
-            .vpcConnectorName("unicornstore-vpc-connector")
-            .build();
-    }
+    // private void createVpcConnector() {
+    //     VpcConnector.Builder.create(this, "UnicornStoreVpcConnector")
+    //         .vpc(infrastructureCore.getVpc())
+    //         .vpcSubnets(SubnetSelection.builder()
+    //             .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
+    //             .build())
+    //         .vpcConnectorName("unicornstore-vpc-connector")
+    //         .build();
+    // }
 
     private void createRolesAppRunner() {
         var unicornStoreApprunnerRole = Role.Builder.create(this, "UnicornStoreApprunnerRole")
@@ -85,6 +78,12 @@ public class InfrastructureImmDay extends Construct {
         appRunnerECRAccessRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
             "UnicornStoreApprunnerEcrAccessRole-" + "AWSAppRunnerServicePolicyForECRAccess",
             "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"));
+
+        // Create the App Runner service-linked role
+        CfnServiceLinkedRole appRunnerServiceLinkedRole = CfnServiceLinkedRole.Builder.create(this, "AppRunnerServiceLinkedRole")
+            .awsServiceName("apprunner.amazonaws.com")
+            .description("Service-linked role for AWS App Runner service")
+            .build();
     }
 
     private void createRolesEcs() {

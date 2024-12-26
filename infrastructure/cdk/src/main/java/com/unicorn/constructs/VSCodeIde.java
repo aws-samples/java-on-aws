@@ -32,8 +32,6 @@ import software.amazon.awscdk.services.iam.InstanceProfile;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.iam.PolicyDocument;
 import software.amazon.awscdk.services.iam.PolicyStatement;
-import software.amazon.awscdk.services.iam.Role;
-import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
@@ -45,8 +43,6 @@ import software.amazon.awscdk.services.ssm.CfnDocument;
 import software.amazon.awscdk.CfnOutput;
 
 import software.constructs.Construct;
-
-import com.unicorn.constructs.VSCodeIdeProps;
 import org.json.JSONObject;
 
 import java.io.IOException;

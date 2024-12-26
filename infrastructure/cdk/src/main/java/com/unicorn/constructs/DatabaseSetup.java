@@ -1,8 +1,5 @@
 package com.unicorn.constructs;
 
-import com.unicorn.constructs.InfrastructureCore;
-// import software.amazon.awscdk.CfnOutput;
-// import software.amazon.awscdk.CfnOutputProps;
 import software.amazon.awscdk.Duration;
 // import software.amazon.awscdk.services.ec2.IInterfaceVpcEndpoint;
 // import software.amazon.awscdk.services.ec2.InterfaceVpcEndpoint;
@@ -22,16 +19,11 @@ import java.nio.file.Path;
 
 public class DatabaseSetup extends Construct{
 
-    private final InfrastructureCore infrastructureCore;
-
     private CustomResource databaseSetupResource;
 
     public DatabaseSetup(final Construct scope, final String id,
         final InfrastructureCore infrastructureCore) {
         super(scope, id);
-
-        // Get previously created infrastructure construct
-        this.infrastructureCore = infrastructureCore;
 
         if (databaseSetupResource == null) {
             Function databaseSetupFunction = Function.Builder.create(this, "DatabaseSetupFunction")

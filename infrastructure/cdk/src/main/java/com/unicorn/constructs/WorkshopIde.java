@@ -1,8 +1,5 @@
 package com.unicorn.constructs;
 
-import com.unicorn.constructs.InfrastructureCore;
-import com.unicorn.constructs.VSCodeIde;
-import com.unicorn.constructs.VSCodeIdeProps;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
@@ -29,7 +26,7 @@ public class WorkshopIde extends Construct {
 
         echo '=== Clone Git repository ==='
         sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-        sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
 
         echo '=== Setup IDE ==='
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup-ide.sh"
@@ -65,7 +62,7 @@ public class WorkshopIde extends Construct {
         props.setRole(ideRole);
         props.setInstanceName(ideName);
         props.setEnableAppSecurityGroup(true);
-        props.setInstanceType(InstanceType.of(InstanceClass.M5, InstanceSize.XLARGE));
+        props.setInstanceType(InstanceType.of(InstanceClass.T3, InstanceSize.MEDIUM));
         if (additionalSG != null) {
             props.setAdditionalSecurityGroups(List.of(additionalSG));
         }
