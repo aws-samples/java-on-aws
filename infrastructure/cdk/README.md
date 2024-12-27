@@ -3,7 +3,14 @@
 This project is used to deploy the needed infrastructure resources to run the Unicorn Store.
 Please follow the workshop instructions on how to properly configure the environment.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+```bash
+# go to infrastructure folder
+cd infrastructure
+# build cdk project and generate unicornstore-stack
+npm run generate-unicornstore-stack
+# copy unicornstore-stack.yaml to java-on-amazon-eks and java-on-aws-immersion-day folder one level up
+npm run update-workshops-stacks
+```
 
 It is a [Maven](https://maven.apache.org/) based project, so you can open this project with any Maven compatible Java IDE to build and run tests.
 
