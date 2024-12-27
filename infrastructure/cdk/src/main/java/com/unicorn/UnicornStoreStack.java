@@ -6,12 +6,12 @@ import com.unicorn.constructs.DatabaseSetup;
 import com.unicorn.constructs.WorkshopIde;
 import com.unicorn.constructs.EksCluster;
 import com.unicorn.constructs.UnicornStoreLambda;
-import software.amazon.awscdk.CfnParameter;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SecurityGroupProps;
+import software.amazon.awscdk.services.iam.Role;
 import software.constructs.Construct;
 
 import software.amazon.awscdk.DefaultStackSynthesizer;
@@ -64,15 +64,13 @@ public class UnicornStoreStack extends Stack {
         // Create EKS cluster for the workshop
         var unicornStoreEksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.31",
             infrastructureCore.getVpc(), eksIdeSecurityGroup);
-        unicornStoreEksCluster.createAccessEntry(ideRole.getRoleArn());
-        var isWorkshopStudioAccount = CfnParameter.Builder.create(this, "IsWorkshopStudioAccount")
-            .type("String")
-            .defaultValue("no")
-            .build();
-        if ("yes".equals(isWorkshopStudioAccount.getValueAsString())) {
-            unicornStoreEksCluster.createAccessEntry("arn:aws:iam::" + accountId + ":role/WSParticipantRole");
-        }
+        unicornStoreEksCluster.createAccessEntry(ideRole.getRoleArn(), "unicornstore-ide-user");
 
+        try {
+            Role.fromRoleName(this, "ExistingWSParticipantRole", "WSParticipantRole");
+        } catch (Exception e) {
+            unicornStoreEksCluster.createAccessEntry("arn:aws:iam::" + accountId + ":role/WSParticipantRole", "WSParticipantRole");
+        }
 
         // var eventBridge = infrastructureConstruct.getEventBridge();
 

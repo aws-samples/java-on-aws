@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+// import jakarta.inject.Inject;
 
 // import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 // import software.amazon.awssdk.services.eventbridge.EventBridgeAsyncClient;
@@ -15,7 +15,7 @@ import jakarta.inject.Inject;
 // import software.amazon.awssdk.services.eventbridge.model.PutEventsRequest;
 // import software.amazon.awssdk.services.eventbridge.model.PutEventsRequestEntry;
 
-import java.util.concurrent.ExecutionException;
+// import java.util.concurrent.ExecutionException;
 
 @ApplicationScoped
 public class UnicornPublisher {
