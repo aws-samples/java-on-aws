@@ -44,3 +44,9 @@ jobs:
     - name: CDK Synth
       run: cdk synth
       working-directory: ./labs/unicorn-store/infrastructure/cdk/
+    - name: Build CDK Immersion Day infrastructure
+      run: mvn clean package
+      working-directory: ./infrastructure/cdk/
+    - name: CDK Synth Immersion Day infrastructure
+      run: cdk synth
+      working-directory: ./infrastructure/cdk/
