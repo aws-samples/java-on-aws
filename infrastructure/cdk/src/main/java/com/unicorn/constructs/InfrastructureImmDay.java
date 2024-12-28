@@ -9,9 +9,9 @@ import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.ecr.Repository;
 import software.amazon.awscdk.RemovalPolicy;
-import software.amazon.awscdk.services.apprunner.alpha.VpcConnector;
-import software.amazon.awscdk.services.ec2.SubnetSelection;
-import software.amazon.awscdk.services.ec2.SubnetType;
+// import software.amazon.awscdk.services.apprunner.alpha.VpcConnector;
+// import software.amazon.awscdk.services.ec2.SubnetSelection;
+// import software.amazon.awscdk.services.ec2.SubnetType;
 import software.constructs.Construct;
 
 import java.util.List;
@@ -33,7 +33,7 @@ public class InfrastructureImmDay extends Construct {
         ecrRepository = createEcr();
 
         createRolesAppRunner();
-        createVpcConnector();
+        // createVpcConnector();
         createRolesEcs();
         createRolesEks();
     }
@@ -51,15 +51,15 @@ public class InfrastructureImmDay extends Construct {
         return ecrRepository;
     }
 
-    private void createVpcConnector() {
-        VpcConnector.Builder.create(this, "UnicornStoreVpcConnector")
-            .vpc(infrastructureCore.getVpc())
-            .vpcSubnets(SubnetSelection.builder()
-                .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
-                .build())
-            .vpcConnectorName("unicornstore-vpc-connector")
-            .build();
-    }
+    // private void createVpcConnector() {
+    //     VpcConnector.Builder.create(this, "UnicornStoreVpcConnector")
+    //         .vpc(infrastructureCore.getVpc())
+    //         .vpcSubnets(SubnetSelection.builder()
+    //             .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
+    //             .build())
+    //         .vpcConnectorName("unicornstore-vpc-connector")
+    //         .build();
+    // }
 
     private void createRolesAppRunner() {
         var unicornStoreApprunnerRole = Role.Builder.create(this, "UnicornStoreApprunnerRole")

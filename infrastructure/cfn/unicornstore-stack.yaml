@@ -663,7 +663,6 @@ Resources:
         Fn::GetAtt:
           - UnicornDatabaseSetupDatabaseSetupFunctionAA1BB8E9
           - Arn
-      SqlStatements: CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
       SecretName:
         Fn::Join:
           - "-"
@@ -694,6 +693,7 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: InfrastructureCorepostgresB0D0C6BB
+      SqlStatements: CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
     DependsOn:
       - InfrastructureCoreUnicornStoreDatabaseF56884BA
       - InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8
@@ -744,6 +744,11 @@ Resources:
               Service: ec2.amazonaws.com
         Version: "2012-10-17"
       ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AWSAppRunnerFullAccess
         - Fn::Join:
             - ""
             - - "arn:"
@@ -1541,7 +1546,11 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - splashUrl: ""
+                    - instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - WorkshopIdeIdeRoleF04F5802
+                          - Arn
+                      splashUrl: ""
                       instanceIamRoleName:
                         Ref: WorkshopIdeIdeRoleF04F5802
                       codeServerVersion: 4.96.2
@@ -1617,10 +1626,6 @@ Resources:
                       waitConditionHandleUrl:
                         Ref: WorkshopIdeVSCodeIdeIdeBootstrapWaitConditionHandle711EF348
                       readmeUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - WorkshopIdeIdeRoleF04F5802
-                          - Arn
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1820,6 +1825,12 @@ Resources:
               return 'placeholder'
       Environment:
         Variables:
+          SPRING_DATASOURCE_PASSWORD:
+            Fn::Join:
+              - ""
+              - - "{{resolve:secretsmanager:"
+                - Ref: InfrastructureCorepostgresB0D0C6BB
+                - :SecretString:password::}}
           SPRING_DATASOURCE_URL:
             Fn::Join:
               - ""
@@ -1831,12 +1842,6 @@ Resources:
           SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
           AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
           JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
-          SPRING_DATASOURCE_PASSWORD:
-            Fn::Join:
-              - ""
-              - - "{{resolve:secretsmanager:"
-                - Ref: InfrastructureCorepostgresB0D0C6BB
-                - :SecretString:password::}}
       FunctionName: unicorn-store-spring
       Handler: com.unicorn.store.StreamLambdaHandler::handleRequest
       MemorySize: 2048
@@ -2182,27 +2187,6 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
       RoleName: unicornstore-apprunner-ecr-access-role
-  InfrastructureImmDayUnicornStoreVpcConnectorSecurityGroup9812B941:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: unicornstore-stack/InfrastructureImmDay/UnicornStoreVpcConnector/SecurityGroup
-      SecurityGroupEgress:
-        - CidrIp: 0.0.0.0/0
-          Description: Allow all outbound traffic by default
-          IpProtocol: "-1"
-      VpcId:
-        Ref: InfrastructureCoreUnicornVpc5023CF48
-  InfrastructureImmDayUnicornStoreVpcConnectorAAB91D90:
-    Type: AWS::AppRunner::VpcConnector
-    Properties:
-      SecurityGroups:
-        - Fn::GetAtt:
-            - InfrastructureImmDayUnicornStoreVpcConnectorSecurityGroup9812B941
-            - GroupId
-      Subnets:
-        - Ref: InfrastructureCoreUnicornVpcPrivateSubnet1SubnetF5B67A45
-        - Ref: InfrastructureCoreUnicornVpcPrivateSubnet2Subnet36418377
-      VpcConnectorName: unicornstore-vpc-connector
   InfrastructureImmDayUnicornStoreEcsTaskRole507FE17B:
     Type: AWS::IAM::Role
     Properties:
