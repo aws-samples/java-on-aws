@@ -9,7 +9,6 @@ import software.amazon.awscdk.services.ec2.SecurityGroup;
 import java.util.Arrays;
 import java.util.List;
 
-import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.iam.Role;
 import software.constructs.Construct;
 
@@ -52,7 +51,6 @@ public class WorkshopIde extends Construct {
         this.ideName = ideName;
 
         ideRole = createIdeRole();
-        ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AWSAppRunnerFullAccess"));
         ideProps = createIdeProps();
         var ideInstance = createIdeInstance();
     }

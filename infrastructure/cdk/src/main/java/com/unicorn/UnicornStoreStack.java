@@ -4,6 +4,7 @@ import com.unicorn.constructs.InfrastructureCore;
 import com.unicorn.constructs.InfrastructureImmDay;
 import com.unicorn.constructs.DatabaseSetup;
 import com.unicorn.constructs.WorkshopIde;
+import com.unicorn.constructs.WorkshopCodeBuild;
 import com.unicorn.constructs.EksCluster;
 import com.unicorn.constructs.UnicornStoreLambda;
 import software.amazon.awscdk.Stack;
@@ -50,6 +51,9 @@ public class UnicornStoreStack extends Stack {
             Port.allTraffic(),
             "Allow all internal traffic"
         );
+
+        // Create Workshop CodeBuild
+        var workshopCodeBuild = new WorkshopCodeBuild(this, "WorkshopCodeBuild", infrastructureCore);
 
         // Create Workshop IDE
         var workshopIde = new WorkshopIde(this, "WorkshopIde", "unicornstore-ide", infrastructureCore, eksIdeSecurityGroup);
