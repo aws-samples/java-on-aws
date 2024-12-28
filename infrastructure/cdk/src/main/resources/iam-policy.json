@@ -53,6 +53,16 @@
 			]
 		},
 		{
+			"Sid": "IamLCreateServiceLinkedRole",
+			"Effect": "Allow",
+			"Action": [
+				"iam:CreateServiceLinkedRole"
+			],
+			"Resource": [
+				"*"
+			]
+		},
+		{
 			"Sid": "AllowedServicesOthers",
 			"Effect": "Allow",
 			"Action": [
