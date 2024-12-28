@@ -373,8 +373,8 @@ Resources:
         - Fn::GetAtt:
             - InfrastructureCoreDatabaseSG7319389B
             - GroupId
-    UpdateReplacePolicy: Snapshot
-    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
   InfrastructureCoreUnicornStoreDatabaseUnicornStoreDatabaseWriter1E7762FE:
     Type: AWS::RDS::DBInstance
     Properties:
@@ -663,6 +663,7 @@ Resources:
         Fn::GetAtt:
           - UnicornDatabaseSetupDatabaseSetupFunctionAA1BB8E9
           - Arn
+      SqlStatements: CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
       SecretName:
         Fn::Join:
           - "-"
@@ -693,7 +694,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: InfrastructureCorepostgresB0D0C6BB
-      SqlStatements: CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
     DependsOn:
       - InfrastructureCoreUnicornStoreDatabaseF56884BA
       - InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8
@@ -1297,8 +1297,8 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            default: ""
             description: (Optional) Custom bootstrap script to run.
+            default: ""
             type: String
         mainSteps:
           - inputs:
@@ -1545,19 +1545,38 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - splashUrl: ""
+                    - environmentContentsZip: ""
+                      terminalOnStartup: "true"
+                      installGitea: echo bootstrapGitea was not provided
+                      domain: ""
+                      extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
+                      waitConditionHandleUrl:
+                        Ref: WorkshopIdeVSCodeIdeIdeBootstrapWaitConditionHandle711EF348
+                      readmeUrl: ""
                       instanceIamRoleArn:
                         Fn::GetAtt:
                           - WorkshopIdeIdeRoleF04F5802
                           - Arn
-                      readmeUrl: ""
-                      waitConditionHandleUrl:
-                        Ref: WorkshopIdeVSCodeIdeIdeBootstrapWaitConditionHandle711EF348
-                      extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
-                      domain: ""
-                      installGitea: echo bootstrapGitea was not provided
-                      terminalOnStartup: "true"
-                      environmentContentsZip: ""
+                      splashUrl: ""
+                      instanceIamRoleName:
+                        Ref: WorkshopIdeIdeRoleF04F5802
+                      codeServerVersion: 4.96.2
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup-ide.sh"
+
+                        echo '=== Additional Setup ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-app-setup.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-setup.sh"
+                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-containerize.sh"
+                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-deploy-app.sh"
+                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-cleanup-app.sh"
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1606,25 +1625,6 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: WorkshopIdeVSCodeIdeIdePasswordSecret350BFDC8
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup-ide.sh"
-
-                        echo '=== Additional Setup ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-app-setup.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-setup.sh"
-                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-containerize.sh"
-                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-deploy-app.sh"
-                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-cleanup-app.sh"
-                      codeServerVersion: 4.96.2
-                      instanceIamRoleName:
-                        Ref: WorkshopIdeIdeRoleF04F5802
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1761,10 +1761,10 @@ Resources:
         Fn::GetAtt:
           - WorkshopIdeVSCodeIdeIdeBootstrapFunction6BAF9173
           - Arn
-      SsmDocument:
-        Ref: WorkshopIdeVSCodeIdeIdeBootstrapDocumentB5B6B111
       InstanceId:
         Ref: WorkshopIdeVSCodeIdeIdeEC2InstanceDAA2DFCF
+      SsmDocument:
+        Ref: WorkshopIdeVSCodeIdeIdeBootstrapDocumentB5B6B111
       LogGroupName:
         Ref: WorkshopIdeVSCodeIdeIdeLogGroup4753F4D0
     UpdateReplacePolicy: Delete
@@ -1824,15 +1824,15 @@ Resources:
               return 'placeholder'
       Environment:
         Variables:
+          SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
+          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
           SPRING_DATASOURCE_PASSWORD:
             Fn::Join:
               - ""
               - - "{{resolve:secretsmanager:"
                 - Ref: InfrastructureCorepostgresB0D0C6BB
                 - :SecretString:password::}}
-          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
-          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
-          SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
           SPRING_DATASOURCE_URL:
             Fn::Join:
               - ""

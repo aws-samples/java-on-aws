@@ -23,6 +23,7 @@ import software.amazon.awscdk.services.rds.DatabaseSecret;
 import software.amazon.awscdk.services.ssm.ParameterTier;
 import software.amazon.awscdk.services.ssm.StringParameter;
 import software.amazon.awscdk.services.secretsmanager.Secret;
+import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.SecretValue;
 import software.amazon.awscdk.SecretsManagerSecretOptions;
 import software.constructs.Construct;
@@ -111,6 +112,7 @@ public class InfrastructureCore extends Construct {
                 .build())
             .securityGroups(List.of(databaseSecurityGroup))
             .credentials(Credentials.fromSecret(databaseSecret))
+            .removalPolicy(RemovalPolicy.DESTROY)
             .build();
 
             return dbCluster;
