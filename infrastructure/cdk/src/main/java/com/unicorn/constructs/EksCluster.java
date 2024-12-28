@@ -60,6 +60,7 @@ public class EksCluster extends Construct {
         // Create Role for a cluster to allow resource management
         var clusterRole = Role.Builder.create(this, "EKSClusterRole")
             .assumedBy(new ServicePrincipal("eks.amazonaws.com"))
+            .roleName(clusterName + "-eks-cluster-role")
             .managedPolicies(Arrays.asList(
                 ManagedPolicy.fromAwsManagedPolicyName("AmazonEKSClusterPolicy"),
                 ManagedPolicy.fromAwsManagedPolicyName("AmazonEKSComputePolicy"),
@@ -84,6 +85,7 @@ public class EksCluster extends Construct {
         // Create Role for cluster nodes
         var nodeRole = Role.Builder.create(this, "EKSClusterNodeRole")
             .assumedBy(new ServicePrincipal("ec2.amazonaws.com"))
+            .roleName(clusterName + "-eks-cluster-node-role")
             .managedPolicies(Arrays.asList(
                 ManagedPolicy.fromAwsManagedPolicyName("AmazonEKSWorkerNodeMinimalPolicy"),
                 ManagedPolicy.fromAwsManagedPolicyName("AmazonEC2ContainerRegistryPullOnly")
@@ -163,8 +165,8 @@ public class EksCluster extends Construct {
     //     return provider;
     // }
 
-    public void createAccessEntry(String principalArn) {
-        var accessEntry = CfnAccessEntry.Builder.create(this, "AccessEntry")
+    public CfnAccessEntry createAccessEntry(String principalArn, String roleName) {
+        var accessEntry = CfnAccessEntry.Builder.create(this, "AccessEntry-" + roleName)
             .clusterName(clusterName)
             .principalArn(principalArn)
             .accessPolicies(List.of(AccessPolicyProperty.builder()
@@ -175,6 +177,7 @@ public class EksCluster extends Construct {
                     .build()))
             .build();
         accessEntry.getNode().addDependency(cluster);
+        return accessEntry;
     }
 
     public void createPodIdentity(String principalArn, String namespace, String serviceAccount) {

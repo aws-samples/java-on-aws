@@ -3,66 +3,35 @@ set -e
 APP_NAME=${1:-"unicorn-store-spring"}
 PROJECT_NAME=${2:-"unicorn-store"}
 
-echo Creating manifests for $APP_NAME ...
-
-mkdir -p ~/environment/${APP_NAME}/k8s
-cd ~/environment/${APP_NAME}/k8s
-
-# cat <<EOF > ~/environment/${APP_NAME}/k8s/namespace.yaml
-# apiVersion: v1
-# kind: Namespace
-# metadata:
-#   name: $APP_NAME
-#   labels:
-#     project: $PROJECT_NAME
-#     app: $APP_NAME
-# EOF
-# kubectl apply -f ~/environment/${APP_NAME}/k8s/namespace.yaml
-
-# cat <<EOF > ~/environment/${APP_NAME}/k8s/serviceaccount.yaml
-# apiVersion: v1
-# kind: ServiceAccount
-# metadata:
-#   name: $APP_NAME
-#   namespace: $APP_NAME
-#   labels:
-#     project: $PROJECT_NAME
-#     app: $APP_NAME
-# EOF
-
-# kubectl apply -f ~/environment/${APP_NAME}/k8s/serviceaccount.yaml
-
-# while ! kubectl get secret unicornstore-db-secret -n ${APP_NAME} >/dev/null 2>&1; do echo "Secret not found, waiting..." && sleep 5; done
-
-ECR_URI=$(aws ecr describe-repositories --repository-names $APP_NAME \
+ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring \
   | jq --raw-output '.repositories[0].repositoryUri')
-SPRING_DATASOURCE_URL=$(aws ssm get-parameter --name databaseJDBCConnectionString \
+SPRING_DATASOURCE_URL=$(aws ssm get-parameter --name unicornstore-db-connection-string \
   | jq --raw-output '.Parameter.Value')
 
-cat <<EOF > ~/environment/$APP_NAME/k8s/deployment.yaml
+cat <<EOF > ~/environment/unicorn-store-spring/k8s/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: $APP_NAME
-  namespace: $APP_NAME
+  name: unicorn-store-spring
+  namespace: unicorn-store-spring
   labels:
-    project: $PROJECT_NAME
-    app: $APP_NAME
+    project: unicorn-store
+    app: unicorn-store-spring
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: $APP_NAME
+      app: unicorn-store-spring
   template:
     metadata:
       labels:
-        app: $APP_NAME
+        app: unicorn-store-spring
     spec:
       nodeSelector:
         karpenter.sh/nodepool: dedicated
-      serviceAccountName: $APP_NAME
+      serviceAccountName: unicorn-store-spring
       containers:
-        - name: $APP_NAME
+        - name: unicorn-store-spring
           resources:
             requests:
               cpu: "1"
@@ -92,13 +61,14 @@ spec:
               port: 8080
             failureThreshold: 6
             periodSeconds: 5
+            initialDelaySeconds: 10
           startupProbe:
             httpGet:
-              path: /actuator/health/liveness
+              path: /
               port: 8080
             failureThreshold: 6
-            initialDelaySeconds: 10
             periodSeconds: 5
+            initialDelaySeconds: 10
           lifecycle:
             preStop:
               exec:
@@ -107,16 +77,17 @@ spec:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
 EOF
+kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 
-cat <<EOF > ~/environment/$APP_NAME/k8s/service.yaml
+cat <<EOF > ~/environment/unicorn-store-spring/k8s/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: $APP_NAME
-  namespace: $APP_NAME
+  name: unicorn-store-spring
+  namespace: unicorn-store-spring
   labels:
-    project: $PROJECT_NAME
-    app: $APP_NAME
+    project: unicorn-store
+    app: unicorn-store-spring
 spec:
   type: NodePort
   ports:
@@ -124,21 +95,22 @@ spec:
       targetPort: 8080
       protocol: TCP
   selector:
-    app: $APP_NAME
+    app: unicorn-store-spring
 EOF
+kubectl apply -f ~/environment/unicorn-store-spring/k8s/service.yaml
 
-cat <<EOF > ~/environment/$APP_NAME/k8s/ingress.yaml
+cat <<EOF > ~/environment/unicorn-store-spring/k8s/ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: $APP_NAME
-  namespace: $APP_NAME
+  name: unicorn-store-spring
+  namespace: unicorn-store-spring
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
   labels:
-    project: $PROJECT_NAME
-    app: $APP_NAME
+    project: unicorn-store
+    app: unicorn-store-spring
 spec:
   ingressClassName: alb
   rules:
@@ -148,19 +120,19 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: $APP_NAME
+                name: unicorn-store-spring
                 port:
                   number: 80
 EOF
+kubectl apply -f ~/environment/unicorn-store-spring/k8s/ingress.yaml
 
-echo Deploying the manifests to the EKS cluster ...
-kubectl apply -f ~/environment/$APP_NAME/k8s/
-
-echo Verifying that the application is running properly
-kubectl wait deployment $APP_NAME -n $APP_NAME --for condition=Available=True --timeout=120s
-kubectl get deployment $APP_NAME -n $APP_NAME
-SVC_URL=http://$(kubectl get ingress $APP_NAME -n $APP_NAME -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+kubectl wait deployment unicorn-store-spring -n unicorn-store-spring --for condition=Available=True --timeout=120s
+kubectl get deployment unicorn-store-spring -n unicorn-store-spring
+SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 while [[ $(curl -s -o /dev/null -w "%{http_code}" $SVC_URL/) != "200" ]]; do echo "Service not yet available ..." &&  sleep 5; done
+echo $SVC_URL
+echo Service is Ready!
+
 echo $SVC_URL
 curl --location $SVC_URL; echo
 curl --location --request POST $SVC_URL'/unicorns' --header 'Content-Type: application/json' --data-raw '{
@@ -169,5 +141,7 @@ curl --location --request POST $SVC_URL'/unicorns' --header 'Content-Type: appli
     "type": "Animal",
     "size": "Very big"
 }' | jq
+
+kubectl logs $(kubectl get pods -n unicorn-store-spring -o json | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring
 
 echo "App deployment to EKS cluster is complete."
