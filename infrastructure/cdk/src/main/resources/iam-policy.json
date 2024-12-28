@@ -59,7 +59,7 @@
 				"iam:CreateServiceLinkedRole"
 			],
 			"Resource": [
-				"*"
+				"arn:aws:iam::{{.AccountId}}:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner"
 			]
 		},
 		{
