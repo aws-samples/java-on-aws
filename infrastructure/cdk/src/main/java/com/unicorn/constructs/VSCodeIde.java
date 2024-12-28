@@ -93,6 +93,7 @@ public class VSCodeIde extends Construct {
         // Set up logging
         LogGroup logGroup = LogGroup.Builder.create(this, "IdeLogGroup")
             .retention(RetentionDays.ONE_WEEK)
+            .logGroupName("unicornstore-ide-bootstrap")
             .build();
         logGroup.grantWrite(props.getRole());
 

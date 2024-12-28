@@ -130,9 +130,9 @@ public class CodeBuildResource extends Construct {
         Function startBuildFunction = Function.Builder.create(this, "StartBuildFunction")
             .code(Code.fromInline(respondFunctionCode + startBuildFunctionCode))
             .handler("index.handler")
-            .runtime(Runtime.NODEJS_20_X)
+            .runtime(Runtime.NODEJS_16_X)
             .timeout(Duration.minutes(1))
-            .functionName("unicornstore-codebuild-start")
+            .functionName("unicornstore-codebuild-start-lambda")
             .build();
 
         startBuildFunction.addToRolePolicy(PolicyStatement.Builder.create()
@@ -144,9 +144,9 @@ public class CodeBuildResource extends Construct {
         Function reportBuildFunction = Function.Builder.create(this, "ReportBuildFunction")
             .code(Code.fromInline(respondFunctionCode + reportBuildFunctionCode))
             .handler("index.handler")
-            .runtime(Runtime.NODEJS_20_X)
+            .runtime(Runtime.NODEJS_16_X)
             .timeout(Duration.minutes(1))
-            .functionName("unicornstore-codebuild-report")
+            .functionName("unicornstore-codebuild-report-lambda")
             .build();
 
         reportBuildFunction.addToRolePolicy(PolicyStatement.Builder.create()

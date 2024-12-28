@@ -51,11 +51,11 @@
             <version>2.3</version>
         </dependency>
 
-        <!-- <dependency>
+        <dependency>
             <groupId>software.amazon.awscdk</groupId>
             <artifactId>apprunner-alpha</artifactId>
             <version>2.173.2-alpha.0</version>
-        </dependency> -->
+        </dependency>
 
         <dependency>
             <groupId>org.json</groupId>

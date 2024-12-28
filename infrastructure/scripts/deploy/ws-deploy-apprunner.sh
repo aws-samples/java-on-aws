@@ -11,8 +11,8 @@ SUBNET_PRIVATE_1=$(aws ec2 describe-subnets \
 SUBNET_PRIVATE_2=$(aws ec2 describe-subnets \
   --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Name,Values=*PrivateSubnet2" \
   --query 'Subnets[0].SubnetId' --output text) && echo $SUBNET_PRIVATE_2
-# aws apprunner create-vpc-connector --vpc-connector-name unicornstore-vpc-connector \
-#   --subnets $SUBNET_PRIVATE_1 $SUBNET_PRIVATE_2 --no-cli-pager
+aws apprunner create-vpc-connector --vpc-connector-name unicornstore-vpc-connector \
+  --subnets $SUBNET_PRIVATE_1 $SUBNET_PRIVATE_2 --no-cli-pager
 
 UNICORNSTORE_DB_CONNECTION_STRING_ARN=$(aws ssm get-parameter --name "unicornstore-db-connection-string" \
   --query 'Parameter.ARN' --output text) && echo $UNICORNSTORE_DB_CONNECTION_STRING_ARN

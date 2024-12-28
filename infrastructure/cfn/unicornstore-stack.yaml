@@ -867,6 +867,7 @@ Resources:
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
         Type: LINUX_CONTAINER
+      Name: unicornstore-codebuild
       ServiceRole:
         Fn::GetAtt:
           - WorkshopCodeBuildWorkshopCodeBuildRole21FB63E8
@@ -1053,12 +1054,13 @@ Resources:
               await respond(event, context, 'FAILED', { Error: error });
             }
           };
+      FunctionName: unicornstore-codebuild-start-lambda
       Handler: index.handler
       Role:
         Fn::GetAtt:
           - WorkshopCodeBuildWorkshopCodeBuildResourceStartBuildFunctionServiceRoleA0D54582
           - Arn
-      Runtime: nodejs20.x
+      Runtime: nodejs16.x
       Timeout: 60
     DependsOn:
       - WorkshopCodeBuildWorkshopCodeBuildResourceStartBuildFunctionServiceRoleDefaultPolicy7CF2D4D0
@@ -1182,12 +1184,13 @@ Resources:
               await respond(response, context, 'FAILED', { Error: 'Build failed' });
             }
           };
+      FunctionName: unicornstore-codebuild-report-lambda
       Handler: index.handler
       Role:
         Fn::GetAtt:
           - WorkshopCodeBuildWorkshopCodeBuildResourceReportBuildFunctionServiceRoleFAC09767
           - Arn
-      Runtime: nodejs20.x
+      Runtime: nodejs16.x
       Timeout: 60
     DependsOn:
       - WorkshopCodeBuildWorkshopCodeBuildResourceReportBuildFunctionServiceRoleDefaultPolicy1DDCC4B3
@@ -1392,6 +1395,7 @@ Resources:
   WorkshopIdeVSCodeIdeIdeLogGroup4753F4D0:
     Type: AWS::Logs::LogGroup
     Properties:
+      LogGroupName: unicornstore-ide-bootstrap
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1810,9 +1814,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
+            type: String
             default: ""
             description: (Optional) Custom bootstrap script to run.
-            type: String
         mainSteps:
           - inputs:
               runCommand:
@@ -2058,7 +2062,26 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - splashUrl: ""
+                    - customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup-ide.sh"
+
+                        echo '=== Additional Setup ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-app-setup.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-setup.sh"
+                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-containerize.sh"
+                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-deploy-app.sh"
+                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-cleanup-app.sh"
+                      codeServerVersion: 4.96.2
+                      instanceIamRoleName:
+                        Ref: WorkshopIdeIdeRoleF04F5802
+                      splashUrl: ""
                       instanceIamRoleArn:
                         Fn::GetAtt:
                           - WorkshopIdeIdeRoleF04F5802
@@ -2119,25 +2142,6 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: WorkshopIdeVSCodeIdeIdePasswordSecret350BFDC8
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup-ide.sh"
-
-                        echo '=== Additional Setup ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-app-setup.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-setup.sh"
-                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-containerize.sh"
-                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-deploy-app.sh"
-                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/ws-eks-cleanup-app.sh"
-                      codeServerVersion: 4.96.2
-                      instanceIamRoleName:
-                        Ref: WorkshopIdeIdeRoleF04F5802
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -2274,12 +2278,12 @@ Resources:
         Fn::GetAtt:
           - WorkshopIdeVSCodeIdeIdeBootstrapFunction6BAF9173
           - Arn
+      LogGroupName:
+        Ref: WorkshopIdeVSCodeIdeIdeLogGroup4753F4D0
       SsmDocument:
         Ref: WorkshopIdeVSCodeIdeIdeBootstrapDocumentB5B6B111
       InstanceId:
         Ref: WorkshopIdeVSCodeIdeIdeEC2InstanceDAA2DFCF
-      LogGroupName:
-        Ref: WorkshopIdeVSCodeIdeIdeLogGroup4753F4D0
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   UnicornStoreLambdaUnicornStoreSpringFunctionServiceRole8C031111:
@@ -2699,6 +2703,27 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
       RoleName: unicornstore-apprunner-ecr-access-role
+  InfrastructureImmDayUnicornStoreVpcConnectorSecurityGroup9812B941:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: unicornstore-stack/InfrastructureImmDay/UnicornStoreVpcConnector/SecurityGroup
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: InfrastructureCoreUnicornVpc5023CF48
+  InfrastructureImmDayUnicornStoreVpcConnectorAAB91D90:
+    Type: AWS::AppRunner::VpcConnector
+    Properties:
+      SecurityGroups:
+        - Fn::GetAtt:
+            - InfrastructureImmDayUnicornStoreVpcConnectorSecurityGroup9812B941
+            - GroupId
+      Subnets:
+        - Ref: InfrastructureCoreUnicornVpcPrivateSubnet1SubnetF5B67A45
+        - Ref: InfrastructureCoreUnicornVpcPrivateSubnet2Subnet36418377
+      VpcConnectorName: unicornstore-vpc-connector
   InfrastructureImmDayUnicornStoreEcsTaskRole507FE17B:
     Type: AWS::IAM::Role
     Properties:
