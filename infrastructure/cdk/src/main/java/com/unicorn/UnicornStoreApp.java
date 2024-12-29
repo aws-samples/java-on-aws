@@ -13,6 +13,7 @@ public class UnicornStoreApp {
         App app = new App();
 
         var unicornStoreStack = new UnicornStoreStack(app, "unicornstore-stack");
+        var ideStack = new IdeStack(app, "ide-stack");
 
         //Add CDK-NAG checks: https://github.com/cdklabs/cdk-nag
         //Add suppression to exclude certain findings that are not needed for Workshop environment
@@ -50,6 +51,7 @@ public class UnicornStoreApp {
         );
 
         NagSuppressions.addStackSuppressions(unicornStoreStack, suppression);
+        NagSuppressions.addStackSuppressions(ideStack, suppression);
 
         app.synth();
     }

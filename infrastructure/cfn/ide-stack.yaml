@@ -1,0 +1,1324 @@
+Metadata:
+  cdk_nag:
+    rules_to_suppress:
+      - reason: The workshop environment does not require API-Gateway authorization
+        id: AwsSolutions-APIG4
+      - reason: The workshop environment does not require Cognito User Pool authorization
+        id: AwsSolutions-COG4
+      - reason: Workshop environment does not need a Multi-AZ setup to reduce cost
+        id: AwsSolutions-RDS3
+      - reason: AWS Managed policies are acceptable for the workshop
+        id: AwsSolutions-IAM4
+      - reason: A wildcard is acceptable for this workshop to allow parallel creation of resources
+        id: AwsSolutions-IAM5
+      - reason: Workshop environment is ephemeral and the database should be deleted by the end of the workshop
+        id: AwsSolutions-RDS10
+      - reason: Database is in a private subnet and can use the default port
+        id: AwsSolutions-RDS11
+      - reason: API Gateway request validation is not needed for workshop
+        id: AwsSolutions-APIG2
+      - reason: API Gateway access logging not needed for workshop setup
+        id: AwsSolutions-APIG1
+      - reason: API Gateway access logging not needed for workshop setup
+        id: AwsSolutions-APIG6
+      - reason: Workshop environment does not need VPC flow logs
+        id: AwsSolutions-VPC7
+      - reason: Ephemeral workshop environment does not need to rotate secrets
+        id: AwsSolutions-SMG4
+      - reason: Workshop non-sensitive test database does not need encryption at rest
+        id: AwsSolutions-RDS2
+      - reason: Workshop API Gateways do not need AWS WAF assigned
+        id: AwsSolutions-APIG3
+      - reason: Not needed
+        id: AwsSolutions-EC23
+      - reason: Workshop Database does not need backups
+        id: AwsSolutions-RDS13
+      - reason: Workshop S3 bucket does not need Access Logs
+        id: AwsSolutions-S1
+      - reason: Workshop environment use CDK default Lambdas
+        id: AwsSolutions-L1
+      - reason: Workshop environment uses user/password authentication
+        id: AwsSolutions-RDS6
+      - reason: Workshop instance doesn't need autoscaling
+        id: AwsSolutions-EC28
+      - reason: Workshop instance doesn't need autoscaling
+        id: AwsSolutions-EC29
+      - reason: Workshop environment should be accessible from any Geo
+        id: AwsSolutions-CFR1
+      - reason: Ephemeral workshop environment does not need WAF
+        id: AwsSolutions-CFR2
+      - reason: Ephemeral workshop environment does not need logging
+        id: AwsSolutions-CFR3
+      - reason: Workshop instance uses http
+        id: AwsSolutions-CFR4
+      - reason: Workshop instance uses http
+        id: AwsSolutions-CFR5
+      - reason: Workshop non-sensitive EKS cluster uses public access
+        id: AwsSolutions-EKS1
+      - reason: CodeBuild uses default AWS-managed CMK for S3
+        id: AwsSolutions-CB4
+      - reason: "Suppress warnings see: https://github.com/cdklabs/cdk-nag/issues/817"
+        id: CdkNagValidationFailure
+Resources:
+  IdeVpcE831425F:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: ide-vpc
+  IdeVpcPublicSubnet1Subnet5568D48C:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: ide-stack/IdeVpc/Vpc/PublicSubnet1
+      VpcId:
+        Ref: IdeVpcE831425F
+  IdeVpcPublicSubnet1RouteTableA7BDEA5B:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: ide-stack/IdeVpc/Vpc/PublicSubnet1
+      VpcId:
+        Ref: IdeVpcE831425F
+  IdeVpcPublicSubnet1RouteTableAssociationA08234BF:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: IdeVpcPublicSubnet1RouteTableA7BDEA5B
+      SubnetId:
+        Ref: IdeVpcPublicSubnet1Subnet5568D48C
+  IdeVpcPublicSubnet1DefaultRoute7516054E:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: IdeVpcIGWDE157DA5
+      RouteTableId:
+        Ref: IdeVpcPublicSubnet1RouteTableA7BDEA5B
+    DependsOn:
+      - IdeVpcVPCGWC86E365B
+  IdeVpcPublicSubnet1EIP7CBA47EE:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: ide-stack/IdeVpc/Vpc/PublicSubnet1
+  IdeVpcPublicSubnet1NATGatewayE2DDFAB1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - IdeVpcPublicSubnet1EIP7CBA47EE
+          - AllocationId
+      SubnetId:
+        Ref: IdeVpcPublicSubnet1Subnet5568D48C
+      Tags:
+        - Key: Name
+          Value: ide-stack/IdeVpc/Vpc/PublicSubnet1
+    DependsOn:
+      - IdeVpcPublicSubnet1DefaultRoute7516054E
+      - IdeVpcPublicSubnet1RouteTableAssociationA08234BF
+  IdeVpcPublicSubnet2Subnet8D75E006:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: ide-stack/IdeVpc/Vpc/PublicSubnet2
+      VpcId:
+        Ref: IdeVpcE831425F
+  IdeVpcPublicSubnet2RouteTable3725D67C:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: ide-stack/IdeVpc/Vpc/PublicSubnet2
+      VpcId:
+        Ref: IdeVpcE831425F
+  IdeVpcPublicSubnet2RouteTableAssociation47C63A38:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: IdeVpcPublicSubnet2RouteTable3725D67C
+      SubnetId:
+        Ref: IdeVpcPublicSubnet2Subnet8D75E006
+  IdeVpcPublicSubnet2DefaultRouteE1DC8F35:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: IdeVpcIGWDE157DA5
+      RouteTableId:
+        Ref: IdeVpcPublicSubnet2RouteTable3725D67C
+    DependsOn:
+      - IdeVpcVPCGWC86E365B
+  IdeVpcPrivateSubnet1Subnet3363A401:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Private
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: ide-stack/IdeVpc/Vpc/PrivateSubnet1
+      VpcId:
+        Ref: IdeVpcE831425F
+  IdeVpcPrivateSubnet1RouteTable6779C22E:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: ide-stack/IdeVpc/Vpc/PrivateSubnet1
+      VpcId:
+        Ref: IdeVpcE831425F
+  IdeVpcPrivateSubnet1RouteTableAssociation72F37D3B:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: IdeVpcPrivateSubnet1RouteTable6779C22E
+      SubnetId:
+        Ref: IdeVpcPrivateSubnet1Subnet3363A401
+  IdeVpcPrivateSubnet1DefaultRoute47208AFC:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: IdeVpcPublicSubnet1NATGatewayE2DDFAB1
+      RouteTableId:
+        Ref: IdeVpcPrivateSubnet1RouteTable6779C22E
+  IdeVpcPrivateSubnet2Subnet3BCC8DC4:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.3.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Private
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: ide-stack/IdeVpc/Vpc/PrivateSubnet2
+      VpcId:
+        Ref: IdeVpcE831425F
+  IdeVpcPrivateSubnet2RouteTable15B55B5E:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: ide-stack/IdeVpc/Vpc/PrivateSubnet2
+      VpcId:
+        Ref: IdeVpcE831425F
+  IdeVpcPrivateSubnet2RouteTableAssociation19AF163A:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: IdeVpcPrivateSubnet2RouteTable15B55B5E
+      SubnetId:
+        Ref: IdeVpcPrivateSubnet2Subnet3BCC8DC4
+  IdeVpcPrivateSubnet2DefaultRouteF6817B2D:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: IdeVpcPublicSubnet1NATGatewayE2DDFAB1
+      RouteTableId:
+        Ref: IdeVpcPrivateSubnet2RouteTable15B55B5E
+  IdeVpcIGWDE157DA5:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: ide-vpc
+  IdeVpcVPCGWC86E365B:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId:
+        Ref: IdeVpcIGWDE157DA5
+      VpcId:
+        Ref: IdeVpcE831425F
+  VSCodeIdeIdeRole21951A1F:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/ReadOnlyAccess
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonSSMManagedInstanceCore
+        - Ref: VSCodeIdeWorkshopIdeUserPolicy98DFEC00
+      RoleName: ide-user
+  VSCodeIdeIdeRoleDefaultPolicyB89C55CF:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - VSCodeIdeIdeLogGroup364F2B78
+                - Arn
+          - Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+            Effect: Allow
+            Resource:
+              Ref: VSCodeIdeIdePasswordSecret39AD78F3
+        Version: "2012-10-17"
+      PolicyName: VSCodeIdeIdeRoleDefaultPolicyB89C55CF
+      Roles:
+        - Ref: VSCodeIdeIdeRole21951A1F
+  VSCodeIdeWorkshopIdeUserPolicy98DFEC00:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: ""
+      Path: /
+      PolicyDocument:
+        Statement:
+          - Action:
+              - cloudwatch:*
+              - codewhisperer:*
+              - ecr:*
+              - eks:*
+              - events:*
+              - q:*
+              - secretsmanager:*
+              - ssm:*
+              - sts:*
+            Effect: Allow
+            Resource: "*"
+            Sid: AllowedServicesEKS
+          - Action: iam:PassRole
+            Effect: Allow
+            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+            Sid: PassRoleEKS
+          - Action:
+              - iam:CreateRole
+              - iam:TagRole
+              - iam:DeleteRole
+              - iam:CreatePolicy
+              - iam:CreatePolicyVersion
+              - iam:DeletePolicy
+              - iam:DeletePolicyVersion
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
+              - iam:PassRole
+            Effect: Allow
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/*unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/*Unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*Unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*AWSLambdaTracerAccessExecutionRole*
+            Sid: IamLimitedAccessForUnicorns
+          - Action:
+              - cloudformation:*
+              - codeartifact:*
+              - apprunner:*
+              - ec2:*
+              - ecs:*
+              - elasticloadbalancing:*
+              - xray:*
+              - logs:*
+              - lambda:*
+              - dynamodb:*
+              - s3:*
+              - tag:*
+              - application-signals:*
+            Effect: Allow
+            Resource: "*"
+            Sid: AllowedServicesOthers
+          - Action: ec2:RunInstances
+            Condition:
+              StringLike:
+                ec2:InstanceType:
+                  - "*4xlarge"
+                  - "*6xlarge"
+                  - "*8xlarge"
+                  - "*9xlarge"
+                  - "*10xlarge"
+                  - "*12xlarge"
+                  - "*16xlarge"
+                  - "*18xlarge"
+                  - "*24xlarge"
+                  - f1*
+                  - x1*
+                  - z1*
+                  - "*metal"
+            Effect: Deny
+            Resource: arn:aws:ec2:*:*:instance/*
+            Sid: DenyXXLInstances
+          - Action:
+              - ec2:ModifyReservedInstances
+              - ec2:PurchaseHostReservation
+              - ec2:PurchaseReservedInstancesOffering
+              - ec2:PurchaseScheduledInstances
+              - rds:PurchaseReservedDBInstancesOffering
+              - dynamodb:PurchaseReservedCapacityOfferings
+            Effect: Deny
+            Resource: "*"
+            Sid: DenyReservations
+        Version: "2012-10-17"
+  VSCodeIdeIdeLogGroup364F2B78:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: ide-bootstrap-log
+      RetentionInDays: 7
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  VSCodeIdeIdePrefixListFunctionServiceRoleE64D8247:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  VSCodeIdeIdePrefixListFunctionServiceRoleDefaultPolicy244F9A17:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: ec2:DescribeManagedPrefixLists
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: VSCodeIdeIdePrefixListFunctionServiceRoleDefaultPolicy244F9A17
+      Roles:
+        - Ref: VSCodeIdeIdePrefixListFunctionServiceRoleE64D8247
+  VSCodeIdeIdePrefixListFunction06300AAE:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |-
+          from __future__ import print_function
+          import boto3
+          import traceback
+          import cfnresponse
+
+          def lambda_handler(event, context):
+              print('Event: {}'.format(event))
+              print('context: {}'.format(context))
+              responseData = {}
+
+              status = cfnresponse.SUCCESS
+
+              if event['RequestType'] == 'Delete':
+                  responseData = {'Success': 'Custom Resource removed'}
+                  cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+              else:
+                  try:
+                      # Open AWS clients
+                      ec2 = boto3.client('ec2')
+
+                      res = ec2.describe_managed_prefix_lists(
+                         Filters=[{
+                            'Name': 'prefix-list-name',
+                            'Values': ['com.amazonaws.global.cloudfront.origin-facing']
+                         }]
+                      )
+
+                      responseData = {'PrefixListId': str(res['PrefixLists'][0]['PrefixListId'])}
+                  except Exception as e:
+                      status = cfnresponse.FAILED
+                      tb_err = traceback.format_exc()
+                      print(tb_err)
+                      responseData = {'Error': tb_err}
+                  finally:
+                      cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+      FunctionName: ide-prefix-list-lambda
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - VSCodeIdeIdePrefixListFunctionServiceRoleE64D8247
+          - Arn
+      Runtime: python3.13
+      Timeout: 180
+    DependsOn:
+      - VSCodeIdeIdePrefixListFunctionServiceRoleDefaultPolicy244F9A17
+      - VSCodeIdeIdePrefixListFunctionServiceRoleE64D8247
+  VSCodeIdeIdePrefixListResourceF63186FA:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - VSCodeIdeIdePrefixListFunction06300AAE
+          - Arn
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  VSCodeIdeIdeSecurityGroup69EC68AF:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: IDE security group
+      GroupName: ide-cloudfront-ide-sg
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: IdeVpcE831425F
+  VSCodeIdeIdeSecurityGroupfromIndirectPeer80614C2C39:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: HTTP from CloudFront only
+      FromPort: 80
+      GroupId:
+        Fn::GetAtt:
+          - VSCodeIdeIdeSecurityGroup69EC68AF
+          - GroupId
+      IpProtocol: tcp
+      SourcePrefixListId:
+        Fn::GetAtt:
+          - VSCodeIdeIdePrefixListResourceF63186FA
+          - PrefixListId
+      ToPort: 80
+  VSCodeIdeIdeInstanceProfileD50529DC:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName:
+        Ref: VSCodeIdeIdeRole21951A1F
+      Roles:
+        - Ref: VSCodeIdeIdeRole21951A1F
+  VSCodeIdeIdeEC2Instance846AE373:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            DeleteOnTermination: true
+            Encrypted: true
+            VolumeSize: 50
+            VolumeType: gp3
+      IamInstanceProfile:
+        Ref: VSCodeIdeIdeInstanceProfileD50529DC
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      InstanceType: m5.xlarge
+      SecurityGroupIds:
+        - Fn::GetAtt:
+            - VSCodeIdeIdeSecurityGroup69EC68AF
+            - GroupId
+        - Fn::GetAtt:
+            - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
+            - GroupId
+        - Fn::GetAtt:
+            - VSCodeIdeAppSecurityGroup3CD2EECD
+            - GroupId
+      SubnetId:
+        Ref: IdeVpcPublicSubnet1Subnet5568D48C
+      Tags:
+        - Key: Name
+          Value: ide
+      UserData:
+        Fn::Base64: "#!/bin/bash"
+    DependsOn:
+      - VSCodeIdeIdePasswordSecret39AD78F3
+      - VSCodeIdeIdeRoleDefaultPolicyB89C55CF
+      - VSCodeIdeIdeRole21951A1F
+  VSCodeIdeIdeInternalSecurityGroup84C0CB7B:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: IDE internal security group
+      GroupName: ide-internal-sg
+      VpcId:
+        Ref: IdeVpcE831425F
+  VSCodeIdeIdeInternalSecurityGroupfromidestackVSCodeIdeIdeInternalSecurityGroup1B3E620BALLTRAFFIC5FBB443A:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow all internal traffic
+      GroupId:
+        Fn::GetAtt:
+          - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
+          - GroupId
+      IpProtocol: "-1"
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
+          - GroupId
+  VSCodeIdeIdeInternalSecurityGrouptoidestackVSCodeIdeIdeInternalSecurityGroup1B3E620BALLTRAFFIC7F2B7031:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allow all internal traffic
+      DestinationSecurityGroupId:
+        Fn::GetAtt:
+          - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
+          - GroupId
+      GroupId:
+        Fn::GetAtt:
+          - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
+          - GroupId
+      IpProtocol: "-1"
+  VSCodeIdeAppSecurityGroup3CD2EECD:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: App security group
+      GroupName: ide-cloudfront-app-sg
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: IdeVpcE831425F
+  VSCodeIdeAppSecurityGroupfromIndirectPeer808079F80B17:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Port 8080 to App from CloudFront only
+      FromPort: 8080
+      GroupId:
+        Fn::GetAtt:
+          - VSCodeIdeAppSecurityGroup3CD2EECD
+          - GroupId
+      IpProtocol: tcp
+      SourcePrefixListId:
+        Fn::GetAtt:
+          - VSCodeIdeIdePrefixListResourceF63186FA
+          - PrefixListId
+      ToPort: 8080
+  VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82:
+    Type: AWS::CloudFormation::WaitConditionHandle
+  VSCodeIdeIdeBootstrapWaitConditionEDA1E0E7:
+    Type: AWS::CloudFormation::WaitCondition
+    Properties:
+      Count: 1
+      Handle:
+        Ref: VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82
+      Timeout: "1800"
+    DependsOn:
+      - VSCodeIdeIdeBootstrapDocument8DDB05AD
+      - VSCodeIdeIdeEC2Instance846AE373
+  VSCodeIdeIdeDistribution613960F4:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        CacheBehaviors:
+          - AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - PATCH
+              - POST
+              - DELETE
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            Compress: true
+            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
+            PathPattern: /app/*
+            TargetOriginId: idestackVSCodeIdeIdeDistributionOrigin2E04D1E2A
+            ViewerProtocolPolicy: allow-all
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - PATCH
+            - POST
+            - DELETE
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          Compress: true
+          OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
+          TargetOriginId: idestackVSCodeIdeIdeDistributionOrigin12E9C5C1A
+          ViewerProtocolPolicy: allow-all
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+              OriginSSLProtocols:
+                - TLSv1.2
+            DomainName:
+              Fn::GetAtt:
+                - VSCodeIdeIdeEC2Instance846AE373
+                - PublicDnsName
+            Id: idestackVSCodeIdeIdeDistributionOrigin12E9C5C1A
+          - CustomOriginConfig:
+              HTTPPort: 8080
+              OriginProtocolPolicy: http-only
+              OriginSSLProtocols:
+                - TLSv1.2
+            DomainName:
+              Fn::GetAtt:
+                - VSCodeIdeIdeEC2Instance846AE373
+                - PublicDnsName
+            Id: idestackVSCodeIdeIdeDistributionOrigin2E04D1E2A
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  VSCodeIdeIdePasswordSecret39AD78F3:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        ExcludeCharacters: '"@/\\'
+        ExcludePunctuation: true
+        GenerateStringKey: password
+        IncludeSpace: false
+        PasswordLength: 32
+        SecretStringTemplate: '{"password":""}'
+      Name: ide-password-lambda
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  VSCodeIdeIdePasswordExporterFunctionServiceRoleAC3A4C16:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  VSCodeIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy0FACB966:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+            Effect: Allow
+            Resource:
+              Ref: VSCodeIdeIdePasswordSecret39AD78F3
+        Version: "2012-10-17"
+      PolicyName: VSCodeIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy0FACB966
+      Roles:
+        - Ref: VSCodeIdeIdePasswordExporterFunctionServiceRoleAC3A4C16
+  VSCodeIdeIdePasswordExporterFunction9E9A4082:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |-
+          import traceback
+          import cfnresponse
+          import boto3
+          import json
+
+          def lambda_handler(event, context):
+              print('Event: {}'.format(event))
+              print('context: {}'.format(context))
+              responseData = {}
+
+              status = cfnresponse.SUCCESS
+
+              if event['RequestType'] == 'Delete':
+                  cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+              else:
+                  try:
+                      passwordName = event['ResourceProperties']['PasswordName']
+
+                      secretsmanager = boto3.client('secretsmanager')
+
+                      response = secretsmanager.get_secret_value(
+                          SecretId=passwordName,
+                      )
+
+                      responseData = json.loads(response['SecretString'])
+                  except Exception as e:
+                      status = cfnresponse.FAILED
+                      tb_err = traceback.format_exc()
+                      print(tb_err)
+                      responseData = {'Error': tb_err}
+                  finally:
+                      cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+      FunctionName: ide-password-lambda
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - VSCodeIdeIdePasswordExporterFunctionServiceRoleAC3A4C16
+          - Arn
+      Runtime: python3.13
+      Timeout: 180
+    DependsOn:
+      - VSCodeIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy0FACB966
+      - VSCodeIdeIdePasswordExporterFunctionServiceRoleAC3A4C16
+  VSCodeIdeIdePasswordExporter93551A8E:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - VSCodeIdeIdePasswordExporterFunction9E9A4082
+          - Arn
+      PasswordName:
+        Fn::Join:
+          - "-"
+          - - Fn::Select:
+                - 0
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: VSCodeIdeIdePasswordSecret39AD78F3
+            - Fn::Select:
+                - 1
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: VSCodeIdeIdePasswordSecret39AD78F3
+            - Fn::Select:
+                - 2
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: VSCodeIdeIdePasswordSecret39AD78F3
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  VSCodeIdeIdeBootstrapDocument8DDB05AD:
+    Type: AWS::SSM::Document
+    Properties:
+      Content:
+        schemaVersion: "2.2"
+        description: Bootstrap IDE
+        parameters:
+          BootstrapScript:
+            type: String
+            description: (Optional) Custom bootstrap script to run.
+            default: ""
+        mainSteps:
+          - inputs:
+              runCommand:
+                - Fn::Sub:
+                    - |-
+                      bash << 'HEREDOC'
+                      set -e
+
+                      echo "Retrieving IDE password..."
+
+                      PASSWORD_SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id "${passwordName}" --query 'SecretString' --output text)
+
+                      export IDE_PASSWORD=$(echo "$PASSWORD_SECRET_VALUE" | jq -r '.password')
+
+                      echo "Setting profile variables..."
+
+                      # Set some useful variables
+                      export TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+                      export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F\" '{print $4}')
+                      export EC2_PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/local-ipv4)
+
+                      tee /etc/profile.d/workshop.sh <<EOF
+                      export INSTANCE_IAM_ROLE_NAME="${instanceIamRoleName}"
+                      export INSTANCE_IAM_ROLE_ARN="${instanceIamRoleArn}"
+
+                      export AWS_REGION="$AWS_REGION"
+                      export AWS_DEFAULT_REGION="$AWS_REGION"
+                      export EC2_PRIVATE_IP="$EC2_PRIVATE_IP"
+
+                      export IDE_DOMAIN="${domain}"
+                      export IDE_URL="https://${domain}"
+                      export IDE_PASSWORD="$IDE_PASSWORD"
+
+                      alias code="code-server"
+                      EOF
+
+                      source /etc/profile.d/workshop.sh
+
+                      echo "Setting PS1..."
+
+                      # Set PS1
+                      tee /etc/profile.d/custom_prompt.sh <<EOF
+                      #!/bin/sh
+
+                      export PROMPT_COMMAND='export PS1="\u:\w:$ "'
+                      EOF
+
+                      echo "Generating SSH key..."
+
+                      # Generate an SSH key for ec2-user
+                      sudo -u ec2-user bash -c "ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa -m pem <<< y"
+
+                      echo "Installing AWS CLI..."
+
+                      # Install AWS CLI
+                      curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip
+                      unzip -q -d /tmp /tmp/aws-cli.zip
+                      /tmp/aws/install --update
+                      rm -rf /tmp/aws*
+
+                      echo "export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)" | sudo tee -a /etc/profile.d/workshop.sh
+                      source /etc/profile.d/workshop.sh
+
+                      echo "Installing Docker..."
+
+                      # Install docker and base package
+                      dnf install -y -q docker git >/dev/null
+                      service docker start
+                      usermod -aG docker ec2-user
+
+                      echo "Installing code-server..."
+
+                      # Install code-server
+                      codeServer=$(dnf list installed code-server | wc -l)
+                      if [ "$codeServer" -eq "0" ]; then
+                        sudo -u ec2-user "codeServerVersion=${codeServerVersion}" bash -c 'curl -fsSL https://code-server.dev/install.sh | sh -s -- --version ${codeServerVersion}'
+                        systemctl enable --now code-server@ec2-user
+                      fi
+
+                      sudo -u ec2-user bash -c 'mkdir -p ~/.config/code-server'
+                      sudo -u ec2-user bash -c 'touch ~/.config/code-server/config.yaml'
+                      tee /home/ec2-user/.config/code-server/config.yaml <<EOF
+                      cert: false
+                      auth: password
+                      password: "$IDE_PASSWORD"
+                      bind-addr: 127.0.0.1:8889
+                      EOF
+
+                      # Create default directory for workspace
+                      sudo -u ec2-user bash -c 'mkdir -p ~/environment'
+
+                      ENVIRONMENT_CONTENTS_ZIP=${environmentContentsZip}
+
+                      if [ ! -z "$ENVIRONMENT_CONTENTS_ZIP" ]; then
+                        echo "Adding environments archive..."
+
+                        if [[ $ENVIRONMENT_CONTENTS_ZIP == s3:* ]]; then
+                          aws s3 cp $ENVIRONMENT_CONTENTS_ZIP /tmp/environment.zip
+                        else
+                          curl -LSsf -o /tmp/environment.zip $ENVIRONMENT_CONTENTS_ZIP
+                        fi
+
+                        sudo -u ec2-user bash -c 'unzip -q /tmp/environment.zip -d ~/environment'
+
+                        rm -rf /tmp/environment.zip
+                      fi
+
+                      STARTUP_EDITOR='none'
+
+                      TERMINAL_ON_STARTUP="${terminalOnStartup}"
+                      README_URL="${readmeUrl}"
+
+                      if [ ! -z "$README_URL" ]; then
+                        echo "Adding README..."
+                        if [[ $README_URL == s3:* ]]; then
+                          aws s3 cp $README_URL /home/ec2-user/environment/README.md
+                        else
+                          curl -LSsf -o /home/ec2-user/environment/README.md $README_URL
+                        fi
+                      fi
+
+                      if [ "$TERMINAL_ON_STARTUP" = "true" ]; then
+                        STARTUP_EDITOR='terminal'
+                      elif [ -f /home/ec2-user/environment/README.md ]; then
+                        STARTUP_EDITOR='readme'
+                      fi
+
+                      echo "Configuring code-server..."
+
+                      sudo -u ec2-user bash -c 'mkdir -p ~/.local/share/code-server/User'
+                      sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/User/settings.json'
+                      tee /home/ec2-user/.local/share/code-server/User/settings.json <<EOF
+                      {
+                        "extensions.autoUpdate": false,
+                        "extensions.autoCheckUpdates": false,
+                        "security.workspace.trust.enabled": false,
+                        "workbench.startupEditor": "$STARTUP_EDITOR",
+                        "task.allowAutomaticTasks": "on",
+                        "telemetry.telemetryLevel": "off",
+                        "update.mode": "none"
+                      }
+                      EOF
+
+                      sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/User/keybindings.json'
+                      tee /home/ec2-user/.local/share/code-server/User/keybindings.json << 'EOF'
+                      [
+                        {
+                          "key": "shift+cmd+/",
+                          "command": "remote.tunnel.forwardCommandPalette"
+                        }
+                      ]
+                      EOF
+
+                      if [ ! -z "${splashUrl}" ]; then
+                      echo "Configuring splash URL..."
+
+                      sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/User/tasks.json'
+                      tee /home/ec2-user/.local/share/code-server/User/tasks.json << 'EOF'
+                      {
+                        "version": "2.0.0",
+                        "tasks": [
+                          {
+                            "label": "Open Splash",
+                            "command": "${!input:openSimpleBrowser}",
+                            "presentation": {
+                              "reveal": "always",
+                              "panel": "new"
+                            },
+                            "runOptions": {
+                              "runOn": "folderOpen"
+                            }
+                          }
+                        ],
+                        "inputs": [
+                          {
+                            "id": "openSimpleBrowser",
+                            "type": "command",
+                            "command": "simpleBrowser.show",
+                            "args": [
+                              "${splashUrl}"
+                            ]
+                          }
+                        ]
+                      }
+                      EOF
+                      fi
+
+                      echo "Installing code-server extensions..."
+
+                      EXTENSIONS="${extensions}"
+
+                      IFS=',' read -ra array <<< "$EXTENSIONS"
+
+                      # Iterate over each entry in the array
+                      for extension in "${!array[@]}"; do
+                        # Use retries as extension installation seems unreliable
+                        sudo -u ec2-user bash -c "set -e; (r=5;while ! code-server --install-extension $extension --force ; do ((--r))||exit;sleep 5;done)"
+                      done
+
+                      if [ ! -f "/home/ec2-user/.local/share/code-server/coder.json" ]; then
+                        sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/coder.json'
+                        echo '{ "query": { "folder": "/home/ec2-user/environment" } }' > /home/ec2-user/.local/share/code-server/coder.json
+                      fi
+
+                      echo "Restarting code-server..."
+
+                      systemctl restart code-server@ec2-user
+
+                      echo "Installing Caddy..."
+
+                      # Install caddy
+                      dnf copr enable -y -q @caddy/caddy epel-9-x86_64
+                      dnf install -y -q caddy
+                      systemctl enable --now caddy
+
+                      tee /etc/caddy/Caddyfile <<EOF
+                      :80 {
+                        handle /* {
+                          reverse_proxy 127.0.0.1:8889
+                        }
+                        #GITEA
+                      }
+                      EOF
+
+                      echo "Restarting caddy..."
+
+                      systemctl restart caddy
+
+                      if [ ! -f "/home/ec2-user/.local/share/code-server/coder.json" ]; then
+                        sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/coder.json'
+                        echo '{ "query": { "folder": "/home/ec2-user/environment" } }' > /home/ec2-user/.local/share/code-server/coder.json
+                      fi
+
+                      ${installGitea}
+
+                      echo "Running custom bootstrap script..."
+
+                      ${customBootstrapScript}
+                      HEREDOC
+
+                      exit_code=$?
+
+                      /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
+
+                      exit $exit_code
+                    - splashUrl: ""
+                      instanceIamRoleName:
+                        Ref: VSCodeIdeIdeRole21951A1F
+                      codeServerVersion: 4.96.2
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+                      passwordName:
+                        Fn::Join:
+                          - "-"
+                          - - Fn::Select:
+                                - 0
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: VSCodeIdeIdePasswordSecret39AD78F3
+                            - Fn::Select:
+                                - 1
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: VSCodeIdeIdePasswordSecret39AD78F3
+                            - Fn::Select:
+                                - 2
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: VSCodeIdeIdePasswordSecret39AD78F3
+                      environmentContentsZip: ""
+                      terminalOnStartup: "true"
+                      installGitea: echo bootstrapGitea was not provided
+                      domain: ""
+                      extensions: amazonwebservices.aws-toolkit-vscode,amazonwebservices.amazon-q-vscode,ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
+                      waitConditionHandleUrl:
+                        Ref: VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82
+                      readmeUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - VSCodeIdeIdeRole21951A1F
+                          - Arn
+            name: IdeBootstrapFunction
+            action: aws:runShellScript
+      DocumentFormat: YAML
+      DocumentType: Command
+      Name: ide-bootstrap-document
+      UpdateMethod: NewVersion
+  VSCodeIdeIdeBootstrapFunctionServiceRole45BD56C6:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  VSCodeIdeIdeBootstrapFunctionServiceRoleDefaultPolicyA4D18BC6:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: iam:PassRole
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - VSCodeIdeIdeRole21951A1F
+                - Arn
+          - Action:
+              - ec2:DescribeInstances
+              - iam:ListInstanceProfiles
+              - ssm:DescribeInstanceInformation
+              - ssm:SendCommand
+              - ssm:GetCommandInvocation
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: VSCodeIdeIdeBootstrapFunctionServiceRoleDefaultPolicyA4D18BC6
+      Roles:
+        - Ref: VSCodeIdeIdeBootstrapFunctionServiceRole45BD56C6
+  VSCodeIdeIdeBootstrapFunctionADFBCE22:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |-
+          from __future__ import print_function
+          import boto3
+          import json
+          import os
+          import time
+          import traceback
+          import cfnresponse
+          from botocore.exceptions import WaiterError
+
+          def lambda_handler(event, context):
+              print('Event: {}'.format(event))
+              print('context: {}'.format(context))
+              responseData = {}
+
+              status = cfnresponse.SUCCESS
+
+              if event['RequestType'] == 'Delete':
+                  responseData = {'Success': 'Custom Resource removed'}
+                  cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+              else:
+                  try:
+                      # Open AWS clients
+                      ec2 = boto3.client('ec2')
+                      ssm = boto3.client('ssm')
+
+                      instance_id = event['ResourceProperties']['InstanceId']
+
+                      print('Waiting for the instance to be ready...')
+                      # Wait for Instance to become ready
+                      instance_state = 'unknown'
+                      print('Instance is currently in state'.format(instance_state))
+                      while instance_state != 'running':
+                          time.sleep(5)
+                          di = ec2.describe_instances(InstanceIds=[instance_id])
+                          instance_state = di['Reservations'][0]['Instances'][0]['State']['Name']
+                          print('Waiting for instance in state: {}'.format(instance_state))
+
+                      print('Instance is ready')
+
+                      print('Waiting for instance to come online in SSM...')
+                      for i in range(1, 60):
+                        response = ssm.describe_instance_information(Filters=[{'Key': 'InstanceIds', 'Values': [instance_id]}])
+                        if len(response["InstanceInformationList"]) == 0:
+                          print('No instances in SSM')
+                        elif len(response["InstanceInformationList"]) > 0 and \
+                              response["InstanceInformationList"][0]["PingStatus"] == "Online" and \
+                              response["InstanceInformationList"][0]["InstanceId"] == instance_id:
+                          print('Instance is online in SSM')
+                          break
+                        time.sleep(10)
+
+                      ssm_document = event['ResourceProperties']['SsmDocument']
+
+                      ssm.send_command(
+                          InstanceIds=[instance_id],
+                          DocumentName=ssm_document,
+                          CloudWatchOutputConfig={
+                              'CloudWatchLogGroupName': event['ResourceProperties']['LogGroupName'],
+                              'CloudWatchOutputEnabled': True
+                          })
+
+                      responseData = {'Success': 'Started bootstrapping for instance: '+instance_id}
+                  except Exception as e:
+                      status = cfnresponse.FAILED
+                      tb_err = traceback.format_exc()
+                      print(tb_err)
+                      responseData = {'Error': tb_err}
+                  finally:
+                      cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+      FunctionName: ide-bootstrap-lambda
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - VSCodeIdeIdeBootstrapFunctionServiceRole45BD56C6
+          - Arn
+      Runtime: python3.13
+      Timeout: 900
+    DependsOn:
+      - VSCodeIdeIdeBootstrapFunctionServiceRoleDefaultPolicyA4D18BC6
+      - VSCodeIdeIdeBootstrapFunctionServiceRole45BD56C6
+  VSCodeIdeIdeBootstrapResourceC2C4DC11:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - VSCodeIdeIdeBootstrapFunctionADFBCE22
+          - Arn
+      SsmDocument:
+        Ref: VSCodeIdeIdeBootstrapDocument8DDB05AD
+      LogGroupName:
+        Ref: VSCodeIdeIdeLogGroup364F2B78
+      InstanceId:
+        Ref: VSCodeIdeIdeEC2Instance846AE373
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+Outputs:
+  IdeUrl:
+    Description: Workshop IDE Url
+    Value:
+      Fn::Join:
+        - ""
+        - - https://
+          - Fn::GetAtt:
+              - VSCodeIdeIdeDistribution613960F4
+              - DomainName
+    Export:
+      Name: ide-url
+  IdePassword:
+    Description: Workshop IDE Password
+    Value:
+      Fn::GetAtt:
+        - VSCodeIdeIdePasswordExporter93551A8E
+        - password
+    Export:
+      Name: ide-password
+Parameters:
+  SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
+
