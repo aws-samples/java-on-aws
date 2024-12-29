@@ -1,16 +1,16 @@
-const AWS = require('aws-sdk');
+const { CodeBuildClient, StartBuildCommand } = require("@aws-sdk/client-codebuild");
 
 exports.handler = async function (event, context) {
   console.log(JSON.stringify(event, null, 4));
   try {
     const projectName = event.ResourceProperties.ProjectName;
-    const codeBuildIamRoleArn = event.ResourceProperties.CodeBuildIamRoleArn
+    const codeBuildIamRoleArn = event.ResourceProperties.CodeBuildIamRoleArn;
 
-    const codebuild = new AWS.CodeBuild();
+    const codebuild = new CodeBuildClient();
 
     console.log(`Starting new build of project ${projectName}`);
 
-    const { build } = await codebuild.startBuild({
+    const { build } = await codebuild.send(new StartBuildCommand({
       projectName,
       // Pass CFN related parameters through the build for extraction by the
       // completion handler.
@@ -40,7 +40,7 @@ exports.handler = async function (event, context) {
           value: codeBuildIamRoleArn
         }
       ]
-    }).promise();
+    }));
     console.log(`Build id ${build.id} started - resource completion handled by EventBridge`);
   } catch(error) {
     console.error(error);

@@ -1,16 +1,16 @@
-const AWS = require('aws-sdk');
+const { CodeBuildClient, BatchGetBuildsCommand } = require("@aws-sdk/client-codebuild");
 
 exports.handler = async function (event, context) {
   console.log(JSON.stringify(event, null, 4));
 
   const projectName = event['detail']['project-name'];
 
-  const codebuild = new AWS.CodeBuild();
+  const codebuild = new CodeBuildClient();
 
   const buildId = event['detail']['build-id'];
-  const { builds } = await codebuild.batchGetBuilds({
+  const { builds } = await codebuild.send(new BatchGetBuildsCommand({
     ids: [ buildId ]
-  }).promise();
+  }));
 
   console.log(JSON.stringify(builds, null, 4));
 

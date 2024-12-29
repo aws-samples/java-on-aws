@@ -1126,11 +1126,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - UnicornStoreIdeIdeRole81A2CEAA
-                          - Arn
-                      readmeUrl: ""
+                    - readmeUrl: ""
                       waitConditionHandleUrl:
                         Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
                       extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
@@ -1194,6 +1190,10 @@ Resources:
                       instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
                       splashUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - UnicornStoreIdeIdeRole81A2CEAA
+                          - Arn
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -2188,7 +2188,6 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreDatabaseSetupDatabaseSetupFunction83636DD9
           - Arn
-      SqlStatements: CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
       SecretName:
         Fn::Join:
           - "-"
@@ -2219,6 +2218,7 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: InfrastructureCorepostgresB0D0C6BB
+      SqlStatements: CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
     DependsOn:
       - InfrastructureCoreUnicornStoreDatabaseF56884BA
       - InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8
@@ -2280,12 +2280,6 @@ Resources:
               return 'placeholder'
       Environment:
         Variables:
-          SPRING_DATASOURCE_PASSWORD:
-            Fn::Join:
-              - ""
-              - - "{{resolve:secretsmanager:"
-                - Ref: InfrastructureCorepostgresB0D0C6BB
-                - :SecretString:password::}}
           JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
           AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
           SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
@@ -2297,6 +2291,12 @@ Resources:
                     - InfrastructureCoreUnicornStoreDatabaseF56884BA
                     - Endpoint.Address
                 - :5432/unicorns
+          SPRING_DATASOURCE_PASSWORD:
+            Fn::Join:
+              - ""
+              - - "{{resolve:secretsmanager:"
+                - Ref: InfrastructureCorepostgresB0D0C6BB
+                - :SecretString:password::}}
       FunctionName: unicorn-store-spring
       Handler: com.unicorn.store.StreamLambdaHandler::handleRequest
       MemorySize: 2048
@@ -2832,19 +2832,19 @@ Resources:
               request.end();
             });
           };
-          const AWS = require('aws-sdk');
+          const { CodeBuildClient, StartBuildCommand } = require("@aws-sdk/client-codebuild");
 
           exports.handler = async function (event, context) {
             console.log(JSON.stringify(event, null, 4));
             try {
               const projectName = event.ResourceProperties.ProjectName;
-              const codeBuildIamRoleArn = event.ResourceProperties.CodeBuildIamRoleArn
+              const codeBuildIamRoleArn = event.ResourceProperties.CodeBuildIamRoleArn;
 
-              const codebuild = new AWS.CodeBuild();
+              const codebuild = new CodeBuildClient();
 
               console.log(`Starting new build of project ${projectName}`);
 
-              const { build } = await codebuild.startBuild({
+              const { build } = await codebuild.send(new StartBuildCommand({
                 projectName,
                 // Pass CFN related parameters through the build for extraction by the
                 // completion handler.
@@ -2874,7 +2874,7 @@ Resources:
                     value: codeBuildIamRoleArn
                   }
                 ]
-              }).promise();
+              }));
               console.log(`Build id ${build.id} started - resource completion handled by EventBridge`);
             } catch(error) {
               console.error(error);
@@ -2977,19 +2977,19 @@ Resources:
               request.end();
             });
           };
-          const AWS = require('aws-sdk');
+          const { CodeBuildClient, BatchGetBuildsCommand } = require("@aws-sdk/client-codebuild");
 
           exports.handler = async function (event, context) {
             console.log(JSON.stringify(event, null, 4));
 
             const projectName = event['detail']['project-name'];
 
-            const codebuild = new AWS.CodeBuild();
+            const codebuild = new CodeBuildClient();
 
             const buildId = event['detail']['build-id'];
-            const { builds } = await codebuild.batchGetBuilds({
+            const { builds } = await codebuild.send(new BatchGetBuildsCommand({
               ids: [ buildId ]
-            }).promise();
+            }));
 
             console.log(JSON.stringify(builds, null, 4));
 
