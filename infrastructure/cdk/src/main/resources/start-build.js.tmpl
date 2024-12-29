@@ -1,0 +1,49 @@
+const { CodeBuildClient, StartBuildCommand } = require("@aws-sdk/client-codebuild");
+
+exports.handler = async function (event, context) {
+  console.log(JSON.stringify(event, null, 4));
+  try {
+    const projectName = event.ResourceProperties.ProjectName;
+    const codeBuildIamRoleArn = event.ResourceProperties.CodeBuildIamRoleArn;
+
+    const codebuild = new CodeBuildClient();
+
+    console.log(`Starting new build of project ${projectName}`);
+
+    const { build } = await codebuild.send(new StartBuildCommand({
+      projectName,
+      // Pass CFN related parameters through the build for extraction by the
+      // completion handler.
+      environmentVariablesOverride: [
+        {
+          name: 'CFN_RESPONSE_URL',
+          value: event.ResponseURL
+        },
+        {
+          name: 'CFN_STACK_ID',
+          value: event.StackId
+        },
+        {
+          name: 'CFN_REQUEST_ID',
+          value: event.RequestId
+        },
+        {
+          name: 'CFN_LOGICAL_RESOURCE_ID',
+          value: event.LogicalResourceId
+        },
+        {
+          name: 'REQUESTED_ACTION',
+          value: event.RequestType
+        },
+        {
+          name: 'RESOURCE_CODEBUILD_ROLE_ARN',
+          value: codeBuildIamRoleArn
+        }
+      ]
+    }));
+    console.log(`Build id ${build.id} started - resource completion handled by EventBridge`);
+  } catch(error) {
+    console.error(error);
+    await respond(event, context, 'FAILED', { Error: error });
+  }
+};

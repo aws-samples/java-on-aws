@@ -1,0 +1,34 @@
+const { CodeBuildClient, BatchGetBuildsCommand } = require("@aws-sdk/client-codebuild");
+
+exports.handler = async function (event, context) {
+  console.log(JSON.stringify(event, null, 4));
+
+  const projectName = event['detail']['project-name'];
+
+  const codebuild = new CodeBuildClient();
+
+  const buildId = event['detail']['build-id'];
+  const { builds } = await codebuild.send(new BatchGetBuildsCommand({
+    ids: [ buildId ]
+  }));
+
+  console.log(JSON.stringify(builds, null, 4));
+
+  const build = builds[0];
+  // Fetch the CFN resource and response parameters from the build environment.
+  const environment = {};
+  build.environment.environmentVariables.forEach(e => environment[e.name] = e.value);
+
+  const response = {
+    ResponseURL: environment.CFN_RESPONSE_URL,
+    StackId: environment.CFN_STACK_ID,
+    LogicalResourceId: environment.CFN_LOGICAL_RESOURCE_ID,
+    RequestId: environment.CFN_REQUEST_ID
+  };
+
+  if (event['detail']['build-status'] === 'SUCCEEDED') {
+    await respond(response, context, 'SUCCESS', {}, 'build');
+  } else {
+    await respond(response, context, 'FAILED', { Error: 'Build failed' });
+  }
+};
