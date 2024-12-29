@@ -38,16 +38,11 @@ import java.util.List;
 public class EksCluster extends Construct {
 
     private final CfnCluster cluster;
-    private final String clusterName;
-    private final String clusterVersion;
     // private OpenIdConnectProvider provider;
 
     public EksCluster(final Construct scope, final String id, final String clusterName,
-        final String clusterVerion, final IVpc vpc, final ISecurityGroup additionalSG) {
+        final String clusterVersion, final IVpc vpc, final ISecurityGroup additionalSG) {
         super(scope, id);
-
-        this.clusterName = clusterName;
-        this.clusterVersion = clusterVerion;
 
         // Add tags to subnets to enable Load Balancers
         for (ISubnet subnet : vpc.getPublicSubnets()) {
@@ -165,7 +160,12 @@ public class EksCluster extends Construct {
     //     return provider;
     // }
 
-    public CfnAccessEntry createAccessEntry(String principalArn, String roleName) {
+    public CfnCluster getCluster() {
+        return cluster;
+    }
+
+    public CfnAccessEntry createAccessEntry(final String principalArn, 
+        final String clusterName, final String roleName) {
         var accessEntry = CfnAccessEntry.Builder.create(this, "AccessEntry-" + roleName)
             .clusterName(clusterName)
             .principalArn(principalArn)
@@ -180,7 +180,8 @@ public class EksCluster extends Construct {
         return accessEntry;
     }
 
-    public void createPodIdentity(String principalArn, String namespace, String serviceAccount) {
+    public void createPodIdentity(final String principalArn, final String clusterName, 
+        final String namespace, final String serviceAccount) {
         var podIdentityAssociation = CfnPodIdentityAssociation.Builder.create(this, "CfnPodIdentityAssociationESO")
             .clusterName(clusterName)
             .namespace(namespace)

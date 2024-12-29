@@ -29,7 +29,7 @@ public class CodeBuildResource extends Construct {
     private final CustomResource customResource;
     private final Project codebuildProject;
 
-    public static class CodeBuildCustomResourceProps {
+    public static class CodeBuildResourceProps {
         private IBuildImage buildImage = LinuxBuildImage.AMAZON_LINUX_2_5;
         private ComputeType computeType = ComputeType.SMALL;
         private String buildspec;
@@ -39,65 +39,49 @@ public class CodeBuildResource extends Construct {
         private List<IManagedPolicy> additionalIamPolicies = new ArrayList<>();
         private IRole role;
         private IVpc vpc;
+        private String projectName = "codebuild-project";
 
-        public IBuildImage getBuildImage() {
-            return buildImage;
-        }
-        public void setBuildImage(IBuildImage buildImage) {
-            this.buildImage = buildImage;
-        }
-        public ComputeType getComputeType() {
-            return computeType;
-        }
-        public void setComputeType(ComputeType computeType) {
-            this.computeType = computeType;
-        }
-        public String getBuildspec() {
-            return buildspec;
-        }
-        public void setBuildspec(String buildspec) {
-            this.buildspec = buildspec;
-        }
-        public Map<String, BuildEnvironmentVariable> getEnvironmentVariables() {
-            return environmentVariables;
-        }
-        public void setEnvironmentVariables(Map<String, BuildEnvironmentVariable> environmentVariables) {
-            this.environmentVariables = environmentVariables;
-        }
-        public Duration getCodeBuildTimeout() {
-            return codeBuildTimeout;
-        }
-        public void setCodeBuildTimeout(Duration codeBuildTimeout) {
-            this.codeBuildTimeout = codeBuildTimeout;
-        }
-        public Boolean getPrivilegedMode() {
-            return privilegedMode;
-        }
-        public IVpc getVpc() {
-            return vpc;
-        }
-        public void setVpc(IVpc vpc) {
-            this.vpc = vpc;
-        }
-        public void setPrivilegedMode(Boolean privilegedMode) {
-            this.privilegedMode = privilegedMode;
-        }
-        public List<IManagedPolicy> getAdditionalIamPolicies() {
-            return additionalIamPolicies;
-        }
-        public void setAdditionalIamPolicies(List<IManagedPolicy> additionalIamPolicies) {
-            this.additionalIamPolicies = additionalIamPolicies;
-        }
-        public IRole getRole() {
-            return role;
-        }
-        public void setRole(IRole role) {
-            this.role = role;
-        }
+        public String getProjectName() { return projectName; }
+        public void setProjectName(String projectName) { this.projectName = projectName; }
+
+        public IBuildImage getBuildImage() { return buildImage; }
+        public void setBuildImage(IBuildImage buildImage) { this.buildImage = buildImage; }
+
+        public ComputeType getComputeType() { return computeType; }
+        public void setComputeType(ComputeType computeType) { this.computeType = computeType; }
+
+        public String getBuildspec() { return buildspec; }
+        public void setBuildspec(String buildspec) { this.buildspec = buildspec; }
+
+        public Map<String, BuildEnvironmentVariable> getEnvironmentVariables() { return environmentVariables; }
+        public void setEnvironmentVariables(Map<String, BuildEnvironmentVariable> environmentVariables) { this.environmentVariables = environmentVariables; }
+
+        public Duration getCodeBuildTimeout() { return codeBuildTimeout; }
+        public void setCodeBuildTimeout(Duration codeBuildTimeout) { this.codeBuildTimeout = codeBuildTimeout; }
+
+        public Boolean getPrivilegedMode() { return privilegedMode; }
+        public void setPrivilegedMode(Boolean privilegedMode) { this.privilegedMode = privilegedMode; }
+
+        public List<IManagedPolicy> getAdditionalIamPolicies() { return additionalIamPolicies; }
+        public void setAdditionalIamPolicies(List<IManagedPolicy> additionalIamPolicies) { this.additionalIamPolicies = additionalIamPolicies; }
+
+        public IVpc getVpc() { return vpc; }
+        public void setVpc(IVpc vpc) { this.vpc = vpc; }
+
+        public IRole getRole() { return role; }
+        public void setRole(IRole role) { this.role = role; }
     }
 
-    public CodeBuildResource(Construct scope, String id, CodeBuildCustomResourceProps props) {
+    public CodeBuildResource(Construct scope, String id, CodeBuildResourceProps props) {
         super(scope, id);
+
+        // Check IAM role
+        if (props.getRole() == null) {
+            props.setRole(Role.Builder.create(this, "CodeBuildRole")
+                .assumedBy(new ServicePrincipal("codebuild.amazonaws.com"))
+                .roleName(props.getProjectName() + "-user")
+                .build());
+        }
 
         // Read function code from files
         String respondFunctionCode = loadFile("/respond-function.js.tmpl");
@@ -108,7 +92,7 @@ public class CodeBuildResource extends Construct {
         this.codebuildProject = Project.Builder.create(this, "CodeBuildProject")
             .role(props.getRole())
             .vpc(props.getVpc())
-            .projectName("unicornstore-codebuild")
+            .projectName(props.getProjectName())
             .subnetSelection(SubnetSelection.builder()
                 .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
                 .build())
@@ -130,9 +114,9 @@ public class CodeBuildResource extends Construct {
         Function startBuildFunction = Function.Builder.create(this, "StartBuildFunction")
             .code(Code.fromInline(respondFunctionCode + startBuildFunctionCode))
             .handler("index.handler")
-            .runtime(Runtime.NODEJS_16_X)
+            .runtime(Runtime.NODEJS_22_X)
             .timeout(Duration.minutes(1))
-            .functionName("unicornstore-codebuild-start-lambda")
+            .functionName(props.getProjectName() + "-start-lambda")
             .build();
 
         startBuildFunction.addToRolePolicy(PolicyStatement.Builder.create()
@@ -144,9 +128,9 @@ public class CodeBuildResource extends Construct {
         Function reportBuildFunction = Function.Builder.create(this, "ReportBuildFunction")
             .code(Code.fromInline(respondFunctionCode + reportBuildFunctionCode))
             .handler("index.handler")
-            .runtime(Runtime.NODEJS_16_X)
+            .runtime(Runtime.NODEJS_22_X)
             .timeout(Duration.minutes(1))
-            .functionName("unicornstore-codebuild-report-lambda")
+            .functionName(props.getProjectName() + "-report-lambda")
             .build();
 
         reportBuildFunction.addToRolePolicy(PolicyStatement.Builder.create()

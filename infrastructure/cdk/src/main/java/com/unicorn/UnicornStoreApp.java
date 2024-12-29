@@ -1,18 +1,11 @@
 package com.unicorn;
 
 import java.util.List;
-
-// import com.unicorn.alternatives.UnicornAuditService;
-// import com.unicorn.alternatives.UnicornStoreMicronaut;
-// import com.unicorn.alternatives.UnicornStoreQuarkus;
-// import com.unicorn.alternatives.UnicornStoreSpringGraalVM;
-// import com.unicorn.core.InfrastructureStack;
 import io.github.cdklabs.cdknag.AwsSolutionsChecks;
 import io.github.cdklabs.cdknag.NagPackSuppression;
 import io.github.cdklabs.cdknag.NagSuppressions;
 import software.amazon.awscdk.App;
 import software.amazon.awscdk.Aspects;
-// import software.amazon.awscdk.StackProps;
 
 public class UnicornStoreApp {
 
@@ -20,25 +13,6 @@ public class UnicornStoreApp {
         App app = new App();
 
         var unicornStoreStack = new UnicornStoreStack(app, "unicornstore-stack");
-
-        // var infrastructureStack = new InfrastructureStack(app, "UnicornStoreInfrastructure", StackProps.builder()
-        //         .build());
-
-        // var unicornStoreSpring = new UnicornStoreStack(app, "UnicornStoreSpringApp", StackProps.builder()
-        //         .build(), infrastructureStack);
-
-        // var unicornStoreMicronaut = new UnicornStoreMicronaut(app, "UnicornStoreMicronautApp", StackProps.builder()
-        //         .build(), infrastructureStack);
-
-        // var unicornStoreSpringGraalVM = new UnicornStoreSpringGraalVM(app, "UnicornStoreSpringGraalVMApp", StackProps.builder()
-        //         .build(), infrastructureStack);
-
-        // var unicornStoreQuarkus = new UnicornStoreQuarkus(app, "UnicornStoreQuarkusApp", StackProps.builder()
-        //         .build(), infrastructureStack);
-
-        // var unicornAuditService = new UnicornAuditService(app, "UnicornAuditServiceApp", StackProps.builder()
-        //         .build(), infrastructureStack);
-
 
         //Add CDK-NAG checks: https://github.com/cdklabs/cdk-nag
         //Add suppression to exclude certain findings that are not needed for Workshop environment
@@ -76,12 +50,6 @@ public class UnicornStoreApp {
         );
 
         NagSuppressions.addStackSuppressions(unicornStoreStack, suppression);
-        // NagSuppressions.addStackSuppressions(infrastructureStack, suppression);
-        // NagSuppressions.addStackSuppressions(unicornStoreSpring, suppression);
-        // NagSuppressions.addStackSuppressions(unicornStoreMicronaut, suppression);
-        // NagSuppressions.addStackSuppressions(unicornStoreSpringGraalVM, suppression);
-        // NagSuppressions.addStackSuppressions(unicornStoreQuarkus, suppression);
-        // NagSuppressions.addStackSuppressions(unicornAuditService, suppression);
 
         app.synth();
     }

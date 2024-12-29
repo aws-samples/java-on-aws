@@ -21,7 +21,14 @@ import software.amazon.awscdk.services.ec2.BlockDevice;
 import software.amazon.awscdk.services.ec2.BlockDeviceVolume;
 import software.amazon.awscdk.services.ec2.EbsDeviceOptions;
 import software.amazon.awscdk.services.ec2.EbsDeviceVolumeType;
+import software.amazon.awscdk.services.ec2.IMachineImage;
+import software.amazon.awscdk.services.ec2.ISecurityGroup;
+import software.amazon.awscdk.services.ec2.IVpc;
 import software.amazon.awscdk.services.ec2.Instance;
+import software.amazon.awscdk.services.ec2.InstanceClass;
+import software.amazon.awscdk.services.ec2.InstanceSize;
+import software.amazon.awscdk.services.ec2.InstanceType;
+import software.amazon.awscdk.services.ec2.MachineImage;
 import software.amazon.awscdk.services.ec2.Peer;
 import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.SecurityGroup;
@@ -32,6 +39,8 @@ import software.amazon.awscdk.services.iam.InstanceProfile;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.iam.PolicyDocument;
 import software.amazon.awscdk.services.iam.PolicyStatement;
+import software.amazon.awscdk.services.iam.Role;
+import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
@@ -57,7 +66,95 @@ import java.util.Map;
 public class VSCodeIde extends Construct {
 
     private CustomResource passwordResource;
-    private Secret ideSecretsManagerPassword;
+    private final Secret ideSecretsManagerPassword;
+    private final SecurityGroup ideInternalSecurityGroup;
+
+    public static class VSCodeIdeProps {
+        private String instanceName = "ide";
+        private String bootstrapScript = "echo bootstrapScript was not provided";
+        private int diskSize = 50;
+        private IVpc vpc;
+        private String availabilityZone;
+        private IMachineImage machineImage = MachineImage.latestAmazonLinux2023();
+        private InstanceType instanceType = InstanceType.of(InstanceClass.T3, InstanceSize.MEDIUM);
+        private String codeServerVersion = "4.96.2";
+        private List<IManagedPolicy> additionalIamPolicies = new ArrayList<>();
+        private List<ISecurityGroup> additionalSecurityGroups = new ArrayList<>();
+        private int bootstrapTimeoutMinutes = 30;
+        private boolean enableGitea = false;
+        private String splashUrl = "";
+        private String readmeUrl = "";
+        private String environmentContentsZip = "";
+        private List<String> extensions = new ArrayList<>();
+        private boolean terminalOnStartup = true;
+        private Role role;
+        private String additionalIamPolicyPath = "/iam-policy.json";
+        private boolean enableAppSecurityGroup = false;
+        private int appPort = 8080;
+
+        public String getInstanceName() { return instanceName; }
+        public void setInstanceName(String instanceName) { this.instanceName = instanceName; }
+
+        public String getBootstrapScript() { return bootstrapScript; }
+        public void setBootstrapScript(String bootstrapScript) { this.bootstrapScript = bootstrapScript; }
+
+        public int getDiskSize() { return diskSize; }
+        public void setDiskSize(int diskSize) { this.diskSize = diskSize; }
+
+        public IVpc getVpc() { return vpc; }
+        public void setVpc(IVpc vpc) { this.vpc = vpc; }
+
+        public String getAvailabilityZone() { return availabilityZone; }
+        public void setAvailabilityZone(String availabilityZone) { this.availabilityZone = availabilityZone; }
+
+        public IMachineImage getMachineImage() { return machineImage; }
+        public void setMachineImage(IMachineImage machineImage) { this.machineImage = machineImage; }
+
+        public InstanceType getInstanceType() { return instanceType; }
+        public void setInstanceType(InstanceType instanceType) { this.instanceType = instanceType; }
+
+        public String getCodeServerVersion() { return codeServerVersion; }
+        public void setCodeServerVersion(String codeServerVersion) { this.codeServerVersion = codeServerVersion; }
+
+        public List<IManagedPolicy> getAdditionalIamPolicies() { return additionalIamPolicies; }
+        public void setAdditionalIamPolicies(List<IManagedPolicy> additionalIamPolicies) { this.additionalIamPolicies = additionalIamPolicies; }
+
+        public List<ISecurityGroup> getAdditionalSecurityGroups() { return additionalSecurityGroups; }
+        public void setAdditionalSecurityGroups(List<ISecurityGroup> additionalSecurityGroups) { this.additionalSecurityGroups = additionalSecurityGroups; }
+
+        public int getBootstrapTimeoutMinutes() { return bootstrapTimeoutMinutes; }
+        public void setBootstrapTimeoutMinutes(int bootstrapTimeoutMinutes) { this.bootstrapTimeoutMinutes = bootstrapTimeoutMinutes; }
+
+        public boolean isEnableGitea() { return enableGitea; }
+        public void setEnableGitea(boolean enableGitea) { this.enableGitea = enableGitea; }
+
+        public String getSplashUrl() { return splashUrl; }
+        public void setSplashUrl(String splashUrl) { this.splashUrl = splashUrl; }
+
+        public String getReadmeUrl() { return readmeUrl; }
+        public void setReadmeUrl(String readmeUrl) { this.readmeUrl = readmeUrl; }
+
+        public String getEnvironmentContentsZip() { return environmentContentsZip; }
+        public void setEnvironmentContentsZip(String environmentContentsZip) { this.environmentContentsZip = environmentContentsZip; }
+
+        public List<String> getExtensions() { return extensions; }
+        public void setExtensions(List<String> extensions) { this.extensions = extensions; }
+
+        public boolean isTerminalOnStartup() { return terminalOnStartup; }
+        public void setTerminalOnStartup(boolean terminalOnStartup) { this.terminalOnStartup = terminalOnStartup; }
+
+        public Role getRole() { return role; }
+        public void setRole(Role role) { this.role = role; }
+
+        public String getAdditionalIamPolicyPath() { return additionalIamPolicyPath; }
+        public void setAdditionalIamPolicyPath(String additionalIamPolicyPath) { this.additionalIamPolicyPath = additionalIamPolicyPath; }
+
+        public boolean isEnableAppSecurityGroup() { return enableAppSecurityGroup; }
+        public void setEnableAppSecurityGroup(boolean enableAppSecurityGroup) { this.enableAppSecurityGroup = enableAppSecurityGroup; }
+
+        public int getAppPort() { return appPort; }
+        public void setAppPort(int appPort) { this.appPort = appPort; }
+    }
 
     public VSCodeIde(final Construct scope, final String id, final VSCodeIdeProps props) {
         super(scope, id);
@@ -73,7 +170,10 @@ public class VSCodeIde extends Construct {
 
         // Check IAM role
         if (props.getRole() == null) {
-            throw new IllegalArgumentException("IdeRole must be provided in the properties and cannot be null");
+            props.setRole(Role.Builder.create(this, "IdeRole")
+                .assumedBy(new ServicePrincipal("ec2.amazonaws.com"))
+                .roleName(props.getInstanceName() + "-user")
+                .build());
         }
 
         // props.getRole().addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
@@ -93,7 +193,7 @@ public class VSCodeIde extends Construct {
         // Set up logging
         LogGroup logGroup = LogGroup.Builder.create(this, "IdeLogGroup")
             .retention(RetentionDays.ONE_WEEK)
-            .logGroupName("unicornstore-ide-bootstrap")
+            .logGroupName(props.getInstanceName() + "-bootstrap-log")
             .build();
         logGroup.grantWrite(props.getRole());
 
@@ -103,7 +203,7 @@ public class VSCodeIde extends Construct {
             .handler("index.lambda_handler")
             .runtime(Runtime.PYTHON_3_13)
             .timeout(Duration.minutes(3))
-            .functionName("unicornstore-vscode-ide-prefix-list-lambda")
+            .functionName(props.getInstanceName() + "-prefix-list-lambda")
             .build();
 
         prefixListFunction.addToRolePolicy(PolicyStatement.Builder.create()
@@ -124,7 +224,7 @@ public class VSCodeIde extends Construct {
         SecurityGroup ideSecurityGroup = SecurityGroup.Builder.create(this, "IdeSecurityGroup")
             .vpc(props.getVpc())
             .allowAllOutbound(true)
-            .securityGroupName("unicornstore-cloudfront-ide-sg")
+            .securityGroupName(props.getInstanceName() + "-cloudfront-ide-sg")
             .description("IDE security group")
             .build();
 
@@ -174,12 +274,26 @@ public class VSCodeIde extends Construct {
                 .build()))
             .build();
 
+        // Internal security group, allow traffic only between members
+        ideInternalSecurityGroup = SecurityGroup.Builder.create(this, "IdeInternalSecurityGroup")
+            .vpc(props.getVpc())
+            .allowAllOutbound(false)
+            .securityGroupName(props.getInstanceName() + "-internal-sg")
+            .description("IDE internal security group")
+            .build();
+        // Add ingress rule to allow all traffic from within the same security group
+        ideInternalSecurityGroup.getConnections().allowInternally(
+            Port.allTraffic(),
+            "Allow all internal traffic"
+        );
+        ec2Instance.addSecurityGroup(ideInternalSecurityGroup);
+
         if (props.isEnableAppSecurityGroup()) {
             // Create security group
             SecurityGroup appSecurityGroup = SecurityGroup.Builder.create(this, "AppSecurityGroup")
                 .vpc(props.getVpc())
                 .allowAllOutbound(true)
-                .securityGroupName("unicornstore-cloudfront-app-sg")
+                .securityGroupName(props.getInstanceName() + "-cloudfront-app-sg")
                 .description("App security group")
                 .build();
 
@@ -241,9 +355,9 @@ public class VSCodeIde extends Construct {
         var outputIdeUrl = CfnOutput.Builder.create(this, "IdeUrl")
             .value("https://" + distribution.getDistributionDomainName())
             .description("Workshop IDE Url")
-            .exportName("IdeUrl")
+            .exportName(props.getInstanceName() + "-url")
             .build();
-            outputIdeUrl.overrideLogicalId("IdeUrl");
+        outputIdeUrl.overrideLogicalId("IdeUrl");
 
         // Create password secret
         ideSecretsManagerPassword = Secret.Builder.create(this, "IdePasswordSecret")
@@ -255,15 +369,15 @@ public class VSCodeIde extends Construct {
                 .secretStringTemplate("{\"password\":\"\"}")
                 .excludeCharacters("\"@/\\\\")
                 .build())
-            .secretName("unicornstore-vscode-ide-password-lambda")
+            .secretName(props.getInstanceName() + "-password-lambda")
             .build();
         ec2Instance.getNode().addDependency(ideSecretsManagerPassword);
 
         ideSecretsManagerPassword.grantRead(props.getRole());
         var outputIdePassword = CfnOutput.Builder.create(this, "IdePassword")
-            .value(getIdePassword())
+            .value(getIdePassword(props.getInstanceName()))
             .description("Workshop IDE Password")
-            .exportName("IdePassword")
+            .exportName(props.getInstanceName() + "-password")
             .build();
         outputIdePassword.getNode().addDependency(ideSecretsManagerPassword);
         outputIdePassword.overrideLogicalId("IdePassword");
@@ -311,6 +425,7 @@ public class VSCodeIde extends Construct {
             .documentType("Command")
             .documentFormat("YAML")
             .updateMethod("NewVersion")
+            .name(props.getInstanceName() + "-bootstrap-document")
             .content(content)
             .build();
         waitCondition.getNode().addDependency(ssmDocument);
@@ -321,7 +436,7 @@ public class VSCodeIde extends Construct {
             .handler("index.lambda_handler")
             .runtime(Runtime.PYTHON_3_13)
             .timeout(Duration.minutes(15))
-            .functionName("unicornstore-vscode-ide-bootstrap-lambda")
+            .functionName(props.getInstanceName() + "-bootstrap-lambda")
             .build();
 
         bootstrapFunction.addToRolePolicy(PolicyStatement.Builder.create()
@@ -351,14 +466,18 @@ public class VSCodeIde extends Construct {
             .build();
     }
 
-    private String getIdePassword() {
+    public SecurityGroup getIdeInternalSecurityGroup() {
+        return ideInternalSecurityGroup;
+    }
+
+    private String getIdePassword(final String prefix) {
         if (passwordResource == null) {
             Function passwordFunction = Function.Builder.create(this, "IdePasswordExporterFunction")
                 .code(Code.fromInline(loadFile("/password.py")))
                 .handler("index.lambda_handler")
                 .runtime(Runtime.PYTHON_3_13)
                 .timeout(Duration.minutes(3))
-                .functionName("unicornstore-vscode-ide-password-lambda")
+                .functionName(prefix + "-password-lambda")
                 .build();
 
             ideSecretsManagerPassword.grantRead(passwordFunction);

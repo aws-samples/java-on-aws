@@ -1,18 +1,24 @@
 package com.unicorn;
 
-import com.unicorn.constructs.InfrastructureCore;
-import com.unicorn.constructs.InfrastructureImmDay;
-import com.unicorn.constructs.DatabaseSetup;
-import com.unicorn.constructs.WorkshopIde;
-import com.unicorn.constructs.WorkshopCodeBuild;
+import java.util.Arrays;
+
+import com.unicorn.constructs.WorkshopVpc;
+import com.unicorn.constructs.VSCodeIde;
+import com.unicorn.constructs.VSCodeIde.VSCodeIdeProps;
+import com.unicorn.constructs.CodeBuildResource;
+import com.unicorn.constructs.CodeBuildResource.CodeBuildResourceProps;
 import com.unicorn.constructs.EksCluster;
-import com.unicorn.constructs.UnicornStoreLambda;
+import com.unicorn.core.InfrastructureCore;
+import com.unicorn.core.InfrastructureContainers;
+import com.unicorn.core.DatabaseSetup;
+import com.unicorn.core.UnicornStoreSpringLambda;
+
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
-import software.amazon.awscdk.services.ec2.Port;
-import software.amazon.awscdk.services.ec2.SecurityGroup;
-import software.amazon.awscdk.services.ec2.SecurityGroupProps;
-import software.amazon.awscdk.services.iam.Role;
+import software.amazon.awscdk.services.ec2.InstanceClass;
+import software.amazon.awscdk.services.ec2.InstanceSize;
+import software.amazon.awscdk.services.ec2.InstanceType;
+import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.constructs.Construct;
 
 import software.amazon.awscdk.DefaultStackSynthesizer;
@@ -20,7 +26,38 @@ import software.amazon.awscdk.DefaultStackSynthesizerProps;
 
 public class UnicornStoreStack extends Stack {
 
-    private final InfrastructureCore infrastructureCore;
+    private final String bootstrapScript = """
+        date
+
+        echo '=== Clone Git repository ==='
+        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+        echo '=== Setup IDE ==='
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+
+        echo '=== Additional Setup ==='
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
+        """;
+
+    private final String buildspec = """
+        version: 0.2
+        env:
+            shell: bash
+        phases:
+            install:
+                commands:
+                    - |
+                        aws --version
+            build:
+                commands:
+                    - |
+                        # Resolution for when creating the first service in the account
+                        aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
+                        aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com 2>/dev/null || true
+                        aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
+        """;
 
     public UnicornStoreStack(final Construct scope, final String id) {
         // super(scope, id, props);
@@ -30,106 +67,53 @@ public class UnicornStoreStack extends Stack {
             .build()))
         .build());
 
-        // Create Core infrastructure
-        this.infrastructureCore = new InfrastructureCore(this, "InfrastructureCore");
-        var accountId = Stack.of(this).getAccount();
-
-        // Execute Database setup
-        var databaseSetup = new DatabaseSetup(this, "UnicornDatabaseSetup", infrastructureCore);
-        databaseSetup.getNode().addDependency(infrastructureCore.getDatabase());
-
-        // Create security group for IDE to talk to EKS Cluster
-        var eksIdeSecurityGroup = new SecurityGroup(this, "IdeEksSecurityGroup",
-            SecurityGroupProps
-                .builder()
-                .securityGroupName("unicornstore-ide-eks-sg")
-                .vpc(infrastructureCore.getVpc())
-                .allowAllOutbound(false)
-                .build());
-        // Add ingress rule to allow all traffic from within the same security group
-        eksIdeSecurityGroup.getConnections().allowInternally(
-            Port.allTraffic(),
-            "Allow all internal traffic"
-        );
-
-        // Create Workshop CodeBuild
-        var workshopCodeBuild = new WorkshopCodeBuild(this, "WorkshopCodeBuild", infrastructureCore);
+        // Create VPC
+        var vpc = new WorkshopVpc(this, "UnicornStoreVpc", "unicornstore-vpc").getVpc();
 
         // Create Workshop IDE
-        var workshopIde = new WorkshopIde(this, "WorkshopIde", "unicornstore-ide", infrastructureCore, eksIdeSecurityGroup);
-        var ideRole = workshopIde.getIdeRole();
+        var ideProps = new VSCodeIdeProps();
+            ideProps.setBootstrapScript(bootstrapScript);
+            ideProps.setVpc(vpc);
+            ideProps.setInstanceName("unicornstore-ide");
+            ideProps.setEnableAppSecurityGroup(true);
+            ideProps.setInstanceType(InstanceType.of(InstanceClass.T3, InstanceSize.MEDIUM));
+            ideProps.setExtensions(Arrays.asList(
+                // "amazonwebservices.aws-toolkit-vscode",
+                // "amazonwebservices.amazon-q-vscode",
+                "ms-azuretools.vscode-docker",
+                "ms-kubernetes-tools.vscode-kubernetes-tools",
+                "vscjava.vscode-java-pack"
+            ));
+        var ide = new VSCodeIde(this, "UnicornStoreIde", ideProps);
+        var ideRole = ideProps.getRole();
+        var ideInternalSecurityGroup = ide.getIdeInternalSecurityGroup();
 
-        // Create UnicornStoreLambda
-        new UnicornStoreLambda(this, "UnicornStoreLambda", infrastructureCore);
+        // Create Core infrastructure
+        var infrastructureCore = new InfrastructureCore(this, "InfrastructureCore", vpc);
+        // var accountId = Stack.of(this).getAccount();
 
-        // Create Immersion Day additional infrastructure
-        new InfrastructureImmDay(this, "InfrastructureImmDay", infrastructureCore);
+        // Create additional infrastructure for Containers modules of Java on AWS Immersion Day
+        new InfrastructureContainers(this, "InfrastructureContainers", infrastructureCore);
 
         // Create EKS cluster for the workshop
-        var unicornStoreEksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.31",
-            infrastructureCore.getVpc(), eksIdeSecurityGroup);
-        unicornStoreEksCluster.createAccessEntry(ideRole.getRoleArn(), "unicornstore-ide-user");
+        var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.31",
+            vpc, ideInternalSecurityGroup);
+        eksCluster.createAccessEntry(ideRole.getRoleArn(), "unicorn-store", "unicornstore-ide-user");
 
-        try {
-            Role.fromRoleName(this, "ExistingWSParticipantRole", "WSParticipantRole");
-        } catch (Exception e) {
-            unicornStoreEksCluster.createAccessEntry("arn:aws:iam::" + accountId + ":role/WSParticipantRole", "WSParticipantRole");
-        }
+        // Execute Database setup
+        var databaseSetup = new DatabaseSetup(this, "UnicornStoreDatabaseSetup", infrastructureCore);
+        databaseSetup.getNode().addDependency(infrastructureCore.getDatabase());
 
-        // var eventBridge = infrastructureConstruct.getEventBridge();
+        // Create UnicornStoreSpringLambda
+        new UnicornStoreSpringLambda(this, "UnicornStoreSpringLambda", infrastructureCore);
 
-        // //Create Spring Lambda function
-        // var unicornStoreSpringLambda = createUnicornLambdaFunction();
-
-        // //Permission for Spring Boot Lambda Function
-        // eventBridge.grantPutEventsTo(unicornStoreSpringLambda);
-
-        // //Setup a Proxy-Rest API to access the Spring Lambda function
-        // var restApi = setupRestApi(unicornStoreSpringLambda);
-
-        // //Create output values for later reference
-        // new CfnOutput(this, "unicorn-store-spring-function-arn", CfnOutputProps.builder()
-        //         .value(unicornStoreSpringLambda.getFunctionArn())
-        //         .build());
-
-        // new CfnOutput(this, "ApiEndpointSpring", CfnOutputProps.builder()
-        //         .value(restApi.getUrl())
-        //         .build());
+        // Create Workshop CodeBuild
+        var codeBuildProps = new CodeBuildResourceProps();
+        codeBuildProps.setProjectName("unicornstore-codebuild");
+        codeBuildProps.setBuildspec(buildspec);
+        codeBuildProps.setVpc(vpc);
+        codeBuildProps.setAdditionalIamPolicies(Arrays.asList(
+            ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess")));
+        new CodeBuildResource(this, "UnicornStoreCodeBuild", codeBuildProps);
     }
-
-    // private RestApi setupRestApi(Alias unicornStoreSpringLambdaAlias) {
-    //     return LambdaRestApi.Builder.create(this, "UnicornStoreSpringApi")
-    //             .restApiName("UnicornStoreSpringApi")
-    //             .handler(unicornStoreSpringLambdaAlias)
-    //             .build();
-    // }
-
-    // private Alias createUnicornLambdaFunction() {
-    //     var lambda = Function.Builder.create(this, "UnicornStoreSpringFunction")
-    //             .runtime(Runtime.JAVA_21)
-    //             .functionName("unicorn-store-spring")
-    //             .memorySize(512)
-    //             .timeout(Duration.seconds(29))
-    //             .code(Code.fromAsset("../../software/unicorn-store-spring/target/store-spring-1.0.0.jar"))
-    //             .handler("com.amazonaws.serverless.proxy.spring.SpringDelegatingLambdaContainerHandler")
-    //             .vpc(infrastructureConstruct.getVpc())
-    //             .securityGroups(List.of(infrastructureConstruct.getApplicationSecurityGroup()))
-    //             .environment(Map.of(
-    //                 "MAIN_CLASS", "com.unicorn.store.StoreApplication",
-    //                 "SPRING_DATASOURCE_PASSWORD", infrastructureConstruct.getDatabaseSecretString(),
-    //                 "SPRING_DATASOURCE_URL", infrastructureConstruct.getDatabaseJDBCConnectionString(),
-    //                 "SPRING_DATASOURCE_HIKARI_maximumPoolSize", "1",
-    //                 "AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME", "500"
-    //             ))
-    //             .build();
-
-    //     // Create an alias for the latest version
-    //     var alias = Alias.Builder.create(this, "UnicornStoreSpringFunctionAlias")
-    //             .aliasName("live")
-    //             .version(lambda.getLatestVersion())
-    //             .build();
-
-    //     return alias;
-    // }
-
 }

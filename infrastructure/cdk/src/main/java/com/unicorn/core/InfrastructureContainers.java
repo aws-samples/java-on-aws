@@ -1,9 +1,8 @@
-package com.unicorn.constructs;
+package com.unicorn.core;
 
 import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.iam.ArnPrincipal;
-// import software.amazon.awscdk.services.iam.CfnServiceLinkedRole;
 import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
@@ -16,39 +15,32 @@ import software.constructs.Construct;
 
 import java.util.List;
 
-// Additional infrastructure for Java on AWS Immersion Day
-public class InfrastructureImmDay extends Construct {
+// Additional infrastructure for Containers modules of Java on AWS Immersion Day
+public class InfrastructureContainers extends Construct {
 
     private final InfrastructureCore infrastructureCore;
 
-    private final Repository ecrRepository;
-
-    public InfrastructureImmDay(final Construct scope, final String id,
+    public InfrastructureContainers(final Construct scope, final String id,
         final InfrastructureCore infrastructureCore) {
         super(scope, id);
 
         // Get previously created infrastructure construct
         this.infrastructureCore = infrastructureCore;
 
-        ecrRepository = createEcr();
-
-        createRolesAppRunner();
+        createUnicornStoreSpringEcr();
         createVpcConnector();
+        createRolesAppRunner();
         createRolesEcs();
         createRolesEks();
     }
 
-    private Repository createEcr() {
-        return Repository.Builder.create(this, "UnicornStoreEcr")
+    private Repository createUnicornStoreSpringEcr() {
+        return Repository.Builder.create(this, "UnicornStoreSpringEcr")
             .repositoryName("unicorn-store-spring")
             .imageScanOnPush(false)
             .removalPolicy(RemovalPolicy.DESTROY)
             .emptyOnDelete(true)  // This will force delete all images when repository is deleted
             .build();
-    }
-
-    public Repository getEcrRepository() {
-        return ecrRepository;
     }
 
     private void createVpcConnector() {
@@ -72,7 +64,7 @@ public class InfrastructureImmDay extends Construct {
         infrastructureCore.getEventBridge().grantPutEventsTo(unicornStoreApprunnerRole);
         infrastructureCore.getDatabaseSecret().grantRead(unicornStoreApprunnerRole);
         infrastructureCore.getSecretPassword().grantRead(unicornStoreApprunnerRole);
-        infrastructureCore.getParamJdbc().grantRead(unicornStoreApprunnerRole);
+        infrastructureCore.getParamDBConnectionString().grantRead(unicornStoreApprunnerRole);
 
         var appRunnerECRAccessRole = Role.Builder.create(this, "UnicornStoreApprunnerEcrAccessRole")
             .roleName("unicornstore-apprunner-ecr-access-role")
@@ -120,7 +112,7 @@ public class InfrastructureImmDay extends Construct {
         infrastructureCore.getEventBridge().grantPutEventsTo(unicornStoreEscTaskRole);
         infrastructureCore.getDatabaseSecret().grantRead(unicornStoreEscTaskRole);
         infrastructureCore.getSecretPassword().grantRead(unicornStoreEscTaskRole);
-        infrastructureCore.getParamJdbc().grantRead(unicornStoreEscTaskRole);
+        infrastructureCore.getParamDBConnectionString().grantRead(unicornStoreEscTaskRole);
 
         Role unicornStoreEscTaskExecutionRole = Role.Builder.create(this, "UnicornStoreEcsTaskExecutionRole")
             .roleName("unicornstore-ecs-task-execution-role")
@@ -163,7 +155,7 @@ public class InfrastructureImmDay extends Construct {
 
         infrastructureCore.getEventBridge().grantPutEventsTo(unicornStoreEksPodRole);
         infrastructureCore.getDatabaseSecret().grantRead(unicornStoreEksPodRole);
-        infrastructureCore.getParamJdbc().grantRead(unicornStoreEksPodRole);
+        infrastructureCore.getParamDBConnectionString().grantRead(unicornStoreEksPodRole);
 
         var dbSecretPolicy = ManagedPolicy.Builder.create(this, "UnicornStoreDbSecretsManagerPolicy")
             .managedPolicyName("unicornstore-db-secret-policy")

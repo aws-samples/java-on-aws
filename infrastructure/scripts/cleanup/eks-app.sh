@@ -12,7 +12,7 @@ for x in `aws ecr list-images --repository-name $APP_NAME --query 'imageIds[*][i
 
 if [ -d ~/environment/$APP_NAME/k8s ]; then
     kubectl delete -f ~/environment/$APP_NAME/k8s
-    rm -rf ~/environment/$APP_NAME/k8s
+    rm -rf ~/environment/$APP_NAME/k8s/*
 fi
 
 echo "App cleanup is complete."
