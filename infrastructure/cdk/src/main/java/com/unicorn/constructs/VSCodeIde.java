@@ -19,6 +19,8 @@ import software.amazon.awscdk.services.cloudfront.origins.HttpOrigin;
 import software.amazon.awscdk.services.cloudfront.origins.HttpOriginProps;
 import software.amazon.awscdk.services.ec2.BlockDevice;
 import software.amazon.awscdk.services.ec2.BlockDeviceVolume;
+import software.amazon.awscdk.services.ec2.CfnEIP;
+import software.amazon.awscdk.services.ec2.CfnEIPAssociation;
 import software.amazon.awscdk.services.ec2.EbsDeviceOptions;
 import software.amazon.awscdk.services.ec2.EbsDeviceVolumeType;
 import software.amazon.awscdk.services.ec2.IMachineImage;
@@ -252,6 +254,11 @@ public class VSCodeIde extends Construct {
             .instanceProfileName(props.getRole().getRoleName())
             .build();
 
+        // Create Elastic IP
+        CfnEIP elasticIP = CfnEIP.Builder.create(this, "IdeElasticIP")
+            .domain("vpc")
+            .build();
+
         // Create EC2 instance
         var ec2Instance = Instance.Builder.create(this, "IdeEC2Instance")
             .instanceName(props.getInstanceName())
@@ -272,6 +279,12 @@ public class VSCodeIde extends Construct {
                     .encrypted(true)
                     .build()))
                 .build()))
+            .build();
+
+        // Associate Elastic IP with the instance
+        var ipAssociation = CfnEIPAssociation.Builder.create(this, "IdeEipAssociation")
+            .allocationId(elasticIP.getAttrAllocationId())
+            .instanceId(ec2Instance.getInstanceId())
             .build();
 
         // Internal security group, allow traffic only between members
@@ -351,6 +364,7 @@ public class VSCodeIde extends Construct {
             );
         }
         distribution.applyRemovalPolicy(RemovalPolicy.DESTROY);
+        distribution.getNode().addDependency(ipAssociation);
 
         var outputIdeUrl = CfnOutput.Builder.create(this, "IdeUrl")
             .value("https://" + distribution.getDistributionDomainName())
