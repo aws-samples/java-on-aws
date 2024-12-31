@@ -13,7 +13,7 @@ public class ContainersConfig {
     @ServiceConnection
     @RestartScope
     PostgreSQLContainer<?> postgreSQLContainer(){
-        return new PostgreSQLContainer<>("postgres:13.11")
+        return new PostgreSQLContainer<>("postgres:16.4")
         .withDatabaseName("unicorns")
         .withUsername("postgres")
         .withPassword("postgres");

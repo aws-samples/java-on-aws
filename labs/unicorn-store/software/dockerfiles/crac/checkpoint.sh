@@ -12,7 +12,7 @@ java -Dspring.context.checkpoint=onRefresh -Dspring.profiles.active=prod -Djdk.c
 EXIT_CODE=$?
 
 # Error code 137 is expected, because process is killed
-if [ $EXIT_CODE -eq 137 ] 
+if [ $EXIT_CODE -eq 137 ]
 then
 # let's check if there are snapshot files
    if [ -z "$(ls -A /opt/crac-files/)" ]

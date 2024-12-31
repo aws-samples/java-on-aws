@@ -560,6 +560,10 @@ Resources:
         Ref: UnicornStoreIdeIdeRole81A2CEAA
       Roles:
         - Ref: UnicornStoreIdeIdeRole81A2CEAA
+  UnicornStoreIdeIdeElasticIP832AF6A3:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
   UnicornStoreIdeIdeEC2Instance5F393FC5:
     Type: AWS::EC2::Instance
     Properties:
@@ -600,6 +604,15 @@ Resources:
       - UnicornStoreIdeIdePasswordSecret514252E2
       - UnicornStoreIdeIdeRoleDefaultPolicy7083F507
       - UnicornStoreIdeIdeRole81A2CEAA
+  UnicornStoreIdeIdeEipAssociation14729AD1:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - UnicornStoreIdeIdeElasticIP832AF6A3
+          - AllocationId
+      InstanceId:
+        Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
   UnicornStoreIdeIdeInternalSecurityGroup29539F21:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -728,6 +741,8 @@ Resources:
                 - UnicornStoreIdeIdeEC2Instance5F393FC5
                 - PublicDnsName
             Id: unicornstorestackUnicornStoreIdeIdeDistributionOrigin26595E295
+    DependsOn:
+      - UnicornStoreIdeIdeEipAssociation14729AD1
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   UnicornStoreIdeIdePasswordSecret514252E2:
