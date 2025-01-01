@@ -45,8 +45,14 @@ public final class UnicornPublisher {
 
             var eventsRequest = createEventRequestEntry(unicornEventType, unicornJson);
             return eventBridgeClient.putEvents(eventsRequest)
+                    .thenApply(response -> {
+                        logger.info("Successfully published event type: {} for unicorn ID: {}", 
+                            unicornEventType, unicorn.getId());
+                        return response;
+                    })
                     .exceptionally(throwable -> {
-                        logger.error("Failed to publish event", throwable);
+                        logger.error("Failed to publish event type: {} for unicorn ID: {}", 
+                            unicornEventType, unicorn.getId(), throwable);
                         throw new RuntimeException("Failed to publish event", throwable);
                     });
         } catch (JsonProcessingException e) {

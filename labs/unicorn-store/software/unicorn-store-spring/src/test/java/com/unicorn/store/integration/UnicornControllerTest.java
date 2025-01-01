@@ -12,28 +12,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.MethodOrderer;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import com.unicorn.store.model.Unicorn;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
+@InitializeInfrastructure
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class UnicornControllerTest {
 
     @LocalServerPort
     private Integer port;
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16.4")
-        .withDatabaseName("unicorns")
-        .withUsername("postgres")
-        .withPassword("postgres");
 
     @BeforeEach
     void setUp() {
@@ -48,8 +39,7 @@ class UnicornControllerTest {
         .when()
             .get("/unicorns")
         .then()
-            .statusCode(200)
-            .body(".", hasSize(0));
+            .statusCode(204);
     }
 
     static String id1;
@@ -64,7 +54,7 @@ class UnicornControllerTest {
             .when()
                 .post("/unicorns")
             .then()
-                .statusCode(200)
+                .statusCode(201)
                 .body("id", notNullValue())
                 .body("name", equalTo("Unicorn1"))
             .extract()
@@ -84,7 +74,7 @@ class UnicornControllerTest {
             .when()
                 .post("/unicorns")
             .then()
-                .statusCode(200)
+                .statusCode(201)
                 .body("id", notNullValue())
                 .body("name", equalTo("Unicorn2"))
             .extract()

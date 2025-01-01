@@ -114,6 +114,24 @@ public class UnicornController {
         }
     }
 
+    @DeleteMapping("/unicorns/{unicornId}")
+    public ResponseEntity<String> deleteUnicorn(@PathVariable String unicornId) {
+        try {
+            logger.debug("Deleting unicorn with ID: {}", unicornId);
+            unicornService.deleteUnicorn(unicornId);
+            logger.info("Successfully deleted unicorn with ID: {}", unicornId);
+            return ResponseEntity.ok().build();
+        } catch (ResourceNotFoundException e) {
+            logger.warn("Unicorn not found with ID: {}", unicornId);
+            throw new ResponseStatusException(NOT_FOUND,
+                    String.format(UNICORN_NOT_FOUND, unicornId), e);
+        } catch (Exception e) {
+            logger.error("Failed to delete unicorn with ID: {}", unicornId, e);
+            throw new ResponseStatusException(INTERNAL_SERVER_ERROR,
+                    "Failed to delete unicorn", e);
+        }
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, List<String>>> handleValidationErrors(
             MethodArgumentNotValidException ex) {
