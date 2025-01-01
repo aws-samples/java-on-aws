@@ -35,7 +35,7 @@ public class InfrastructureInitializer implements BeforeAllCallback {
 		System.setProperty("aws.accessKeyId", localStackContainer.getAccessKey());
 		System.setProperty("aws.secretAccessKey", localStackContainer.getSecretKey());
 		System.setProperty("aws.region", localStackContainer.getRegion());
-		System.setProperty("aws.endpoint", localStackContainer.getEndpoint().toString());
+		System.setProperty("aws.endpointUrl", localStackContainer.getEndpoint().toString());
 		
 		logger.info("Successfully initialized the local infrastructure.");
 	}	
