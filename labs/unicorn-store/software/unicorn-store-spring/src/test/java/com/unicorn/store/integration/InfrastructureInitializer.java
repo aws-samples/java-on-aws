@@ -32,9 +32,11 @@ public class InfrastructureInitializer implements BeforeAllCallback {
         System.setProperty("spring.datasource.password", postgresContainer.getPassword());
 
 		localStackContainer.start();
+		// https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html
 		System.setProperty("aws.accessKeyId", localStackContainer.getAccessKey());
 		System.setProperty("aws.secretAccessKey", localStackContainer.getSecretKey());
 		System.setProperty("aws.region", localStackContainer.getRegion());
+		// https://docs.aws.amazon.com/sdkref/latest/guide/feature-ss-endpoints.html
 		System.setProperty("aws.endpointUrl", localStackContainer.getEndpoint().toString());
 		
 		logger.info("Successfully initialized the local infrastructure.");
