@@ -213,7 +213,7 @@ mkdir unicorn-store-spring
 rsync -av java-on-aws/labs/unicorn-store/software/unicorn-store-spring/ unicorn-store-spring --exclude target --exclude src/test
 cp -R java-on-aws/labs/unicorn-store/software/dockerfiles unicorn-store-spring
 cp -R java-on-aws/labs/unicorn-store/software/scripts unicorn-store-spring
-rm ~/environment/unicorn-store-spring/src/main/resources/schema.sql
+# rm ~/environment/unicorn-store-spring/src/main/resources/schema.sql
 echo "target" >> unicorn-store-spring/.gitignore
 
 # setup local git repository in unicorn-store-spring

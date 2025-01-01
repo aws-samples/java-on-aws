@@ -5,7 +5,7 @@ APP_NAME=${1:-"unicorn-store-spring"}
 mkdir -p ~/environment/${APP_NAME}
 rsync -aq ~/java-on-aws/labs/unicorn-store/software/${APP_NAME}/ ~/environment/${APP_NAME} --exclude target --exclude src/test 1>/dev/null
 cp -R ~/java-on-aws/labs/unicorn-store/software/dockerfiles ~/environment/${APP_NAME}
-rm ~/environment/${APP_NAME}/src/main/resources/schema.sql
+# rm ~/environment/${APP_NAME}/src/main/resources/schema.sql
 mkdir -p ~/environment/unicorn-store-spring/k8s
 
 echo "Seting up the local git repository ..."

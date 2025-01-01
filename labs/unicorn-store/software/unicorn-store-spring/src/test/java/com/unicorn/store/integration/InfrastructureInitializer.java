@@ -5,12 +5,16 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.utility.DockerImageName;
 
 public class InfrastructureInitializer implements BeforeAllCallback {
     private static final Logger logger = LoggerFactory.getLogger(InfrastructureInitializer.class);
-	// private static final DockerImageName LOCALSTACK_IMAGE = DockerImageName.parse("localstack/localstack:latest");
 	
-	// private static final LocalStackContainer localStackContainer = new LocalStackContainer(LOCALSTACK_IMAGE);
+	private static final DockerImageName LOCALSTACK_IMAGE = DockerImageName.parse("localstack/localstack:latest");
+	@SuppressWarnings("resource")
+	private static final LocalStackContainer localStackContainer = new LocalStackContainer(LOCALSTACK_IMAGE)
+		.withServices(LocalStackContainer.EnabledService.named("events"));
 
     @SuppressWarnings("resource")
 	private static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>("postgres:16.4")
@@ -23,22 +27,16 @@ public class InfrastructureInitializer implements BeforeAllCallback {
 		logger.info("Initializaing the local infrastructure ...");
 		
 		postgresContainer.start();
-
 		System.setProperty("spring.datasource.url", postgresContainer.getJdbcUrl());
         System.setProperty("spring.datasource.username", postgresContainer.getUsername());
         System.setProperty("spring.datasource.password", postgresContainer.getPassword());
 
-		// localStackContainer.start();
-		// addConfigurationProperties();
+		localStackContainer.start();
+		System.setProperty("aws.accessKeyId", localStackContainer.getAccessKey());
+		System.setProperty("aws.secretAccessKey", localStackContainer.getSecretKey());
+		System.setProperty("aws.region", localStackContainer.getRegion());
+		System.setProperty("aws.endpoint", localStackContainer.getEndpoint().toString());
 		
 		logger.info("Successfully initialized the local infrastructure.");
-	}
-
-	// private void addConfigurationProperties() {
-	// private void addConfigurationProperties() {
-	// 	System.setProperty("com.behl.aws.access-key", localStackContainer.getAccessKey());
-	// 	System.setProperty("com.behl.aws.secret-access-key", localStackContainer.getSecretKey());
-	// 	System.setProperty("com.behl.aws.region", localStackContainer.getRegion());
-	// 	System.setProperty("com.behl.aws.endpoint", localStackContainer.getEndpoint().toString());
-	// }
+	}	
 }
