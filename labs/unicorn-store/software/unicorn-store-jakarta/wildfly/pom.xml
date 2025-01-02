@@ -18,7 +18,7 @@
 
         <primefaces.version>14.0.8</primefaces.version>
 
-        <wildfly.plugin.version>5.1.0.Final</wildfly.plugin.version>
+        <wildfly.plugin.version>5.1.1.Final</wildfly.plugin.version>
         <wildfly.version>33.0.0.Final</wildfly.version>
         <wildfly.bootable.jar.version>10.0.0.Final</wildfly.bootable.jar.version>
         <wildfly.datasources.galleon.pack.version>5.0.0.Final</wildfly.datasources.galleon.pack.version>
