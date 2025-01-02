@@ -40,18 +40,18 @@ public final class UnicornPublisher {
     public CompletableFuture<PutEventsResponse> publish(Unicorn unicorn, UnicornEventType unicornEventType) {
         try {
             var unicornJson = objectMapper.writeValueAsString(unicorn);
-            logger.info("Publishing event type: {}", unicornEventType);
+            logger.debug("Publishing event type: {}", unicornEventType);
             logger.debug("Event payload: {}", unicornJson);
 
             var eventsRequest = createEventRequestEntry(unicornEventType, unicornJson);
             return eventBridgeClient.putEvents(eventsRequest)
                     .thenApply(response -> {
-                        logger.info("Successfully published event type: {} for unicorn ID: {}", 
+                        logger.info("Successfully published event type: {} for unicorn ID: {}",
                             unicornEventType, unicorn.getId());
                         return response;
                     })
                     .exceptionally(throwable -> {
-                        logger.error("Failed to publish event type: {} for unicorn ID: {}", 
+                        logger.error("Failed to publish event type: {} for unicorn ID: {}",
                             unicornEventType, unicorn.getId(), throwable);
                         throw new RuntimeException("Failed to publish event", throwable);
                     });
@@ -60,7 +60,7 @@ public final class UnicornPublisher {
             return CompletableFuture.failedFuture(e);
         }
     }
-    
+
     private PutEventsRequest createEventRequestEntry(UnicornEventType unicornEventType, String unicornJson) {
         return PutEventsRequest.builder()
                 .entries(PutEventsRequestEntry.builder()

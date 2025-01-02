@@ -33,7 +33,7 @@ public class UnicornService {
         var savedUnicorn = unicornRepository.save(unicorn);
         publishUnicornEvent(savedUnicorn, UnicornEventType.UNICORN_CREATED);
 
-        logger.info("Created unicorn with ID: {}", savedUnicorn.getId());
+        logger.debug("Created unicorn with ID: {}", savedUnicorn.getId());
         return savedUnicorn;
     }
 
@@ -63,7 +63,7 @@ public class UnicornService {
         var savedUnicorn = unicornRepository.save(unicorn);
         publishUnicornEvent(savedUnicorn, UnicornEventType.UNICORN_UPDATED);
 
-        logger.info("Updated unicorn with ID: {}", unicornId);
+        logger.debug("Updated unicorn with ID: {}", unicornId);
         return savedUnicorn;
     }
 
@@ -82,7 +82,7 @@ public class UnicornService {
         unicornRepository.delete(unicorn);
         publishUnicornEvent(unicorn, UnicornEventType.UNICORN_DELETED);
 
-        logger.info("Deleted unicorn with ID: {}", unicornId);
+        logger.debug("Deleted unicorn with ID: {}", unicornId);
     }
 
     private void validateUnicorn(Unicorn unicorn) {

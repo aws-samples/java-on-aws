@@ -33,7 +33,6 @@ public class UnicornController {
 
     public UnicornController(UnicornService unicornService) {
         this.unicornService = unicornService;
-        
     }
 
     @PostMapping("/unicorns")

@@ -16,13 +16,14 @@ import org.springframework.stereotype.Service;
 
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.eventbridge.EventBridgeAsyncClient;
-import software.amazon.awssdk.services.eventbridge.model.EventBridgeException;
 import software.amazon.awssdk.services.eventbridge.model.PutEventsRequest;
 import software.amazon.awssdk.services.eventbridge.model.PutEventsRequestEntry;
+import software.amazon.awssdk.services.eventbridge.model.PutEventsResponse;
 
+import java.util.concurrent.CompletableFuture;
 
 @Service
-public class UnicornPublisher implements Resource {
+public final class UnicornPublisher implements Resource {
 
     private final ObjectMapper objectMapper;
 
@@ -40,43 +41,39 @@ public class UnicornPublisher implements Resource {
         Core.getGlobalContext().register(this);
     }
 
-    public void publish(Unicorn unicorn, UnicornEventType unicornEventType) {
+    public CompletableFuture<PutEventsResponse> publish(Unicorn unicorn, UnicornEventType unicornEventType) {
         try {
             var unicornJson = objectMapper.writeValueAsString(unicorn);
-            logger.info("Publishing ... " + unicornEventType.toString());
-            logger.info(unicornJson);
+            logger.debug("Publishing event type: {}", unicornEventType);
+            logger.debug("Event payload: {}", unicornJson);
 
             var eventsRequest = createEventRequestEntry(unicornEventType, unicornJson);
-            eventBridgeClient.putEvents(eventsRequest).get();
-        } catch (Exception e) {
-            logger.error("Error ...");
-            logger.error(e.getMessage());
+            return eventBridgeClient.putEvents(eventsRequest)
+                    .thenApply(response -> {
+                        logger.info("Successfully published event type: {} for unicorn ID: {}",
+                            unicornEventType, unicorn.getId());
+                        return response;
+                    })
+                    .exceptionally(throwable -> {
+                        logger.error("Failed to publish event type: {} for unicorn ID: {}",
+                            unicornEventType, unicorn.getId(), throwable);
+                        throw new RuntimeException("Failed to publish event", throwable);
+                    });
+        } catch (JsonProcessingException e) {
+            logger.error("Failed to serialize unicorn object", e);
+            return CompletableFuture.failedFuture(e);
         }
     }
 
     private PutEventsRequest createEventRequestEntry(UnicornEventType unicornEventType, String unicornJson) {
-        var entry = PutEventsRequestEntry.builder()
-                .source("com.unicorn.store")
-                .eventBusName("unicorns")
-                .detailType(unicornEventType.name())
-                .detail(unicornJson)
-                .build();
-
         return PutEventsRequest.builder()
-                .entries(entry)
+                .entries(PutEventsRequestEntry.builder()
+                        .source("com.unicorn.store")
+                        .eventBusName("unicorns")
+                        .detailType(unicornEventType.name())
+                        .detail(unicornJson)
+                        .build())
                 .build();
-    }
-
-    @Override
-    public void beforeCheckpoint(Context<? extends Resource> context) throws Exception {
-        logger.info("Executing beforeCheckpoint...");
-        closeClient();
-    }
-
-    @Override
-    public void afterRestore(Context<? extends Resource> context) throws Exception {
-        logger.info("Executing afterRestore ...");
-        createClient();
     }
 
     private void createClient() {
@@ -91,5 +88,17 @@ public class UnicornPublisher implements Resource {
     public void closeClient() {
         logger.info("Closing EventBridgeAsyncClient");
         eventBridgeClient.close();
+    }
+
+    @Override
+    public void beforeCheckpoint(Context<? extends Resource> context) throws Exception {
+        logger.info("Executing beforeCheckpoint...");
+        closeClient();
+    }
+
+    @Override
+    public void afterRestore(Context<? extends Resource> context) throws Exception {
+        logger.info("Executing afterRestore ...");
+        createClient();
     }
 }
