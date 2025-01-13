@@ -8,6 +8,8 @@
 				"codewhisperer:*",
 				"ecr:*",
 				"eks:*",
+				"iam:CreateOpenIDConnectProvider",
+				"iam:TagOpenIDConnectProvider",
 				"events:*",
 				"q:*",
 				"secretsmanager:*",

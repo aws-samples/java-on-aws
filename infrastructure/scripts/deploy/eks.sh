@@ -51,10 +51,11 @@ spec:
             - containerPort: 8080
           livenessProbe:
             httpGet:
-              path: /actuator/health/liveness
+              path: /
               port: 8080
             failureThreshold: 6
             periodSeconds: 5
+            initialDelaySeconds: 10
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
