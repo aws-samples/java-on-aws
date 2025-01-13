@@ -15,12 +15,13 @@ if ! echo "$1" | grep -q "^http" ; then
 fi
 
 SVC_URL=$1
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 if [ -n "$2" ] && [ -n "$3" ]
 then
   artillery run --overrides "{\"config\": { \"phases\": [{ \"duration\": $2, \"arrivalRate\": $3 }] } }" \
-  -t $SVC_URL -v '{ "url": "/unicorns" }' ~/environment/infrastructure/scripts/test/benchmark.yaml
+  -t $SVC_URL -v '{ "url": "/unicorns" }' "$SCRIPT_DIR/benchmark.yaml"
 else
   artillery run \
-  -t $SVC_URL -v '{ "url": "/unicorns" }' ~/environment/infrastructure/scripts/test/benchmark.yaml
+  -t $SVC_URL -v '{ "url": "/unicorns" }' "$SCRIPT_DIR/benchmark.yaml"
 fi
