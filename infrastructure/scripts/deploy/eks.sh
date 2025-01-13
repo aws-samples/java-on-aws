@@ -56,6 +56,7 @@ spec:
             failureThreshold: 6
             periodSeconds: 5
             initialDelaySeconds: 10
+            timeoutSeconds: 5
           startupProbe:
             httpGet:
               path: /
@@ -63,6 +64,7 @@ spec:
             failureThreshold: 6
             periodSeconds: 5
             initialDelaySeconds: 10
+            timeoutSeconds: 5
           lifecycle:
             preStop:
               exec:
