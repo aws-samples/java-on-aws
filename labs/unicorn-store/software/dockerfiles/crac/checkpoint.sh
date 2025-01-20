@@ -7,7 +7,7 @@ mkdir -p /opt/crac-files/
 rm -rf /opt/crac-files/*
 echo Starting the application...
 ( echo 128 > /proc/sys/kernel/ns_last_pid ) 2>/dev/null || while [ $(cat /proc/sys/kernel/ns_last_pid) -lt 128 ]; do :; done;
-java -Dspring.context.checkpoint=onRefresh -Dspring.profiles.active=prod -Djdk.crac.collect-fd-stacktraces=true -XX:CPUFeatures=0x214e1805ddfbff,0x3e6 -XX:CRaCCheckpointTo=/opt/crac-files/ -jar /store-spring.jar
+java -Dspring.context.checkpoint=onRefresh -Dspring.profiles.active=prod -Djdk.crac.collect-fd-stacktraces=true -XX:CRaCEngine=warp -XX:CRaCCheckpointTo=/opt/crac-files/ -jar /store-spring.jar
 
 EXIT_CODE=$?
 
