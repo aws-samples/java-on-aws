@@ -49,12 +49,6 @@ spec:
               value: ${SPRING_DATASOURCE_URL}
           ports:
             - containerPort: 8080
-          livenessProbe:
-            httpGet:
-              path: /actuator/health/liveness
-              port: 8080
-            failureThreshold: 6
-            periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
@@ -62,6 +56,7 @@ spec:
             failureThreshold: 6
             periodSeconds: 5
             initialDelaySeconds: 10
+            timeoutSeconds: 5
           startupProbe:
             httpGet:
               path: /
@@ -69,6 +64,7 @@ spec:
             failureThreshold: 6
             periodSeconds: 5
             initialDelaySeconds: 10
+            timeoutSeconds: 5
           lifecycle:
             preStop:
               exec:
@@ -131,17 +127,21 @@ kubectl get deployment unicorn-store-spring -n unicorn-store-spring
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 while [[ $(curl -s -o /dev/null -w "%{http_code}" $SVC_URL/) != "200" ]]; do echo "Service not yet available ..." &&  sleep 5; done
 echo $SVC_URL
-echo Service is Ready!
 
+kubectl logs $(kubectl get pods -n unicorn-store-spring -o json | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring
+
+echo
+echo Service is Ready!
+echo
 echo $SVC_URL
+echo
 curl --location $SVC_URL; echo
+echo
 curl --location --request POST $SVC_URL'/unicorns' --header 'Content-Type: application/json' --data-raw '{
     "name": "'"Something-$(date +%s)"'",
     "age": "20",
     "type": "Animal",
     "size": "Very big"
 }' | jq
-
-kubectl logs $(kubectl get pods -n unicorn-store-spring -o json | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring
 
 echo "App deployment to EKS cluster is complete."
