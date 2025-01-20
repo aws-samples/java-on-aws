@@ -94,7 +94,7 @@ public class UnicornService {
 
     private void publishUnicornEvent(Unicorn unicorn, UnicornEventType eventType) {
         try {
-            unicornPublisher.publish(unicorn, eventType);
+            unicornPublisher.publish(unicorn, eventType).get();
         } catch (Exception e) {
             logger.error("Failed to publish {} event for unicorn ID: {}",
                     eventType, unicorn.getId(), e);
