@@ -22,7 +22,7 @@
         <primefaces-quarkus.version>3.14.8</primefaces-quarkus.version>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.17.5</quarkus.platform.version>
+        <quarkus.platform.version>3.17.7</quarkus.platform.version>
         <failsafe.useModulePath>false</failsafe.useModulePath>
     </properties>
 
