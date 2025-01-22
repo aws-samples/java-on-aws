@@ -1145,7 +1145,7 @@ Resources:
                       exit $exit_code
                     - instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      codeServerVersion: 4.96.2
+                      codeServerVersion: 4.96.4
                       customBootstrapScript: |
                         date
 
