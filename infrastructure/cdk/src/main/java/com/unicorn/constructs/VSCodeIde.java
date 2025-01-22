@@ -59,6 +59,8 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -192,10 +194,13 @@ public class VSCodeIde extends Construct {
                 props.getRole().addManagedPolicy(policy);
         }
 
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+        String timestamp = LocalDateTime.now().format(formatter);
+
         // Set up logging
         LogGroup logGroup = LogGroup.Builder.create(this, "IdeLogGroup")
             .retention(RetentionDays.ONE_WEEK)
-            .logGroupName(props.getInstanceName() + "-bootstrap-log")
+            .logGroupName(props.getInstanceName() + "-bootstrap-log-" + timestamp)
             .build();
         logGroup.grantWrite(props.getRole());
 
