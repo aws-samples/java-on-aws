@@ -50,6 +50,12 @@ jobs:
     - name: CDK Synth Immersion Day infrastructure
       run: cdk synth
       working-directory: ./infrastructure/cdk/
+    - name: Build unicorn-store-wildfly with Docker
+      run: ./scripts/wildfly-build.sh
+      working-directory: ./labs/unicorn-store/software/unicorn-store-wildfly/
+    - name: Build unicorn-store-quarkus with Docker
+      run: ./scripts/quarkus-build.sh
+      working-directory: ./labs/unicorn-store/software/unicorn-store-quarkus/
 
     - name: Submit Dependency Snapshot
       uses: advanced-security/maven-dependency-submission-action@v4
