@@ -57,7 +57,7 @@ jobs:
       run: ./scripts/quarkus-build.sh
       working-directory: ./labs/unicorn-store/software/unicorn-store-jakarta/
 
-    - name: Submit Dependency Snapshot
-      uses: advanced-security/maven-dependency-submission-action@v4
-      with:
-        directory: ./labs/unicorn-store/software/unicorn-store-spring/
+#    - name: Submit Dependency Snapshot
+#      uses: advanced-security/maven-dependency-submission-action@v4
+#      with:
+#        directory: ./labs/unicorn-store/software/unicorn-store-spring/
