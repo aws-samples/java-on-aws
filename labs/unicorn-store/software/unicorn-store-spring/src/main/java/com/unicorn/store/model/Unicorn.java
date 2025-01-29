@@ -1,8 +1,6 @@
 package com.unicorn.store.model;
 
 import jakarta.persistence.Entity;
-// import jakarta.persistence.GeneratedValue;
-// import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
 import java.util.UUID;
@@ -11,8 +9,7 @@ import java.util.UUID;
 public class Unicorn {
 
     @Id
-    // @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private String id = UUID.randomUUID().toString();
+    private String id;
     private String name;
     private String age;
     private String size;

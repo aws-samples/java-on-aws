@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.util.UUID;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -28,6 +28,9 @@ public class UnicornService {
     @Transactional
     public Unicorn createUnicorn(Unicorn unicorn) {
         logger.debug("Creating unicorn: {}", unicorn);
+        if (unicorn.getId() == null) {
+            unicorn.setId(UUID.randomUUID().toString());
+        }
         validateUnicorn(unicorn);
 
         var savedUnicorn = unicornRepository.save(unicorn);
