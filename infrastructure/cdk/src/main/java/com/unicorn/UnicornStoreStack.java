@@ -96,7 +96,7 @@ public class UnicornStoreStack extends Stack {
         new InfrastructureContainers(this, "InfrastructureContainers", infrastructureCore);
 
         // Create EKS cluster for the workshop
-        var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.31",
+        var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.32",
             vpc, ideInternalSecurityGroup);
         eksCluster.createAccessEntry(ideRole.getRoleArn(), "unicorn-store", "unicornstore-ide-user");
 
