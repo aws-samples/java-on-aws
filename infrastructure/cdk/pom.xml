@@ -11,7 +11,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <cdk.version>2.176.0</cdk.version>
+        <cdk.version>2.177.0</cdk.version>
         <junit.version>5.11.4</junit.version>
     </properties>
 
@@ -54,7 +54,7 @@
         <dependency>
             <groupId>software.amazon.awscdk</groupId>
             <artifactId>apprunner-alpha</artifactId>
-            <version>2.176.0-alpha.0</version>
+            <version>2.177.0-alpha.0</version>
         </dependency>
 
         <dependency>
@@ -66,7 +66,7 @@
         <dependency>
             <groupId>io.github.cdklabs</groupId>
             <artifactId>cdknag</artifactId>
-            <version>2.35.2</version>
+            <version>2.35.6</version>
         </dependency>
 
         <dependency>

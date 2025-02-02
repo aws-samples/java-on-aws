@@ -28,7 +28,7 @@
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>bom</artifactId>
-                <version>2.30.7</version>
+                <version>2.30.11</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -228,10 +228,11 @@
                             <image>
                                 <name>unicorn-store-spring:latest</name>
                                 <buildpacks>
-                                    <buildpack>gcr.io/paketo-buildpacks/java:14.1.0</buildpack>
-                                    <buildpack>gcr.io/paketo-buildpacks/syft:1.47.0</buildpack>
-                                    <buildpack>gcr.io/paketo-buildpacks/executable-jar:6.10.0</buildpack>
-                                    <buildpack>gcr.io/paketo-buildpacks/spring-boot:5.30.0</buildpack>
+                                    <buildpack>gcr.io/paketo-buildpacks/amazon-corretto:9.0.1</buildpack>
+                                    <buildpack>gcr.io/paketo-buildpacks/java:17.6.0</buildpack>
+                                    <buildpack>gcr.io/paketo-buildpacks/syft:2.7.0</buildpack>
+                                    <buildpack>gcr.io/paketo-buildpacks/spring-boot:5.32.0</buildpack>
+                                    <buildpack>gcr.io/paketo-buildpacks/executable-jar:6.12.0</buildpack>
                                 </buildpacks>
                                 <env>
                                     <SPRING_DATASOURCE_URL>${env.SPRING_DATASOURCE_URL}</SPRING_DATASOURCE_URL>
