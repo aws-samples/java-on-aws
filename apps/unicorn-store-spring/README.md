@@ -6,7 +6,7 @@ The Unicorn Store is a robust Spring Boot application that provides a RESTful AP
 
 The Unicorn Store is designed to showcase best practices in building a modern, cloud-native Spring Boot application. It leverages several key technologies and patterns:
 
-- **Spring Boot 3.4.0**: Provides the core framework for building the application, including dependency injection, web services, and data access.
+- **Spring Boot 3.4.2**: Provides the core framework for building the application, including dependency injection, web services, and data access.
 - **PostgreSQL**: Used as the primary database for storing unicorn information.
 - **AWS SDK**: Integrates with various AWS services, including EventBridge for event publishing, S3 for object storage, and DynamoDB for NoSQL data storage.
 - **Docker**: The application can be containerized for easy deployment and scaling.
@@ -28,7 +28,7 @@ The Unicorn Store application uses the following key infrastructure components:
 
 1. PostgreSQL Container (for testing):
    - Type: PostgreSQLContainer
-   - Image: postgres:16.3
+   - Image: postgres:16.4
    - Database Name: unicorns
    - Username: postgres
    - Password: postgres

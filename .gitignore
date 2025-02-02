@@ -1,13 +1,10 @@
-labs/unicorn-store-basic/HELP.md
 target/
-!labs/unicorn-store/.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 .DS_Store
 ./aws-sam
 samconfig.toml
 node_modules
-unicorn-store-spring-native
 
 ### STS ###
 .apt_generated
@@ -41,6 +38,5 @@ build/
 
 ### Other
 
-labs/unicorn-store/infrastructure/cdk/output*
+infrastructure/cdk/output*
 dependency-reduced-pom.xml
-

@@ -86,7 +86,7 @@ public class UnicornStoreSpringLambda extends Construct {
             .timeout(Duration.seconds(29))
             // Code is placeholder and will be overwritten in the lab
             .code(Code.fromInline("def handler(event, context):\n    return 'placeholder'"))
-            // .code(Code.fromAsset("../../labs/unicorn-store/software/unicorn-store-spring/src"))
+            // .code(Code.fromAsset("../../apps/unicorn-store-spring/src"))
             .handler("com.unicorn.store.StreamLambdaHandler::handleRequest")
             .vpc(infrastructureCore.getVpc())
             .securityGroups(List.of(infrastructureCore.getApplicationSecurityGroup()))

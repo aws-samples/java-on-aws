@@ -170,4 +170,6 @@ aws eks associate-access-policy --cluster-name unicorn-store \
   --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
   --access-scope type=cluster 2>/dev/null || true
 
+mkdir -p ~/environment/unicorn-store-spring/k8s
+
 echo "EKS cluster setup is complete."

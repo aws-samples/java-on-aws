@@ -1,4 +1,0 @@
-FROM unicorn-store-spring:crac_build
-
-COPY crac-files /opt/crac-files
-CMD ["java", "-XX:CRaCEngine=warp", "-XX:CRaCRestoreFrom=/opt/crac-files"]

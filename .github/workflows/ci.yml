@@ -28,22 +28,16 @@ jobs:
         cache: maven
     - name: Java version
       run: java --version
-      working-directory: ./labs/unicorn-store/software/unicorn-store-spring/
+      working-directory: ./apps/unicorn-store-spring/
     - name: Build unicorn-store-spring with Maven
       run: mvn -B clean package --file pom.xml --no-transfer-progress
-      working-directory: ./labs/unicorn-store/software/unicorn-store-spring/
+      working-directory: ./apps/unicorn-store-spring/
     - name: Install AWS CDK
       run: npm install -g aws-cdk
-      working-directory: ./labs/unicorn-store/infrastructure/cdk/
+      working-directory: ./infrastructure/cdk/
     - name: AWS CDK version
       run: cdk version
-      working-directory: ./labs/unicorn-store/infrastructure/cdk/
-    - name: Build CDK db-setup with Maven
-      run: mvn -B clean package --file pom.xml --no-transfer-progress
-      working-directory: ./labs/unicorn-store/infrastructure/db-setup/
-    - name: CDK Synth
-      run: cdk synth
-      working-directory: ./labs/unicorn-store/infrastructure/cdk/
+      working-directory: ./infrastructure/cdk/
     - name: Build CDK Immersion Day infrastructure
       run: mvn clean package --no-transfer-progress
       working-directory: ./infrastructure/cdk/
@@ -52,12 +46,12 @@ jobs:
       working-directory: ./infrastructure/cdk/
     - name: Build unicorn-store-wildfly with Docker
       run: ./scripts/wildfly-build.sh
-      working-directory: ./labs/unicorn-store/software/unicorn-store-jakarta/
+      working-directory: ./apps/unicorn-store-jakarta/
     - name: Build unicorn-store-quarkus with Docker
       run: ./scripts/quarkus-build.sh
-      working-directory: ./labs/unicorn-store/software/unicorn-store-jakarta/
+      working-directory: ./apps/unicorn-store-jakarta/
 
 #    - name: Submit Dependency Snapshot
 #      uses: advanced-security/maven-dependency-submission-action@v4
 #      with:
-#        directory: ./labs/unicorn-store/software/unicorn-store-spring/
+#        directory: ./apps/unicorn-store-spring/
