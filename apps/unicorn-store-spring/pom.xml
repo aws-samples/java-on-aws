@@ -130,6 +130,21 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>graalvm-native-build-tools-snapshots</id>
+            <name>GraalVM native-build-tools Snapshots</name>
+            <url>https://raw.githubusercontent.com/graalvm/native-build-tools/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
+
     <profiles>
         <profile>
             <id>otel-manual</id>
@@ -162,12 +177,13 @@
                     <plugin>
                         <groupId>org.graalvm.buildtools</groupId>
                         <artifactId>native-maven-plugin</artifactId>
+                        <version>0.10.5</version>
                         <extensions>true</extensions>
                         <executions>
                             <execution>
                                 <id>build-native</id>
                                 <goals>
-                                    <goal>build</goal>
+                                    <goal>compile-no-fork</goal>
                                 </goals>
                                 <phase>package</phase>
                             </execution>
@@ -183,6 +199,7 @@
                             <metadataRepository>
                                 <enabled>true</enabled>
                             </metadataRepository>
+                            <requiredVersion>21</requiredVersion><!-- Spring Boot parent defines 22.3 -->
                             <buildArgs>
                                 <arg>--verbose</arg>
                                 <arg>
