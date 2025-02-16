@@ -4,7 +4,7 @@ COPY ./pom.xml ./pom.xml
 COPY src ./src/
 RUN mvn clean package --no-transfer-progress
 
-FROM quay.io/wildfly/wildfly:26.1.2.Final as runtime
+FROM quay.io/wildfly/wildfly:26.1.2.Final AS runtime
 ENV POSTGRESQL_JDBC_DRIVER_VERSION=42.7.3
 RUN curl -L "https://repo1.maven.org/maven2/org/postgresql/postgresql/${POSTGRESQL_JDBC_DRIVER_VERSION}/postgresql-${POSTGRESQL_JDBC_DRIVER_VERSION}.jar" -o $JBOSS_HOME/postgresql.jar
 RUN printenv > $JBOSS_HOME/env.properties
