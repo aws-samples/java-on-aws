@@ -1,57 +1,89 @@
 package com.unicorn.store.data;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unicorn.store.model.Unicorn;
 import com.unicorn.store.model.UnicornEventType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import com.google.gson.Gson;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import javax.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-// import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-// import software.amazon.awssdk.services.eventbridge.EventBridgeAsyncClient;
-// import software.amazon.awssdk.services.eventbridge.model.EventBridgeException;
-// import software.amazon.awssdk.services.eventbridge.model.PutEventsRequest;
-// import software.amazon.awssdk.services.eventbridge.model.PutEventsRequestEntry;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.services.eventbridge.EventBridgeAsyncClient;
+import software.amazon.awssdk.services.eventbridge.model.PutEventsRequest;
+import software.amazon.awssdk.services.eventbridge.model.PutEventsRequestEntry;
+import software.amazon.awssdk.services.eventbridge.model.PutEventsResponse;
 
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletableFuture;
 
 @ApplicationScoped
 public class UnicornPublisher {
 
-    private Logger logger = LoggerFactory.getLogger(UnicornPublisher.class.getName());
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private EventBridgeAsyncClient eventBridgeClient;
 
-    // private static final EventBridgeAsyncClient eventBridgeClient = EventBridgeAsyncClient
-    //         .builder()
-    //         .credentialsProvider(DefaultCredentialsProvider.create())
-    //         .build();
+    @PostConstruct
+    public void init() {
+        createClient();
+    }
 
-    public void publish(Unicorn unicorn, UnicornEventType unicornEventType) {
+    public CompletableFuture<PutEventsResponse> publish(Unicorn unicorn, UnicornEventType unicornEventType) {
         try {
-            Gson gson = new Gson();
-            String unicornJson = gson.toJson(unicorn);
-            // var eventsRequest = createEventRequestEntry(unicornEventType, unicornJson);
+            String unicornJson = objectMapper.writeValueAsString(unicorn);
+            logger.debug("Publishing event type: {}", unicornEventType);
+            logger.debug("Event payload: {}", unicornJson);
 
-            // eventBridgeClient.putEvents(eventsRequest).get();
-            logger.info("Publishing ... " +  unicornEventType.toString());
-            logger.info(unicornJson);
-        } catch (Exception e) {
-            logger.error("Error Exception ...");
-            logger.error(e.getMessage());
+            PutEventsRequest eventsRequest = createEventRequestEntry(unicornEventType, unicornJson);
+            return eventBridgeClient.putEvents(eventsRequest)
+                    .thenApply(new java.util.function.Function<PutEventsResponse, PutEventsResponse>() {
+                        @Override
+                        public PutEventsResponse apply(PutEventsResponse response) {
+                            logger.info("Successfully published event type: {} for unicorn ID: {}",
+                                unicornEventType, unicorn.getId());
+                            return response;
+                        }
+                    })
+                    .exceptionally(new java.util.function.Function<Throwable, PutEventsResponse>() {
+                        @Override
+                        public PutEventsResponse apply(Throwable throwable) {
+                            logger.error("Failed to publish event type: {} for unicorn ID: {}",
+                                unicornEventType, unicorn.getId(), throwable);
+                            throw new RuntimeException("Failed to publish event", throwable);
+                        }
+                    });
+        } catch (JsonProcessingException e) {
+            logger.error("Failed to serialize unicorn object", e);
+            CompletableFuture<PutEventsResponse> future = new CompletableFuture<>();
+            future.completeExceptionally(e);
+            return future;
         }
     }
 
-    // private PutEventsRequest createEventRequestEntry(UnicornEventType unicornEventType, String unicornJson) {
-    //     var entry = PutEventsRequestEntry.builder()
-    //             .source("com.unicorn.store")
-    //             .eventBusName("unicorns")
-    //             .detailType(unicornEventType.name())
-    //             .detail(unicornJson)
-    //             .build();
+    private PutEventsRequest createEventRequestEntry(UnicornEventType unicornEventType, String unicornJson) {
+        return PutEventsRequest.builder()
+                .entries(PutEventsRequestEntry.builder()
+                        .source("com.unicorn.store")
+                        .eventBusName("unicorns")
+                        .detailType(unicornEventType.name())
+                        .detail(unicornJson)
+                        .build())
+                .build();
+    }
 
-    //     return PutEventsRequest.builder()
-    //             .entries(entry)
-    //             .build();
-    // }
+    private void createClient() {
+        logger.info("Creating EventBridgeAsyncClient");
+
+        eventBridgeClient = EventBridgeAsyncClient
+                .builder()
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+    }
+
+    public void closeClient() {
+        logger.info("Closing EventBridgeAsyncClient");
+        eventBridgeClient.close();
+    }
 }

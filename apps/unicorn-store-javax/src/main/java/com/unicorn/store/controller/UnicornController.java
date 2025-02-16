@@ -2,7 +2,6 @@ package com.unicorn.store.controller;
 
 import com.unicorn.store.model.Unicorn;
 import com.unicorn.store.service.UnicornService;
-import java.util.List;
 
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;

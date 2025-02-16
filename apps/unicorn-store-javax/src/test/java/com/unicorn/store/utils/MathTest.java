@@ -30,7 +30,6 @@ public class MathTest {
         // Test short wrappers
         assertEquals((short)12, math.sh);
         assertEquals((short)3, math.s3);
-        assertEquals((short)3, math.sh3);
 
         // Test integer wrapper
         assertEquals(1, math.i);

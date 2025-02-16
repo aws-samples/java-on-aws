@@ -6,7 +6,7 @@ RUN mvn clean package --no-transfer-progress
 
 FROM quay.io/wildfly/wildfly:35.0.0.Final-jdk21 AS runtime
 ENV POSTGRESQL_JDBC_DRIVER_VERSION=42.7.3
-RUN wget "https://repo1.maven.org/maven2/org/postgresql/postgresql/${POSTGRESQL_JDBC_DRIVER_VERSION}/postgresql-${POSTGRESQL_JDBC_DRIVER_VERSION}.jar" -O $JBOSS_HOME/postgresql.jar
+RUN curl -L "https://repo1.maven.org/maven2/org/postgresql/postgresql/${POSTGRESQL_JDBC_DRIVER_VERSION}/postgresql-${POSTGRESQL_JDBC_DRIVER_VERSION}.jar" -o $JBOSS_HOME/postgresql.jar
 RUN printenv > $JBOSS_HOME/env.properties
 
 COPY ./wildfly/datasource.cli $JBOSS_HOME/datasource.cli

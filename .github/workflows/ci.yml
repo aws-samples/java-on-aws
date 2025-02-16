@@ -50,6 +50,9 @@ jobs:
     - name: Build unicorn-store-quarkus with Docker
       run: ./scripts/quarkus-build.sh
       working-directory: ./apps/unicorn-store-jakarta/
+    - name: Build unicorn-store-javax with Docker
+      run: docker build -t unicorn-store-javax:latest .
+      working-directory: ./apps/unicorn-store-javax/
 
 #    - name: Submit Dependency Snapshot
 #      uses: advanced-security/maven-dependency-submission-action@v4

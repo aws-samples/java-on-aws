@@ -1,5 +1,8 @@
 package com.unicorn.store.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.unicorn.store.data.UnicornRepository;
 import com.unicorn.store.data.UnicornPublisher;
 import com.unicorn.store.model.Unicorn;
@@ -15,6 +18,7 @@ import java.util.ArrayList;
 
 @ApplicationScoped
 public class UnicornService {
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Inject
     UnicornRepository unicornRepository;
@@ -39,14 +43,14 @@ public class UnicornService {
     @Transactional
     public Unicorn createUnicorn(Unicorn unicorn) {
         Unicorn savedUnicorn = unicornRepository.insert(unicorn);
-        unicornPublisher.publish(savedUnicorn, UnicornEventType.UNICORN_CREATED);
+        publishEvent(savedUnicorn, UnicornEventType.UNICORN_CREATED);
         return savedUnicorn;
     }
 
     @Transactional
     public Unicorn updateUnicorn(Unicorn unicorn, String unicornId) {
         Unicorn savedUnicorn = unicornRepository.update(unicorn, unicornId);
-        unicornPublisher.publish(savedUnicorn, UnicornEventType.UNICORN_UPDATED);
+        publishEvent(savedUnicorn, UnicornEventType.UNICORN_UPDATED);
         return savedUnicorn;
     }
 
@@ -54,6 +58,16 @@ public class UnicornService {
     public void deleteUnicorn(String unicornId) {
         Unicorn unicorn = unicornRepository.findById(unicornId);
         unicornRepository.delete(unicornId);
-        unicornPublisher.publish(unicorn, UnicornEventType.UNICORN_DELETED);
+        publishEvent(unicorn, UnicornEventType.UNICORN_DELETED);
+    }
+
+    private void publishEvent(Unicorn unicorn, UnicornEventType type) {
+        try {
+            unicornPublisher.publish(unicorn, type);
+        } catch (Exception e) {
+            logger.error("Failed to publish {} event. Unicorn ID: {}. Error: {}",
+                type, unicorn.getId(), e.getMessage());
+            logger.debug("Stack trace:", e);
+        }
     }
 }

@@ -1,16 +1,12 @@
 package com.unicorn.store.model;
 
 import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 
 @Entity(name = "unicorns")
 public class Unicorn {
 
     @Id
-    // @GeneratedValue(strategy = GenerationType.UUID)
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private String id;
     private String name;
     private String age;
