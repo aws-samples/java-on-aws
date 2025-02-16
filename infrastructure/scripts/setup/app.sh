@@ -9,13 +9,24 @@ cp -R ~/java-on-aws/apps/dockerfiles ~/environment/${APP_NAME}
 echo "Seting up the local git repository ..."
 cd ~/environment/${APP_NAME}
 git init -b main
-git config --global user.email "you@workshops.aws"
-git config --global user.name "Your Name"
+
+git config --global user.email "workshop-user@example.com"
+git config --global user.name "Workshop User"
 
 echo "target" >> .gitignore
 echo "*.jar" >> .gitignore
 git add . 1>/dev/null
 git commit -q -m "initial commit" 1>/dev/null
+
+curl -X 'POST' \
+  "http://workshop-user:$IDE_PASSWORD@localhost:9000/api/v1/user/repos" \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d "{
+  \"name\": \"${APP_NAME}\"
+}"
+git remote add origin ssh://git@$GIT_SSH_ENDPOINT/workshop-user/${APP_NAME}.git
+git push origin main
 
 echo "Building the application ..."
 mvn clean package 1> /dev/null
