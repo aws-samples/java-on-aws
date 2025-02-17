@@ -84,6 +84,7 @@ public class UnicornStoreStack extends Stack {
                 "ms-kubernetes-tools.vscode-kubernetes-tools",
                 "vscjava.vscode-java-pack"
             ));
+            ideProps.setEnableGitea(false);
         var ide = new VSCodeIde(this, "UnicornStoreIde", ideProps);
         var ideRole = ideProps.getRole();
         var ideInternalSecurityGroup = ide.getIdeInternalSecurityGroup();

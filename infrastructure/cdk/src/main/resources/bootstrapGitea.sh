@@ -6,7 +6,7 @@ version: "2"
 
 services:
   gitea:
-    image: gitea/gitea:1.22-rootless
+    image: gitea/gitea:1.23.1-rootless
     restart: always
     volumes:
       - /gitea/data:/var/lib/gitea
@@ -165,6 +165,8 @@ sudo -u ec2-user bash -c 'chmod 600 ~/.ssh/*'
 
 PUB_KEY=$(sudo cat /home/ec2-user/.ssh/id_rsa.pub)
 TITLE="$(hostname)$(date +%s)"
+
+while [[ $(curl -s -o /dev/null -w "%{http_code}" localhost:9000/) != "200" ]]; do echo "Gitea is not yet available ..." &&  sleep 5; done
 
 curl -X 'POST' \
   "http://workshop-user:$IDE_PASSWORD@localhost:9000/api/v1/user/keys" \
