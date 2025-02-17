@@ -8,6 +8,10 @@ cp -R ~/java-on-aws/apps/dockerfiles ~/environment/${APP_NAME}
 
 echo "Seting up the local git repository ..."
 cd ~/environment/${APP_NAME}
+
+git config --global user.email "workshop-user@example.com"
+git config --global user.name "Workshop User"
+
 git init -b main
 
 echo "target" >> .gitignore
