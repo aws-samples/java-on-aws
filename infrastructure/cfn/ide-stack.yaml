@@ -1100,7 +1100,7 @@ Resources:
                     - splashUrl: ""
                       instanceIamRoleName:
                         Ref: VSCodeIdeIdeRole21951A1F
-                      codeServerVersion: 4.96.4
+                      codeServerVersion: 4.97.2
                       customBootstrapScript: |
                         date
 

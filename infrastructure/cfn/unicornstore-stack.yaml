@@ -1198,7 +1198,7 @@ Resources:
                         echo '=== Additional Setup ==='
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
-                      codeServerVersion: 4.96.4
+                      codeServerVersion: 4.97.2
                       instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
                       splashUrl: ""
