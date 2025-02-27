@@ -1,4 +1,4 @@
-FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 AS build-aot
+FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-23 AS build-aot
 
 USER root
 RUN microdnf install -y unzip zip
