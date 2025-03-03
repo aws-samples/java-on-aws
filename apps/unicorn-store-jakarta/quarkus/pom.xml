@@ -21,7 +21,7 @@
         <primefaces-quarkus.version>3.14.8</primefaces-quarkus.version>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.18.1</quarkus.platform.version>
+        <quarkus.platform.version>3.19.1</quarkus.platform.version>
         <jackson.version>2.18.2</jackson.version>
     </properties>
 
