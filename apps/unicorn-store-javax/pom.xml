@@ -17,7 +17,7 @@
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <primefaces.version>13.0.10</primefaces.version>
+        <primefaces.version>14.0.12</primefaces.version>
 
         <wildfly.plugin.version>5.1.2.Final</wildfly.plugin.version>
         <wildfly.version>26.1.2.Final</wildfly.version>
