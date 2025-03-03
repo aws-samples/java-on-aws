@@ -19,7 +19,7 @@
         <primefaces.version>15.0.0</primefaces.version>
         <wildfly.plugin.version>5.1.2.Final</wildfly.plugin.version>
         <wildfly.version>35.0.0.Final</wildfly.version>
-        <jackson.version>2.18.2</jackson.version>
+        <jackson.version>2.18.3</jackson.version>
     </properties>
 
     <packaging>war</packaging>
