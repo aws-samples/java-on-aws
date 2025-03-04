@@ -1,0 +1,27 @@
+FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-21-al2023 AS builder
+
+RUN yum install -y wget tar gzip
+RUN cd /tmp && \\
+    wget https://github.com/async-profiler/async-profiler/releases/download/v3.0/async-profiler-3.0-linux-x64.tar.gz && \\
+    mkdir /async-profiler && \\
+    tar -xvzf ./async-profiler-3.0-linux-x64.tar.gz -C /async-profiler --strip-components=1
+
+COPY ./pom.xml ./pom.xml
+COPY src ./src/
+
+RUN mvn clean package && mv target/store-spring-1.0.0-exec.jar store-spring.jar
+RUN rm -rf ~/.m2/repository
+
+FROM public.ecr.aws/docker/library/amazoncorretto:21-al2023
+RUN yum install -y shadow-utils procps tar
+
+COPY --from=builder /async-profiler/ /async-profiler/
+COPY --from=builder store-spring.jar store-spring.jar
+
+RUN groupadd --system spring -g 1000
+RUN adduser spring -u 1000 -g 1000
+ENV SPRING_THREADS_VIRTUAL_ENABLED=false
+USER 1000:1000
+
+EXPOSE 8080
+ENTRYPOINT ["java","-jar","-Dserver.port=8080","/store-spring.jar"]
