@@ -13,6 +13,14 @@ echo "Setting profile variables..."
 export TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F\" '{print $4}')
 export EC2_PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/local-ipv4)
+export EC2_DOMAIN=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/public-hostname)
+export EC2_URL="http://$EC2_DOMAIN"
+
+if [ -z "${domain}" ]; then
+  export IDE_DOMAIN=$(aws cloudfront list-distributions --query 'DistributionList.Items[0].DomainName' --output text)
+else
+  export IDE_DOMAIN="${domain}"
+fi
 
 tee /etc/profile.d/workshop.sh <<EOF
 export INSTANCE_IAM_ROLE_NAME="${instanceIamRoleName}"
@@ -21,9 +29,11 @@ export INSTANCE_IAM_ROLE_ARN="${instanceIamRoleArn}"
 export AWS_REGION="$AWS_REGION"
 export AWS_DEFAULT_REGION="$AWS_REGION"
 export EC2_PRIVATE_IP="$EC2_PRIVATE_IP"
+export EC2_DOMAIN="$EC2_DOMAIN"
+export EC2_URL="$EC2_URL"
 
-export IDE_DOMAIN="${domain}"
-export IDE_URL="https://${domain}"
+export IDE_DOMAIN="$IDE_DOMAIN"
+export IDE_URL="https://$IDE_DOMAIN"
 export IDE_PASSWORD="$IDE_PASSWORD"
 
 alias code="code-server"

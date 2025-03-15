@@ -17,7 +17,7 @@ rm ./aws-sam-cli-linux-x86_64.zip
 /usr/local/bin/sam --version
 
 echo "Installing nodejs and tools ..."
-curl -sS -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+curl -sS -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
@@ -55,7 +55,7 @@ sudo ln -s /usr/lib/maven/bin/mvn /usr/local/bin
 mvn --version
 
 echo "Installing yq ..."
-wget -nv https://github.com/mikefarah/yq/releases/download/v4.44.5/yq_linux_amd64.tar.gz -O - |\
+wget -nv https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64.tar.gz -O - |\
   tar xz && sudo mv yq_linux_amd64 /usr/bin/yq
 yq --version
 
@@ -88,13 +88,13 @@ sudo systemctl restart docker
 echo "Installing docker compose ..."
 DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
 mkdir -p $DOCKER_CONFIG/cli-plugins
-curl -SL https://github.com/docker/compose/releases/download/v2.32.0/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
+curl -SL https://github.com/docker/compose/releases/download/v2.33.1/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
 chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
 docker compose version
 
 echo "Installing kubectl ..."
 # https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
-curl -sS -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.31.0/2024-09-12/bin/linux/amd64/kubectl
+curl -sS -O curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.32.0/2024-12-20/bin/linux/amd64/kubectl
 chmod +x ./kubectl
 mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
 echo "export PATH=$PATH:$HOME/bin" | sudo tee -a /etc/profile.d/workshop.sh
@@ -102,7 +102,7 @@ echo "alias k=kubectl" | sudo tee -a /etc/profile.d/workshop.sh
 kubectl version --client --output=yaml
 
 echo "Installing eks-node-viewer ..."
-wget -nv -O eks-node-viewer https://github.com/awslabs/eks-node-viewer/releases/download/v0.7.0/eks-node-viewer_Linux_x86_64
+wget -nv -O eks-node-viewer https://github.com/awslabs/eks-node-viewer/releases/download/v0.7.1/eks-node-viewer_Linux_x86_64
 chmod +x eks-node-viewer
 sudo mv -v eks-node-viewer /usr/local/bin
 

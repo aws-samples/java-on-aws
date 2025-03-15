@@ -437,7 +437,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250217-135259
+      LogGroupName: unicornstore-ide-bootstrap-log-20250315-154846
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -555,6 +555,17 @@ Resources:
           - UnicornStoreIdeIdePrefixListResource228B9344
           - PrefixListId
       ToPort: 80
+  UnicornStoreIdeAppSecurityGroupA4858227:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: App security group
+      GroupName: unicornstore-ide-cloudfront-app-sg
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: UnicornStoreVpc647929A5
   UnicornStoreIdeIdeInstanceProfileCEFB2BB2:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -591,9 +602,6 @@ Resources:
             - GroupId
         - Fn::GetAtt:
             - UnicornStoreIdeIdeInternalSecurityGroup29539F21
-            - GroupId
-        - Fn::GetAtt:
-            - UnicornStoreIdeAppSecurityGroupA4858227
             - GroupId
       SubnetId:
         Ref: UnicornStoreVpcPublicSubnet1Subnet5A587A94
@@ -648,32 +656,6 @@ Resources:
           - UnicornStoreIdeIdeInternalSecurityGroup29539F21
           - GroupId
       IpProtocol: "-1"
-  UnicornStoreIdeAppSecurityGroupA4858227:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: App security group
-      GroupName: unicornstore-ide-cloudfront-app-sg
-      SecurityGroupEgress:
-        - CidrIp: 0.0.0.0/0
-          Description: Allow all outbound traffic by default
-          IpProtocol: "-1"
-      VpcId:
-        Ref: UnicornStoreVpc647929A5
-  UnicornStoreIdeAppSecurityGroupfromIndirectPeer808018449A72:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      Description: Port 8080 to App from CloudFront only
-      FromPort: 8080
-      GroupId:
-        Fn::GetAtt:
-          - UnicornStoreIdeAppSecurityGroupA4858227
-          - GroupId
-      IpProtocol: tcp
-      SourcePrefixListId:
-        Fn::GetAtt:
-          - UnicornStoreIdeIdePrefixListResource228B9344
-          - PrefixListId
-      ToPort: 8080
   UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1:
     Type: AWS::CloudFormation::WaitConditionHandle
   UnicornStoreIdeIdeBootstrapWaitConditionE9768A2E:
@@ -690,21 +672,6 @@ Resources:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
-        CacheBehaviors:
-          - AllowedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-              - PUT
-              - PATCH
-              - POST
-              - DELETE
-            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-            Compress: true
-            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
-            PathPattern: /app/*
-            TargetOriginId: unicornstorestackUnicornStoreIdeIdeDistributionOrigin26595E295
-            ViewerProtocolPolicy: allow-all
         DefaultCacheBehavior:
           AllowedMethods:
             - GET
@@ -733,16 +700,6 @@ Resources:
                 - UnicornStoreIdeIdeEC2Instance5F393FC5
                 - PublicDnsName
             Id: unicornstorestackUnicornStoreIdeIdeDistributionOrigin1E50C9FB6
-          - CustomOriginConfig:
-              HTTPPort: 8080
-              OriginProtocolPolicy: http-only
-              OriginSSLProtocols:
-                - TLSv1.2
-            DomainName:
-              Fn::GetAtt:
-                - UnicornStoreIdeIdeEC2Instance5F393FC5
-                - PublicDnsName
-            Id: unicornstorestackUnicornStoreIdeIdeDistributionOrigin26595E295
     DependsOn:
       - UnicornStoreIdeIdeEipAssociation14729AD1
     UpdateReplacePolicy: Delete
@@ -896,8 +853,8 @@ Resources:
         parameters:
           BootstrapScript:
             description: (Optional) Custom bootstrap script to run.
-            type: String
             default: ""
+            type: String
         mainSteps:
           - inputs:
               runCommand:
@@ -918,6 +875,14 @@ Resources:
                       export TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
                       export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F\" '{print $4}')
                       export EC2_PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/local-ipv4)
+                      export EC2_DOMAIN=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/public-hostname)
+                      export EC2_URL="http://$EC2_DOMAIN"
+
+                      if [ -z "${domain}" ]; then
+                        export IDE_DOMAIN=$(aws cloudfront list-distributions --query 'DistributionList.Items[0].DomainName' --output text)
+                      else
+                        export IDE_DOMAIN="${domain}"
+                      fi
 
                       tee /etc/profile.d/workshop.sh <<EOF
                       export INSTANCE_IAM_ROLE_NAME="${instanceIamRoleName}"
@@ -926,9 +891,11 @@ Resources:
                       export AWS_REGION="$AWS_REGION"
                       export AWS_DEFAULT_REGION="$AWS_REGION"
                       export EC2_PRIVATE_IP="$EC2_PRIVATE_IP"
+                      export EC2_DOMAIN="$EC2_DOMAIN"
+                      export EC2_URL="$EC2_URL"
 
-                      export IDE_DOMAIN="${domain}"
-                      export IDE_URL="https://${domain}"
+                      export IDE_DOMAIN="$IDE_DOMAIN"
+                      export IDE_URL="https://$IDE_DOMAIN"
                       export IDE_PASSWORD="$IDE_PASSWORD"
 
                       alias code="code-server"
@@ -1143,9 +1110,35 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - installGitea: echo bootstrapGitea was not provided
+                    - environmentContentsZip: ""
                       terminalOnStartup: "true"
-                      environmentContentsZip: ""
+                      installGitea: echo bootstrapGitea was not provided
+                      domain: ""
+                      extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
+                      waitConditionHandleUrl:
+                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
+                      readmeUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - UnicornStoreIdeIdeRole81A2CEAA
+                          - Arn
+                      splashUrl: ""
+                      instanceIamRoleName:
+                        Ref: UnicornStoreIdeIdeRole81A2CEAA
+                      codeServerVersion: 4.98.2
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+
+                        echo '=== Additional Setup ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1185,32 +1178,6 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: UnicornStoreIdeIdePasswordSecret514252E2
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
-
-                        echo '=== Additional Setup ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
-                      codeServerVersion: 4.97.2
-                      instanceIamRoleName:
-                        Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      splashUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - UnicornStoreIdeIdeRole81A2CEAA
-                          - Arn
-                      readmeUrl: ""
-                      waitConditionHandleUrl:
-                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
-                      extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
-                      domain: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1348,12 +1315,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
-      LogGroupName:
-        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
-      SsmDocument:
-        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
       InstanceId:
         Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
+      SsmDocument:
+        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
+      LogGroupName:
+        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -2205,6 +2172,7 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreDatabaseSetupDatabaseSetupFunction83636DD9
           - Arn
+      SqlStatements: CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
       SecretName:
         Fn::Join:
           - "-"
@@ -2235,7 +2203,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: InfrastructureCorepostgresB0D0C6BB
-      SqlStatements: CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
     DependsOn:
       - InfrastructureCoreUnicornStoreDatabaseF56884BA
       - InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8
@@ -2297,8 +2264,15 @@ Resources:
               return 'placeholder'
       Environment:
         Variables:
-          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
           SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
+          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
+          SPRING_DATASOURCE_PASSWORD:
+            Fn::Join:
+              - ""
+              - - "{{resolve:secretsmanager:"
+                - Ref: InfrastructureCorepostgresB0D0C6BB
+                - :SecretString:password::}}
           SPRING_DATASOURCE_URL:
             Fn::Join:
               - ""
@@ -2307,13 +2281,6 @@ Resources:
                     - InfrastructureCoreUnicornStoreDatabaseF56884BA
                     - Endpoint.Address
                 - :5432/unicorns
-          SPRING_DATASOURCE_PASSWORD:
-            Fn::Join:
-              - ""
-              - - "{{resolve:secretsmanager:"
-                - Ref: InfrastructureCorepostgresB0D0C6BB
-                - :SecretString:password::}}
-          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
       FunctionName: unicorn-store-spring
       Handler: com.unicorn.store.StreamLambdaHandler::handleRequest
       MemorySize: 2048
@@ -3045,12 +3012,12 @@ Resources:
       Description: Build complete
       EventPattern:
         detail:
-          project-name:
-            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
+          project-name:
+            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -3083,12 +3050,12 @@ Resources:
           - UnicornStoreCodeBuildStartBuildFunctionB2FE9156
           - Arn
       ContentHash: fd70d4491df3a6a44292446f6b364c8a
-      ProjectName:
-        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
+      ProjectName:
+        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
     DependsOn:
       - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRuleunicornstorestackUnicornStoreCodeBuildReportBuildFunction6189FCDE5C03542B
       - UnicornStoreCodeBuildBuildCompleteRule7E287561

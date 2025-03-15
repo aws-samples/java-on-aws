@@ -75,7 +75,6 @@ public class UnicornStoreStack extends Stack {
             ideProps.setBootstrapScript(bootstrapScript);
             ideProps.setVpc(vpc);
             ideProps.setInstanceName("unicornstore-ide");
-            ideProps.setEnableAppSecurityGroup(true);
             ideProps.setInstanceType(InstanceType.of(InstanceClass.T3, InstanceSize.MEDIUM));
             ideProps.setExtensions(Arrays.asList(
                 // "amazonwebservices.aws-toolkit-vscode",
@@ -84,7 +83,6 @@ public class UnicornStoreStack extends Stack {
                 "ms-kubernetes-tools.vscode-kubernetes-tools",
                 "vscjava.vscode-java-pack"
             ));
-            ideProps.setEnableGitea(false);
         var ide = new VSCodeIde(this, "UnicornStoreIde", ideProps);
         var ideRole = ideProps.getRole();
         var ideInternalSecurityGroup = ide.getIdeInternalSecurityGroup();

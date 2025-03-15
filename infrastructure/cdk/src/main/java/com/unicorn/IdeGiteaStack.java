@@ -16,7 +16,7 @@ import software.constructs.Construct;
 import software.amazon.awscdk.DefaultStackSynthesizer;
 import software.amazon.awscdk.DefaultStackSynthesizerProps;
 
-public class IdeStack extends Stack {
+public class IdeGiteaStack extends Stack {
 
     private final String bootstrapScript = """
         date
@@ -29,7 +29,7 @@ public class IdeStack extends Stack {
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
         """;
 
-    public IdeStack(final Construct scope, final String id) {
+    public IdeGiteaStack(final Construct scope, final String id) {
         // super(scope, id, props);
         super(scope, id, StackProps.builder()
         .synthesizer(new DefaultStackSynthesizer(DefaultStackSynthesizerProps.builder()
@@ -54,6 +54,7 @@ public class IdeStack extends Stack {
                 "vscjava.vscode-java-pack"
             ));
             ideProps.setAppPort(8080);
+            ideProps.setEnableGitea(true);
         new VSCodeIde(this, "VSCodeIde", ideProps);
     }
 }

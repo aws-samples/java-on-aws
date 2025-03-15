@@ -6,7 +6,7 @@ import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Fn;
 import software.amazon.awscdk.RemovalPolicy;
-import software.amazon.awscdk.services.cloudfront.AddBehaviorOptions;
+// import software.amazon.awscdk.services.cloudfront.AddBehaviorOptions;
 import software.amazon.awscdk.services.cloudfront.AllowedMethods;
 import software.amazon.awscdk.services.cloudfront.BehaviorOptions;
 import software.amazon.awscdk.services.cloudfront.CachePolicy;
@@ -81,7 +81,7 @@ public class VSCodeIde extends Construct {
         private String availabilityZone;
         private IMachineImage machineImage = MachineImage.latestAmazonLinux2023();
         private InstanceType instanceType = InstanceType.of(InstanceClass.T3, InstanceSize.MEDIUM);
-        private String codeServerVersion = "4.97.2";
+        private String codeServerVersion = "4.98.2";
         private List<IManagedPolicy> additionalIamPolicies = new ArrayList<>();
         private List<ISecurityGroup> additionalSecurityGroups = new ArrayList<>();
         private int bootstrapTimeoutMinutes = 30;
@@ -93,8 +93,7 @@ public class VSCodeIde extends Construct {
         private boolean terminalOnStartup = true;
         private Role role;
         private String additionalIamPolicyPath = "/iam-policy.json";
-        private boolean enableAppSecurityGroup = false;
-        private int appPort = 8080;
+        private int appPort = 0;
 
         public String getInstanceName() { return instanceName; }
         public void setInstanceName(String instanceName) { this.instanceName = instanceName; }
@@ -152,9 +151,6 @@ public class VSCodeIde extends Construct {
 
         public String getAdditionalIamPolicyPath() { return additionalIamPolicyPath; }
         public void setAdditionalIamPolicyPath(String additionalIamPolicyPath) { this.additionalIamPolicyPath = additionalIamPolicyPath; }
-
-        public boolean isEnableAppSecurityGroup() { return enableAppSecurityGroup; }
-        public void setEnableAppSecurityGroup(boolean enableAppSecurityGroup) { this.enableAppSecurityGroup = enableAppSecurityGroup; }
 
         public int getAppPort() { return appPort; }
         public void setAppPort(int appPort) { this.appPort = appPort; }
@@ -241,6 +237,21 @@ public class VSCodeIde extends Construct {
             "HTTP from CloudFront only"
         );
 
+        SecurityGroup appSecurityGroup = SecurityGroup.Builder.create(this, "AppSecurityGroup")
+            .vpc(props.getVpc())
+            .allowAllOutbound(true)
+            .securityGroupName(props.getInstanceName() + "-cloudfront-app-sg")
+            .description("App security group")
+            .build();
+        if (props.getAppPort() > 0) {
+            appSecurityGroup.addIngressRule(
+                // Peer.prefixList(prefixListResource.getAttString("PrefixListId")),
+                Peer.anyIpv4(),
+                Port.tcp(props.getAppPort()),
+                props.getAppPort() +  " from any"
+            );
+        }
+
         if (props.isEnableGitea()) {
             ideSecurityGroup.addIngressRule(
                 Peer.ipv4(props.getVpc().getVpcCidrBlock()),
@@ -305,24 +316,9 @@ public class VSCodeIde extends Construct {
             "Allow all internal traffic"
         );
         ec2Instance.addSecurityGroup(ideInternalSecurityGroup);
-
-        if (props.isEnableAppSecurityGroup()) {
-            // Create security group
-            SecurityGroup appSecurityGroup = SecurityGroup.Builder.create(this, "AppSecurityGroup")
-                .vpc(props.getVpc())
-                .allowAllOutbound(true)
-                .securityGroupName(props.getInstanceName() + "-cloudfront-app-sg")
-                .description("App security group")
-                .build();
-
-            appSecurityGroup.addIngressRule(
-                Peer.prefixList(prefixListResource.getAttString("PrefixListId")),
-                Port.tcp(props.getAppPort()),
-                "Port " + props.getAppPort() +  " to App from CloudFront only"
-            );
+        if (props.getAppPort() > 0) {
             ec2Instance.addSecurityGroup(appSecurityGroup);
         }
-
         // Add additional security groups if any
         props.getAdditionalSecurityGroups().forEach(sg -> ec2Instance.addSecurityGroup(sg));
 
@@ -352,22 +348,22 @@ public class VSCodeIde extends Construct {
                 .build())
             .httpVersion(HttpVersion.HTTP2)
             .build();
-        if (props.isEnableAppSecurityGroup()) {
-            distribution.addBehavior(
-                "/app/*",
-                new HttpOrigin(ec2Instance.getInstancePublicDnsName(),
-                    HttpOriginProps.builder()
-                        .protocolPolicy(OriginProtocolPolicy.HTTP_ONLY)
-                        .httpPort(props.getAppPort())
-                        .build()),
-                AddBehaviorOptions.builder()
-                    .allowedMethods(AllowedMethods.ALLOW_ALL)
-                    .cachePolicy(CachePolicy.CACHING_DISABLED)
-                    .originRequestPolicy(OriginRequestPolicy.ALL_VIEWER)
-                    .viewerProtocolPolicy(ViewerProtocolPolicy.ALLOW_ALL)
-                    .build()
-            );
-        }
+        // if (props.getAppPort() > 0) {
+        //     distribution.addBehavior(
+        //         "/app/*",
+        //         new HttpOrigin(ec2Instance.getInstancePublicDnsName(),
+        //             HttpOriginProps.builder()
+        //                 .protocolPolicy(OriginProtocolPolicy.HTTP_ONLY)
+        //                 .httpPort(props.getAppPort())
+        //                 .build()),
+        //         AddBehaviorOptions.builder()
+        //             .allowedMethods(AllowedMethods.ALLOW_ALL)
+        //             .cachePolicy(CachePolicy.CACHING_DISABLED)
+        //             .originRequestPolicy(OriginRequestPolicy.ALL_VIEWER)
+        //             .viewerProtocolPolicy(ViewerProtocolPolicy.ALLOW_ALL)
+        //             .build()
+        //     );
+        // }
         distribution.applyRemovalPolicy(RemovalPolicy.DESTROY);
         distribution.getNode().addDependency(ipAssociation);
 
