@@ -167,6 +167,8 @@ PUB_KEY=$(sudo cat /home/ec2-user/.ssh/id_rsa.pub)
 TITLE="$(hostname)$(date +%s)"
 
 while [[ $(curl -s -o /dev/null -w "%{http_code}" localhost:9000/) != "200" ]]; do echo "Gitea is not yet available ..." &&  sleep 5; done
+# Add the host key to known_hosts
+sudo -u ec2-user bash -c "ssh-keyscan -p 2222 $EC2_PRIVATE_IP >> ~/.ssh/known_hosts"
 
 curl -X 'POST' \
   "http://workshop-user:$IDE_PASSWORD@localhost:9000/api/v1/user/keys" \
@@ -185,8 +187,5 @@ export GITEA_EXTERNAL_URL="https://$IDE_DOMAIN/gitea/"
 export GITEA_PASSWORD="$IDE_PASSWORD"
 export GITEA_USERNAME="workshop-user"
 EOF
-
-# Add the host key to known_hosts
-ssh-keyscan -p 2222 $EC2_PRIVATE_IP >> ~/.ssh/known_hosts
 
 source /etc/profile.d/gitea.sh
