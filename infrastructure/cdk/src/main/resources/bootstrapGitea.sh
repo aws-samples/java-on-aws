@@ -186,4 +186,7 @@ export GITEA_PASSWORD="$IDE_PASSWORD"
 export GITEA_USERNAME="workshop-user"
 EOF
 
+# Add the host key to known_hosts
+ssh-keyscan -p 2222 $EC2_PRIVATE_IP >> ~/.ssh/known_hosts
+
 source /etc/profile.d/gitea.sh
