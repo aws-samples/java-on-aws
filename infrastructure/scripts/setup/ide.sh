@@ -125,6 +125,9 @@ helm version
 echo "Installing k9s ..."
 curl -sS https://webinstall.dev/k9s | bash
 
+echo "Installing e1s ... "
+curl -sL https://raw.githubusercontent.com/keidarcy/e1s-install/master/cloudshell-install.sh | bash
+
 echo "Installing Session Manager plugin ..."
 curl -sS "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o "session-manager-plugin.rpm"
 sudo yum -q install -y session-manager-plugin.rpm
