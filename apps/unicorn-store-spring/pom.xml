@@ -156,7 +156,7 @@
                 <dependency>
                     <groupId>io.opentelemetry.instrumentation</groupId>
                     <artifactId>opentelemetry-aws-sdk-2.2</artifactId>
-                    <version>2.14.0-alpha</version>
+                    <version>2.15.0-alpha</version>
                 </dependency>
                 <dependency>
                     <groupId>io.opentelemetry.contrib</groupId>
