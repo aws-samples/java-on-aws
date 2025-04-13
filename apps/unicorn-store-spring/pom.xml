@@ -166,7 +166,7 @@
                 <dependency>
                     <groupId>io.opentelemetry.contrib</groupId>
                     <artifactId>opentelemetry-aws-xray-propagator</artifactId>
-                    <version>1.45.0-alpha</version>
+                    <version>1.46.0-alpha</version>
                 </dependency>
             </dependencies>
         </profile>
