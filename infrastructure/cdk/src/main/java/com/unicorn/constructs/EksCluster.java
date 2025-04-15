@@ -17,8 +17,6 @@ import software.amazon.awscdk.services.eks.CfnAccessEntry;
 import software.amazon.awscdk.services.eks.CfnAccessEntry.AccessScopeProperty;
 import software.amazon.awscdk.services.eks.CfnAccessEntry.AccessPolicyProperty;
 import software.amazon.awscdk.services.eks.CfnPodIdentityAssociation;
-// import software.amazon.awscdk.services.eks.OpenIdConnectProvider;
-// import software.amazon.awscdk.ResolutionTypeHint;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.ISubnet;
