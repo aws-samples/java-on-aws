@@ -12,16 +12,18 @@ import software.constructs.Construct;
 
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 public class InfrastructureLambdaBedrock extends Construct {
 
     private String region;
+    private Function threadDumpFunction;
+    private String s3Bucket;
 
-    public InfrastructureLambdaBedrock(Construct scope, String id, String region) {
+    public InfrastructureLambdaBedrock(Construct scope, String id, String region, String s3Bucket) {
         super(scope, id);
 
-        this.region = region;
         // Create IAM Role for Bedrock access
         Role bedrockRole = Role.Builder.create(this, "BedrockAccessRole")
                 .assumedBy(new ServicePrincipal("bedrock.amazonaws.com"))
@@ -31,13 +33,13 @@ public class InfrastructureLambdaBedrock extends Construct {
         // Add Bedrock policy
         bedrockRole.addToPolicy(PolicyStatement.Builder.create()
                 .effect(Effect.ALLOW)
-                .actions(java.util.Arrays.asList(
+                .actions(List.of(
                         "bedrock:InvokeModel",
                         "bedrock:ListFoundationModels"
                 ))
-                .resources(java.util.Arrays.asList(
+                .resources(List.of(
                         // ARN for Claude 3.7 Sonnet model
-                        String.format("arn:aws:bedrock:eu-west-1:411479159452:inference-profile/eu.anthropic.claude-3-7-sonnet-20250219-v1:0", this.region)
+                        "arn:aws:bedrock:*:*:inference-profile/eu.anthropic.claude-3-7-sonnet-20250219-v1:0"
                 ))
                 .build());
 
@@ -52,15 +54,42 @@ public class InfrastructureLambdaBedrock extends Construct {
                 ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")
         );
 
+        // Add CloudWatch Logs permissions
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+                .effect(Effect.ALLOW)
+                .actions(List.of(
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents"
+                ))
+                .resources(List.of("arn:aws:logs:*:*:*"))
+                .build());
+
         // Add Bedrock permissions to Lambda role
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
                 .effect(Effect.ALLOW)
-                .actions(java.util.Arrays.asList(
+                .actions(List.of(
                         "bedrock:InvokeModel",
                         "bedrock:ListFoundationModels"
                 ))
-                .resources(java.util.Arrays.asList(
-                        String.format("arn:aws:bedrock:eu-west-1:411479159452:inference-profile/eu.anthropic.claude-3-7-sonnet-20250219-v1:0", this.region)
+                .resources(List.of(
+                        "arn:aws:bedrock:*:*:inference-profile/eu.anthropic.claude-3-7-sonnet-20250219-v1:0"
+                ))
+                .build());
+
+        // Add permissions for EKS, S3, SNS, and Bedrock
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+                .effect(Effect.ALLOW)
+                .actions(List.of(
+                        "eks:DescribeCluster",
+                        "s3:PutObject",
+                        "sns:Publish"
+                ))
+                .resources(List.of(
+                        "arn:aws:eks:*:*:cluster/*",
+                        String.format("arn:aws:s3:::%s/*", s3Bucket),
+                        "arn:aws:sns:*:*:*",
+                        "arn:aws:bedrock:*:*:foundation-model/*"
                 ))
                 .build());
 
@@ -68,7 +97,7 @@ public class InfrastructureLambdaBedrock extends Construct {
         String lambdaPath = Paths.get(System.getProperty("user.dir"), "..", "lambda").toString();
 
         // Create Lambda function using custom build script
-        Function lambdaFunction = Function.Builder.create(this, "PythonLambda")
+        threadDumpFunction = Function.Builder.create(this, "PythonLambda")
                 .runtime(Runtime.PYTHON_3_13)
                 .code(Code.fromAsset(lambdaPath, AssetOptions.builder()
                         .bundling(BundlingOptions.builder()
@@ -84,7 +113,7 @@ public class InfrastructureLambdaBedrock extends Construct {
                                 .build())
                         .build()))
                 .handler("lambda_function.lambda_handler")
-                .memorySize(256)
+                .memorySize(512)
                 .timeout(Duration.minutes(5))
                 .role(lambdaRole)
                 .environment(Map.of(
@@ -96,4 +125,7 @@ public class InfrastructureLambdaBedrock extends Construct {
                 .build();
     }
 
+    public Function getThreadDumpFunction() {
+        return threadDumpFunction;
+    }
 }

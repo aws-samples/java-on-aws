@@ -8,21 +8,15 @@ import com.unicorn.constructs.VSCodeIde.VSCodeIdeProps;
 import com.unicorn.constructs.CodeBuildResource;
 import com.unicorn.constructs.CodeBuildResource.CodeBuildResourceProps;
 import com.unicorn.constructs.EksCluster;
-import com.unicorn.core.InfrastructureCore;
-import com.unicorn.core.InfrastructureContainers;
-import com.unicorn.core.DatabaseSetup;
-import com.unicorn.core.UnicornStoreSpringLambda;
+import com.unicorn.core.*;
 
-import software.amazon.awscdk.Stack;
-import software.amazon.awscdk.StackProps;
+import software.amazon.awscdk.*;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
+import software.amazon.awscdk.services.quicksight.CfnTheme;
 import software.constructs.Construct;
-
-import software.amazon.awscdk.DefaultStackSynthesizer;
-import software.amazon.awscdk.DefaultStackSynthesizerProps;
 
 public class UnicornStoreStack extends Stack {
 
@@ -102,6 +96,30 @@ public class UnicornStoreStack extends Stack {
         // Execute Database setup
         var databaseSetup = new DatabaseSetup(this, "UnicornStoreDatabaseSetup", infrastructureCore);
         databaseSetup.getNode().addDependency(infrastructureCore.getDatabase());
+
+        // Create S3 bucket for thread dumps
+        AnalysisBucketConstruct analysisBucket = new AnalysisBucketConstruct(
+                this,
+                "ThreadDumpBucket",
+                AnalysisBucketProps.builder()
+                        .bucketPrefix("unicorn-analysis")
+                        .versioningEnabled(true)
+                        .retentionDays(90)
+                        .noncurrentVersionRetentionDays(30)
+                        .removalPolicy(RemovalPolicy.DESTROY)
+                        .build()
+        );
+
+        String bucketName = analysisBucket.getBucket().getBucketName();
+
+        // Create Lambda function to create thread dump
+        InfrastructureLambdaBedrock lambdaBedrock = new InfrastructureLambdaBedrock(this, "InfrastructureLambdaBedrock", this.getRegion(), bucketName);
+
+        // Create CloudWatch Alarm
+        ThreadDumpAlarmConstruct alarm = new ThreadDumpAlarmConstruct(this, "ThreadDumpAlarm",
+                ThreadDumpAlarmProps.builder()
+                        .lambdaFunction(lambdaBedrock.getThreadDumpFunction())
+                        .build());
 
         // Create UnicornStoreSpringLambda
         new UnicornStoreSpringLambda(this, "UnicornStoreSpringLambda", infrastructureCore);
