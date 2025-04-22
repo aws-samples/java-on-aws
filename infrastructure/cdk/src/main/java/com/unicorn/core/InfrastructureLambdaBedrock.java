@@ -17,13 +17,11 @@ import java.util.Map;
 
 public class InfrastructureLambdaBedrock extends Construct {
 
-    private String region;
     private Function threadDumpFunction;
-    private String s3Bucket;
 
     public InfrastructureLambdaBedrock(Construct scope, String id, String region, String s3Bucket) {
         super(scope, id);
-
+        
         // Create IAM Role for Bedrock access
         Role bedrockRole = Role.Builder.create(this, "BedrockAccessRole")
                 .assumedBy(new ServicePrincipal("bedrock.amazonaws.com"))
@@ -120,7 +118,7 @@ public class InfrastructureLambdaBedrock extends Construct {
                         "APP_LABEL", "unicorn-store-spring",
                         "EKS_CLUSTER_NAME", "unicorn-store",
                         "K8S_NAMESPACE", "unicorn-store-spring",
-                        "S3_BUCKET_NAME", ""
+                        "S3_BUCKET_NAME", s3Bucket
                 ))
                 .build();
     }
