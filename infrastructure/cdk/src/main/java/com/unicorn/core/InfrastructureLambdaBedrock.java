@@ -1,12 +1,14 @@
 package com.unicorn.core;
 
 import software.amazon.awscdk.BundlingOptions;
+import software.amazon.awscdk.BundlingOutput;
 import software.amazon.awscdk.DockerImage;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
+import software.amazon.awscdk.services.s3.Bucket;
 import software.amazon.awscdk.services.s3.assets.AssetOptions;
 import software.constructs.Construct;
 
@@ -19,9 +21,9 @@ public class InfrastructureLambdaBedrock extends Construct {
 
     private Function threadDumpFunction;
 
-    public InfrastructureLambdaBedrock(Construct scope, String id, String region, String s3Bucket) {
+    public InfrastructureLambdaBedrock(Construct scope, String id, String region, Bucket s3Bucket) {
         super(scope, id);
-        
+
         // Create IAM Role for Bedrock access
         Role bedrockRole = Role.Builder.create(this, "BedrockAccessRole")
                 .assumedBy(new ServicePrincipal("bedrock.amazonaws.com"))
@@ -94,33 +96,42 @@ public class InfrastructureLambdaBedrock extends Construct {
         // Define the path to the Lambda function source
         String lambdaPath = Paths.get(System.getProperty("user.dir"), "..", "lambda").toString();
 
-        // Create Lambda function using custom build script
-        threadDumpFunction = Function.Builder.create(this, "PythonLambda")
+        // Custom build script execution
+        // Custom build script execution
+        BundlingOptions.Builder builderOptions = BundlingOptions.builder()
+                .command(Arrays.asList(
+                        "bash", "-c",
+                        String.format(
+                                "cd %s && " +
+                                        "chmod +x build.sh && " +
+                                        "./build.sh --optimize",
+                                lambdaPath
+                        )
+                ))
+                .image(DockerImage.fromRegistry("public.ecr.aws/sam/build-python3.13:latest"))
+                .user("root")
+                .outputType(BundlingOutput.ARCHIVED);
+
+        // Create Lambda function
+        Function threadDumpFunction = Function.Builder.create(this, "unicornstore-thread-dump-lambda-eks")
+                .functionName("unicornstore-thread-dump-lambda-eks")
                 .runtime(Runtime.PYTHON_3_13)
-                .code(Code.fromAsset(lambdaPath, AssetOptions.builder()
-                        .bundling(BundlingOptions.builder()
-                                .image(DockerImage.fromRegistry("public.ecr.aws/sam/build-python3.13"))
-                                .command(Arrays.asList(
-                                        "bash", "-c",
-                                        // Execute build script and copy output
-                                        "cd /asset-input && " +
-                                                "chmod +x build.sh && " +
-                                                "./build.sh && " +
-                                                "cp -r dist/* /asset-output/"
-                                ))
-                                .build())
+                .code(Code.fromAsset("../lambda", AssetOptions.builder()
+                        .bundling(builderOptions.build())
                         .build()))
                 .handler("lambda_function.lambda_handler")
-                .memorySize(512)
-                .timeout(Duration.minutes(5))
                 .role(lambdaRole)
+                .timeout(Duration.minutes(5))
+                .memorySize(512)
                 .environment(Map.of(
                         "APP_LABEL", "unicorn-store-spring",
                         "EKS_CLUSTER_NAME", "unicorn-store",
                         "K8S_NAMESPACE", "unicorn-store-spring",
-                        "S3_BUCKET_NAME", s3Bucket
+                        "S3_BUCKET_NAME", s3Bucket.getBucketName()
                 ))
                 .build();
+
+        s3Bucket.grantWrite(threadDumpFunction);
     }
 
     public Function getThreadDumpFunction() {

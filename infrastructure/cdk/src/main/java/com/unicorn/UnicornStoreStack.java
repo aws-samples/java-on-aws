@@ -113,7 +113,7 @@ public class UnicornStoreStack extends Stack {
         String bucketName = analysisBucket.getBucket().getBucketName();
 
         // Create Lambda function to create thread dump
-        InfrastructureLambdaBedrock lambdaBedrock = new InfrastructureLambdaBedrock(this, "InfrastructureLambdaBedrock", this.getRegion(), bucketName);
+        InfrastructureLambdaBedrock lambdaBedrock = new InfrastructureLambdaBedrock(this, "InfrastructureLambdaBedrock", this.getRegion(), analysisBucket.getBucket());
 
         // Create CloudWatch Alarm
         ThreadDumpAlarmConstruct alarm = new ThreadDumpAlarmConstruct(this, "ThreadDumpAlarm",
