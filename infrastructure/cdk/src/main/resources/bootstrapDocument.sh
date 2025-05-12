@@ -17,7 +17,7 @@ export EC2_DOMAIN=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254
 export EC2_URL="http://$EC2_DOMAIN"
 
 if [ -z "${domain}" ]; then
-  export IDE_DOMAIN=$(aws cloudfront list-distributions --query 'DistributionList.Items[0].DomainName' --output text)
+  export IDE_DOMAIN=$(aws cloudfront list-distributions --query "DistributionList.Items[?contains(Origins.Items[0].Id, 'IdeDistribution')].DomainName | [0]" --output text)
 else
   export IDE_DOMAIN="${domain}"
 fi

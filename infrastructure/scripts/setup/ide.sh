@@ -98,8 +98,10 @@ curl -sS -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.32.0/2024-12-20/bin/
 chmod +x ./kubectl
 mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
 echo "export PATH=$PATH:$HOME/bin" | sudo tee -a /etc/profile.d/workshop.sh
-echo "alias k=kubectl" | sudo tee -a /etc/profile.d/workshop.sh
 kubectl version --client --output=yaml
+kubectl completion bash >>  ~/.bash_completion
+echo "alias k=kubectl" | sudo tee -a /etc/profile.d/workshop.sh
+echo "complete -F __start_kubectl k" | sudo tee -a /etc/profile.d/workshop.sh
 
 echo "Installing eks-node-viewer ..."
 wget -nv -O eks-node-viewer https://github.com/awslabs/eks-node-viewer/releases/download/v0.7.1/eks-node-viewer_Linux_x86_64
@@ -121,6 +123,7 @@ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scrip
 chmod 700 get_helm.sh
 ./get_helm.sh
 helm version
+helm completion bash >>  ~/.bash_completion
 
 echo "Installing k9s ..."
 curl -sS https://webinstall.dev/k9s | bash
@@ -133,6 +136,16 @@ curl -sS "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux
 sudo yum -q install -y session-manager-plugin.rpm
 session-manager-plugin
 rm session-manager-plugin.rpm
+
+echo "Installing Terraform ..."
+sudo yum install -y yum-utils
+sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+sudo yum -y install terraform
+
+echo "Installing Q Cli ..."
+curl --proto '=https' --tlsv1.2 -sSf "https://desktop-release.codewhisperer.us-east-1.amazonaws.com/latest/q-x86_64-linux.zip" -o /home/ec2-user/q.zip
+unzip /home/ec2-user/q.zip -d /home/ec2-user/
+chmod +x /home/ec2-user/q/install.sh
 
 source /etc/profile.d/workshop.sh
 aws configure set default.region ${AWS_REGION}
