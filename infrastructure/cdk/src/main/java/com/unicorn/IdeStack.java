@@ -11,6 +11,7 @@ import software.amazon.awscdk.StackProps;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
+import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.constructs.Construct;
 
 import software.amazon.awscdk.DefaultStackSynthesizer;
@@ -54,6 +55,9 @@ public class IdeStack extends Stack {
                 "vscjava.vscode-java-pack"
             ));
             ideProps.setAppPort(8080);
-        new VSCodeIde(this, "VSCodeIde", ideProps);
+            ideProps.setEnableGitea(false);
+        var ide = new VSCodeIde(this, "VSCodeIdeGitea", ideProps);
+        var ideRole = ideProps.getRole();
+        ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
     }
 }
