@@ -437,7 +437,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250315-154846
+      LogGroupName: unicornstore-ide-bootstrap-log-20250513-074117
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -852,9 +852,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            description: (Optional) Custom bootstrap script to run.
             default: ""
             type: String
+            description: (Optional) Custom bootstrap script to run.
         mainSteps:
           - inputs:
               runCommand:
@@ -879,7 +879,7 @@ Resources:
                       export EC2_URL="http://$EC2_DOMAIN"
 
                       if [ -z "${domain}" ]; then
-                        export IDE_DOMAIN=$(aws cloudfront list-distributions --query 'DistributionList.Items[0].DomainName' --output text)
+                        export IDE_DOMAIN=$(aws cloudfront list-distributions --query "DistributionList.Items[?contains(Origins.Items[0].Id, 'IdeDistribution')].DomainName | [0]" --output text)
                       else
                         export IDE_DOMAIN="${domain}"
                       fi
@@ -1110,8 +1110,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - environmentContentsZip: ""
-                      terminalOnStartup: "true"
+                    - terminalOnStartup: "true"
                       installGitea: echo bootstrapGitea was not provided
                       domain: ""
                       extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
@@ -1125,7 +1124,7 @@ Resources:
                       splashUrl: ""
                       instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      codeServerVersion: 4.98.2
+                      codeServerVersion: 4.99.4
                       customBootstrapScript: |
                         date
 
@@ -1178,6 +1177,7 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: UnicornStoreIdeIdePasswordSecret514252E2
+                      environmentContentsZip: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -2264,7 +2264,6 @@ Resources:
               return 'placeholder'
       Environment:
         Variables:
-          SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
           AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
           JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
           SPRING_DATASOURCE_PASSWORD:
@@ -2281,6 +2280,7 @@ Resources:
                     - InfrastructureCoreUnicornStoreDatabaseF56884BA
                     - Endpoint.Address
                 - :5432/unicorns
+          SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
       FunctionName: unicorn-store-spring
       Handler: com.unicorn.store.StreamLambdaHandler::handleRequest
       MemorySize: 2048
@@ -3049,13 +3049,13 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreCodeBuildStartBuildFunctionB2FE9156
           - Arn
-      ContentHash: fd70d4491df3a6a44292446f6b364c8a
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
       ProjectName:
         Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
+      ContentHash: fd70d4491df3a6a44292446f6b364c8a
     DependsOn:
       - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRuleunicornstorestackUnicornStoreCodeBuildReportBuildFunction6189FCDE5C03542B
       - UnicornStoreCodeBuildBuildCompleteRule7E287561
