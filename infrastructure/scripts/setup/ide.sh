@@ -101,7 +101,7 @@ echo "export PATH=$PATH:$HOME/bin" | sudo tee -a /etc/profile.d/workshop.sh
 kubectl version --client --output=yaml
 kubectl completion bash >>  ~/.bash_completion
 echo "alias k=kubectl" | sudo tee -a /etc/profile.d/workshop.sh
-echo "complete -F __start_kubectl k" | sudo tee -a /etc/profile.d/workshop.sh
+echo "complete -F __start_kubectl k" >> ~/.bashrc
 
 echo "Installing eks-node-viewer ..."
 wget -nv -O eks-node-viewer https://github.com/awslabs/eks-node-viewer/releases/download/v0.7.1/eks-node-viewer_Linux_x86_64
@@ -146,6 +146,10 @@ echo "Installing Q Cli ..."
 curl --proto '=https' --tlsv1.2 -sSf "https://desktop-release.codewhisperer.us-east-1.amazonaws.com/latest/q-x86_64-linux.zip" -o /home/ec2-user/q.zip
 unzip /home/ec2-user/q.zip -d /home/ec2-user/
 chmod +x /home/ec2-user/q/install.sh
+
+echo "Fixing bash-preexec errors in Amazon Q shell integration..."
+# Run the fix script from the same directory
+bash "$(dirname "$0")/fix-bash-preexec.sh"
 
 source /etc/profile.d/workshop.sh
 aws configure set default.region ${AWS_REGION}
