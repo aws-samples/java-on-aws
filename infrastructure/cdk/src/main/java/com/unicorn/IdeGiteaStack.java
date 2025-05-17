@@ -28,6 +28,7 @@ public class IdeGiteaStack extends Stack {
 
         echo '=== Setup IDE ==='
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
         """;
 
     public IdeGiteaStack(final Construct scope, final String id) {

@@ -137,11 +137,6 @@ sudo yum -q install -y session-manager-plugin.rpm
 session-manager-plugin
 rm session-manager-plugin.rpm
 
-echo "Installing Terraform ..."
-sudo yum install -y yum-utils
-sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
-sudo yum -y install terraform
-
 echo "Installing Q Cli ..."
 curl --proto '=https' --tlsv1.2 -sSf "https://desktop-release.codewhisperer.us-east-1.amazonaws.com/latest/q-x86_64-linux.zip" -o /home/ec2-user/q.zip
 unzip /home/ec2-user/q.zip -d /home/ec2-user/
