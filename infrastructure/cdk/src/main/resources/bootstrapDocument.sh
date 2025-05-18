@@ -7,10 +7,6 @@ PASSWORD_SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id "${passw
 
 export IDE_PASSWORD=$(echo "$PASSWORD_SECRET_VALUE" | jq -r '.password')
 
-yum install httpd-tools -y
-export IDE_PASSWORD_HASH=$(htpasswd -bnBC 10 "" $IDE_PASSWORD | tr -d ':\n')
-export IDE_PASSWORD_KEY=$(openssl rand -base64 48 | tr -d "=+/" | head -c 32 | base64)
-
 echo "Setting profile variables..."
 
 # Set some useful variables
@@ -39,8 +35,6 @@ export EC2_URL="$EC2_URL"
 export IDE_DOMAIN="$IDE_DOMAIN"
 export IDE_URL="https://$IDE_DOMAIN"
 export IDE_PASSWORD="$IDE_PASSWORD"
-export IDE_PASSWORD_HASH="$IDE_PASSWORD_HASH"
-export IDE_PASSWORD_KEY="$IDE_PASSWORD_KEY"
 
 alias code="code-server"
 EOF

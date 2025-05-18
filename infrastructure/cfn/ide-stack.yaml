@@ -422,7 +422,7 @@ Resources:
   VSCodeIdeGiteaIdeLogGroupCD76FEFA:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250517-202220
+      LogGroupName: ide-bootstrap-log-20250518-065443
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -837,9 +837,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
+            description: (Optional) Custom bootstrap script to run.
             default: ""
             type: String
-            description: (Optional) Custom bootstrap script to run.
         mainSteps:
           - inputs:
               runCommand:
@@ -853,10 +853,6 @@ Resources:
                       PASSWORD_SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id "${passwordName}" --query 'SecretString' --output text)
 
                       export IDE_PASSWORD=$(echo "$PASSWORD_SECRET_VALUE" | jq -r '.password')
-
-                      yum install httpd-tools -y
-                      export IDE_PASSWORD_HASH=$(htpasswd -bnBC 10 "" $IDE_PASSWORD | tr -d ':\n')
-                      export IDE_PASSWORD_KEY=$(openssl rand -base64 48 | tr -d "=+/" | head -c 32 | base64)
 
                       echo "Setting profile variables..."
 
@@ -886,8 +882,6 @@ Resources:
                       export IDE_DOMAIN="$IDE_DOMAIN"
                       export IDE_URL="https://$IDE_DOMAIN"
                       export IDE_PASSWORD="$IDE_PASSWORD"
-                      export IDE_PASSWORD_HASH="$IDE_PASSWORD_HASH"
-                      export IDE_PASSWORD_KEY="$IDE_PASSWORD_KEY"
 
                       alias code="code-server"
                       EOF
@@ -1101,20 +1095,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - installGitea: echo bootstrapGitea was not provided
-                      domain: ""
-                      extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
-                      waitConditionHandleUrl:
-                        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
-                      readmeUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - VSCodeIdeGiteaIdeRole90308F47
-                          - Arn
-                      splashUrl: ""
-                      instanceIamRoleName:
-                        Ref: VSCodeIdeGiteaIdeRole90308F47
-                      codeServerVersion: 4.100.2
+                    - codeServerVersion: 4.100.2
                       customBootstrapScript: |
                         date
 
@@ -1157,6 +1138,19 @@ Resources:
                                             - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
                       environmentContentsZip: ""
                       terminalOnStartup: "true"
+                      installGitea: echo bootstrapGitea was not provided
+                      domain: ""
+                      extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
+                      waitConditionHandleUrl:
+                        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
+                      readmeUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - VSCodeIdeGiteaIdeRole90308F47
+                          - Arn
+                      splashUrl: ""
+                      instanceIamRoleName:
+                        Ref: VSCodeIdeGiteaIdeRole90308F47
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
