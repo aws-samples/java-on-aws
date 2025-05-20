@@ -34,8 +34,8 @@ public class IdeEcsStack extends Stack {
         echo '=== Setup IDE ==='
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
 
-        echo '=== Additional Setup ==='
-        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/deploy/build-and-push.sh"
+        # echo '=== Additional Setup ==='
+        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/deploy/build-and-push.sh"
         """;
 
     private final String buildspec = """
