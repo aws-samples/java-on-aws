@@ -23,6 +23,7 @@ import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationListene
 import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationProtocol;
 import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationTargetGroup;
 import software.amazon.awscdk.services.elasticloadbalancingv2.TargetType;
+import software.amazon.awscdk.services.ecs.LoadBalancerTargetOptions;
 import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.Duration;
 
@@ -171,8 +172,8 @@ public class InfrastructureEcs extends Construct {
             .defaultTargetGroups(List.of(targetGroup))
             .build();
 
-        // Create Fargate Service
-        return FargateService.Builder.create(this, appName + "-Service")
+        // Create Fargate Service with target group attachment
+        var service = FargateService.Builder.create(this, appName + "-Service")
             .serviceName(appName)
             .cluster(ecsCluster)
             .taskDefinition(taskDefinition)
@@ -183,6 +184,13 @@ public class InfrastructureEcs extends Construct {
                 .build())
             .assignPublicIp(false)
             .build();
+
+        // Register the service with the target group
+        targetGroup.addTarget(service.loadBalancerTarget(LoadBalancerTargetOptions.builder()
+            .containerName(appName)
+            .containerPort(8080)
+            .build()));
+        return service;
     }
 
     public Repository getEcrRepository() {
