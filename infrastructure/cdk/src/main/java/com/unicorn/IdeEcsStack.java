@@ -80,7 +80,9 @@ public class IdeEcsStack extends Stack {
                 "vmware.vscode-boot-dev-pack",
                 "vscjava.vscode-java-pack"
             ));
-        new VSCodeIde(this, "WorkshopIde", ideProps);
+        new VSCodeIde(this, "VSCodeIdeGitea", ideProps);
+        var ideRole = ideProps.getRole();
+        ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
 
         // Create Core infrastructure
         var infrastructureCore = new InfrastructureCore(this, "InfrastructureCore", vpc);
