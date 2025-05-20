@@ -1,0 +1,2643 @@
+Metadata:
+  cdk_nag:
+    rules_to_suppress:
+      - reason: The workshop environment does not require API-Gateway authorization
+        id: AwsSolutions-APIG4
+      - reason: The workshop environment does not require Cognito User Pool authorization
+        id: AwsSolutions-COG4
+      - reason: Workshop environment does not need a Multi-AZ setup to reduce cost
+        id: AwsSolutions-RDS3
+      - reason: AWS Managed policies are acceptable for the workshop
+        id: AwsSolutions-IAM4
+      - reason: A wildcard is acceptable for this workshop to allow parallel creation of resources
+        id: AwsSolutions-IAM5
+      - reason: Workshop environment is ephemeral and the database should be deleted by the end of the workshop
+        id: AwsSolutions-RDS10
+      - reason: Database is in a private subnet and can use the default port
+        id: AwsSolutions-RDS11
+      - reason: API Gateway request validation is not needed for workshop
+        id: AwsSolutions-APIG2
+      - reason: API Gateway access logging not needed for workshop setup
+        id: AwsSolutions-APIG1
+      - reason: API Gateway access logging not needed for workshop setup
+        id: AwsSolutions-APIG6
+      - reason: Workshop environment does not need VPC flow logs
+        id: AwsSolutions-VPC7
+      - reason: Ephemeral workshop environment does not need to rotate secrets
+        id: AwsSolutions-SMG4
+      - reason: Workshop non-sensitive test database does not need encryption at rest
+        id: AwsSolutions-RDS2
+      - reason: Workshop API Gateways do not need AWS WAF assigned
+        id: AwsSolutions-APIG3
+      - reason: Not needed
+        id: AwsSolutions-EC23
+      - reason: Workshop Database does not need backups
+        id: AwsSolutions-RDS13
+      - reason: Workshop S3 bucket does not need Access Logs
+        id: AwsSolutions-S1
+      - reason: Workshop environment use CDK default Lambdas
+        id: AwsSolutions-L1
+      - reason: Workshop environment uses user/password authentication
+        id: AwsSolutions-RDS6
+      - reason: Workshop instance doesn't need autoscaling
+        id: AwsSolutions-EC28
+      - reason: Workshop instance doesn't need autoscaling
+        id: AwsSolutions-EC29
+      - reason: Workshop environment should be accessible from any Geo
+        id: AwsSolutions-CFR1
+      - reason: Ephemeral workshop environment does not need WAF
+        id: AwsSolutions-CFR2
+      - reason: Ephemeral workshop environment does not need logging
+        id: AwsSolutions-CFR3
+      - reason: Workshop instance uses http
+        id: AwsSolutions-CFR4
+      - reason: Workshop instance uses http
+        id: AwsSolutions-CFR5
+      - reason: Workshop non-sensitive EKS cluster uses public access
+        id: AwsSolutions-EKS1
+      - reason: CodeBuild uses default AWS-managed CMK for S3
+        id: AwsSolutions-CB4
+      - reason: "Suppress warnings see: https://github.com/cdklabs/cdk-nag/issues/817"
+        id: CdkNagValidationFailure
+      - reason: Workshop environment does not need ALB logs
+        id: AwsSolutions-ELB2
+      - reason: Workshop environment does not need Container Insights
+        id: AwsSolutions-ECS4
+Resources:
+  WorkshopVpc9CBD39F0:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: workshop-vpc
+  WorkshopVpcPublicSubnet1SubnetA669A4AA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: ide-ecs-stack/WorkshopVpc/Vpc/PublicSubnet1
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopVpcPublicSubnet1RouteTable0D5E0697:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: ide-ecs-stack/WorkshopVpc/Vpc/PublicSubnet1
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopVpcPublicSubnet1RouteTableAssociationC8DC0A8B:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: WorkshopVpcPublicSubnet1RouteTable0D5E0697
+      SubnetId:
+        Ref: WorkshopVpcPublicSubnet1SubnetA669A4AA
+  WorkshopVpcPublicSubnet1DefaultRoute46A975C6:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: WorkshopVpcIGWE3E3969A
+      RouteTableId:
+        Ref: WorkshopVpcPublicSubnet1RouteTable0D5E0697
+    DependsOn:
+      - WorkshopVpcVPCGW6341425D
+  WorkshopVpcPublicSubnet1EIP59395017:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: ide-ecs-stack/WorkshopVpc/Vpc/PublicSubnet1
+  WorkshopVpcPublicSubnet1NATGateway3B4874AC:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - WorkshopVpcPublicSubnet1EIP59395017
+          - AllocationId
+      SubnetId:
+        Ref: WorkshopVpcPublicSubnet1SubnetA669A4AA
+      Tags:
+        - Key: Name
+          Value: ide-ecs-stack/WorkshopVpc/Vpc/PublicSubnet1
+    DependsOn:
+      - WorkshopVpcPublicSubnet1DefaultRoute46A975C6
+      - WorkshopVpcPublicSubnet1RouteTableAssociationC8DC0A8B
+  WorkshopVpcPublicSubnet2SubnetBDFBF52E:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: ide-ecs-stack/WorkshopVpc/Vpc/PublicSubnet2
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopVpcPublicSubnet2RouteTable79CCA17F:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: ide-ecs-stack/WorkshopVpc/Vpc/PublicSubnet2
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopVpcPublicSubnet2RouteTableAssociation005F29A4:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: WorkshopVpcPublicSubnet2RouteTable79CCA17F
+      SubnetId:
+        Ref: WorkshopVpcPublicSubnet2SubnetBDFBF52E
+  WorkshopVpcPublicSubnet2DefaultRouteBE49FFDD:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: WorkshopVpcIGWE3E3969A
+      RouteTableId:
+        Ref: WorkshopVpcPublicSubnet2RouteTable79CCA17F
+    DependsOn:
+      - WorkshopVpcVPCGW6341425D
+  WorkshopVpcPrivateSubnet1Subnet8F30D1E3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Private
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: ide-ecs-stack/WorkshopVpc/Vpc/PrivateSubnet1
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopVpcPrivateSubnet1RouteTable93F4A08B:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: ide-ecs-stack/WorkshopVpc/Vpc/PrivateSubnet1
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopVpcPrivateSubnet1RouteTableAssociation6F25361F:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: WorkshopVpcPrivateSubnet1RouteTable93F4A08B
+      SubnetId:
+        Ref: WorkshopVpcPrivateSubnet1Subnet8F30D1E3
+  WorkshopVpcPrivateSubnet1DefaultRouteC53251BD:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: WorkshopVpcPublicSubnet1NATGateway3B4874AC
+      RouteTableId:
+        Ref: WorkshopVpcPrivateSubnet1RouteTable93F4A08B
+  WorkshopVpcPrivateSubnet2Subnet73CC1040:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.3.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Private
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: ide-ecs-stack/WorkshopVpc/Vpc/PrivateSubnet2
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopVpcPrivateSubnet2RouteTable249896AE:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: ide-ecs-stack/WorkshopVpc/Vpc/PrivateSubnet2
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopVpcPrivateSubnet2RouteTableAssociationDAB78D9E:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: WorkshopVpcPrivateSubnet2RouteTable249896AE
+      SubnetId:
+        Ref: WorkshopVpcPrivateSubnet2Subnet73CC1040
+  WorkshopVpcPrivateSubnet2DefaultRoute290F73AA:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: WorkshopVpcPublicSubnet1NATGateway3B4874AC
+      RouteTableId:
+        Ref: WorkshopVpcPrivateSubnet2RouteTable249896AE
+  WorkshopVpcIGWE3E3969A:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: workshop-vpc
+  WorkshopVpcVPCGW6341425D:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId:
+        Ref: WorkshopVpcIGWE3E3969A
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopIdeIdeRoleF04F5802:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/ReadOnlyAccess
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonSSMManagedInstanceCore
+        - Ref: WorkshopIdeWorkshopIdeUserPolicyA733DE26
+      RoleName: workshop-ide-user
+  WorkshopIdeIdeRoleDefaultPolicy82C57657:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - WorkshopIdeIdeLogGroupDCF86B4F
+                - Arn
+          - Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+            Effect: Allow
+            Resource:
+              Ref: WorkshopIdeIdePasswordSecretEA2A6ED5
+        Version: "2012-10-17"
+      PolicyName: WorkshopIdeIdeRoleDefaultPolicy82C57657
+      Roles:
+        - Ref: WorkshopIdeIdeRoleF04F5802
+  WorkshopIdeWorkshopIdeUserPolicyA733DE26:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: ""
+      Path: /
+      PolicyDocument:
+        Statement:
+          - Action:
+              - cloudwatch:*
+              - codewhisperer:*
+              - ecr:*
+              - eks:*
+              - iam:CreateOpenIDConnectProvider
+              - iam:TagOpenIDConnectProvider
+              - events:*
+              - q:*
+              - secretsmanager:*
+              - ssm:*
+              - sts:*
+            Effect: Allow
+            Resource: "*"
+            Sid: AllowedServicesEKS
+          - Action: iam:PassRole
+            Effect: Allow
+            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+            Sid: PassRoleEKS
+          - Action:
+              - iam:CreateRole
+              - iam:TagRole
+              - iam:DeleteRole
+              - iam:CreatePolicy
+              - iam:CreatePolicyVersion
+              - iam:DeletePolicy
+              - iam:DeletePolicyVersion
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
+              - iam:PassRole
+            Effect: Allow
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/*unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/*Unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*Unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*AWSLambdaTracerAccessExecutionRole*
+            Sid: IamLimitedAccessForUnicorns
+          - Action:
+              - cloudformation:*
+              - codeartifact:*
+              - apprunner:*
+              - ec2:*
+              - ecs:*
+              - elasticloadbalancing:*
+              - xray:*
+              - logs:*
+              - lambda:*
+              - dynamodb:*
+              - s3:*
+              - tag:*
+              - application-signals:*
+            Effect: Allow
+            Resource: "*"
+            Sid: AllowedServicesOthers
+          - Action: ec2:RunInstances
+            Condition:
+              StringLike:
+                ec2:InstanceType:
+                  - "*4xlarge"
+                  - "*6xlarge"
+                  - "*8xlarge"
+                  - "*9xlarge"
+                  - "*10xlarge"
+                  - "*12xlarge"
+                  - "*16xlarge"
+                  - "*18xlarge"
+                  - "*24xlarge"
+                  - f1*
+                  - x1*
+                  - z1*
+                  - "*metal"
+            Effect: Deny
+            Resource: arn:aws:ec2:*:*:instance/*
+            Sid: DenyXXLInstances
+          - Action:
+              - ec2:ModifyReservedInstances
+              - ec2:PurchaseHostReservation
+              - ec2:PurchaseReservedInstancesOffering
+              - ec2:PurchaseScheduledInstances
+              - rds:PurchaseReservedDBInstancesOffering
+              - dynamodb:PurchaseReservedCapacityOfferings
+            Effect: Deny
+            Resource: "*"
+            Sid: DenyReservations
+        Version: "2012-10-17"
+  WorkshopIdeIdeLogGroupDCF86B4F:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: workshop-ide-bootstrap-log-20250520-160245
+      RetentionInDays: 7
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  WorkshopIdeIdePrefixListFunctionServiceRole2AD0E14D:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  WorkshopIdeIdePrefixListFunctionServiceRoleDefaultPolicy7068FFC0:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: ec2:DescribeManagedPrefixLists
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: WorkshopIdeIdePrefixListFunctionServiceRoleDefaultPolicy7068FFC0
+      Roles:
+        - Ref: WorkshopIdeIdePrefixListFunctionServiceRole2AD0E14D
+  WorkshopIdeIdePrefixListFunction66807A04:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |-
+          from __future__ import print_function
+          import boto3
+          import traceback
+          import cfnresponse
+
+          def lambda_handler(event, context):
+              print('Event: {}'.format(event))
+              print('context: {}'.format(context))
+              responseData = {}
+
+              status = cfnresponse.SUCCESS
+
+              if event['RequestType'] == 'Delete':
+                  responseData = {'Success': 'Custom Resource removed'}
+                  cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+              else:
+                  try:
+                      # Open AWS clients
+                      ec2 = boto3.client('ec2')
+
+                      res = ec2.describe_managed_prefix_lists(
+                         Filters=[{
+                            'Name': 'prefix-list-name',
+                            'Values': ['com.amazonaws.global.cloudfront.origin-facing']
+                         }]
+                      )
+
+                      responseData = {'PrefixListId': str(res['PrefixLists'][0]['PrefixListId'])}
+                  except Exception as e:
+                      status = cfnresponse.FAILED
+                      tb_err = traceback.format_exc()
+                      print(tb_err)
+                      responseData = {'Error': tb_err}
+                  finally:
+                      cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+      FunctionName: workshop-ide-prefix-list-lambda
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - WorkshopIdeIdePrefixListFunctionServiceRole2AD0E14D
+          - Arn
+      Runtime: python3.13
+      Timeout: 180
+    DependsOn:
+      - WorkshopIdeIdePrefixListFunctionServiceRoleDefaultPolicy7068FFC0
+      - WorkshopIdeIdePrefixListFunctionServiceRole2AD0E14D
+  WorkshopIdeIdePrefixListResource73A35667:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - WorkshopIdeIdePrefixListFunction66807A04
+          - Arn
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  WorkshopIdeIdeSecurityGroup114D3CB0:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: IDE security group
+      GroupName: workshop-ide-cloudfront-ide-sg
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopIdeIdeSecurityGroupfromIndirectPeer8078CBB037:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: HTTP from CloudFront only
+      FromPort: 80
+      GroupId:
+        Fn::GetAtt:
+          - WorkshopIdeIdeSecurityGroup114D3CB0
+          - GroupId
+      IpProtocol: tcp
+      SourcePrefixListId:
+        Fn::GetAtt:
+          - WorkshopIdeIdePrefixListResource73A35667
+          - PrefixListId
+      ToPort: 80
+  WorkshopIdeAppSecurityGroup3CD19EC5:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: App security group
+      GroupName: workshop-ide-cloudfront-app-sg
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopIdeIdeInstanceProfileEF59F78D:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName:
+        Ref: WorkshopIdeIdeRoleF04F5802
+      Roles:
+        - Ref: WorkshopIdeIdeRoleF04F5802
+  WorkshopIdeIdeElasticIPF5A534A7:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  WorkshopIdeIdeEC2Instance1E5B9BBF:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            DeleteOnTermination: true
+            Encrypted: true
+            VolumeSize: 50
+            VolumeType: gp3
+      IamInstanceProfile:
+        Ref: WorkshopIdeIdeInstanceProfileEF59F78D
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      InstanceType: m5.xlarge
+      SecurityGroupIds:
+        - Fn::GetAtt:
+            - WorkshopIdeIdeSecurityGroup114D3CB0
+            - GroupId
+        - Fn::GetAtt:
+            - WorkshopIdeIdeInternalSecurityGroup273C053B
+            - GroupId
+      SubnetId:
+        Ref: WorkshopVpcPublicSubnet1SubnetA669A4AA
+      Tags:
+        - Key: Name
+          Value: workshop-ide
+      UserData:
+        Fn::Base64: "#!/bin/bash"
+    DependsOn:
+      - WorkshopIdeIdePasswordSecretEA2A6ED5
+      - WorkshopIdeIdeRoleDefaultPolicy82C57657
+      - WorkshopIdeIdeRoleF04F5802
+  WorkshopIdeIdeEipAssociation850AB7F7:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - WorkshopIdeIdeElasticIPF5A534A7
+          - AllocationId
+      InstanceId:
+        Ref: WorkshopIdeIdeEC2Instance1E5B9BBF
+  WorkshopIdeIdeInternalSecurityGroup273C053B:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: IDE internal security group
+      GroupName: workshop-ide-internal-sg
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopIdeIdeInternalSecurityGroupfromideecsstackWorkshopIdeIdeInternalSecurityGroup263145B0ALLTRAFFIC041BC380:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow all internal traffic
+      GroupId:
+        Fn::GetAtt:
+          - WorkshopIdeIdeInternalSecurityGroup273C053B
+          - GroupId
+      IpProtocol: "-1"
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - WorkshopIdeIdeInternalSecurityGroup273C053B
+          - GroupId
+  WorkshopIdeIdeInternalSecurityGrouptoideecsstackWorkshopIdeIdeInternalSecurityGroup263145B0ALLTRAFFIC3ED3007C:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allow all internal traffic
+      DestinationSecurityGroupId:
+        Fn::GetAtt:
+          - WorkshopIdeIdeInternalSecurityGroup273C053B
+          - GroupId
+      GroupId:
+        Fn::GetAtt:
+          - WorkshopIdeIdeInternalSecurityGroup273C053B
+          - GroupId
+      IpProtocol: "-1"
+  WorkshopIdeIdeBootstrapWaitConditionHandle012DE59D:
+    Type: AWS::CloudFormation::WaitConditionHandle
+  WorkshopIdeIdeBootstrapWaitCondition8B811B0D:
+    Type: AWS::CloudFormation::WaitCondition
+    Properties:
+      Count: 1
+      Handle:
+        Ref: WorkshopIdeIdeBootstrapWaitConditionHandle012DE59D
+      Timeout: "1800"
+    DependsOn:
+      - WorkshopIdeIdeBootstrapDocument92F2B515
+      - WorkshopIdeIdeEC2Instance1E5B9BBF
+  WorkshopIdeIdeDistribution367C3116:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - PATCH
+            - POST
+            - DELETE
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          Compress: true
+          OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
+          TargetOriginId: ideecsstackWorkshopIdeIdeDistributionOrigin182CDCC42
+          ViewerProtocolPolicy: allow-all
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+              OriginSSLProtocols:
+                - TLSv1.2
+            DomainName:
+              Fn::GetAtt:
+                - WorkshopIdeIdeEC2Instance1E5B9BBF
+                - PublicDnsName
+            Id: ideecsstackWorkshopIdeIdeDistributionOrigin182CDCC42
+    DependsOn:
+      - WorkshopIdeIdeEipAssociation850AB7F7
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  WorkshopIdeIdePasswordSecretEA2A6ED5:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        ExcludeCharacters: '"@/\\'
+        ExcludePunctuation: true
+        GenerateStringKey: password
+        IncludeSpace: false
+        PasswordLength: 32
+        SecretStringTemplate: '{"password":""}'
+      Name: workshop-ide-password-lambda
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  WorkshopIdeIdePasswordExporterFunctionServiceRole17D54817:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  WorkshopIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy79056C98:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+            Effect: Allow
+            Resource:
+              Ref: WorkshopIdeIdePasswordSecretEA2A6ED5
+        Version: "2012-10-17"
+      PolicyName: WorkshopIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy79056C98
+      Roles:
+        - Ref: WorkshopIdeIdePasswordExporterFunctionServiceRole17D54817
+  WorkshopIdeIdePasswordExporterFunctionC3C0B31B:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |-
+          import traceback
+          import cfnresponse
+          import boto3
+          import json
+
+          def lambda_handler(event, context):
+              print('Event: {}'.format(event))
+              print('context: {}'.format(context))
+              responseData = {}
+
+              status = cfnresponse.SUCCESS
+
+              if event['RequestType'] == 'Delete':
+                  cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+              else:
+                  try:
+                      passwordName = event['ResourceProperties']['PasswordName']
+
+                      secretsmanager = boto3.client('secretsmanager')
+
+                      response = secretsmanager.get_secret_value(
+                          SecretId=passwordName,
+                      )
+
+                      responseData = json.loads(response['SecretString'])
+                  except Exception as e:
+                      status = cfnresponse.FAILED
+                      tb_err = traceback.format_exc()
+                      print(tb_err)
+                      responseData = {'Error': tb_err}
+                  finally:
+                      cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+      FunctionName: workshop-ide-password-lambda
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - WorkshopIdeIdePasswordExporterFunctionServiceRole17D54817
+          - Arn
+      Runtime: python3.13
+      Timeout: 180
+    DependsOn:
+      - WorkshopIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy79056C98
+      - WorkshopIdeIdePasswordExporterFunctionServiceRole17D54817
+  WorkshopIdeIdePasswordExporter4384E726:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - WorkshopIdeIdePasswordExporterFunctionC3C0B31B
+          - Arn
+      PasswordName:
+        Fn::Join:
+          - "-"
+          - - Fn::Select:
+                - 0
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: WorkshopIdeIdePasswordSecretEA2A6ED5
+            - Fn::Select:
+                - 1
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: WorkshopIdeIdePasswordSecretEA2A6ED5
+            - Fn::Select:
+                - 2
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: WorkshopIdeIdePasswordSecretEA2A6ED5
+            - Fn::Select:
+                - 3
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: WorkshopIdeIdePasswordSecretEA2A6ED5
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  WorkshopIdeIdeBootstrapDocument92F2B515:
+    Type: AWS::SSM::Document
+    Properties:
+      Content:
+        schemaVersion: "2.2"
+        description: Bootstrap IDE
+        parameters:
+          BootstrapScript:
+            type: String
+            default: ""
+            description: (Optional) Custom bootstrap script to run.
+        mainSteps:
+          - inputs:
+              runCommand:
+                - Fn::Sub:
+                    - |-
+                      bash << 'HEREDOC'
+                      set -e
+
+                      echo "Retrieving IDE password..."
+
+                      PASSWORD_SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id "${passwordName}" --query 'SecretString' --output text)
+
+                      export IDE_PASSWORD=$(echo "$PASSWORD_SECRET_VALUE" | jq -r '.password')
+
+                      echo "Setting profile variables..."
+
+                      # Set some useful variables
+                      export TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+                      export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F\" '{print $4}')
+                      export EC2_PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/local-ipv4)
+                      export EC2_DOMAIN=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/public-hostname)
+                      export EC2_URL="http://$EC2_DOMAIN"
+
+                      if [ -z "${domain}" ]; then
+                        export IDE_DOMAIN=$(aws cloudfront list-distributions --query "DistributionList.Items[?contains(Origins.Items[0].Id, 'IdeDistribution')].DomainName | [0]" --output text)
+                      else
+                        export IDE_DOMAIN="${domain}"
+                      fi
+
+                      tee /etc/profile.d/workshop.sh <<EOF
+                      export INSTANCE_IAM_ROLE_NAME="${instanceIamRoleName}"
+                      export INSTANCE_IAM_ROLE_ARN="${instanceIamRoleArn}"
+
+                      export AWS_REGION="$AWS_REGION"
+                      export AWS_DEFAULT_REGION="$AWS_REGION"
+                      export EC2_PRIVATE_IP="$EC2_PRIVATE_IP"
+                      export EC2_DOMAIN="$EC2_DOMAIN"
+                      export EC2_URL="$EC2_URL"
+
+                      export IDE_DOMAIN="$IDE_DOMAIN"
+                      export IDE_URL="https://$IDE_DOMAIN"
+                      export IDE_PASSWORD="$IDE_PASSWORD"
+
+                      alias code="code-server"
+                      EOF
+
+                      source /etc/profile.d/workshop.sh
+
+                      echo "Setting PS1..."
+
+                      # Set PS1
+                      tee /etc/profile.d/custom_prompt.sh <<EOF
+                      #!/bin/sh
+
+                      export PROMPT_COMMAND='export PS1="\u:\w:$ "'
+                      EOF
+
+                      echo "Generating SSH key..."
+
+                      # Generate an SSH key for ec2-user
+                      sudo -u ec2-user bash -c "ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa -m pem <<< y"
+
+                      echo "Installing AWS CLI..."
+
+                      # Install AWS CLI
+                      curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip
+                      unzip -q -d /tmp /tmp/aws-cli.zip
+                      /tmp/aws/install --update
+                      rm -rf /tmp/aws*
+
+                      echo "export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)" | sudo tee -a /etc/profile.d/workshop.sh
+                      source /etc/profile.d/workshop.sh
+
+                      echo "Installing Docker..."
+
+                      # Install docker and base package
+                      dnf install -y -q docker git >/dev/null
+                      service docker start
+                      usermod -aG docker ec2-user
+
+                      echo "Installing code-server..."
+
+                      # Install code-server
+                      codeServer=$(dnf list installed code-server | wc -l)
+                      if [ "$codeServer" -eq "0" ]; then
+                        sudo -u ec2-user "codeServerVersion=${codeServerVersion}" bash -c 'curl -fsSL https://code-server.dev/install.sh | sh -s -- --version ${codeServerVersion}'
+                        systemctl enable --now code-server@ec2-user
+                      fi
+
+                      sudo -u ec2-user bash -c 'mkdir -p ~/.config/code-server'
+                      sudo -u ec2-user bash -c 'touch ~/.config/code-server/config.yaml'
+                      tee /home/ec2-user/.config/code-server/config.yaml <<EOF
+                      cert: false
+                      auth: password
+                      password: "$IDE_PASSWORD"
+                      bind-addr: 127.0.0.1:8889
+                      EOF
+
+                      # Create default directory for workspace
+                      sudo -u ec2-user bash -c 'mkdir -p ~/environment'
+
+                      ENVIRONMENT_CONTENTS_ZIP=${environmentContentsZip}
+
+                      if [ ! -z "$ENVIRONMENT_CONTENTS_ZIP" ]; then
+                        echo "Adding environments archive..."
+
+                        if [[ $ENVIRONMENT_CONTENTS_ZIP == s3:* ]]; then
+                          aws s3 cp $ENVIRONMENT_CONTENTS_ZIP /tmp/environment.zip
+                        else
+                          curl -LSsf -o /tmp/environment.zip $ENVIRONMENT_CONTENTS_ZIP
+                        fi
+
+                        sudo -u ec2-user bash -c 'unzip -q /tmp/environment.zip -d ~/environment'
+
+                        rm -rf /tmp/environment.zip
+                      fi
+
+                      STARTUP_EDITOR='none'
+
+                      TERMINAL_ON_STARTUP="${terminalOnStartup}"
+                      README_URL="${readmeUrl}"
+
+                      if [ ! -z "$README_URL" ]; then
+                        echo "Adding README..."
+                        if [[ $README_URL == s3:* ]]; then
+                          aws s3 cp $README_URL /home/ec2-user/environment/README.md
+                        else
+                          curl -LSsf -o /home/ec2-user/environment/README.md $README_URL
+                        fi
+                      fi
+
+                      if [ "$TERMINAL_ON_STARTUP" = "true" ]; then
+                        STARTUP_EDITOR='terminal'
+                      elif [ -f /home/ec2-user/environment/README.md ]; then
+                        STARTUP_EDITOR='readme'
+                      fi
+
+                      echo "Configuring code-server..."
+
+                      sudo -u ec2-user bash -c 'mkdir -p ~/.local/share/code-server/User'
+                      sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/User/settings.json'
+                      tee /home/ec2-user/.local/share/code-server/User/settings.json <<EOF
+                      {
+                        "extensions.autoUpdate": false,
+                        "extensions.autoCheckUpdates": false,
+                        "security.workspace.trust.enabled": false,
+                        "workbench.startupEditor": "$STARTUP_EDITOR",
+                        "task.allowAutomaticTasks": "on",
+                        "telemetry.telemetryLevel": "off",
+                        "update.mode": "none"
+                      }
+                      EOF
+
+                      sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/User/keybindings.json'
+                      tee /home/ec2-user/.local/share/code-server/User/keybindings.json << 'EOF'
+                      [
+                        {
+                          "key": "shift+cmd+/",
+                          "command": "remote.tunnel.forwardCommandPalette"
+                        }
+                      ]
+                      EOF
+
+                      if [ ! -z "${splashUrl}" ]; then
+                      echo "Configuring splash URL..."
+
+                      sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/User/tasks.json'
+                      tee /home/ec2-user/.local/share/code-server/User/tasks.json << 'EOF'
+                      {
+                        "version": "2.0.0",
+                        "tasks": [
+                          {
+                            "label": "Open Splash",
+                            "command": "${!input:openSimpleBrowser}",
+                            "presentation": {
+                              "reveal": "always",
+                              "panel": "new"
+                            },
+                            "runOptions": {
+                              "runOn": "folderOpen"
+                            }
+                          }
+                        ],
+                        "inputs": [
+                          {
+                            "id": "openSimpleBrowser",
+                            "type": "command",
+                            "command": "simpleBrowser.show",
+                            "args": [
+                              "${splashUrl}"
+                            ]
+                          }
+                        ]
+                      }
+                      EOF
+                      fi
+
+                      echo "Installing code-server extensions..."
+
+                      EXTENSIONS="${extensions}"
+
+                      IFS=',' read -ra array <<< "$EXTENSIONS"
+
+                      # Iterate over each entry in the array
+                      for extension in "${!array[@]}"; do
+                        # Use retries as extension installation seems unreliable
+                        sudo -u ec2-user bash -c "set -e; (r=5;while ! code-server --install-extension $extension --force ; do ((--r))||exit;sleep 5;done)"
+                      done
+
+                      if [ ! -f "/home/ec2-user/.local/share/code-server/coder.json" ]; then
+                        sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/coder.json'
+                        echo '{ "query": { "folder": "/home/ec2-user/environment" } }' > /home/ec2-user/.local/share/code-server/coder.json
+                      fi
+
+                      echo "Restarting code-server..."
+
+                      systemctl restart code-server@ec2-user
+
+                      echo "Installing Caddy..."
+
+                      # Install caddy
+                      dnf copr enable -y -q @caddy/caddy epel-9-x86_64
+                      dnf install -y -q caddy
+                      systemctl enable --now caddy
+
+                      tee /etc/caddy/Caddyfile <<EOF
+                      :80 {
+                        handle /* {
+                          reverse_proxy 127.0.0.1:8889
+                        }
+                        #GITEA
+                      }
+                      EOF
+
+                      echo "Restarting caddy..."
+
+                      systemctl restart caddy
+
+                      if [ ! -f "/home/ec2-user/.local/share/code-server/coder.json" ]; then
+                        sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/coder.json'
+                        echo '{ "query": { "folder": "/home/ec2-user/environment" } }' > /home/ec2-user/.local/share/code-server/coder.json
+                      fi
+
+                      ${installGitea}
+
+                      echo "Running custom bootstrap script..."
+
+                      ${customBootstrapScript}
+                      HEREDOC
+
+                      exit_code=$?
+
+                      /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
+
+                      exit $exit_code
+                    - customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+
+                        echo '=== Additional Setup ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/deploy/build-and-push.sh"
+                      codeServerVersion: 4.100.2
+                      instanceIamRoleName:
+                        Ref: WorkshopIdeIdeRoleF04F5802
+                      splashUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - WorkshopIdeIdeRoleF04F5802
+                          - Arn
+                      readmeUrl: ""
+                      waitConditionHandleUrl:
+                        Ref: WorkshopIdeIdeBootstrapWaitConditionHandle012DE59D
+                      extensions: amazonwebservices.aws-toolkit-vscode,amazonwebservices.amazon-q-vscode,ms-azuretools.vscode-docker,vmware.vscode-boot-dev-pack,vscjava.vscode-java-pack
+                      domain: ""
+                      installGitea: echo bootstrapGitea was not provided
+                      terminalOnStartup: "true"
+                      environmentContentsZip: ""
+                      passwordName:
+                        Fn::Join:
+                          - "-"
+                          - - Fn::Select:
+                                - 0
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: WorkshopIdeIdePasswordSecretEA2A6ED5
+                            - Fn::Select:
+                                - 1
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: WorkshopIdeIdePasswordSecretEA2A6ED5
+                            - Fn::Select:
+                                - 2
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: WorkshopIdeIdePasswordSecretEA2A6ED5
+                            - Fn::Select:
+                                - 3
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: WorkshopIdeIdePasswordSecretEA2A6ED5
+            name: IdeBootstrapFunction
+            action: aws:runShellScript
+      DocumentFormat: YAML
+      DocumentType: Command
+      Name: workshop-ide-bootstrap-document
+      UpdateMethod: NewVersion
+  WorkshopIdeIdeBootstrapFunctionServiceRoleA881AEFF:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  WorkshopIdeIdeBootstrapFunctionServiceRoleDefaultPolicyDA0BFCC1:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: iam:PassRole
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - WorkshopIdeIdeRoleF04F5802
+                - Arn
+          - Action:
+              - ec2:DescribeInstances
+              - iam:ListInstanceProfiles
+              - ssm:DescribeInstanceInformation
+              - ssm:SendCommand
+              - ssm:GetCommandInvocation
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: WorkshopIdeIdeBootstrapFunctionServiceRoleDefaultPolicyDA0BFCC1
+      Roles:
+        - Ref: WorkshopIdeIdeBootstrapFunctionServiceRoleA881AEFF
+  WorkshopIdeIdeBootstrapFunction03D9FA61:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |-
+          from __future__ import print_function
+          import boto3
+          import json
+          import os
+          import time
+          import traceback
+          import cfnresponse
+          from botocore.exceptions import WaiterError
+
+          def lambda_handler(event, context):
+              print('Event: {}'.format(event))
+              print('context: {}'.format(context))
+              responseData = {}
+
+              status = cfnresponse.SUCCESS
+
+              if event['RequestType'] == 'Delete':
+                  responseData = {'Success': 'Custom Resource removed'}
+                  cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+              else:
+                  try:
+                      # Open AWS clients
+                      ec2 = boto3.client('ec2')
+                      ssm = boto3.client('ssm')
+
+                      instance_id = event['ResourceProperties']['InstanceId']
+
+                      print('Waiting for the instance to be ready...')
+                      # Wait for Instance to become ready
+                      instance_state = 'unknown'
+                      print('Instance is currently in state'.format(instance_state))
+                      while instance_state != 'running':
+                          time.sleep(5)
+                          di = ec2.describe_instances(InstanceIds=[instance_id])
+                          instance_state = di['Reservations'][0]['Instances'][0]['State']['Name']
+                          print('Waiting for instance in state: {}'.format(instance_state))
+
+                      print('Instance is ready')
+
+                      print('Waiting for instance to come online in SSM...')
+                      for i in range(1, 60):
+                        response = ssm.describe_instance_information(Filters=[{'Key': 'InstanceIds', 'Values': [instance_id]}])
+                        if len(response["InstanceInformationList"]) == 0:
+                          print('No instances in SSM')
+                        elif len(response["InstanceInformationList"]) > 0 and \
+                              response["InstanceInformationList"][0]["PingStatus"] == "Online" and \
+                              response["InstanceInformationList"][0]["InstanceId"] == instance_id:
+                          print('Instance is online in SSM')
+                          break
+                        time.sleep(10)
+
+                      ssm_document = event['ResourceProperties']['SsmDocument']
+
+                      ssm.send_command(
+                          InstanceIds=[instance_id],
+                          DocumentName=ssm_document,
+                          CloudWatchOutputConfig={
+                              'CloudWatchLogGroupName': event['ResourceProperties']['LogGroupName'],
+                              'CloudWatchOutputEnabled': True
+                          })
+
+                      responseData = {'Success': 'Started bootstrapping for instance: '+instance_id}
+                  except Exception as e:
+                      status = cfnresponse.FAILED
+                      tb_err = traceback.format_exc()
+                      print(tb_err)
+                      responseData = {'Error': tb_err}
+                  finally:
+                      cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+      FunctionName: workshop-ide-bootstrap-lambda
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - WorkshopIdeIdeBootstrapFunctionServiceRoleA881AEFF
+          - Arn
+      Runtime: python3.13
+      Timeout: 900
+    DependsOn:
+      - WorkshopIdeIdeBootstrapFunctionServiceRoleDefaultPolicyDA0BFCC1
+      - WorkshopIdeIdeBootstrapFunctionServiceRoleA881AEFF
+  WorkshopIdeIdeBootstrapResource29BD0562:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - WorkshopIdeIdeBootstrapFunction03D9FA61
+          - Arn
+      LogGroupName:
+        Ref: WorkshopIdeIdeLogGroupDCF86B4F
+      SsmDocument:
+        Ref: WorkshopIdeIdeBootstrapDocument92F2B515
+      InstanceId:
+        Ref: WorkshopIdeIdeEC2Instance1E5B9BBF
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  InfrastructureCorepostgresB0D0C6BB:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description:
+        Fn::Join:
+          - ""
+          - - "Generated by the CDK for stack: "
+            - Ref: AWS::StackName
+      GenerateSecretString:
+        ExcludeCharacters: " %+~`#$&*()|[]{}:;<>?!'/@\"\\"
+        GenerateStringKey: password
+        PasswordLength: 30
+        SecretStringTemplate: '{"username":"postgres"}'
+      Name: unicornstore-db-secret
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  InfrastructureCorepostgresAttachmentE2B30E5B:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId:
+        Ref: InfrastructureCorepostgresB0D0C6BB
+      TargetId:
+        Ref: InfrastructureCoreUnicornStoreDatabaseF56884BA
+      TargetType: AWS::RDS::DBCluster
+  InfrastructureCoreDatabaseSG7319389B:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ide-ecs-stack/InfrastructureCore/DatabaseSG
+      GroupName: unicornstore-db-sg
+      SecurityGroupEgress:
+        - CidrIp: 255.255.255.255/32
+          Description: Disallow all traffic
+          FromPort: 252
+          IpProtocol: icmp
+          ToPort: 86
+      SecurityGroupIngress:
+        - CidrIp: 10.0.0.0/16
+          Description: Allow Database Traffic from local network
+          FromPort: 5432
+          IpProtocol: tcp
+          ToPort: 5432
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets for UnicornStoreDatabase database
+      SubnetIds:
+        - Ref: WorkshopVpcPrivateSubnet1Subnet8F30D1E3
+        - Ref: WorkshopVpcPrivateSubnet2Subnet73CC1040
+  InfrastructureCoreUnicornStoreDatabaseF56884BA:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      CopyTagsToSnapshot: true
+      DBClusterIdentifier: unicornstore-db-cluster
+      DBClusterParameterGroupName: default.aurora-postgresql16
+      DBSubnetGroupName:
+        Ref: InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8
+      DatabaseName: unicorns
+      EnableHttpEndpoint: true
+      Engine: aurora-postgresql
+      EngineVersion: "16.4"
+      MasterUserPassword:
+        Fn::Join:
+          - ""
+          - - "{{resolve:secretsmanager:"
+            - Ref: InfrastructureCorepostgresB0D0C6BB
+            - :SecretString:password::}}
+      MasterUsername:
+        Fn::Join:
+          - ""
+          - - "{{resolve:secretsmanager:"
+            - Ref: InfrastructureCorepostgresB0D0C6BB
+            - :SecretString:username::}}
+      Port: 5432
+      ServerlessV2ScalingConfiguration:
+        MaxCapacity: 4
+        MinCapacity: 0.5
+      VpcSecurityGroupIds:
+        - Fn::GetAtt:
+            - InfrastructureCoreDatabaseSG7319389B
+            - GroupId
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  InfrastructureCoreUnicornStoreDatabaseUnicornStoreDatabaseWriter1E7762FE:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AutoMinorVersionUpgrade: true
+      DBClusterIdentifier:
+        Ref: InfrastructureCoreUnicornStoreDatabaseF56884BA
+      DBInstanceClass: db.serverless
+      DBInstanceIdentifier: unicornstore-db-writer
+      Engine: aurora-postgresql
+      PromotionTier: 0
+      PubliclyAccessible: false
+    DependsOn:
+      - WorkshopVpcPrivateSubnet1DefaultRouteC53251BD
+      - WorkshopVpcPrivateSubnet1RouteTableAssociation6F25361F
+      - WorkshopVpcPrivateSubnet2DefaultRoute290F73AA
+      - WorkshopVpcPrivateSubnet2RouteTableAssociationDAB78D9E
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  InfrastructureCoreUnicornEventBusBBADDC7E:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: unicorns
+  InfrastructureCoreApplicationSecurityGroup914702B5:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ide-ecs-stack/InfrastructureCore/ApplicationSecurityGroup
+      GroupName: unicornstore-application-sg
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  InfrastructureCoreSsmParameterDBConnectionString2EE427D4:
+    Type: AWS::SSM::Parameter
+    Properties:
+      AllowedPattern: .*
+      Description: Database Connection String
+      Name: unicornstore-db-connection-string
+      Tier: Standard
+      Type: String
+      Value:
+        Fn::Join:
+          - ""
+          - - jdbc:postgresql://
+            - Fn::GetAtt:
+                - InfrastructureCoreUnicornStoreDatabaseF56884BA
+                - Endpoint.Address
+            - :5432/unicorns
+  InfrastructureCoredbSecretPassword1EC1CF00:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: unicornstore-db-password-secret
+      SecretString:
+        Fn::Join:
+          - ""
+          - - "{{resolve:secretsmanager:"
+            - Fn::Join:
+                - "-"
+                - - Fn::Select:
+                      - 0
+                      - Fn::Split:
+                          - "-"
+                          - Fn::Select:
+                              - 6
+                              - Fn::Split:
+                                  - ":"
+                                  - Ref: InfrastructureCorepostgresB0D0C6BB
+                  - Fn::Select:
+                      - 1
+                      - Fn::Split:
+                          - "-"
+                          - Fn::Select:
+                              - 6
+                              - Fn::Split:
+                                  - ":"
+                                  - Ref: InfrastructureCorepostgresB0D0C6BB
+                  - Fn::Select:
+                      - 2
+                      - Fn::Split:
+                          - "-"
+                          - Fn::Select:
+                              - 6
+                              - Fn::Split:
+                                  - ":"
+                                  - Ref: InfrastructureCorepostgresB0D0C6BB
+            - :SecretString:password::}}
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  WorkshopFunctionworkshopfunctionLambdaFunctionServiceRole777E3C8B:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+    DependsOn:
+      - WorkshopVpcPrivateSubnet1DefaultRouteC53251BD
+      - WorkshopVpcPrivateSubnet1RouteTableAssociation6F25361F
+      - WorkshopVpcPrivateSubnet2DefaultRoute290F73AA
+      - WorkshopVpcPrivateSubnet2RouteTableAssociationDAB78D9E
+  WorkshopFunctionworkshopfunctionLambdaFunctionServiceRoleDefaultPolicy1A55F454:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: events:PutEvents
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - InfrastructureCoreUnicornEventBusBBADDC7E
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: WorkshopFunctionworkshopfunctionLambdaFunctionServiceRoleDefaultPolicy1A55F454
+      Roles:
+        - Ref: WorkshopFunctionworkshopfunctionLambdaFunctionServiceRole777E3C8B
+    DependsOn:
+      - WorkshopVpcPrivateSubnet1DefaultRouteC53251BD
+      - WorkshopVpcPrivateSubnet1RouteTableAssociation6F25361F
+      - WorkshopVpcPrivateSubnet2DefaultRoute290F73AA
+      - WorkshopVpcPrivateSubnet2RouteTableAssociationDAB78D9E
+  WorkshopFunctionworkshopfunctionLambdaFunction6FC058EB:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |-
+          def handler(event, context):
+              return 'placeholder'
+      Environment:
+        Variables:
+          SPRING_DATASOURCE_PASSWORD:
+            Fn::Join:
+              - ""
+              - - "{{resolve:secretsmanager:"
+                - Ref: InfrastructureCorepostgresB0D0C6BB
+                - :SecretString:password::}}
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
+          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
+          SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
+          SPRING_DATASOURCE_URL:
+            Fn::Join:
+              - ""
+              - - jdbc:postgresql://
+                - Fn::GetAtt:
+                    - InfrastructureCoreUnicornStoreDatabaseF56884BA
+                    - Endpoint.Address
+                - :5432/unicorns
+      FunctionName: workshop-function
+      Handler: com.example.StreamLambdaHandler::handleRequest
+      MemorySize: 2048
+      Role:
+        Fn::GetAtt:
+          - WorkshopFunctionworkshopfunctionLambdaFunctionServiceRole777E3C8B
+          - Arn
+      Runtime: python3.13
+      Timeout: 29
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::GetAtt:
+              - InfrastructureCoreApplicationSecurityGroup914702B5
+              - GroupId
+        SubnetIds:
+          - Ref: WorkshopVpcPrivateSubnet1Subnet8F30D1E3
+          - Ref: WorkshopVpcPrivateSubnet2Subnet73CC1040
+    DependsOn:
+      - WorkshopFunctionworkshopfunctionLambdaFunctionServiceRoleDefaultPolicy1A55F454
+      - WorkshopFunctionworkshopfunctionLambdaFunctionServiceRole777E3C8B
+      - WorkshopVpcPrivateSubnet1DefaultRouteC53251BD
+      - WorkshopVpcPrivateSubnet1RouteTableAssociation6F25361F
+      - WorkshopVpcPrivateSubnet2DefaultRoute290F73AA
+      - WorkshopVpcPrivateSubnet2RouteTableAssociationDAB78D9E
+  WorkshopFunctionworkshopfunctionalias5D2EE4EA:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName:
+        Ref: WorkshopFunctionworkshopfunctionLambdaFunction6FC058EB
+      FunctionVersion: $LATEST
+      Name: workshop-function-alias
+  WorkshopFunctionworkshopfunctionRestApi8DD0BA04:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: workshop-function-rest-api
+  WorkshopFunctionworkshopfunctionRestApiCloudWatchRole1F6FB832:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  WorkshopFunctionworkshopfunctionRestApiAccountE58AF605:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn:
+        Fn::GetAtt:
+          - WorkshopFunctionworkshopfunctionRestApiCloudWatchRole1F6FB832
+          - Arn
+    DependsOn:
+      - WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  WorkshopFunctionworkshopfunctionRestApiDeploymentD20557B8583736fdca579868c7406e9b33c50801:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      Description: Automatically created by the RestApi construct
+      RestApiId:
+        Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+    DependsOn:
+      - WorkshopFunctionworkshopfunctionRestApiproxyANYC0BBC8D8
+      - WorkshopFunctionworkshopfunctionRestApiproxy436E7779
+      - WorkshopFunctionworkshopfunctionRestApiANY730D4F84
+  WorkshopFunctionworkshopfunctionRestApiDeploymentStageprod28E5F453:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId:
+        Ref: WorkshopFunctionworkshopfunctionRestApiDeploymentD20557B8583736fdca579868c7406e9b33c50801
+      RestApiId:
+        Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+      StageName: prod
+    DependsOn:
+      - WorkshopFunctionworkshopfunctionRestApiAccountE58AF605
+  WorkshopFunctionworkshopfunctionRestApiproxy436E7779:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId:
+        Fn::GetAtt:
+          - WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+          - RootResourceId
+      PathPart: "{proxy+}"
+      RestApiId:
+        Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+  WorkshopFunctionworkshopfunctionRestApiproxyANYApiPermissionideecsstackWorkshopFunctionworkshopfunctionRestApi125AD383ANYproxy80810816:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: WorkshopFunctionworkshopfunctionalias5D2EE4EA
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:"
+            - Ref: AWS::Region
+            - ":"
+            - Ref: AWS::AccountId
+            - ":"
+            - Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+            - /
+            - Ref: WorkshopFunctionworkshopfunctionRestApiDeploymentStageprod28E5F453
+            - /*/*
+  WorkshopFunctionworkshopfunctionRestApiproxyANYApiPermissionTestideecsstackWorkshopFunctionworkshopfunctionRestApi125AD383ANYproxy0F588C7F:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: WorkshopFunctionworkshopfunctionalias5D2EE4EA
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:"
+            - Ref: AWS::Region
+            - ":"
+            - Ref: AWS::AccountId
+            - ":"
+            - Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+            - /test-invoke-stage/*/*
+  WorkshopFunctionworkshopfunctionRestApiproxyANYC0BBC8D8:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: ANY
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - ":apigateway:"
+              - Ref: AWS::Region
+              - :lambda:path/2015-03-31/functions/
+              - Ref: WorkshopFunctionworkshopfunctionalias5D2EE4EA
+              - /invocations
+      ResourceId:
+        Ref: WorkshopFunctionworkshopfunctionRestApiproxy436E7779
+      RestApiId:
+        Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+  WorkshopFunctionworkshopfunctionRestApiANYApiPermissionideecsstackWorkshopFunctionworkshopfunctionRestApi125AD383ANY3C1A01F9:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: WorkshopFunctionworkshopfunctionalias5D2EE4EA
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:"
+            - Ref: AWS::Region
+            - ":"
+            - Ref: AWS::AccountId
+            - ":"
+            - Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+            - /
+            - Ref: WorkshopFunctionworkshopfunctionRestApiDeploymentStageprod28E5F453
+            - /*/
+  WorkshopFunctionworkshopfunctionRestApiANYApiPermissionTestideecsstackWorkshopFunctionworkshopfunctionRestApi125AD383ANY188ADAF5:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: WorkshopFunctionworkshopfunctionalias5D2EE4EA
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:"
+            - Ref: AWS::Region
+            - ":"
+            - Ref: AWS::AccountId
+            - ":"
+            - Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+            - /test-invoke-stage/*/
+  WorkshopFunctionworkshopfunctionRestApiANY730D4F84:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: ANY
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - ":apigateway:"
+              - Ref: AWS::Region
+              - :lambda:path/2015-03-31/functions/
+              - Ref: WorkshopFunctionworkshopfunctionalias5D2EE4EA
+              - /invocations
+      ResourceId:
+        Fn::GetAtt:
+          - WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+          - RootResourceId
+      RestApiId:
+        Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+  WorkshopFunctionworkshopfunctionLambdaCodeBucketFF2BAD13:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  WorkshopFunctionworkshopfunctionLambdaCodeBucketPolicy8E8F6AC3:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: WorkshopFunctionworkshopfunctionLambdaCodeBucketFF2BAD13
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+            Effect: Deny
+            Principal:
+              AWS: "*"
+            Resource:
+              - Fn::GetAtt:
+                  - WorkshopFunctionworkshopfunctionLambdaCodeBucketFF2BAD13
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - WorkshopFunctionworkshopfunctionLambdaCodeBucketFF2BAD13
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+  WorkshopFunctionworkshopfunctionSsmParameterBucketNameB669705B:
+    Type: AWS::SSM::Parameter
+    Properties:
+      AllowedPattern: .*
+      Description: Lambda code bucket name
+      Name: workshop-function-lambda-code-bucket-name
+      Tier: Standard
+      Type: String
+      Value:
+        Ref: WorkshopFunctionworkshopfunctionLambdaCodeBucketFF2BAD13
+  InfrastructureEcsworkshopappEcrRepository0CEF917F:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: workshop-app
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  InfrastructureEcsworkshopappEcsClusterB3813BD4:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: workshop-app
+  InfrastructureEcsworkshopappAlbSecurityGroupEBD98072:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for workshop-app ALB
+      GroupName: workshop-app-ecs-sg-alb
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow HTTP traffic from anywhere
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  InfrastructureEcsworkshopappEcsSecurityGroupDCCCD36D:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for workshop-app ECS Service
+      GroupName: workshop-app-ecs-sg
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  InfrastructureEcsworkshopappEcsSecurityGroupfromideecsstackInfrastructureEcsworkshopappAlbSecurityGroup8EC582D78080BE381F12:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow traffic from ALB on port 8080
+      FromPort: 8080
+      GroupId:
+        Fn::GetAtt:
+          - InfrastructureEcsworkshopappEcsSecurityGroupDCCCD36D
+          - GroupId
+      IpProtocol: tcp
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - InfrastructureEcsworkshopappAlbSecurityGroupEBD98072
+          - GroupId
+      ToPort: 8080
+  InfrastructureEcsworkshopappAlbCE5C7639:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      LoadBalancerAttributes:
+        - Key: deletion_protection.enabled
+          Value: "false"
+      Name: workshop-app
+      Scheme: internet-facing
+      SecurityGroups:
+        - Fn::GetAtt:
+            - InfrastructureEcsworkshopappAlbSecurityGroupEBD98072
+            - GroupId
+      Subnets:
+        - Ref: WorkshopVpcPublicSubnet1SubnetA669A4AA
+        - Ref: WorkshopVpcPublicSubnet2SubnetBDFBF52E
+      Type: application
+    DependsOn:
+      - WorkshopVpcPublicSubnet1DefaultRoute46A975C6
+      - WorkshopVpcPublicSubnet1RouteTableAssociationC8DC0A8B
+      - WorkshopVpcPublicSubnet2DefaultRouteBE49FFDD
+      - WorkshopVpcPublicSubnet2RouteTableAssociation005F29A4
+  InfrastructureEcsworkshopappTaskDefTaskRole0BBF050B:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: "2012-10-17"
+  InfrastructureEcsworkshopappTaskDef4879426D:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        - Essential: true
+          Image:
+            Fn::Join:
+              - ""
+              - - Fn::Select:
+                    - 4
+                    - Fn::Split:
+                        - ":"
+                        - Fn::GetAtt:
+                            - InfrastructureEcsworkshopappEcrRepository0CEF917F
+                            - Arn
+                - .dkr.ecr.
+                - Fn::Select:
+                    - 3
+                    - Fn::Split:
+                        - ":"
+                        - Fn::GetAtt:
+                            - InfrastructureEcsworkshopappEcrRepository0CEF917F
+                            - Arn
+                - "."
+                - Ref: AWS::URLSuffix
+                - /
+                - Ref: InfrastructureEcsworkshopappEcrRepository0CEF917F
+                - :latest
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group:
+                Ref: InfrastructureEcsworkshopappLogGroup735A0EFD
+              awslogs-stream-prefix: ecs
+              awslogs-region:
+                Ref: AWS::Region
+          Name: workshop-app
+          PortMappings:
+            - ContainerPort: 8080
+              HostPort: 8080
+              Protocol: tcp
+          Secrets:
+            - Name: SPRING_DATASOURCE_URL
+              ValueFrom:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":ssm:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :parameter/
+                    - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
+            - Name: SPRING_DATASOURCE_PASSWORD
+              ValueFrom:
+                Ref: InfrastructureCorepostgresB0D0C6BB
+      Cpu: "1024"
+      ExecutionRoleArn:
+        Fn::GetAtt:
+          - InfrastructureEcsworkshopappTaskDefExecutionRoleB19A8CB8
+          - Arn
+      Family: workshop-app
+      Memory: "2048"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      TaskRoleArn:
+        Fn::GetAtt:
+          - InfrastructureEcsworkshopappTaskDefTaskRole0BBF050B
+          - Arn
+  InfrastructureEcsworkshopappTaskDefExecutionRoleB19A8CB8:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: "2012-10-17"
+  InfrastructureEcsworkshopappTaskDefExecutionRoleDefaultPolicy98F42385:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - ecr:BatchCheckLayerAvailability
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - InfrastructureEcsworkshopappEcrRepository0CEF917F
+                - Arn
+          - Action: ecr:GetAuthorizationToken
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - InfrastructureEcsworkshopappLogGroup735A0EFD
+                - Arn
+          - Action:
+              - ssm:DescribeParameters
+              - ssm:GetParameters
+              - ssm:GetParameter
+              - ssm:GetParameterHistory
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ssm:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :parameter/
+                  - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
+          - Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+            Effect: Allow
+            Resource:
+              Ref: InfrastructureCorepostgresB0D0C6BB
+        Version: "2012-10-17"
+      PolicyName: InfrastructureEcsworkshopappTaskDefExecutionRoleDefaultPolicy98F42385
+      Roles:
+        - Ref: InfrastructureEcsworkshopappTaskDefExecutionRoleB19A8CB8
+  InfrastructureEcsworkshopappLogGroup735A0EFD:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/workshop-app
+      RetentionInDays: 731
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  InfrastructureEcsworkshopappTargetGroup6BA3811D:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /
+      HealthCheckTimeoutSeconds: 5
+      Matcher:
+        HttpCode: "200"
+      Name: workshop-app
+      Port: 8080
+      Protocol: HTTP
+      TargetGroupAttributes:
+        - Key: stickiness.enabled
+          Value: "false"
+      TargetType: ip
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  InfrastructureEcsworkshopappListenerD25EB0D4:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn:
+            Ref: InfrastructureEcsworkshopappTargetGroup6BA3811D
+          Type: forward
+      LoadBalancerArn:
+        Ref: InfrastructureEcsworkshopappAlbCE5C7639
+      Port: 80
+      Protocol: HTTP
+  InfrastructureEcsworkshopappService697E688A:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster:
+        Ref: InfrastructureEcsworkshopappEcsClusterB3813BD4
+      DeploymentConfiguration:
+        Alarms:
+          AlarmNames: []
+          Enable: false
+          Rollback: false
+        MaximumPercent: 200
+        MinimumHealthyPercent: 50
+      DesiredCount: 1
+      EnableECSManagedTags: false
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::GetAtt:
+                - InfrastructureEcsworkshopappEcsSecurityGroupDCCCD36D
+                - GroupId
+          Subnets:
+            - Ref: WorkshopVpcPrivateSubnet1Subnet8F30D1E3
+            - Ref: WorkshopVpcPrivateSubnet2Subnet73CC1040
+      ServiceName: workshop-app
+      TaskDefinition:
+        Ref: InfrastructureEcsworkshopappTaskDef4879426D
+    DependsOn:
+      - InfrastructureEcsworkshopappTaskDefTaskRole0BBF050B
+  WorkshopCodeBuildCodeBuildRole92A9C52B:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AdministratorAccess
+      RoleName: workshop-codebuild-user
+  WorkshopCodeBuildCodeBuildRoleDefaultPolicy7F5D3C53:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: ec2:CreateNetworkInterfacePermission
+            Condition:
+              StringEquals:
+                ec2:Subnet:
+                  - Fn::Join:
+                      - ""
+                      - - "arn:"
+                        - Ref: AWS::Partition
+                        - ":ec2:"
+                        - Ref: AWS::Region
+                        - ":"
+                        - Ref: AWS::AccountId
+                        - :subnet/
+                        - Ref: WorkshopVpcPrivateSubnet1Subnet8F30D1E3
+                  - Fn::Join:
+                      - ""
+                      - - "arn:"
+                        - Ref: AWS::Partition
+                        - ":ec2:"
+                        - Ref: AWS::Region
+                        - ":"
+                        - Ref: AWS::AccountId
+                        - :subnet/
+                        - Ref: WorkshopVpcPrivateSubnet2Subnet73CC1040
+                ec2:AuthorizedService: codebuild.amazonaws.com
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ec2:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :network-interface/*
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":logs:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/codebuild/
+                    - Ref: WorkshopCodeBuildCodeBuildProject8D1C6512
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":logs:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/codebuild/
+                    - Ref: WorkshopCodeBuildCodeBuildProject8D1C6512
+                    - :*
+          - Action:
+              - codebuild:CreateReportGroup
+              - codebuild:CreateReport
+              - codebuild:UpdateReport
+              - codebuild:BatchPutTestCases
+              - codebuild:BatchPutCodeCoverages
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":codebuild:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :report-group/
+                  - Ref: WorkshopCodeBuildCodeBuildProject8D1C6512
+                  - -*
+        Version: "2012-10-17"
+      PolicyName: WorkshopCodeBuildCodeBuildRoleDefaultPolicy7F5D3C53
+      Roles:
+        - Ref: WorkshopCodeBuildCodeBuildRole92A9C52B
+  WorkshopCodeBuildCodeBuildProjectSecurityGroup52B757EC:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Automatic generated security group for CodeBuild ideecsstackWorkshopCodeBuildCodeBuildProject8E12F63E
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: WorkshopVpc9CBD39F0
+  WorkshopCodeBuildCodeBuildProject8D1C6512:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Cache:
+        Type: NO_CACHE
+      EncryptionKey: alias/aws/s3
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: false
+        Type: LINUX_CONTAINER
+      Name: workshop-codebuild
+      ServiceRole:
+        Fn::GetAtt:
+          - WorkshopCodeBuildCodeBuildRole92A9C52B
+          - Arn
+      Source:
+        BuildSpec: |
+          version: 0.2
+          env:
+            shell: bash
+          phases:
+            install:
+              commands:
+                - |
+                  aws --version
+            build:
+              commands:
+                - |
+                  # Resolution for when creating the first service in the account
+                  aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
+                  aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com 2>/dev/null || true
+                  aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
+        Type: NO_SOURCE
+      TimeoutInMinutes: 15
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::GetAtt:
+              - WorkshopCodeBuildCodeBuildProjectSecurityGroup52B757EC
+              - GroupId
+        Subnets:
+          - Ref: WorkshopVpcPrivateSubnet1Subnet8F30D1E3
+          - Ref: WorkshopVpcPrivateSubnet2Subnet73CC1040
+        VpcId:
+          Ref: WorkshopVpc9CBD39F0
+    DependsOn:
+      - WorkshopCodeBuildCodeBuildProjectPolicyDocument177DBF00
+  WorkshopCodeBuildCodeBuildProjectPolicyDocument177DBF00:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - ec2:CreateNetworkInterface
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DeleteNetworkInterface
+              - ec2:DescribeSubnets
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeDhcpOptions
+              - ec2:DescribeVpcs
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: WorkshopCodeBuildCodeBuildProjectPolicyDocument177DBF00
+      Roles:
+        - Ref: WorkshopCodeBuildCodeBuildRole92A9C52B
+  WorkshopCodeBuildStartBuildFunctionServiceRoleD11C862E:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  WorkshopCodeBuildStartBuildFunctionServiceRoleDefaultPolicyE128ACF6:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: codebuild:StartBuild
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - WorkshopCodeBuildCodeBuildProject8D1C6512
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: WorkshopCodeBuildStartBuildFunctionServiceRoleDefaultPolicyE128ACF6
+      Roles:
+        - Ref: WorkshopCodeBuildStartBuildFunctionServiceRoleD11C862E
+  WorkshopCodeBuildStartBuildFunction1F684F84:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          // This function is based on the cfnresponse JS module that is published
+          // by CloudFormation. It's an async function that makes coding much easier.
+          const respond = async function(event, context, responseStatus, responseData, physicalResourceId, noEcho) {
+            return new Promise((resolve, reject) => {
+              var responseBody = JSON.stringify({
+                  Status: responseStatus,
+                  Reason: "See the details in CloudWatch Log Stream: " + context.logGroupName + " " + context.logStreamName,
+                  PhysicalResourceId: physicalResourceId || context.logStreamName,
+                  StackId: event.StackId,
+                  RequestId: event.RequestId,
+                  LogicalResourceId: event.LogicalResourceId,
+                  NoEcho: noEcho || false,
+                  Data: responseData
+              });
+
+              console.log("Response body:\\n", responseBody);
+
+              var https = require("https");
+              var url = require("url");
+
+              var parsedUrl = url.parse(event.ResponseURL);
+              var options = {
+                  hostname: parsedUrl.hostname,
+                  port: 443,
+                  path: parsedUrl.path,
+                  method: "PUT",
+                  headers: {
+                      "content-type": "",
+                      "content-length": responseBody.length
+                  }
+              };
+
+              var request = https.request(options, function(response) {
+                  console.log("Status code: " + response.statusCode);
+                  console.log("Status message: " + response.statusMessage);
+                  resolve();
+              });
+
+              request.on("error", function(error) {
+                  console.log("respond(..) failed executing https.request(..): " + error);
+                  resolve();
+              });
+
+              request.write(responseBody);
+              request.end();
+            });
+          };
+          const { CodeBuildClient, StartBuildCommand } = require("@aws-sdk/client-codebuild");
+
+          exports.handler = async function (event, context) {
+            console.log(JSON.stringify(event, null, 4));
+            try {
+              const projectName = event.ResourceProperties.ProjectName;
+              const codeBuildIamRoleArn = event.ResourceProperties.CodeBuildIamRoleArn;
+
+              const codebuild = new CodeBuildClient();
+
+              console.log(`Starting new build of project ${projectName}`);
+
+              const { build } = await codebuild.send(new StartBuildCommand({
+                projectName,
+                // Pass CFN related parameters through the build for extraction by the
+                // completion handler.
+                environmentVariablesOverride: [
+                  {
+                    name: 'CFN_RESPONSE_URL',
+                    value: event.ResponseURL
+                  },
+                  {
+                    name: 'CFN_STACK_ID',
+                    value: event.StackId
+                  },
+                  {
+                    name: 'CFN_REQUEST_ID',
+                    value: event.RequestId
+                  },
+                  {
+                    name: 'CFN_LOGICAL_RESOURCE_ID',
+                    value: event.LogicalResourceId
+                  },
+                  {
+                    name: 'REQUESTED_ACTION',
+                    value: event.RequestType
+                  },
+                  {
+                    name: 'RESOURCE_CODEBUILD_ROLE_ARN',
+                    value: codeBuildIamRoleArn
+                  }
+                ]
+              }));
+              console.log(`Build id ${build.id} started - resource completion handled by EventBridge`);
+            } catch(error) {
+              console.error(error);
+              await respond(event, context, 'FAILED', { Error: error });
+            }
+          };
+      FunctionName: workshop-codebuild-start-lambda
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+          - WorkshopCodeBuildStartBuildFunctionServiceRoleD11C862E
+          - Arn
+      Runtime: nodejs22.x
+      Timeout: 60
+    DependsOn:
+      - WorkshopCodeBuildStartBuildFunctionServiceRoleDefaultPolicyE128ACF6
+      - WorkshopCodeBuildStartBuildFunctionServiceRoleD11C862E
+  WorkshopCodeBuildReportBuildFunctionServiceRole915029ED:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  WorkshopCodeBuildReportBuildFunctionServiceRoleDefaultPolicy5F514AB5:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - codebuild:BatchGetBuilds
+              - codebuild:ListBuildsForProject
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - WorkshopCodeBuildCodeBuildProject8D1C6512
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: WorkshopCodeBuildReportBuildFunctionServiceRoleDefaultPolicy5F514AB5
+      Roles:
+        - Ref: WorkshopCodeBuildReportBuildFunctionServiceRole915029ED
+  WorkshopCodeBuildReportBuildFunctionAC22F38C:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          // This function is based on the cfnresponse JS module that is published
+          // by CloudFormation. It's an async function that makes coding much easier.
+          const respond = async function(event, context, responseStatus, responseData, physicalResourceId, noEcho) {
+            return new Promise((resolve, reject) => {
+              var responseBody = JSON.stringify({
+                  Status: responseStatus,
+                  Reason: "See the details in CloudWatch Log Stream: " + context.logGroupName + " " + context.logStreamName,
+                  PhysicalResourceId: physicalResourceId || context.logStreamName,
+                  StackId: event.StackId,
+                  RequestId: event.RequestId,
+                  LogicalResourceId: event.LogicalResourceId,
+                  NoEcho: noEcho || false,
+                  Data: responseData
+              });
+
+              console.log("Response body:\\n", responseBody);
+
+              var https = require("https");
+              var url = require("url");
+
+              var parsedUrl = url.parse(event.ResponseURL);
+              var options = {
+                  hostname: parsedUrl.hostname,
+                  port: 443,
+                  path: parsedUrl.path,
+                  method: "PUT",
+                  headers: {
+                      "content-type": "",
+                      "content-length": responseBody.length
+                  }
+              };
+
+              var request = https.request(options, function(response) {
+                  console.log("Status code: " + response.statusCode);
+                  console.log("Status message: " + response.statusMessage);
+                  resolve();
+              });
+
+              request.on("error", function(error) {
+                  console.log("respond(..) failed executing https.request(..): " + error);
+                  resolve();
+              });
+
+              request.write(responseBody);
+              request.end();
+            });
+          };
+          const { CodeBuildClient, BatchGetBuildsCommand } = require("@aws-sdk/client-codebuild");
+
+          exports.handler = async function (event, context) {
+            console.log(JSON.stringify(event, null, 4));
+
+            const projectName = event['detail']['project-name'];
+
+            const codebuild = new CodeBuildClient();
+
+            const buildId = event['detail']['build-id'];
+            const { builds } = await codebuild.send(new BatchGetBuildsCommand({
+              ids: [ buildId ]
+            }));
+
+            console.log(JSON.stringify(builds, null, 4));
+
+            const build = builds[0];
+            // Fetch the CFN resource and response parameters from the build environment.
+            const environment = {};
+            build.environment.environmentVariables.forEach(e => environment[e.name] = e.value);
+
+            const response = {
+              ResponseURL: environment.CFN_RESPONSE_URL,
+              StackId: environment.CFN_STACK_ID,
+              LogicalResourceId: environment.CFN_LOGICAL_RESOURCE_ID,
+              RequestId: environment.CFN_REQUEST_ID
+            };
+
+            if (event['detail']['build-status'] === 'SUCCEEDED') {
+              await respond(response, context, 'SUCCESS', {}, 'build');
+            } else {
+              await respond(response, context, 'FAILED', { Error: 'Build failed' });
+            }
+          };
+      FunctionName: workshop-codebuild-report-lambda
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+          - WorkshopCodeBuildReportBuildFunctionServiceRole915029ED
+          - Arn
+      Runtime: nodejs22.x
+      Timeout: 60
+    DependsOn:
+      - WorkshopCodeBuildReportBuildFunctionServiceRoleDefaultPolicy5F514AB5
+      - WorkshopCodeBuildReportBuildFunctionServiceRole915029ED
+  WorkshopCodeBuildBuildCompleteRule47491A6A:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Build complete
+      EventPattern:
+        detail:
+          project-name:
+            - Ref: WorkshopCodeBuildCodeBuildProject8D1C6512
+          build-status:
+            - SUCCEEDED
+            - FAILED
+            - STOPPED
+        detail-type:
+          - CodeBuild Build State Change
+        source:
+          - aws.codebuild
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::GetAtt:
+              - WorkshopCodeBuildReportBuildFunctionAC22F38C
+              - Arn
+          Id: Target0
+  WorkshopCodeBuildBuildCompleteRuleAllowEventRuleideecsstackWorkshopCodeBuildReportBuildFunction561B1689F362A3FC:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - WorkshopCodeBuildReportBuildFunctionAC22F38C
+          - Arn
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+          - WorkshopCodeBuildBuildCompleteRule47491A6A
+          - Arn
+  WorkshopCodeBuildClusterStack9A3F933D:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - WorkshopCodeBuildStartBuildFunction1F684F84
+          - Arn
+      ProjectName:
+        Ref: WorkshopCodeBuildCodeBuildProject8D1C6512
+      CodeBuildIamRoleArn:
+        Fn::GetAtt:
+          - WorkshopCodeBuildCodeBuildRole92A9C52B
+          - Arn
+      ContentHash: fd70d4491df3a6a44292446f6b364c8a
+    DependsOn:
+      - WorkshopCodeBuildBuildCompleteRuleAllowEventRuleideecsstackWorkshopCodeBuildReportBuildFunction561B1689F362A3FC
+      - WorkshopCodeBuildBuildCompleteRule47491A6A
+      - WorkshopCodeBuildReportBuildFunctionAC22F38C
+      - WorkshopCodeBuildReportBuildFunctionServiceRoleDefaultPolicy5F514AB5
+      - WorkshopCodeBuildReportBuildFunctionServiceRole915029ED
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+Outputs:
+  IdeUrl:
+    Description: Workshop IDE Url
+    Value:
+      Fn::Join:
+        - ""
+        - - https://
+          - Fn::GetAtt:
+              - WorkshopIdeIdeDistribution367C3116
+              - DomainName
+    Export:
+      Name: workshop-ide-url
+  IdePassword:
+    Description: Workshop IDE Password
+    Value:
+      Fn::GetAtt:
+        - WorkshopIdeIdePasswordExporter4384E726
+        - password
+    Export:
+      Name: workshop-ide-password
+Parameters:
+  SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
+
