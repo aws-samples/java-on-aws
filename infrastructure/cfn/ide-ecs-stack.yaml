@@ -63,6 +63,8 @@ Metadata:
         id: AwsSolutions-ELB2
       - reason: Workshop environment does not need Container Insights
         id: AwsSolutions-ECS4
+      - reason: Workshop environment use temporary container for ECS
+        id: AwsSolutions-ECS2
 Resources:
   WorkshopVpc9CBD39F0:
     Type: AWS::EC2::VPC
@@ -421,7 +423,7 @@ Resources:
   WorkshopIdeIdeLogGroupDCF86B4F:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: workshop-ide-bootstrap-log-20250520-160807
+      LogGroupName: workshop-ide-bootstrap-log-20250520-163447
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1094,9 +1096,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - waitConditionHandleUrl:
-                        Ref: WorkshopIdeIdeBootstrapWaitConditionHandle012DE59D
-                      extensions: amazonwebservices.aws-toolkit-vscode,amazonwebservices.amazon-q-vscode,ms-azuretools.vscode-docker,vmware.vscode-boot-dev-pack,vscjava.vscode-java-pack
+                    - extensions: amazonwebservices.aws-toolkit-vscode,amazonwebservices.amazon-q-vscode,ms-azuretools.vscode-docker,vmware.vscode-boot-dev-pack,vscjava.vscode-java-pack
                       domain: ""
                       installGitea: echo bootstrapGitea was not provided
                       terminalOnStartup: "true"
@@ -1161,6 +1161,8 @@ Resources:
                           - WorkshopIdeIdeRoleF04F5802
                           - Arn
                       readmeUrl: ""
+                      waitConditionHandleUrl:
+                        Ref: WorkshopIdeIdeBootstrapWaitConditionHandle012DE59D
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1904,30 +1906,11 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       ContainerDefinitions:
-        - Essential: true
-          Image:
-            Fn::Join:
-              - ""
-              - - Fn::Select:
-                    - 4
-                    - Fn::Split:
-                        - ":"
-                        - Fn::GetAtt:
-                            - InfrastructureEcsworkshopappEcrRepository0CEF917F
-                            - Arn
-                - .dkr.ecr.
-                - Fn::Select:
-                    - 3
-                    - Fn::Split:
-                        - ":"
-                        - Fn::GetAtt:
-                            - InfrastructureEcsworkshopappEcrRepository0CEF917F
-                            - Arn
-                - "."
-                - Ref: AWS::URLSuffix
-                - /
-                - Ref: InfrastructureEcsworkshopappEcrRepository0CEF917F
-                - :latest
+        - Environment:
+            - Name: NGINX_PORT
+              Value: "8080"
+          Essential: true
+          Image: nginxinc/nginx-unprivileged:stable
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -1986,18 +1969,6 @@ Resources:
     Properties:
       PolicyDocument:
         Statement:
-          - Action:
-              - ecr:BatchCheckLayerAvailability
-              - ecr:GetDownloadUrlForLayer
-              - ecr:BatchGetImage
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - InfrastructureEcsworkshopappEcrRepository0CEF917F
-                - Arn
-          - Action: ecr:GetAuthorizationToken
-            Effect: Allow
-            Resource: "*"
           - Action:
               - logs:CreateLogStream
               - logs:PutLogEvents

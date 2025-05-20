@@ -120,11 +120,14 @@ public class InfrastructureEcs extends Construct {
             .memoryLimitMiB(2048)
             .build();
 
-        // Add container to task definition
+        // Add container to task definition using a public nginx image
         var containerDefinitionProps = software.amazon.awscdk.services.ecs.ContainerDefinitionOptions.builder()
-            .image(ContainerImage.fromEcrRepository(ecrRepository))
+            .image(ContainerImage.fromRegistry("nginxinc/nginx-unprivileged:stable"))
             .containerName(appName)
             .essential(true)
+            .environment(Map.of(
+                "NGINX_PORT", "8080"
+            ))
             .portMappings(List.of(PortMapping.builder()
                 .containerPort(8080)
                 .hostPort(8080)

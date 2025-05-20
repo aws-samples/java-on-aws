@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-# Use existing environment variables
 REPOSITORY_NAME="workshop-app"
 
 echo "Building and pushing Docker image to ECR in region $AWS_REGION"
