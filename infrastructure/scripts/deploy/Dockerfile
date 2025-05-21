@@ -1,7 +1,7 @@
 FROM nginx:alpine
 
-# Create a simple HTML page
-RUN echo '<html><body><h1>Hello World!</h1></body></html>' > /usr/share/nginx/html/index.html
+# Create a HTML page with timestamp using shell command directly in RUN
+RUN echo '<html><body><h1>Hello World!</h1><p>Build timestamp: '$(date)'</p></body></html>' > /usr/share/nginx/html/index.html
 
 # Configure nginx to listen on port 8080
 RUN sed -i 's/listen\s*80;/listen 8080;/' /etc/nginx/conf.d/default.conf

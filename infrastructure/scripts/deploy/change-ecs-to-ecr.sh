@@ -13,6 +13,6 @@ NEW_TASK_DEFINITION=$(echo $NEW_TASK_DEFINITION | jq --argjson container "$NEW_C
 NEW_TASK_DEFINITION_ARN=$(aws ecs register-task-definition --region $AWS_REGION --cli-input-json "$(echo $NEW_TASK_DEFINITION)" --query 'taskDefinition.taskDefinitionArn' --output text)
 
 # Update the service to use the new task definition
-aws ecs update-service --cluster $REPOSITORY_NAME --service $REPOSITORY_NAME --task-definition $NEW_TASK_DEFINITION_ARN --region $AWS_REGION
+aws ecs update-service --cluster $REPOSITORY_NAME --service $REPOSITORY_NAME --task-definition $NEW_TASK_DEFINITION_ARN --region $AWS_REGION --no-cli-pager
 
 echo "ECS service $REPOSITORY_NAME updated to use the new image"

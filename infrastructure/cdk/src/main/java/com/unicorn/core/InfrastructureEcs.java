@@ -185,6 +185,9 @@ public class InfrastructureEcs extends Construct {
             .assignPublicIp(false)
             .build();
 
+        // Grant ECR pull permissions to the Task Execution Role
+        ecrRepository.grantPull(taskDefinition.getExecutionRole());
+
         // Register the service with the target group
         targetGroup.addTarget(service.loadBalancerTarget(LoadBalancerTargetOptions.builder()
             .containerName(appName)
