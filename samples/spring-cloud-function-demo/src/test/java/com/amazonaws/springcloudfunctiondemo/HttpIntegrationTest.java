@@ -1,5 +1,6 @@
 package com.amazonaws.springcloudfunctiondemo;
 
+import com.amazonaws.springcloudfunctiondemo.SpringCloudFunctionDemoApplication.Unicorn;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,7 +37,7 @@ public class HttpIntegrationTest {
     
     @Test
     public void testHandleUnicornHelloFunction() {
-        var fluffy = new com.amazonaws.springcloudfunctiondemo.Unicorn("Fluffy", 3);
+        var fluffy = new Unicorn("Fluffy", 3);
         var headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 

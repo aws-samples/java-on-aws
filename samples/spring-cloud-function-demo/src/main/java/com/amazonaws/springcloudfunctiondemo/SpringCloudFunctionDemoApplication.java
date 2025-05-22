@@ -18,30 +18,35 @@ public class SpringCloudFunctionDemoApplication {
     }
 
     @Bean
-    public Function<String, String> lowerCase() {return String::toLowerCase;}
+    public Function<String, String> lowerCase() {
+        return String::toLowerCase;
+    }
 
     @Bean
-    public Function<String, String> upperCase(){
+    public Function<String, String> upperCase() {
         return String::toUpperCase;
     }
 
     @Bean
-    public Function<String, String> reverse(){
+    public Function<String, String> reverse() {
         return value -> new StringBuilder(value).reverse().toString();
     }
 
     @Bean
-    public Function<com.amazonaws.springcloudfunctiondemo.Unicorn, String> helloUnicorn(){
-        return value -> "Hello %s! You are %d years old!".formatted(value.name(), value.age());
+    public Function<Unicorn, String> helloUnicorn() {
+        return value -> "Hello %s! You are %d years old!"
+                .formatted(value.name(), value.age());
     }
 
     @Bean
-    public Consumer<SQSEvent> asyncProcessor(){
-        return value -> System.out.printf("Processed %d messages!", value.getRecords().size());
+    public Consumer<SQSEvent> asyncProcessor() {
+        return sqsEvent -> sqsEvent
+                .getRecords()
+                .forEach(it -> System.out.println(it.getBody()));
     }
 
     @Bean
-    public Function<String, String> noOpFunction(){
+    public Function<String, String> noOpFunction() {
         return value -> "No proper function found!";
     }
 
@@ -62,4 +67,6 @@ public class SpringCloudFunctionDemoApplication {
             }
         };
     }
+
+    public record Unicorn(String name, int age) { }
 }
