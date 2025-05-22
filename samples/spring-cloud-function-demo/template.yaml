@@ -21,10 +21,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: org.springframework.cloud.function.adapter.aws.FunctionInvoker
-      CodeUri: target/spring-cloud-function-demo-1.0-aws.jar
+      CodeUri: .
       Environment:
         Variables:
-          #MAIN_CLASS: net.springio.springcloudfunctiondemo.SpringCloudFunctionDemoApplication
+          MAIN_CLASS: com.amazonaws.springcloudfunctiondemo.SpringCloudFunctionDemoApplication
           SPRING_CLOUD_FUNCTION_DEFINITION: upperCase
       Events:
         ApiEvent:
@@ -38,10 +38,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: org.springframework.cloud.function.adapter.aws.FunctionInvoker
-      CodeUri: target/spring-cloud-function-demo-1.0-aws.jar
+      CodeUri: .
       Environment:
         Variables:
-          #MAIN_CLASS: net.springio.springcloudfunctiondemo.SpringCloudFunctionDemoApplication
+          MAIN_CLASS: com.amazonaws.springcloudfunctiondemo.SpringCloudFunctionDemoApplication
           SPRING_CLOUD_FUNCTION_DEFINITION: asyncProcessor
       Events:
         SQSEvent:

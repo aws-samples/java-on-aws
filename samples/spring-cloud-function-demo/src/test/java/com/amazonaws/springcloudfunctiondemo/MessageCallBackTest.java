@@ -1,4 +1,4 @@
-package com.amazonaws.demo;
+package com.amazonaws.springcloudfunctiondemo;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +25,7 @@ public class MessageCallBackTest {
     @Test
     public void testCustomRouter() {
         // Create test message
-        var unicorn = new com.amazonaws.demo.Unicorn("RouterUnicorn", 2);
+        var unicorn = new com.amazonaws.springcloudfunctiondemo.Unicorn("RouterUnicorn", 2);
         var headers = new MessageHeaders(Map.of("x-routing-key", "unicorn"));
         var message = new GenericMessage<>(unicorn, headers);
 
@@ -36,7 +36,7 @@ public class MessageCallBackTest {
         assertEquals("helloUnicorn", functionName);
 
         // Get the function and apply it
-        Function<com.amazonaws.demo.Unicorn, String> function = catalog.lookup(Function.class, functionName);
+        Function<com.amazonaws.springcloudfunctiondemo.Unicorn, String> function = catalog.lookup(Function.class, functionName);
         var result = function.apply(unicorn);
 
         // Verify result
