@@ -47,7 +47,7 @@ x-routing-key: uppercase
 hello world
 
 
-### Test routing to upperCase function using custom router
+### Test NoOP Function
 POST http://localhost:8080/functionRouter
 Content-Type: application/json
 

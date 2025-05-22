@@ -1,10 +1,9 @@
-package com.amazonaws.demo;
+package com.amazonaws.springcloudfunctiondemo;
 
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.function.context.MessageRoutingCallback;
-import org.springframework.cloud.function.context.config.RoutingFunction;
 import org.springframework.context.annotation.Bean;
 import org.springframework.messaging.Message;
 
@@ -12,10 +11,10 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 @SpringBootApplication
-public class SpringCloudFunctionDemo {
+public class SpringCloudFunctionDemoApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(SpringCloudFunctionDemo.class, args);
+        SpringApplication.run(SpringCloudFunctionDemoApplication.class, args);
     }
 
     @Bean
@@ -32,7 +31,7 @@ public class SpringCloudFunctionDemo {
     }
 
     @Bean
-    public Function<com.amazonaws.demo.Unicorn, String> helloUnicorn(){
+    public Function<com.amazonaws.springcloudfunctiondemo.Unicorn, String> helloUnicorn(){
         return value -> "Hello %s! You are %d years old!".formatted(value.name(), value.age());
     }
 

@@ -1,4 +1,4 @@
-package com.amazonaws.demo;
+package com.amazonaws.springcloudfunctiondemo;
 
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import org.junit.jupiter.api.Test;
