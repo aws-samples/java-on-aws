@@ -1,0 +1,54 @@
+### Test lowerCase function
+POST http://localhost:8080/lowerCase
+Content-Type: text/plain
+
+HELLO SPRING I/O
+
+### Test upperCase function
+POST http://localhost:8080/upperCase
+Content-Type: text/plain
+
+hello spring i/o
+
+### Test reverse function
+POST http://localhost:8080/reverse
+Content-Type: text/plain
+
+hello world
+
+### Test helloUnicorn function
+POST http://localhost:8080/helloUnicorn
+Content-Type: application/json
+
+{
+  "name": "Sparkles",
+  "age": 5
+}
+
+### Test function composition (upperCase after reverse)
+POST http://localhost:8080/reverse,upperCase
+Content-Type: text/plain
+
+hello world
+
+
+### Test routing to lowerCase function using custom router
+POST http://localhost:8080/functionRouter
+Content-Type: application/json
+x-routing-key: lowercase
+
+HELLO WORLD
+
+### Test routing to upperCase function using custom router
+POST http://localhost:8080/functionRouter
+Content-Type: application/json
+x-routing-key: uppercase
+
+hello world
+
+
+### Test routing to upperCase function using custom router
+POST http://localhost:8080/functionRouter
+Content-Type: application/json
+
+hello world

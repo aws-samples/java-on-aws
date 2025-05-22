@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM Template for Spring Cloud Function Demo
+
+Globals:
+  Function:
+    Timeout: 20
+    MemorySize: 1024
+    Runtime: java21
+
+Resources:
+  # SQS Queue
+  MessageQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 30
+      MessageRetentionPeriod: 345600 # 4 days
+
+  # API Function
+  SpringCloudFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: org.springframework.cloud.function.adapter.aws.FunctionInvoker
+      CodeUri: target/spring-cloud-function-demo-1.0-aws.jar
+      Environment:
+        Variables:
+          #MAIN_CLASS: net.springio.springcloudfunctiondemo.SpringCloudFunctionDemoApplication
+          SPRING_CLOUD_FUNCTION_DEFINITION: upperCase
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /uppercase
+            Method: post
+
+  # SQS Consumer Function
+  MessageProcessor:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: org.springframework.cloud.function.adapter.aws.FunctionInvoker
+      CodeUri: target/spring-cloud-function-demo-1.0-aws.jar
+      Environment:
+        Variables:
+          #MAIN_CLASS: net.springio.springcloudfunctiondemo.SpringCloudFunctionDemoApplication
+          SPRING_CLOUD_FUNCTION_DEFINITION: asyncProcessor
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt MessageQueue.Arn
+            BatchSize: 10
+
+Outputs:
+  SpringCloudFunctionApi:
+    Description: API Gateway endpoint URL for Prod stage for Spring Cloud Function
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/uppercase/"
+  SpringCloudFunction:
+    Description: Spring Cloud Function Lambda Function ARN
+    Value: !GetAtt SpringCloudFunction.Arn
+  MessageProcessorFunction:
+    Description: Message Processor Lambda Function ARN
+    Value: !GetAtt MessageProcessor.Arn
+  QueueURL:
+    Description: URL of the SQS Queue
+    Value: !Ref MessageQueue
