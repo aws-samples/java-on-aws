@@ -5,7 +5,7 @@
 set -e
 
 # Configuration
-FUNCTION_NAME="ecs-thread-dump"
+FUNCTION_NAME="container-thread-dump"
 PACKAGE_NAME="lambda_function"
 PYTHON_VERSION="3.13"
 TEMP_DIR="build_temp"
@@ -37,6 +37,7 @@ pip install -r requirements.txt --target $TEMP_DIR/package
 # Copy function code
 echo "Copying function code..."
 cp src/lambda_function.py $TEMP_DIR/package/
+cp src/eks_client.py $TEMP_DIR/package/
 
 # Create deployment package
 echo "Creating deployment package..."
