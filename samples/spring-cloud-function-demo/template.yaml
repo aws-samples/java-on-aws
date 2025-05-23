@@ -17,7 +17,7 @@ Resources:
       MessageRetentionPeriod: 345600 # 4 days
 
   # API Function
-  SpringCloudFunctionDemo:
+  SpringCloudFunction:
     Type: AWS::Serverless::Function
     Properties:
       Handler: org.springframework.cloud.function.adapter.aws.FunctionInvoker
@@ -51,10 +51,10 @@ Resources:
             BatchSize: 10
 
 Outputs:
-  SpringCloudFunctionDemoApi:
+  SpringCloudFunctionApi:
     Description: API Gateway endpoint URL for Prod stage for Spring Cloud Function
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/uppercase/"
-  SpringCloudFunctionDemoFunction:
+  SpringCloudFunction:
     Description: Spring Cloud Function Lambda Function ARN
     Value: !GetAtt SpringCloudFunction.Arn
   MessageProcessorFunction:
