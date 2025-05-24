@@ -12,11 +12,7 @@ import software.amazon.awscdk.services.cloudwatch.Metric;
 import software.amazon.awscdk.services.cloudwatch.TreatMissingData;
 import software.amazon.awscdk.services.cloudwatch.actions.SnsAction;
 import software.amazon.awscdk.services.ec2.IVpc;
-import software.amazon.awscdk.services.iam.Effect;
-import software.amazon.awscdk.services.iam.ManagedPolicy;
-import software.amazon.awscdk.services.iam.PolicyStatement;
-import software.amazon.awscdk.services.iam.Role;
-import software.amazon.awscdk.services.iam.ServicePrincipal;
+import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
@@ -49,7 +45,7 @@ public class MonitoringConstruct extends Construct {
                 .addStatements(PolicyStatement.Builder.create()
                         .effect(Effect.DENY)
                         .actions(List.of("sns:Publish"))
-                        .principals(List.of(new ServicePrincipal("*")))
+                        .principals(List.of(new AnyPrincipal()))
                         .resources(List.of(alarmTopic.getTopicArn()))
                         .conditions(Map.of(
                                 "Bool", Map.of("aws:SecureTransport", "false")
