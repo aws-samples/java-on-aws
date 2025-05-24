@@ -45,7 +45,7 @@ public class MonitoringConstruct extends Construct {
                 .addStatements(PolicyStatement.Builder.create()
                         .effect(Effect.DENY)
                         .actions(List.of("sns:Publish"))
-                        .principals(List.of(new AnyPrincipal()))
+                        .principals(List.of(new AnyPrincipal())) // <-- statt ServicePrincipal("*")
                         .resources(List.of(alarmTopic.getTopicArn()))
                         .conditions(Map.of(
                                 "Bool", Map.of("aws:SecureTransport", "false")
