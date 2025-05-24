@@ -43,13 +43,15 @@ cp src/eks_client.py "$TEMP_DIR/package/"
 # Create deployment package
 echo "Creating deployment package..."
 cd "$TEMP_DIR/package"
-zip -r "../../../$OUTPUT_ZIP" . > /dev/null
-cd -
+zip -r "../../$OUTPUT_ZIP" . > /dev/null
+cd - > /dev/null
 
-# Copy to CDK asset output
+# ✅ Required for CDK bundling: copy to /asset-output
 if [ -d "/asset-output" ]; then
     echo "Copying zip to /asset-output for CDK..."
     cp "$OUTPUT_ZIP" /asset-output/
+else
+    echo "Warning: /asset-output not found — not running inside CDK bundling"
 fi
 
 # Calculate package size
