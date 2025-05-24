@@ -437,7 +437,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250518-065536
+      LogGroupName: unicornstore-ide-bootstrap-log-20250524-083907
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -852,9 +852,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
+            default: ""
             description: (Optional) Custom bootstrap script to run.
             type: String
-            default: ""
         mainSteps:
           - inputs:
               runCommand:
@@ -1110,7 +1110,8 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - waitConditionHandleUrl:
+                    - readmeUrl: ""
+                      waitConditionHandleUrl:
                         Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
                       extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
                       domain: ""
@@ -1177,7 +1178,6 @@ Resources:
                         Fn::GetAtt:
                           - UnicornStoreIdeIdeRole81A2CEAA
                           - Arn
-                      readmeUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -3049,13 +3049,13 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreCodeBuildStartBuildFunctionB2FE9156
           - Arn
-      ContentHash: fd70d4491df3a6a44292446f6b364c8a
-      ProjectName:
-        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
+      ContentHash: fd70d4491df3a6a44292446f6b364c8a
+      ProjectName:
+        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
     DependsOn:
       - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRuleunicornstorestackUnicornStoreCodeBuildReportBuildFunction6189FCDE5C03542B
       - UnicornStoreCodeBuildBuildCompleteRule7E287561

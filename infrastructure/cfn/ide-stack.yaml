@@ -422,7 +422,7 @@ Resources:
   VSCodeIdeGiteaIdeLogGroupCD76FEFA:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250518-065443
+      LogGroupName: ide-bootstrap-log-20250524-084110
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -837,8 +837,8 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            description: (Optional) Custom bootstrap script to run.
             default: ""
+            description: (Optional) Custom bootstrap script to run.
             type: String
         mainSteps:
           - inputs:
@@ -1095,17 +1095,18 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - codeServerVersion: 4.100.2
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
+                    - instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - VSCodeIdeGiteaIdeRole90308F47
+                          - Arn
+                      readmeUrl: ""
+                      waitConditionHandleUrl:
+                        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
+                      extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
+                      domain: ""
+                      installGitea: echo bootstrapGitea was not provided
+                      terminalOnStartup: "true"
+                      environmentContentsZip: ""
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1136,21 +1137,20 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
-                      environmentContentsZip: ""
-                      terminalOnStartup: "true"
-                      installGitea: echo bootstrapGitea was not provided
-                      domain: ""
-                      extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
-                      waitConditionHandleUrl:
-                        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
-                      readmeUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - VSCodeIdeGiteaIdeRole90308F47
-                          - Arn
-                      splashUrl: ""
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
+                      codeServerVersion: 4.100.2
                       instanceIamRoleName:
                         Ref: VSCodeIdeGiteaIdeRole90308F47
+                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1290,10 +1290,10 @@ Resources:
           - Arn
       InstanceId:
         Ref: VSCodeIdeGiteaIdeEC2Instance51274E6D
-      SsmDocument:
-        Ref: VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
       LogGroupName:
         Ref: VSCodeIdeGiteaIdeLogGroupCD76FEFA
+      SsmDocument:
+        Ref: VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 Outputs:
