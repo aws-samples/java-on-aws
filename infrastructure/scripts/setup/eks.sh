@@ -71,7 +71,7 @@ aws eks create-pod-identity-association --cluster-name $CLUSTER_NAME \
 sleep 10
 
 helm repo add external-secrets https://charts.external-secrets.io
-helm install external-secrets external-secrets/external-secrets -n external-secrets --create-namespace --wait
+helm install external-secrets external-secrets/external-secrets --version 0.16.0 -n external-secrets --create-namespace --wait
 
 cat <<EOF | envsubst | kubectl create -f -
 apiVersion: external-secrets.io/v1beta1
