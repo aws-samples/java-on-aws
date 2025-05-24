@@ -1,6 +1,10 @@
 package com.unicorn.core;
 
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.RemovalPolicy;
+import software.amazon.awscdk.services.iam.AnyPrincipal;
+import software.amazon.awscdk.services.iam.Effect;
+import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.s3.*;
 import software.constructs.Construct;
 
@@ -8,6 +12,8 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 public class AnalysisBucketConstruct extends Construct {
     private final Bucket bucket;
@@ -23,9 +29,7 @@ public class AnalysisBucketConstruct extends Construct {
         // Generate a lowercase, valid bucket name
         String rawName = props.getBucketPrefix() + "-" + timestamp;
         String bucketName = rawName.toLowerCase().replaceAll("[^a-z0-9.-]", "");
-
-        // Trim trailing non-alphanumeric characters (e.g. dash)
-        bucketName = bucketName.replaceAll("[-.]+$", "");
+        bucketName = bucketName.replaceAll("[-.]+$", ""); // Remove trailing dashes/dots
 
         // Create the S3 bucket
         this.bucket = Bucket.Builder.create(this, "AnalysisBucket")
@@ -35,7 +39,7 @@ public class AnalysisBucketConstruct extends Construct {
                 .publicReadAccess(false)
                 .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
                 .removalPolicy(props.getRemovalPolicy())
-                .lifecycleRules(Arrays.asList(
+                .lifecycleRules(List.of(
                         LifecycleRule.builder()
                                 .enabled(true)
                                 .expiration(Duration.days(props.getRetentionDays()))
@@ -46,6 +50,21 @@ public class AnalysisBucketConstruct extends Construct {
                                 .build()
                 ))
                 .build();
+
+        // Enforce SSL access with a bucket policy (CDK Nag: AwsSolutions-S10)
+        bucket.addToResourcePolicy(PolicyStatement.Builder.create()
+                .sid("EnforceSSLOnly")
+                .effect(Effect.DENY)
+                .principals(List.of(new AnyPrincipal()))
+                .actions(List.of("s3:*"))
+                .resources(List.of(
+                        bucket.getBucketArn(),
+                        bucket.getBucketArn() + "/*"
+                ))
+                .conditions(Map.of(
+                        "Bool", Map.of("aws:SecureTransport", "false")
+                ))
+                .build());
     }
 
     public Bucket getBucket() {
