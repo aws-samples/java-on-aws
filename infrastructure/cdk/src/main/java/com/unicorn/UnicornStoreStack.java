@@ -16,6 +16,7 @@ import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.quicksight.CfnTheme;
+import software.amazon.awscdk.services.sns.subscriptions.EmailSubscription;
 import software.constructs.Construct;
 
 public class UnicornStoreStack extends Stack {
@@ -64,7 +65,7 @@ public class UnicornStoreStack extends Stack {
         // Create VPC
         var vpc = new WorkshopVpc(this, "UnicornStoreVpc", "unicornstore-vpc").getVpc();
 
-        // Create Workshop IDE
+        // Create VSCode IDE
         var ideProps = new VSCodeIdeProps();
             ideProps.setBootstrapScript(bootstrapScript);
             ideProps.setVpc(vpc);
@@ -80,6 +81,28 @@ public class UnicornStoreStack extends Stack {
         var ide = new VSCodeIde(this, "UnicornStoreIde", ideProps);
         var ideRole = ideProps.getRole();
         var ideInternalSecurityGroup = ide.getIdeInternalSecurityGroup();
+
+        // Create S3 bucket for thread dumps
+        AnalysisBucketConstruct analysisBucket = new AnalysisBucketConstruct(
+                this,
+                "ThreadDumpBucket",
+                AnalysisBucketProps.builder()
+                        .bucketPrefix("unicorn-analysis")
+                        .versioningEnabled(true)
+                        .retentionDays(90)
+                        .noncurrentVersionRetentionDays(30)
+                        .removalPolicy(RemovalPolicy.DESTROY)
+                        .build()
+        );
+
+        // Create Lambda function to create thread dump
+        InfrastructureLambdaBedrock lambdaBedrock = new InfrastructureLambdaBedrock(this, "InfrastructureLambdaBedrock", this.getRegion(), analysisBucket.getBucket());
+
+        // Create AMP and AMG monitoring infrastructure
+        var monitoring = new MonitoringConstruct(this, "UnicornStoreMonitoring", vpc, lambdaBedrock.getThreadDumpFunction());
+        // Create Grafana dashboards
+        new GrafanaDashboardConstruct(this, "GrafanaDashboards",
+                monitoring.getGrafanaWorkspace(), monitoring.getAmpWorkspace());
 
         // Create Core infrastructure
         var infrastructureCore = new InfrastructureCore(this, "InfrastructureCore", vpc);
@@ -97,29 +120,7 @@ public class UnicornStoreStack extends Stack {
         var databaseSetup = new DatabaseSetup(this, "UnicornStoreDatabaseSetup", infrastructureCore);
         databaseSetup.getNode().addDependency(infrastructureCore.getDatabase());
 
-        // Create S3 bucket for thread dumps
-        AnalysisBucketConstruct analysisBucket = new AnalysisBucketConstruct(
-                this,
-                "ThreadDumpBucket",
-                AnalysisBucketProps.builder()
-                        .bucketPrefix("unicorn-analysis")
-                        .versioningEnabled(true)
-                        .retentionDays(90)
-                        .noncurrentVersionRetentionDays(30)
-                        .removalPolicy(RemovalPolicy.DESTROY)
-                        .build()
-        );
-
         String bucketName = analysisBucket.getBucket().getBucketName();
-
-        // Create Lambda function to create thread dump
-        InfrastructureLambdaBedrock lambdaBedrock = new InfrastructureLambdaBedrock(this, "InfrastructureLambdaBedrock", this.getRegion(), analysisBucket.getBucket());
-
-        // Create CloudWatch Alarm
-        ThreadDumpAlarmConstruct alarm = new ThreadDumpAlarmConstruct(this, "ThreadDumpAlarm",
-                ThreadDumpAlarmProps.builder()
-                        .lambdaFunction(lambdaBedrock.getThreadDumpFunction())
-                        .build());
 
         // Create UnicornStoreSpringLambda
         new UnicornStoreSpringLambda(this, "UnicornStoreSpringLambda", infrastructureCore);
