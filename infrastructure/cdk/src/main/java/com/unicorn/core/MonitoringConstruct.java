@@ -36,7 +36,7 @@ public class MonitoringConstruct extends Construct {
                 .topicName("UnicornStoreAlarms")
                 .displayName("Unicorn Store Alarms")
                 .build();
-
+        
         // Enforce HTTPS for publishing
         TopicPolicy.Builder.create(this, "AlarmTopicPolicy")
                 .topics(List.of(alarmTopic))
@@ -45,7 +45,7 @@ public class MonitoringConstruct extends Construct {
                 .addStatements(PolicyStatement.Builder.create()
                         .effect(Effect.DENY)
                         .actions(List.of("sns:Publish"))
-                        .principals(List.of(new AnyPrincipal())) // <-- statt ServicePrincipal("*")
+                        .principals(List.of(new AnyPrincipal()))
                         .resources(List.of(alarmTopic.getTopicArn()))
                         .conditions(Map.of(
                                 "Bool", Map.of("aws:SecureTransport", "false")
