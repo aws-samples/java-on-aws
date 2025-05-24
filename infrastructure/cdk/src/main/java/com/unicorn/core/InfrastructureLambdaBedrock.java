@@ -64,7 +64,7 @@ public class InfrastructureLambdaBedrock extends Construct {
         BundlingOptions bundlingOptions = BundlingOptions.builder()
                 .image(DockerImage.fromRegistry("public.ecr.aws/sam/build-python3.13:latest"))
                 .command(List.of(
-                        "bash", "-c", "chmod +x build.sh && ./build.sh --optimize"
+                        "bash", "-c", "chmod +x build.sh && ./build.sh"
                 ))
                 .user("root")
                 .outputType(BundlingOutput.ARCHIVED)
