@@ -21,6 +21,7 @@ import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.sns.Topic;
+import software.amazon.awscdk.services.sns.TopicPolicy;
 import software.constructs.Construct;
 
 import java.util.List;
@@ -39,6 +40,21 @@ public class MonitoringConstruct extends Construct {
                 .topicName("UnicornStoreAlarms")
                 .displayName("Unicorn Store Alarms")
                 .build();
+
+        // Enforce HTTPS for publishing
+        TopicPolicy.Builder.create(this, "AlarmTopicPolicy")
+                .topics(List.of(alarmTopic))
+                .build()
+                .getDocument()
+                .addStatements(PolicyStatement.Builder.create()
+                        .effect(Effect.DENY)
+                        .actions(List.of("sns:Publish"))
+                        .principals(List.of(new ServicePrincipal("*")))
+                        .resources(List.of(alarmTopic.getTopicArn()))
+                        .conditions(Map.of(
+                                "Bool", Map.of("aws:SecureTransport", "false")
+                        ))
+                        .build());
 
         alarmTopic.addSubscription(new software.amazon.awscdk.services.sns.subscriptions.LambdaSubscription(alertHandlerLambda));
 
