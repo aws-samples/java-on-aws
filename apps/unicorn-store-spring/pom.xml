@@ -245,11 +245,11 @@
                             <image>
                                 <name>unicorn-store-spring:latest</name>
                                 <buildpacks>
-                                    <buildpack>gcr.io/paketo-buildpacks/amazon-corretto:9.0.1</buildpack>
-                                    <buildpack>gcr.io/paketo-buildpacks/java:17.6.0</buildpack>
-                                    <buildpack>gcr.io/paketo-buildpacks/syft:2.7.0</buildpack>
-                                    <buildpack>gcr.io/paketo-buildpacks/spring-boot:5.32.0</buildpack>
-                                    <buildpack>gcr.io/paketo-buildpacks/executable-jar:6.12.0</buildpack>
+                                    <buildpack>paketobuildpacks/amazon-corretto:9.0.1</buildpack>
+                                    <buildpack>paketobuildpacks/java:17.6.0</buildpack>
+                                    <buildpack>paketobuildpacks/syft:2.7.0</buildpack>
+                                    <buildpack>paketobuildpacks/spring-boot:5.32.0</buildpack>
+                                    <buildpack>paketobuildpacks/executable-jar:6.12.0</buildpack>
                                 </buildpacks>
                                 <env>
                                     <SPRING_DATASOURCE_URL>${env.SPRING_DATASOURCE_URL}</SPRING_DATASOURCE_URL>
