@@ -4,13 +4,7 @@ import software.amazon.awscdk.CfnOutput;
 import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.RemovalPolicy;
-import software.amazon.awscdk.services.aps.CfnRuleGroupsNamespace;
 import software.amazon.awscdk.services.aps.CfnWorkspace;
-import software.amazon.awscdk.services.cloudwatch.Alarm;
-import software.amazon.awscdk.services.cloudwatch.ComparisonOperator;
-import software.amazon.awscdk.services.cloudwatch.Metric;
-import software.amazon.awscdk.services.cloudwatch.TreatMissingData;
-import software.amazon.awscdk.services.cloudwatch.actions.SnsAction;
 import software.amazon.awscdk.services.ec2.IVpc;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.Code;
@@ -18,6 +12,7 @@ import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.sns.Topic;
 import software.amazon.awscdk.services.sns.TopicPolicy;
+import software.amazon.awscdk.services.sns.subscriptions.LambdaSubscription;
 import software.constructs.Construct;
 
 import java.util.List;
@@ -37,7 +32,6 @@ public class MonitoringConstruct extends Construct {
                 .displayName("Unicorn Store Alarms")
                 .build();
 
-        // Enforce HTTPS for publishing
         TopicPolicy.Builder.create(this, "AlarmTopicPolicy")
                 .topics(List.of(alarmTopic))
                 .build()
@@ -47,12 +41,10 @@ public class MonitoringConstruct extends Construct {
                         .actions(List.of("sns:Publish"))
                         .principals(List.of(new AnyPrincipal()))
                         .resources(List.of(alarmTopic.getTopicArn()))
-                        .conditions(Map.of(
-                                "Bool", Map.of("aws:SecureTransport", "false")
-                        ))
+                        .conditions(Map.of("Bool", Map.of("aws:SecureTransport", "false")))
                         .build());
 
-        alarmTopic.addSubscription(new software.amazon.awscdk.services.sns.subscriptions.LambdaSubscription(alertHandlerLambda));
+        alarmTopic.addSubscription(new LambdaSubscription(alertHandlerLambda));
 
         ampWorkspace = CfnWorkspace.Builder.create(this, "AmpWorkspace")
                 .alias("unicornstore")
@@ -68,9 +60,18 @@ public class MonitoringConstruct extends Construct {
                 ))
                 .build();
 
+        User grafanaUser = User.Builder.create(this, "GrafanaIamUser")
+                .userName("unicornstore-grafana-user")
+                .managedPolicies(List.of(
+                        ManagedPolicy.fromAwsManagedPolicyName("AmazonPrometheusQueryAccess"),
+                        ManagedPolicy.fromAwsManagedPolicyName("CloudWatchReadOnlyAccess"),
+                        ManagedPolicy.fromAwsManagedPolicyName("AWSXrayReadOnlyAccess")
+                ))
+                .build();
+
         grafanaWorkspace = software.amazon.awscdk.services.grafana.CfnWorkspace.Builder.create(this, "GrafanaWorkspace")
                 .accountAccessType("CURRENT_ACCOUNT")
-                .authenticationProviders(List.of("AWS_SSO"))
+                .authenticationProviders(List.of("IAM"))
                 .permissionType("SERVICE_MANAGED")
                 .roleArn(grafanaRole.getRoleArn())
                 .dataSources(List.of("PROMETHEUS", "CLOUDWATCH", "XRAY"))
