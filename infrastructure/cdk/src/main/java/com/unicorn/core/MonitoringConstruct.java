@@ -36,7 +36,7 @@ public class MonitoringConstruct extends Construct {
                 .topicName("UnicornStoreAlarms")
                 .displayName("Unicorn Store Alarms")
                 .build();
-        
+
         // Enforce HTTPS for publishing
         TopicPolicy.Builder.create(this, "AlarmTopicPolicy")
                 .topics(List.of(alarmTopic))

@@ -183,11 +183,12 @@ public class VSCodeIde extends Construct {
         var filePath = props.getAdditionalIamPolicyPath();
         if (Files.exists(Path.of(getClass().getResource(filePath).getPath()))) {
             var policyDocumentJson = loadFile(filePath);
-            var policyDocument = PolicyDocument.fromJson(new JSONObject(policyDocumentJson).toMap());
-            var policy = ManagedPolicy.Builder.create(this, "WorkshopIdeUserPolicy")
-                .document(policyDocument)
-                .build();
-                props.getRole().addManagedPolicy(policy);
+            var jsonPolicy = loadFile(filePath);
+            var cfnPolicy = software.amazon.awscdk.services.iam.CfnManagedPolicy.Builder.create(this, "WorkshopIdeUserPolicy")
+                    .policyDocument(new JSONObject(jsonPolicy).toMap())
+                    .managedPolicyName("WorkshopIdeUserPolicy")
+                    .roles(List.of(props.getRole().getRoleName()))
+                    .build();
         }
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
