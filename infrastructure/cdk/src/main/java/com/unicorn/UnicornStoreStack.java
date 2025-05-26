@@ -15,8 +15,6 @@ import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
-import software.amazon.awscdk.services.quicksight.CfnTheme;
-import software.amazon.awscdk.services.sns.subscriptions.EmailSubscription;
 import software.constructs.Construct;
 
 public class UnicornStoreStack extends Stack {
@@ -49,6 +47,8 @@ public class UnicornStoreStack extends Stack {
                 commands:
                     - |
                         # Resolution for when creating the first service in the account
+                        aws organizations enable-all-features
+                        aws sso-admin create-instance --name "grafana-instance" --region eu-west-1
                         aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
                         aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com 2>/dev/null || true
                         aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
