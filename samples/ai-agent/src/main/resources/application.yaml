@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: ai-agent
+  ai:
+    bedrock:
+      converse:
+        chat:
+          enabled: true
+          options:
+            model: amazon.nova-pro-v1:0
