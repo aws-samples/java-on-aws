@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.aws.workshop.ai</groupId>
-    <artifactId>ai-agent</artifactId>
+    <artifactId>spring-ai-agent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>ai-agent</name>
     <description>ai-agent</description>
