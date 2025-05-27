@@ -1,0 +1,35 @@
+### ask the AI generic question
+POST localhost:8080/chat
+Content-Type: text/plain
+
+What is the weather in Munich?
+
+### tell your name
+POST localhost:8080/chat
+Content-Type: text/plain
+
+My name is Andrei
+
+### ask your name: doesn't work for stateless chat client
+POST localhost:8080/chat
+Content-Type: text/plain
+
+What is my name?
+
+### tell your name to stateless chat client
+POST localhost:8080/chat
+Content-Type: text/plain
+
+My name is Andrei
+
+### tell your name to chat client with memory
+POST localhost:8080/memory/chat
+Content-Type: text/plain
+
+My name is Andrei
+
+### aks your name to chat client with memory
+POST localhost:8080/memory/chat
+Content-Type: text/plain
+
+What is my name?
