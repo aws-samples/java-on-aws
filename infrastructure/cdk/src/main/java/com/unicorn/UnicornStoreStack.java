@@ -98,11 +98,13 @@ public class UnicornStoreStack extends Stack {
         // Create Lambda function to create thread dump
         InfrastructureLambdaBedrock lambdaBedrock = new InfrastructureLambdaBedrock(this, "InfrastructureLambdaBedrock", this.getRegion(), analysisBucket.getBucket());
 
+        // Create EKS cluster for the workshop
+        var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.32",
+                vpc, ideInternalSecurityGroup);
+        eksCluster.createAccessEntry(ideRole.getRoleArn(), "unicorn-store", "unicornstore-ide-user");
+
         // Create AMP and AMG monitoring infrastructure
-        var monitoring = new MonitoringConstruct(this, "UnicornStoreMonitoring", vpc, lambdaBedrock.getThreadDumpFunction());
-        // Create Grafana dashboards
-        new GrafanaDashboardConstruct(this, "GrafanaDashboards",
-                monitoring.getGrafanaWorkspace(), monitoring.getAmpWorkspace());
+        MonitoringConstruct monitoring = new MonitoringConstruct(this, "Monitoring", vpc, eksCluster.getCluster(), lambdaBedrock.getThreadDumpFunction());        // Create Grafana dashboards
 
         // Create Core infrastructure
         var infrastructureCore = new InfrastructureCore(this, "InfrastructureCore", vpc);
@@ -110,11 +112,6 @@ public class UnicornStoreStack extends Stack {
 
         // Create additional infrastructure for Containers modules of Java on AWS Immersion Day
         new InfrastructureContainers(this, "InfrastructureContainers", infrastructureCore);
-
-        // Create EKS cluster for the workshop
-        var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.32",
-            vpc, ideInternalSecurityGroup);
-        eksCluster.createAccessEntry(ideRole.getRoleArn(), "unicorn-store", "unicornstore-ide-user");
 
         // Execute Database setup
         var databaseSetup = new DatabaseSetup(this, "UnicornStoreDatabaseSetup", infrastructureCore);
