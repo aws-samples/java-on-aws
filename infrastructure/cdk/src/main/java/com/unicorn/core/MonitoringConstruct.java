@@ -13,7 +13,6 @@ import software.amazon.awscdk.services.sns.Topic;
 import software.amazon.awscdk.services.sns.TopicPolicy;
 import software.amazon.awscdk.services.sns.subscriptions.LambdaSubscription;
 import software.amazon.awscdk.services.eks.CfnCluster;
-import software.amazon.awscdk.services.eks.HelmChart;
 import software.constructs.Construct;
 
 import java.util.List;
@@ -54,11 +53,6 @@ public class MonitoringConstruct extends Construct {
                         .excludePunctuation(true)
                         .build())
                 .build();
-
-        deployPrometheusHelmChart();
-        deployGrafanaHelmChart(grafanaAdminSecret);
-        deployPrometheusAlertRules();
-        deployAlertManagerConfig();
 
         prometheusInternalUrl = "http://prometheus-server.monitoring.svc.cluster.local";
 
@@ -115,120 +109,6 @@ public class MonitoringConstruct extends Construct {
                 .description("Grafana public Web UI")
                 .value(resource.getAttString("GrafanaUrl"))
                 .exportName("GrafanaUrl")
-                .build();
-    }
-
-    private void deployPrometheusHelmChart() {
-        HelmChart.Builder.create(this, "PrometheusHelm")
-                .chart("prometheus")
-                .repository("https://prometheus-community.github.io/helm-charts")
-                .release("prometheus")
-                .namespace("monitoring")
-                .createNamespace(true)
-                .values(Map.of(
-                        "server", Map.of(
-                                "service", Map.of(
-                                        "type", "LoadBalancer",
-                                        "annotations", Map.of(
-                                                "service.beta.kubernetes.io/aws-load-balancer-internal", "true"
-                                        )
-                                ),
-                                "ingress", Map.of("enabled", false)
-                        )
-                ))
-                .build();
-    }
-
-    private void deployGrafanaHelmChart(Secret adminSecret) {
-        HelmChart.Builder.create(this, "GrafanaHelm")
-                .chart("grafana")
-                .repository("https://grafana.github.io/helm-charts")
-                .release("grafana")
-                .namespace("monitoring")
-                .createNamespace(false)
-                .values(Map.of(
-                        "service", Map.of(
-                                "type", "LoadBalancer",
-                                "annotations", Map.of(
-                                        "service.beta.kubernetes.io/aws-load-balancer-scheme", "internet-facing"
-                                )
-                        ),
-                        "admin", Map.of(
-                                "existingSecret", adminSecret.getSecretName(),
-                                "userKey", "username",
-                                "passwordKey", "password"
-                        ),
-                        "datasources", Map.of("datasources.yaml", Map.of(
-                                "apiVersion", 1,
-                                "datasources", List.of(Map.of(
-                                        "name", "Prometheus",
-                                        "type", "prometheus",
-                                        "url", "http://prometheus-server.monitoring.svc.cluster.local",
-                                        "access", "proxy",
-                                        "isDefault", true
-                                ))
-                        ))
-                ))
-                .build();
-    }
-
-    private void deployPrometheusAlertRules() {
-        HelmChart.Builder.create(this, "PrometheusRuleHelm")
-                .chart("prometheus-rule")
-                .repository("https://prometheus-community.github.io/helm-charts")
-                .release("prometheus-alerts")
-                .namespace("monitoring")
-                .values(Map.of(
-                        "defaultRules", Map.of("enabled", false),
-                        "groups", List.of(Map.of(
-                                "name", "unicornstore-alerts",
-                                "rules", List.of(Map.of(
-                                        "alert", "TooManyJavaThreads",
-                                        "expr", "jvm_threads_live_threads > 200",
-                                        "for", "2m",
-                                        "labels", Map.of("severity", "critical"),
-                                        "annotations", Map.of(
-                                                "summary", "Too many Java threads",
-                                                "description", "Number of Java threads is above 200 on {{ $labels.instance }}"
-                                        )
-                                ))
-                        ))
-                ))
-                .build();
-    }
-
-    private void deployAlertManagerConfig() {
-        String alertManagerYaml = String.join("\n",
-                "global:",
-                "  resolve_timeout: 5m",
-                "route:",
-                "  group_by: ['alertname']",
-                "  group_wait: 30s",
-                "  group_interval: 5m",
-                "  repeat_interval: 12h",
-                "  receiver: 'sns'",
-                "receivers:",
-                "  - name: 'sns'",
-                "    sns_configs:",
-                "      - topic_arn: " + alarmTopic.getTopicArn() + ",",
-                "        send_resolved: true"
-        );
-
-        HelmChart.Builder.create(this, "AlertManagerHelm")
-                .chart("alertmanager")
-                .repository("https://prometheus-community.github.io/helm-charts")
-                .release("alertmanager")
-                .namespace("monitoring")
-                .createNamespace(false)
-                .values(Map.of(
-                        "config", alertManagerYaml,
-                        "service", Map.of(
-                                "type", "LoadBalancer",
-                                "annotations", Map.of(
-                                        "service.beta.kubernetes.io/aws-load-balancer-internal", "true"
-                                )
-                        )
-                ))
                 .build();
     }
 
