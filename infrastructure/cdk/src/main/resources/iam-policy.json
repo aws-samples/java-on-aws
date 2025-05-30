@@ -55,7 +55,7 @@
 				"iam:PassRole"
 			],
 			"Resource": [
-				"arn:aws:iam::*:role/unicorn*"
+				"arn:aws:iam::{{.AccountId}}:role/unicorn*"
 			],
 			"Effect": "Allow"
 		},
