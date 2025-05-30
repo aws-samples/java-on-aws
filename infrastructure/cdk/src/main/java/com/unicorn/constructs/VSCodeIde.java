@@ -181,14 +181,19 @@ public class VSCodeIde extends Construct {
         props.getRole().addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
 
         var filePath = props.getAdditionalIamPolicyPath();
-        if (Files.exists(Path.of(getClass().getResource(filePath).getPath()))) {
-            var policyDocumentJson = loadFile(filePath);
-            var jsonPolicy = loadFile(filePath);
-            var cfnPolicy = software.amazon.awscdk.services.iam.CfnManagedPolicy.Builder.create(this, "WorkshopIdeUserPolicy")
-                    .policyDocument(new JSONObject(jsonPolicy).toMap())
-                    .managedPolicyName("WorkshopIdeUserPolicy")
-                    .roles(List.of(props.getRole().getRoleName()))
-                    .build();
+        try {
+            var policyPath = Path.of(getClass().getResource(filePath).toURI());
+            if (Files.exists(policyPath)) {
+                var jsonPolicy = loadFile(filePath);
+                var policyDoc = new JSONObject(jsonPolicy).toMap();
+                software.amazon.awscdk.services.iam.CfnManagedPolicy.Builder.create(this, "WorkshopIdeUserPolicy")
+                        .policyDocument(policyDoc)
+                        .managedPolicyName("WorkshopIdeUserPolicy")
+                        .roles(List.of(props.getRole().getRoleName()))
+                        .build();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read or parse IAM policy file: " + filePath, e);
         }
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
