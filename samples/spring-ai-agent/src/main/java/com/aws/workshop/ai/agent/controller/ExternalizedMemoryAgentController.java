@@ -1,8 +1,8 @@
 package com.aws.workshop.ai.agent.controller;
 
+import com.aws.workshop.ai.agent.memory.ExternalChatMemoryRepository;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
-import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.web.bind.annotation.*;
@@ -12,20 +12,19 @@ import java.io.InputStream;
 import java.util.Objects;
 
 @RestController
-@RequestMapping("/memory")
-public class HistoryAgentController {
+@RequestMapping("/ext-memory")
+public class ExternalizedMemoryAgentController {
     private ChatClient chatClient;
     private final ChatClient.Builder chatClientBuilder;
     private final PromptChatMemoryAdvisor promptChatMemoryAdvisor;
 
-    public HistoryAgentController(ChatClient chatClient, ChatClient.Builder chatClientBuilder) {
+    public ExternalizedMemoryAgentController(ChatClient chatClient, ChatClient.Builder chatClientBuilder, ExternalChatMemoryRepository chatMemoryRepository) {
         this.chatClient = chatClient;
         this.chatClientBuilder = chatClientBuilder;
-        var memory =
-                MessageWindowChatMemory.builder()
-                        .chatMemoryRepository(new InMemoryChatMemoryRepository())
-                        .build();
-        this.promptChatMemoryAdvisor = PromptChatMemoryAdvisor.builder(memory).build();
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .chatMemoryRepository(chatMemoryRepository)
+                .build();
+        this.promptChatMemoryAdvisor = PromptChatMemoryAdvisor.builder(chatMemory).build();
     }
 
     @PostMapping("/chat")

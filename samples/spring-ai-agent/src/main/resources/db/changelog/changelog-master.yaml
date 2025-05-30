@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-chat-messages-table
+      author: andrei.shakirin
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              tableName: chat_messages
+      changes:
+        - createTable:
+            tableName: chat_messages
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: conversation_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: text
+                  type: TEXT
+              - column:
+                  name: timestamp
+                  type: TIMESTAMP
+              - column:
+                  name: type
+                  type: VARCHAR(50)
+        - createIndex:
+            indexName: idx_chat_messages_conversation_id
+            tableName: chat_messages
+            columns:
+              - column:
+                  name: conversation_id
