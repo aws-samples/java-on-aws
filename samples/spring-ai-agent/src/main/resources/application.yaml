@@ -8,3 +8,17 @@ spring:
           enabled: true
           options:
             model: amazon.nova-pro-v1:0
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ai-agent-db
+    username: chatuser
+    password: chatpass
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  liquibase:
+    change-log: classpath:db/changelog/changelog-master.yaml
