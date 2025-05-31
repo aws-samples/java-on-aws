@@ -47,6 +47,11 @@ public class MonitoringConstruct extends Construct {
                 .value(prometheusInternalUrl)
                 .exportName("PrometheusInternalUrl")
                 .build();
+
+        CfnOutput.Builder.create(this, "AlarmTopicARN")
+                .value(alarmTopic.getTopicArn())
+                .exportName("AlarmTopicArn")
+                .build();
     }
 
     public Topic getAlarmTopic() {

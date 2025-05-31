@@ -72,7 +72,7 @@ public class InfrastructureLambdaBedrock extends Construct {
 
         // Lambda function definition
         this.threadDumpFunction = Function.Builder.create(this, "unicornstore-thread-dump-lambda-eks")
-                .functionName("unicornstore-thread-dump-lambda-eks")
+                .functionName("unicornstore-thread-dump-lambda")
                 .runtime(Runtime.PYTHON_3_13)
                 .code(Code.fromAsset("../lambda", AssetOptions.builder()
                         .bundling(bundlingOptions)
