@@ -2,7 +2,6 @@ package com.unicorn.core;
 
 import software.amazon.awscdk.CfnOutput;
 import software.amazon.awscdk.Duration;
-import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.customresources.Provider;
 import software.amazon.awscdk.services.ec2.IVpc;
 import software.amazon.awscdk.services.iam.*;
@@ -46,14 +45,6 @@ public class MonitoringConstruct extends Construct {
 
         alarmTopic.addSubscription(new LambdaSubscription(alertHandlerLambda));
 
-        Secret grafanaAdminSecret = Secret.Builder.create(this, "GrafanaAdminSecret")
-                .generateSecretString(SecretStringGenerator.builder()
-                        .secretStringTemplate("{\"username\":\"admin\"}")
-                        .generateStringKey("password")
-                        .excludePunctuation(true)
-                        .build())
-                .build();
-
         prometheusInternalUrl = "http://prometheus-server.monitoring.svc.cluster.local";
 
         createGrafanaUrlOutput();
@@ -63,12 +54,6 @@ public class MonitoringConstruct extends Construct {
                 .value(prometheusInternalUrl)
                 .exportName("PrometheusInternalUrl")
                 .build();
-
-        CfnOutput.Builder.create(this, "GrafanaAdminSecretName")
-                .description("Grafana admin credentials secret")
-                .value(grafanaAdminSecret.getSecretName())
-                .exportName("GrafanaAdminSecret")
-                .build();
     }
 
     private void createGrafanaUrlOutput() {
@@ -76,18 +61,17 @@ public class MonitoringConstruct extends Construct {
                 .runtime(software.amazon.awscdk.services.lambda.Runtime.PYTHON_3_11)
                 .handler("index.handler")
                 .timeout(Duration.minutes(1))
-                .code(Code.fromInline("""
-                    import boto3
-                    import os
-
-                    def handler(event, context):
-                        elb = boto3.client('elbv2')
-                        response = elb.describe_load_balancers()
-                        for lb in response['LoadBalancers']:
-                            if 'grafana' in lb['LoadBalancerName'] and lb['Scheme'] == 'internet-facing':
-                                return { 'PhysicalResourceId': lb['DNSName'], 'Data': { 'GrafanaUrl': 'http://' + lb['DNSName'] } }
-                        raise Exception('Grafana Load Balancer not found')
-                """))
+                .code(Code.fromInline(
+                        "import boto3\n" +
+                                "import os\n\n" +
+                                "def handler(event, context):\n" +
+                                "    elb = boto3.client('elbv2')\n" +
+                                "    response = elb.describe_load_balancers()\n" +
+                                "    for lb in response['LoadBalancers']:\n" +
+                                "        if 'grafana' in lb['LoadBalancerName'] and lb['Scheme'] == 'internet-facing':\n" +
+                                "            return { 'PhysicalResourceId': lb['DNSName'], 'Data': { 'GrafanaUrl': 'http://' + lb['DNSName'] } }\n" +
+                                "    raise Exception('Grafana Load Balancer not found')"
+                ))
                 .initialPolicy(List.of(
                         PolicyStatement.Builder.create()
                                 .effect(Effect.ALLOW)
