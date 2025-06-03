@@ -205,10 +205,10 @@ for extension in "${array[@]}"; do
   # Use retries but don't exit with error if installation fails
   if sudo -u ec2-user bash -c "(r=5; while [ \$r -gt 0 ]; do code-server --install-extension $extension --force && break; r=\$((r-1)); [ \$r -eq 0 ] || sleep 5; done; [ \$r -gt 0 ])"; then
     success_list="$success_list $extension"
-    echo "✅ Successfully installed extension: $extension"
+    echo "Successfully installed extension: $extension"
   else
     failed_list="$failed_list $extension"
-    echo "❌ Failed to install extension: $extension"
+    echo "Failed to install extension: $extension"
   fi
 done
 
