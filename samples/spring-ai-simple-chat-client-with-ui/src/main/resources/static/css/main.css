@@ -1,0 +1,10 @@
+/* Custom styles for Unicorn Store */
+.unicorn-gradient {
+    background: linear-gradient(135deg, #f5f3ff, #fce7f3);
+}
+
+.unicorn-shadow {
+    box-shadow: 0 4px 14px rgba(156, 39, 176, 0.1);
+}
+
+/* Any additional custom styles can be added here */

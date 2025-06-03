@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicorn Store Streaming Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .chat-container {
+            height: calc(100vh - 180px);
+        }
+        .message-container {
+            height: calc(100vh - 280px);
+            overflow-y: auto;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background-color: #6b46c1;
+            margin-left: 2px;
+            animation: blink 1s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-pink-100 to-purple-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <h1 class="text-3xl font-bold text-pink-800">🦄 Unicorn Store</h1>
+                </div>
+                <nav class="flex space-x-4">
+                    <a href="/chat" class="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700">Standard Chat</a>
+                    <a href="/stream-chat" class="px-4 py-2 bg-pink-500 text-white rounded-lg font-medium hover:bg-pink-600">Streaming Chat</a>
+                </nav>
+            </div>
+            <p class="text-gray-600 mt-2">Experience real-time streaming responses from our magical assistant!</p>
+        </header>
+
+        <!-- Chat Interface -->
+        <div class="bg-white rounded-xl shadow-lg p-6 chat-container">
+            <div class="message-container mb-4" id="messageContainer">
+                <div class="flex mb-4">
+                    <div class="w-10 h-10 rounded-full bg-pink-200 flex items-center justify-center mr-3">
+                        <span class="text-lg">🦄</span>
+                    </div>
+                    <div class="bg-pink-100 rounded-lg p-3 max-w-3xl">
+                        <p class="text-gray-800">Welcome to the Unicorn Store streaming chat! Watch as responses appear in real-time. How can I help you find your magical companion today?</p>
+                    </div>
+                </div>
+                <!-- Messages will be added here dynamically -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="border-t pt-4">
+                <form id="chatForm" class="flex">
+                    <input type="text" id="userInput" class="flex-grow border rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="Ask about our unicorns...">
+                    <button type="submit" class="bg-pink-600 text-white px-6 py-2 rounded-r-lg hover:bg-pink-700 transition">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const messageContainer = document.getElementById('messageContainer');
+            const chatForm = document.getElementById('chatForm');
+            const userInput = document.getElementById('userInput');
+            let isStreaming = false;
+            let currentResponseElement = null;
+            let currentResponseText = '';
+
+            chatForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const message = userInput.value.trim();
+                if (!message || isStreaming) return;
+                
+                // Add user message to chat
+                addMessage(message, 'user');
+                userInput.value = '';
+                
+                try {
+                    // Create AI response container
+                    currentResponseElement = createResponseContainer();
+                    isStreaming = true;
+                    
+                    // Send request to backend
+                    const response = await fetch('/api/ai/stream', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ prompt: message })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to get response');
+                    }
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    
+                    // Process the stream
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        
+                        if (done) {
+                            // Remove cursor when stream ends
+                            const cursor = currentResponseElement.querySelector('.cursor');
+                            if (cursor) cursor.remove();
+                            break;
+                        }
+                        
+                        // Decode and append the chunk
+                        const chunk = decoder.decode(value);
+                        appendToResponse(chunk);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    appendToResponse('Sorry, I encountered an error. Please try again.');
+                } finally {
+                    isStreaming = false;
+                    currentResponseElement = null;
+                    currentResponseText = '';
+                }
+            });
+            
+            function addMessage(content, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'flex mb-4';
+                
+                if (sender === 'user') {
+                    messageDiv.innerHTML = `
+                        <div class="ml-auto flex">
+                            <div class="bg-blue-100 rounded-lg p-3 max-w-3xl">
+                                <p class="text-gray-800">${escapeHtml(content)}</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center ml-3">
+                                <span class="text-lg">👤</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                messageContainer.appendChild(messageDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+            }
+            
+            function createResponseContainer() {
+                const responseDiv = document.createElement('div');
+                responseDiv.className = 'flex mb-4';
+                responseDiv.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-pink-200 flex items-center justify-center mr-3">
+                        <span class="text-lg">🦄</span>
+                    </div>
+                    <div class="bg-pink-100 rounded-lg p-3 max-w-3xl">
+                        <p class="text-gray-800 response-text"></p>
+                        <span class="cursor"></span>
+                    </div>
+                `;
+                
+                messageContainer.appendChild(responseDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+                
+                return responseDiv;
+            }
+            
+            function appendToResponse(text) {
+                if (!currentResponseElement) return;
+                
+                currentResponseText += text;
+                const responseTextElement = currentResponseElement.querySelector('.response-text');
+                responseTextElement.textContent = currentResponseText;
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+            }
+            
+            function escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+        });
+    </script>
+</body>
+</html>
