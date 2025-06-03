@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: create-chat-messages-table
-      author: andrei.shakirin
+      author: spring-ai.workshop.team.aws
       preConditions:
         - onFail: MARK_RAN
         - not:

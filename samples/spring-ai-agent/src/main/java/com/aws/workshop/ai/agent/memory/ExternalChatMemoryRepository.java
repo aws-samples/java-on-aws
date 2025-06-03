@@ -44,12 +44,12 @@ public class ExternalChatMemoryRepository implements ChatMemoryRepository {
         List<ChatMessageEntity> entities = messages.stream()
                 // Currently only memory for user messages is supported
                 .filter(msg -> MessageType.USER == msg.getMessageType())
-                .map(msg -> ChatMessageEntity.builder()
-                .conversationId(conversationId)
-                .text(msg.getText())
-                .type(msg.getMessageType().name())
-                .timestamp(Instant.now())
-                .build()).toList();
+                .map(msg -> new ChatMessageEntity(
+                        conversationId,
+                        msg.getText(),
+                        Instant.now(),
+                        msg.getMessageType().name())
+                ).toList();
 
         jpaRepository.saveAll(entities);
     }
