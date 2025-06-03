@@ -195,12 +195,32 @@ echo "Installing code-server extensions..."
 EXTENSIONS="${extensions}"
 
 IFS=',' read -ra array <<< "$EXTENSIONS"
+echo "Installing extensions with retries..."
+success_list=""
+failed_list=""
 
 # Iterate over each entry in the array
-for extension in "${!array[@]}"; do
-  # Use retries as extension installation seems unreliable
-  sudo -u ec2-user bash -c "set -e; (r=5;while ! code-server --install-extension $extension --force ; do ((--r))||exit;sleep 5;done)"
+for extension in "${array[@]}"; do
+  echo "Attempting to install extension: $extension"
+  # Use retries but don't exit with error if installation fails
+  if sudo -u ec2-user bash -c "(r=5; while [ \$r -gt 0 ]; do code-server --install-extension $extension --force && break; r=\$((r-1)); [ \$r -eq 0 ] || sleep 5; done; [ \$r -gt 0 ])"; then
+    success_list="$success_list $extension"
+    echo "✅ Successfully installed extension: $extension"
+  else
+    failed_list="$failed_list $extension"
+    echo "❌ Failed to install extension: $extension"
+  fi
 done
+
+# Report results
+echo "=== Extension Installation Summary ==="
+if [ -n "$success_list" ]; then
+  echo "Successfully installed:$success_list"
+fi
+if [ -n "$failed_list" ]; then
+  echo "Failed to install:$failed_list"
+fi
+echo "==================================="
 
 if [ ! -f "/home/ec2-user/.local/share/code-server/coder.json" ]; then
   sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/coder.json'
