@@ -38,7 +38,7 @@ public class StatelessAgentController {
 
     @PostMapping("/model")
     public void updateModel(@RequestParam String model) {
-        ChatOptions chatOptions = ChatOptions.builder()
+        var chatOptions = ChatOptions.builder()
                 .model(model).build();
         chatClient = chatClientBuilder
                 .defaultOptions(chatOptions).build();
