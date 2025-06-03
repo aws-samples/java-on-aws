@@ -18,11 +18,11 @@ public class ExternalizedMemoryAgentController {
     private final ChatClient.Builder chatClientBuilder;
     private final PromptChatMemoryAdvisor promptChatMemoryAdvisor;
 
-    public ExternalizedMemoryAgentController(ChatClient chatClient, ChatClient.Builder chatClientBuilder, ExternalChatMemoryRepository chatMemoryRepository) {
+    public ExternalizedMemoryAgentController(ChatClient chatClient, ChatClient.Builder chatClientBuilder, ExternalChatMemoryRepository externalChatMemoryRepository) {
         this.chatClient = chatClient;
         this.chatClientBuilder = chatClientBuilder;
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
-                .chatMemoryRepository(chatMemoryRepository)
+                .chatMemoryRepository(externalChatMemoryRepository)
                 .build();
         this.promptChatMemoryAdvisor = PromptChatMemoryAdvisor.builder(chatMemory).build();
     }
