@@ -199,7 +199,12 @@ IFS=',' read -ra array <<< "$EXTENSIONS"
 # Iterate over each entry in the array
 for extension in "${!array[@]}"; do
   # Use retries as extension installation seems unreliable
-  sudo -u ec2-user bash -c "set -e; (r=5;while ! code-server --install-extension $extension --force ; do ((--r))||exit;sleep 5;done)"
+  echo "Installing extension: $extension"
+  if sudo -u ec2-user bash -c "set -e; (r=5;while ! code-server --install-extension $extension --force ; do echo 'Retrying installation of $extension...'; ((--r))||break;sleep 5;done)" || true; then
+    echo "Extension $extension installed successfully"
+  else
+    echo "Failed to install extension $extension after multiple retries, continuing anyway"
+  fi
 done
 
 if [ ! -f "/home/ec2-user/.local/share/code-server/coder.json" ]; then

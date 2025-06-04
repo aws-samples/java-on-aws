@@ -437,7 +437,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250526-120013
+      LogGroupName: unicornstore-ide-bootstrap-log-20250603-125228
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1061,7 +1061,12 @@ Resources:
                       # Iterate over each entry in the array
                       for extension in "${!array[@]}"; do
                         # Use retries as extension installation seems unreliable
-                        sudo -u ec2-user bash -c "set -e; (r=5;while ! code-server --install-extension $extension --force ; do ((--r))||exit;sleep 5;done)"
+                        echo "Installing extension: $extension"
+                        if sudo -u ec2-user bash -c "set -e; (r=5;while ! code-server --install-extension $extension --force ; do echo 'Retrying installation of $extension...'; ((--r))||break;sleep 5;done)" || true; then
+                          echo "Extension $extension installed successfully"
+                        else
+                          echo "Failed to install extension $extension after multiple retries, continuing anyway"
+                        fi
                       done
 
                       if [ ! -f "/home/ec2-user/.local/share/code-server/coder.json" ]; then
@@ -1110,7 +1115,8 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleName:
+                    - splashUrl: ""
+                      instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
                       codeServerVersion: 4.100.2
                       customBootstrapScript: |
@@ -1177,7 +1183,6 @@ Resources:
                         Fn::GetAtt:
                           - UnicornStoreIdeIdeRole81A2CEAA
                           - Arn
-                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1315,12 +1320,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
+      SsmDocument:
+        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
       LogGroupName:
         Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
       InstanceId:
         Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
-      SsmDocument:
-        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
