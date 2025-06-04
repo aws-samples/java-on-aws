@@ -1,3 +1,4 @@
+#########################################
 # Simple Stateless Chat
 ### ask the AI generic question
 POST localhost:8080/chat
@@ -5,6 +6,8 @@ Content-Type: text/plain
 
 What is the weather in Munich?
 
+#########################################
+### Attempt memory with stateless: fail
 ### tell your name
 POST localhost:8080/chat
 Content-Type: text/plain
@@ -17,6 +20,7 @@ Content-Type: text/plain
 
 What is my name?
 
+#########################################
 # Chat with Local Memory
 ### tell your name to chat client with memory
 POST localhost:8080/memory/chat
@@ -30,6 +34,7 @@ Content-Type: text/plain
 
 What is my name?
 
+#########################################
 # Chat with External Memory
 ### tell your name to chat client with memory
 POST localhost:8080/ext-memory/chat
@@ -43,15 +48,16 @@ Content-Type: text/plain
 
 What is my name?
 
+#########################################
 # Chat with RAG pgvector
-### tell your name to chat client with memory
+### Load RAG data into pgvector database
+POST localhost:8080/rag-pgvector/load
+Content-Type: text/plain
+
+Weather in Munich today is 20 degrees and sunny
+
+### Ask about the weather, check if RAG is active
 POST localhost:8080/rag-pgvector/chat
 Content-Type: text/plain
 
-My name is Andrei
-
-### aks your name to chat client with memory
-POST localhost:8080/rag-pgvector/chat
-Content-Type: text/plain
-
-What is my name?
+What is the weather in Munich?
