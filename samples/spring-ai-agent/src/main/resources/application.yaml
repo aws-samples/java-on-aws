@@ -8,6 +8,15 @@ spring:
           enabled: true
           options:
             model: amazon.nova-pro-v1:0
+      cohere:
+        embedding:
+          enabled: true
+    model:
+      embedding: bedrock-cohere
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        dimensions: 1024
 
   datasource:
     url: jdbc:postgresql://localhost:5432/ai-agent-db

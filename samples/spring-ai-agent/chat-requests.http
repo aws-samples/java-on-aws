@@ -42,3 +42,16 @@ POST localhost:8080/ext-memory/chat
 Content-Type: text/plain
 
 What is my name?
+
+# Chat with RAG pgvector
+### tell your name to chat client with memory
+POST localhost:8080/rag-pgvector/chat
+Content-Type: text/plain
+
+My name is Andrei
+
+### aks your name to chat client with memory
+POST localhost:8080/rag-pgvector/chat
+Content-Type: text/plain
+
+What is my name?
