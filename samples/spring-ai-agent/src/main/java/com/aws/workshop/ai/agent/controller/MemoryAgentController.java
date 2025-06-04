@@ -13,12 +13,12 @@ import java.util.Objects;
 
 @RestController
 @RequestMapping("/memory")
-public class HistoryAgentController {
+public class MemoryAgentController {
     private ChatClient chatClient;
     private final ChatClient.Builder chatClientBuilder;
     private final PromptChatMemoryAdvisor promptChatMemoryAdvisor;
 
-    public HistoryAgentController(ChatClient chatClient, ChatClient.Builder chatClientBuilder) {
+    public MemoryAgentController(ChatClient chatClient, ChatClient.Builder chatClientBuilder) {
         this.chatClient = chatClient;
         this.chatClientBuilder = chatClientBuilder;
         var memory =
@@ -50,7 +50,7 @@ public class HistoryAgentController {
 
     @PostMapping("/model")
     public void updateModel(@RequestParam String model) {
-        ChatOptions chatOptions = ChatOptions.builder()
+        var chatOptions = ChatOptions.builder()
                 .model(model).build();
         chatClient = chatClientBuilder
                 .defaultOptions(chatOptions).build();
