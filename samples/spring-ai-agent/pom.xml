@@ -31,6 +31,7 @@
         <spring-ai.version>1.0.0</spring-ai.version>
         <postgresql.version>42.7.5</postgresql.version>
         <jib-maven-plugin.version>3.4.5</jib-maven-plugin.version>
+        <testcontainers.version>1.21.1</testcontainers.version>
     </properties>
     <dependencies>
         <dependency>
@@ -75,6 +76,25 @@
             <artifactId>liquibase-core</artifactId>
         </dependency>
 
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
