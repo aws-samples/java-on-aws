@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unicorn Store Chat</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dev-dark': '#1a1a1a',
+                        'dev-darker': '#121212',
+                        'dev-accent': '#6366f1',
+                        'dev-accent-hover': '#4f46e5',
+                        'dev-secondary': '#3b82f6',
+                        'dev-text': '#e2e8f0',
+                        'dev-text-muted': '#94a3b8',
+                        'dev-border': '#2d3748',
+                        'dev-message-user': '#1e293b',
+                        'dev-message-ai': '#1e1e2d'
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         .chat-container {
             height: calc(100vh - 180px);
@@ -13,43 +33,57 @@
             height: calc(100vh - 280px);
             overflow-y: auto;
         }
+        /* Custom scrollbar for dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b3b3b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b4b4b;
+        }
     </style>
 </head>
-<body class="bg-gradient-to-r from-purple-100 to-pink-100 min-h-screen">
+<body class="bg-dev-darker min-h-screen text-dev-text">
     <div class="container mx-auto px-4 py-8">
         <!-- Header -->
         <header class="mb-8">
             <div class="flex justify-between items-center">
                 <div class="flex items-center">
-                    <h1 class="text-3xl font-bold text-purple-800">🦄 Unicorn Store</h1>
+                    <h1 class="text-3xl font-bold text-dev-accent">🦄 Unicorn Store</h1>
                 </div>
                 <nav class="flex space-x-4">
-                    <a href="/chat" class="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700">Standard Chat</a>
-                    <a href="/stream-chat" class="px-4 py-2 bg-pink-500 text-white rounded-lg font-medium hover:bg-pink-600">Streaming Chat</a>
+                    <a href="/chat" class="px-4 py-2 bg-dev-accent text-white rounded-lg font-medium hover:bg-dev-accent-hover transition">Standard Chat</a>
+                    <a href="/stream-chat" class="px-4 py-2 bg-dev-secondary text-white rounded-lg font-medium hover:opacity-90 transition">Streaming Chat</a>
                 </nav>
             </div>
-            <p class="text-gray-600 mt-2">Chat with our magical assistant to find your perfect unicorn!</p>
+            <p class="text-dev-text-muted mt-2">Chat with our magical assistant to find your perfect unicorn!</p>
         </header>
 
         <!-- Chat Interface -->
-        <div class="bg-white rounded-xl shadow-lg p-6 chat-container">
+        <div class="bg-dev-dark rounded-xl shadow-lg p-6 chat-container border border-dev-border">
             <div class="message-container mb-4" id="messageContainer">
                 <div class="flex mb-4">
-                    <div class="w-10 h-10 rounded-full bg-purple-200 flex items-center justify-center mr-3">
+                    <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
                         <span class="text-lg">🦄</span>
                     </div>
-                    <div class="bg-purple-100 rounded-lg p-3 max-w-3xl">
-                        <p class="text-gray-800">Welcome to the Unicorn Store! How can I help you find your magical companion today?</p>
+                    <div class="bg-dev-message-ai rounded-lg p-3 max-w-3xl border border-dev-border">
+                        <p class="text-dev-text">Welcome to the Unicorn Store! How can I help you find your magical companion today?</p>
                     </div>
                 </div>
                 <!-- Messages will be added here dynamically -->
             </div>
 
             <!-- Input Area -->
-            <div class="border-t pt-4">
+            <div class="border-t border-dev-border pt-4">
                 <form id="chatForm" class="flex">
-                    <input type="text" id="userInput" class="flex-grow border rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Ask about our unicorns...">
-                    <button type="submit" class="bg-purple-600 text-white px-6 py-2 rounded-r-lg hover:bg-purple-700 transition">Send</button>
+                    <input type="text" id="userInput" class="flex-grow bg-dev-darker border border-dev-border rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-dev-accent text-dev-text" placeholder="Ask about our unicorns...">
+                    <button type="submit" class="bg-dev-accent text-white px-6 py-2 rounded-r-lg hover:bg-dev-accent-hover transition">Send</button>
                 </form>
             </div>
         </div>
@@ -108,21 +142,21 @@
                 if (sender === 'user') {
                     messageDiv.innerHTML = `
                         <div class="ml-auto flex">
-                            <div class="bg-blue-100 rounded-lg p-3 max-w-3xl">
-                                <p class="text-gray-800">${escapeHtml(content)}</p>
+                            <div class="bg-dev-message-user rounded-lg p-3 max-w-3xl border border-dev-border">
+                                <p class="text-dev-text">${escapeHtml(content)}</p>
                             </div>
-                            <div class="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center ml-3">
+                            <div class="w-10 h-10 rounded-full bg-dev-secondary bg-opacity-20 flex items-center justify-center ml-3">
                                 <span class="text-lg">👤</span>
                             </div>
                         </div>
                     `;
                 } else {
                     messageDiv.innerHTML = `
-                        <div class="w-10 h-10 rounded-full bg-purple-200 flex items-center justify-center mr-3">
+                        <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
                             <span class="text-lg">🦄</span>
                         </div>
-                        <div class="bg-purple-100 rounded-lg p-3 max-w-3xl">
-                            <p class="text-gray-800">${escapeHtml(content)}</p>
+                        <div class="bg-dev-message-ai rounded-lg p-3 max-w-3xl border border-dev-border">
+                            <p class="text-dev-text">${escapeHtml(content)}</p>
                         </div>
                     `;
                 }
@@ -137,14 +171,14 @@
                 loadingDiv.id = loadingId;
                 loadingDiv.className = 'flex mb-4';
                 loadingDiv.innerHTML = `
-                    <div class="w-10 h-10 rounded-full bg-purple-200 flex items-center justify-center mr-3">
+                    <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
                         <span class="text-lg">🦄</span>
                     </div>
-                    <div class="bg-purple-100 rounded-lg p-3">
+                    <div class="bg-dev-message-ai rounded-lg p-3 border border-dev-border">
                         <div class="flex space-x-2">
-                            <div class="w-2 h-2 bg-purple-600 rounded-full animate-bounce"></div>
-                            <div class="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                            <div class="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                            <div class="w-2 h-2 bg-dev-accent rounded-full animate-bounce"></div>
+                            <div class="w-2 h-2 bg-dev-accent rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                            <div class="w-2 h-2 bg-dev-accent rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
                         </div>
                     </div>
                 `;
