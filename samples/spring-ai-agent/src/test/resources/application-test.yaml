@@ -1,0 +1,14 @@
+spring:
+  sql:
+    init:
+      mode: always
+  jpa:
+    hibernate:
+      ddl-auto: none
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  ai:
+    vectorstore:
+      pgvector:
+        dimensions: 1024
+        initialize-schema: true
