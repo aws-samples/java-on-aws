@@ -30,7 +30,7 @@ import software.amazon.awscdk.Duration;
 import java.util.List;
 import java.util.Map;
 
-public class InfrastructureEcs extends Construct {
+public class InfrastructureSpringAI extends Construct {
 
     private final String appName;
     private final Repository ecrRepository;
@@ -40,7 +40,7 @@ public class InfrastructureEcs extends Construct {
 
     private final InfrastructureCore infrastructureCore;
 
-    public InfrastructureEcs(final Construct scope, final String id, final InfrastructureCore infrastructureCore, final String appName) {
+    public InfrastructureSpringAI(final Construct scope, final String id, final InfrastructureCore infrastructureCore, final String appName) {
         super(scope, id);
 
         this.appName = appName;
@@ -121,9 +121,9 @@ public class InfrastructureEcs extends Construct {
             .memoryLimitMiB(2048)
             .build();
 
-        // Add container to task definition using a public nginx image
+        // Use the ECR repository with latest tag instead of building the image
         var containerDefinitionProps = software.amazon.awscdk.services.ecs.ContainerDefinitionOptions.builder()
-            .image(ContainerImage.fromRegistry("nginxinc/nginx-unprivileged:stable"))
+            .image(ContainerImage.fromEcrRepository(ecrRepository, "latest"))
             .containerName(appName)
             .essential(true)
             .environment(Map.of(

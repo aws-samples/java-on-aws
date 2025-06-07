@@ -9,7 +9,7 @@ import com.unicorn.constructs.CodeBuildResource;
 import com.unicorn.constructs.CodeBuildResource.CodeBuildResourceProps;
 import com.unicorn.core.InfrastructureCore;
 import com.unicorn.core.WorkshopFunction;
-import com.unicorn.core.InfrastructureEcs;
+import com.unicorn.core.InfrastructureSpringAI;
 
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -22,7 +22,7 @@ import software.constructs.Construct;
 import software.amazon.awscdk.DefaultStackSynthesizer;
 import software.amazon.awscdk.DefaultStackSynthesizerProps;
 
-public class IdeEcsStack extends Stack {
+public class SpringAIStack extends Stack {
 
     private final String bootstrapScript = """
         date
@@ -35,7 +35,7 @@ public class IdeEcsStack extends Stack {
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
 
         # echo '=== Additional Setup ==='
-        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/deploy/build-and-push.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh"
         """;
 
     private final String buildspec = """
@@ -56,7 +56,7 @@ public class IdeEcsStack extends Stack {
                         aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
         """;
 
-    public IdeEcsStack(final Construct scope, final String id) {
+    public SpringAIStack(final Construct scope, final String id) {
         // super(scope, id, props);
         super(scope, id, StackProps.builder()
         .synthesizer(new DefaultStackSynthesizer(DefaultStackSynthesizerProps.builder()
@@ -65,39 +65,39 @@ public class IdeEcsStack extends Stack {
         .build());
 
         // Create VPC
-        var vpc = new WorkshopVpc(this, "WorkshopVpc", "workshop-vpc").getVpc();
+        var vpc = new WorkshopVpc(this, "UnicornStoreVpc", "unicornstore-vpc").getVpc();
 
         // Create Workshop IDE
         var ideProps = new VSCodeIdeProps();
             ideProps.setBootstrapScript(bootstrapScript);
             ideProps.setVpc(vpc);
-            ideProps.setInstanceName("workshop-ide");
+            ideProps.setInstanceName("unicornstore-ide");
             ideProps.setInstanceType(InstanceType.of(InstanceClass.M5, InstanceSize.XLARGE));
             ideProps.setExtensions(Arrays.asList(
                 "amazonwebservices.aws-toolkit-vscode",
-                "amazonwebservices.amazon-q-vscode",
+                // "amazonwebservices.amazon-q-vscode",
                 "ms-azuretools.vscode-docker",
                 "vmware.vscode-boot-dev-pack",
                 "vscjava.vscode-java-pack"
             ));
-        new VSCodeIde(this, "VSCodeIdeGitea", ideProps);
-        var ideRole = ideProps.getRole();
-        ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
+        new VSCodeIde(this, "UnicornStoreIde", ideProps);
+        // var ideRole = ideProps.getRole();
+        // ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
 
         // Create Core infrastructure
         var infrastructureCore = new InfrastructureCore(this, "InfrastructureCore", vpc);
 
         // Create WorkshopLambda
-        new WorkshopFunction(this, "WorkshopFunction", infrastructureCore, "workshop-function");
-        new InfrastructureEcs(this, "InfrastructureEcs", infrastructureCore, "workshop-app");
+        new WorkshopFunction(this, "SpringAIFunction", infrastructureCore, "spring-ai-function");
+        new InfrastructureSpringAI(this, "InfrastructureSpringAI", infrastructureCore, "spring-ai-ui");
 
         // Create Workshop CodeBuild
         var codeBuildProps = new CodeBuildResourceProps();
-        codeBuildProps.setProjectName("workshop-codebuild");
+        codeBuildProps.setProjectName("unicornstore-codebuild");
         codeBuildProps.setBuildspec(buildspec);
         codeBuildProps.setVpc(vpc);
         codeBuildProps.setAdditionalIamPolicies(Arrays.asList(
             ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess")));
-        new CodeBuildResource(this, "WorkshopCodeBuild", codeBuildProps);
+        new CodeBuildResource(this, "UnicornStoreCodeBuild", codeBuildProps);
     }
 }

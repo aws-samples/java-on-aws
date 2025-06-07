@@ -66,7 +66,7 @@ Metadata:
       - reason: Workshop environment use temporary container for ECS
         id: AwsSolutions-ECS2
 Resources:
-  WorkshopVpc9CBD39F0:
+  UnicornStoreVpc647929A5:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 10.0.0.0/16
@@ -75,8 +75,8 @@ Resources:
       InstanceTenancy: default
       Tags:
         - Key: Name
-          Value: workshop-vpc
-  WorkshopVpcPublicSubnet1SubnetA669A4AA:
+          Value: unicornstore-vpc
+  UnicornStoreVpcPublicSubnet1Subnet5A587A94:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone:
@@ -91,57 +91,57 @@ Resources:
         - Key: aws-cdk:subnet-type
           Value: Public
         - Key: Name
-          Value: ide-ecs-stack/WorkshopVpc/Vpc/PublicSubnet1
+          Value: spring-ai-stack/UnicornStoreVpc/Vpc/PublicSubnet1
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  WorkshopVpcPublicSubnet1RouteTable0D5E0697:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreVpcPublicSubnet1RouteTableA6A1DD76:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
         - Key: Name
-          Value: ide-ecs-stack/WorkshopVpc/Vpc/PublicSubnet1
+          Value: spring-ai-stack/UnicornStoreVpc/Vpc/PublicSubnet1
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  WorkshopVpcPublicSubnet1RouteTableAssociationC8DC0A8B:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreVpcPublicSubnet1RouteTableAssociation3D94AF82:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId:
-        Ref: WorkshopVpcPublicSubnet1RouteTable0D5E0697
+        Ref: UnicornStoreVpcPublicSubnet1RouteTableA6A1DD76
       SubnetId:
-        Ref: WorkshopVpcPublicSubnet1SubnetA669A4AA
-  WorkshopVpcPublicSubnet1DefaultRoute46A975C6:
+        Ref: UnicornStoreVpcPublicSubnet1Subnet5A587A94
+  UnicornStoreVpcPublicSubnet1DefaultRoute72D8F029:
     Type: AWS::EC2::Route
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId:
-        Ref: WorkshopVpcIGWE3E3969A
+        Ref: UnicornStoreVpcIGW37028CE1
       RouteTableId:
-        Ref: WorkshopVpcPublicSubnet1RouteTable0D5E0697
+        Ref: UnicornStoreVpcPublicSubnet1RouteTableA6A1DD76
     DependsOn:
-      - WorkshopVpcVPCGW6341425D
-  WorkshopVpcPublicSubnet1EIP59395017:
+      - UnicornStoreVpcVPCGW825EF84F
+  UnicornStoreVpcPublicSubnet1EIP9D77368A:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
       Tags:
         - Key: Name
-          Value: ide-ecs-stack/WorkshopVpc/Vpc/PublicSubnet1
-  WorkshopVpcPublicSubnet1NATGateway3B4874AC:
+          Value: spring-ai-stack/UnicornStoreVpc/Vpc/PublicSubnet1
+  UnicornStoreVpcPublicSubnet1NATGateway1B70C1D9:
     Type: AWS::EC2::NatGateway
     Properties:
       AllocationId:
         Fn::GetAtt:
-          - WorkshopVpcPublicSubnet1EIP59395017
+          - UnicornStoreVpcPublicSubnet1EIP9D77368A
           - AllocationId
       SubnetId:
-        Ref: WorkshopVpcPublicSubnet1SubnetA669A4AA
+        Ref: UnicornStoreVpcPublicSubnet1Subnet5A587A94
       Tags:
         - Key: Name
-          Value: ide-ecs-stack/WorkshopVpc/Vpc/PublicSubnet1
+          Value: spring-ai-stack/UnicornStoreVpc/Vpc/PublicSubnet1
     DependsOn:
-      - WorkshopVpcPublicSubnet1DefaultRoute46A975C6
-      - WorkshopVpcPublicSubnet1RouteTableAssociationC8DC0A8B
-  WorkshopVpcPublicSubnet2SubnetBDFBF52E:
+      - UnicornStoreVpcPublicSubnet1DefaultRoute72D8F029
+      - UnicornStoreVpcPublicSubnet1RouteTableAssociation3D94AF82
+  UnicornStoreVpcPublicSubnet2Subnet6C10127F:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone:
@@ -156,35 +156,35 @@ Resources:
         - Key: aws-cdk:subnet-type
           Value: Public
         - Key: Name
-          Value: ide-ecs-stack/WorkshopVpc/Vpc/PublicSubnet2
+          Value: spring-ai-stack/UnicornStoreVpc/Vpc/PublicSubnet2
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  WorkshopVpcPublicSubnet2RouteTable79CCA17F:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreVpcPublicSubnet2RouteTable9C89D84E:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
         - Key: Name
-          Value: ide-ecs-stack/WorkshopVpc/Vpc/PublicSubnet2
+          Value: spring-ai-stack/UnicornStoreVpc/Vpc/PublicSubnet2
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  WorkshopVpcPublicSubnet2RouteTableAssociation005F29A4:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreVpcPublicSubnet2RouteTableAssociationEF6ADCD0:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId:
-        Ref: WorkshopVpcPublicSubnet2RouteTable79CCA17F
+        Ref: UnicornStoreVpcPublicSubnet2RouteTable9C89D84E
       SubnetId:
-        Ref: WorkshopVpcPublicSubnet2SubnetBDFBF52E
-  WorkshopVpcPublicSubnet2DefaultRouteBE49FFDD:
+        Ref: UnicornStoreVpcPublicSubnet2Subnet6C10127F
+  UnicornStoreVpcPublicSubnet2DefaultRoute6F034F39:
     Type: AWS::EC2::Route
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId:
-        Ref: WorkshopVpcIGWE3E3969A
+        Ref: UnicornStoreVpcIGW37028CE1
       RouteTableId:
-        Ref: WorkshopVpcPublicSubnet2RouteTable79CCA17F
+        Ref: UnicornStoreVpcPublicSubnet2RouteTable9C89D84E
     DependsOn:
-      - WorkshopVpcVPCGW6341425D
-  WorkshopVpcPrivateSubnet1Subnet8F30D1E3:
+      - UnicornStoreVpcVPCGW825EF84F
+  UnicornStoreVpcPrivateSubnet1Subnet1D81DF60:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone:
@@ -199,33 +199,33 @@ Resources:
         - Key: aws-cdk:subnet-type
           Value: Private
         - Key: Name
-          Value: ide-ecs-stack/WorkshopVpc/Vpc/PrivateSubnet1
+          Value: spring-ai-stack/UnicornStoreVpc/Vpc/PrivateSubnet1
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  WorkshopVpcPrivateSubnet1RouteTable93F4A08B:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreVpcPrivateSubnet1RouteTable3F4F42C3:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
         - Key: Name
-          Value: ide-ecs-stack/WorkshopVpc/Vpc/PrivateSubnet1
+          Value: spring-ai-stack/UnicornStoreVpc/Vpc/PrivateSubnet1
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  WorkshopVpcPrivateSubnet1RouteTableAssociation6F25361F:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreVpcPrivateSubnet1RouteTableAssociationE6E7A751:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId:
-        Ref: WorkshopVpcPrivateSubnet1RouteTable93F4A08B
+        Ref: UnicornStoreVpcPrivateSubnet1RouteTable3F4F42C3
       SubnetId:
-        Ref: WorkshopVpcPrivateSubnet1Subnet8F30D1E3
-  WorkshopVpcPrivateSubnet1DefaultRouteC53251BD:
+        Ref: UnicornStoreVpcPrivateSubnet1Subnet1D81DF60
+  UnicornStoreVpcPrivateSubnet1DefaultRoute18CAE313:
     Type: AWS::EC2::Route
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId:
-        Ref: WorkshopVpcPublicSubnet1NATGateway3B4874AC
+        Ref: UnicornStoreVpcPublicSubnet1NATGateway1B70C1D9
       RouteTableId:
-        Ref: WorkshopVpcPrivateSubnet1RouteTable93F4A08B
-  WorkshopVpcPrivateSubnet2Subnet73CC1040:
+        Ref: UnicornStoreVpcPrivateSubnet1RouteTable3F4F42C3
+  UnicornStoreVpcPrivateSubnet2Subnet4710EC68:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone:
@@ -240,46 +240,46 @@ Resources:
         - Key: aws-cdk:subnet-type
           Value: Private
         - Key: Name
-          Value: ide-ecs-stack/WorkshopVpc/Vpc/PrivateSubnet2
+          Value: spring-ai-stack/UnicornStoreVpc/Vpc/PrivateSubnet2
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  WorkshopVpcPrivateSubnet2RouteTable249896AE:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreVpcPrivateSubnet2RouteTableC066B309:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
         - Key: Name
-          Value: ide-ecs-stack/WorkshopVpc/Vpc/PrivateSubnet2
+          Value: spring-ai-stack/UnicornStoreVpc/Vpc/PrivateSubnet2
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  WorkshopVpcPrivateSubnet2RouteTableAssociationDAB78D9E:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreVpcPrivateSubnet2RouteTableAssociation0C455BE6:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId:
-        Ref: WorkshopVpcPrivateSubnet2RouteTable249896AE
+        Ref: UnicornStoreVpcPrivateSubnet2RouteTableC066B309
       SubnetId:
-        Ref: WorkshopVpcPrivateSubnet2Subnet73CC1040
-  WorkshopVpcPrivateSubnet2DefaultRoute290F73AA:
+        Ref: UnicornStoreVpcPrivateSubnet2Subnet4710EC68
+  UnicornStoreVpcPrivateSubnet2DefaultRouteDA0F8992:
     Type: AWS::EC2::Route
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId:
-        Ref: WorkshopVpcPublicSubnet1NATGateway3B4874AC
+        Ref: UnicornStoreVpcPublicSubnet1NATGateway1B70C1D9
       RouteTableId:
-        Ref: WorkshopVpcPrivateSubnet2RouteTable249896AE
-  WorkshopVpcIGWE3E3969A:
+        Ref: UnicornStoreVpcPrivateSubnet2RouteTableC066B309
+  UnicornStoreVpcIGW37028CE1:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
-          Value: workshop-vpc
-  WorkshopVpcVPCGW6341425D:
+          Value: unicornstore-vpc
+  UnicornStoreVpcVPCGW825EF84F:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       InternetGatewayId:
-        Ref: WorkshopVpcIGWE3E3969A
+        Ref: UnicornStoreVpcIGW37028CE1
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  VSCodeIdeGiteaIdeRole90308F47:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreIdeIdeRole81A2CEAA:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -300,14 +300,9 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonSSMManagedInstanceCore
-        - Ref: VSCodeIdeGiteaWorkshopIdeUserPolicy062B10B9
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AdministratorAccess
-      RoleName: workshop-ide-user
-  VSCodeIdeGiteaIdeRoleDefaultPolicy7AA4DC42:
+        - Ref: UnicornStoreIdeWorkshopIdeUserPolicy4FE3EC67
+      RoleName: unicornstore-ide-user
+  UnicornStoreIdeIdeRoleDefaultPolicy7083F507:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -318,19 +313,19 @@ Resources:
             Effect: Allow
             Resource:
               Fn::GetAtt:
-                - VSCodeIdeGiteaIdeLogGroupCD76FEFA
+                - UnicornStoreIdeIdeLogGroup7A5EFA50
                 - Arn
           - Action:
               - secretsmanager:GetSecretValue
               - secretsmanager:DescribeSecret
             Effect: Allow
             Resource:
-              Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+              Ref: UnicornStoreIdeIdePasswordSecret514252E2
         Version: "2012-10-17"
-      PolicyName: VSCodeIdeGiteaIdeRoleDefaultPolicy7AA4DC42
+      PolicyName: UnicornStoreIdeIdeRoleDefaultPolicy7083F507
       Roles:
-        - Ref: VSCodeIdeGiteaIdeRole90308F47
-  VSCodeIdeGiteaWorkshopIdeUserPolicy062B10B9:
+        - Ref: UnicornStoreIdeIdeRole81A2CEAA
+  UnicornStoreIdeWorkshopIdeUserPolicy4FE3EC67:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: ""
@@ -349,6 +344,10 @@ Resources:
               - secretsmanager:*
               - ssm:*
               - sts:*
+              - bedrock:*
+              - bedrock-agent:*
+              - bedrock-agent-runtime:*
+              - bedrock-runtime:*
             Effect: Allow
             Resource: "*"
             Sid: AllowedServicesEKS
@@ -425,14 +424,14 @@ Resources:
             Resource: "*"
             Sid: DenyReservations
         Version: "2012-10-17"
-  VSCodeIdeGiteaIdeLogGroupCD76FEFA:
+  UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: workshop-ide-bootstrap-log-20250521-115808
+      LogGroupName: unicornstore-ide-bootstrap-log-20250607-190326
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
-  VSCodeIdeGiteaIdePrefixListFunctionServiceRole8E037D06:
+  UnicornStoreIdeIdePrefixListFunctionServiceRole32E30C10:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -448,7 +447,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  VSCodeIdeGiteaIdePrefixListFunctionServiceRoleDefaultPolicy6FB01C7B:
+  UnicornStoreIdeIdePrefixListFunctionServiceRoleDefaultPolicy33F10FE5:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -457,10 +456,10 @@ Resources:
             Effect: Allow
             Resource: "*"
         Version: "2012-10-17"
-      PolicyName: VSCodeIdeGiteaIdePrefixListFunctionServiceRoleDefaultPolicy6FB01C7B
+      PolicyName: UnicornStoreIdeIdePrefixListFunctionServiceRoleDefaultPolicy33F10FE5
       Roles:
-        - Ref: VSCodeIdeGiteaIdePrefixListFunctionServiceRole8E037D06
-  VSCodeIdeGiteaIdePrefixListFunction61BC1AE7:
+        - Ref: UnicornStoreIdeIdePrefixListFunctionServiceRole32E30C10
+  UnicornStoreIdeIdePrefixListFunctionA6A4129C:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -500,75 +499,75 @@ Resources:
                       responseData = {'Error': tb_err}
                   finally:
                       cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
-      FunctionName: workshop-ide-prefix-list-lambda
+      FunctionName: unicornstore-ide-prefix-list-lambda
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdePrefixListFunctionServiceRole8E037D06
+          - UnicornStoreIdeIdePrefixListFunctionServiceRole32E30C10
           - Arn
       Runtime: python3.13
       Timeout: 180
     DependsOn:
-      - VSCodeIdeGiteaIdePrefixListFunctionServiceRoleDefaultPolicy6FB01C7B
-      - VSCodeIdeGiteaIdePrefixListFunctionServiceRole8E037D06
-  VSCodeIdeGiteaIdePrefixListResource6C05F1BC:
+      - UnicornStoreIdeIdePrefixListFunctionServiceRoleDefaultPolicy33F10FE5
+      - UnicornStoreIdeIdePrefixListFunctionServiceRole32E30C10
+  UnicornStoreIdeIdePrefixListResource228B9344:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdePrefixListFunction61BC1AE7
+          - UnicornStoreIdeIdePrefixListFunctionA6A4129C
           - Arn
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  VSCodeIdeGiteaIdeSecurityGroupF32C3523:
+  UnicornStoreIdeIdeSecurityGroupD6434416:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: IDE security group
-      GroupName: workshop-ide-cloudfront-ide-sg
+      GroupName: unicornstore-ide-cloudfront-ide-sg
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  VSCodeIdeGiteaIdeSecurityGroupfromIndirectPeer8036B79F7D:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreIdeIdeSecurityGroupfromIndirectPeer80C455E18A:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: HTTP from CloudFront only
       FromPort: 80
       GroupId:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdeSecurityGroupF32C3523
+          - UnicornStoreIdeIdeSecurityGroupD6434416
           - GroupId
       IpProtocol: tcp
       SourcePrefixListId:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdePrefixListResource6C05F1BC
+          - UnicornStoreIdeIdePrefixListResource228B9344
           - PrefixListId
       ToPort: 80
-  VSCodeIdeGiteaAppSecurityGroup2574CAA7:
+  UnicornStoreIdeAppSecurityGroupA4858227:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: App security group
-      GroupName: workshop-ide-cloudfront-app-sg
+      GroupName: unicornstore-ide-cloudfront-app-sg
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  VSCodeIdeGiteaIdeInstanceProfileCE7EC5EA:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreIdeIdeInstanceProfileCEFB2BB2:
     Type: AWS::IAM::InstanceProfile
     Properties:
       InstanceProfileName:
-        Ref: VSCodeIdeGiteaIdeRole90308F47
+        Ref: UnicornStoreIdeIdeRole81A2CEAA
       Roles:
-        - Ref: VSCodeIdeGiteaIdeRole90308F47
-  VSCodeIdeGiteaIdeElasticIPBF6E624D:
+        - Ref: UnicornStoreIdeIdeRole81A2CEAA
+  UnicornStoreIdeIdeElasticIP832AF6A3:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
-  VSCodeIdeGiteaIdeEC2Instance51274E6D:
+  UnicornStoreIdeIdeEC2Instance5F393FC5:
     Type: AWS::EC2::Instance
     Properties:
       AvailabilityZone:
@@ -583,83 +582,83 @@ Resources:
             VolumeSize: 50
             VolumeType: gp3
       IamInstanceProfile:
-        Ref: VSCodeIdeGiteaIdeInstanceProfileCE7EC5EA
+        Ref: UnicornStoreIdeIdeInstanceProfileCEFB2BB2
       ImageId:
         Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
       InstanceType: m5.xlarge
       SecurityGroupIds:
         - Fn::GetAtt:
-            - VSCodeIdeGiteaIdeSecurityGroupF32C3523
+            - UnicornStoreIdeIdeSecurityGroupD6434416
             - GroupId
         - Fn::GetAtt:
-            - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
+            - UnicornStoreIdeIdeInternalSecurityGroup29539F21
             - GroupId
       SubnetId:
-        Ref: WorkshopVpcPublicSubnet1SubnetA669A4AA
+        Ref: UnicornStoreVpcPublicSubnet1Subnet5A587A94
       Tags:
         - Key: Name
-          Value: workshop-ide
+          Value: unicornstore-ide
       UserData:
         Fn::Base64: "#!/bin/bash"
     DependsOn:
-      - VSCodeIdeGiteaIdePasswordSecretD25F73F4
-      - VSCodeIdeGiteaIdeRoleDefaultPolicy7AA4DC42
-      - VSCodeIdeGiteaIdeRole90308F47
-  VSCodeIdeGiteaIdeEipAssociation2B351459:
+      - UnicornStoreIdeIdePasswordSecret514252E2
+      - UnicornStoreIdeIdeRoleDefaultPolicy7083F507
+      - UnicornStoreIdeIdeRole81A2CEAA
+  UnicornStoreIdeIdeEipAssociation14729AD1:
     Type: AWS::EC2::EIPAssociation
     Properties:
       AllocationId:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdeElasticIPBF6E624D
+          - UnicornStoreIdeIdeElasticIP832AF6A3
           - AllocationId
       InstanceId:
-        Ref: VSCodeIdeGiteaIdeEC2Instance51274E6D
-  VSCodeIdeGiteaIdeInternalSecurityGroupD236D648:
+        Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
+  UnicornStoreIdeIdeInternalSecurityGroup29539F21:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: IDE internal security group
-      GroupName: workshop-ide-internal-sg
+      GroupName: unicornstore-ide-internal-sg
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  VSCodeIdeGiteaIdeInternalSecurityGroupfromideecsstackVSCodeIdeGiteaIdeInternalSecurityGroup5F226B3FALLTRAFFICB8AEFF94:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreIdeIdeInternalSecurityGroupfromspringaistackUnicornStoreIdeIdeInternalSecurityGroupE454536EALLTRAFFICC71662FE:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: Allow all internal traffic
       GroupId:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
+          - UnicornStoreIdeIdeInternalSecurityGroup29539F21
           - GroupId
       IpProtocol: "-1"
       SourceSecurityGroupId:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
+          - UnicornStoreIdeIdeInternalSecurityGroup29539F21
           - GroupId
-  VSCodeIdeGiteaIdeInternalSecurityGrouptoideecsstackVSCodeIdeGiteaIdeInternalSecurityGroup5F226B3FALLTRAFFICBC1F595A:
+  UnicornStoreIdeIdeInternalSecurityGrouptospringaistackUnicornStoreIdeIdeInternalSecurityGroupE454536EALLTRAFFIC43A81B68:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
       Description: Allow all internal traffic
       DestinationSecurityGroupId:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
+          - UnicornStoreIdeIdeInternalSecurityGroup29539F21
           - GroupId
       GroupId:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
+          - UnicornStoreIdeIdeInternalSecurityGroup29539F21
           - GroupId
       IpProtocol: "-1"
-  VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5:
+  UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1:
     Type: AWS::CloudFormation::WaitConditionHandle
-  VSCodeIdeGiteaIdeBootstrapWaitCondition7A3D8607:
+  UnicornStoreIdeIdeBootstrapWaitConditionE9768A2E:
     Type: AWS::CloudFormation::WaitCondition
     Properties:
       Count: 1
       Handle:
-        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
+        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
       Timeout: "1800"
     DependsOn:
-      - VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
-      - VSCodeIdeGiteaIdeEC2Instance51274E6D
-  VSCodeIdeGiteaIdeDistribution51935A77:
+      - UnicornStoreIdeIdeBootstrapDocumentE330810B
+      - UnicornStoreIdeIdeEC2Instance5F393FC5
+  UnicornStoreIdeIdeDistribution9A9F0B03:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
@@ -675,7 +674,7 @@ Resources:
           CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
           Compress: true
           OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
-          TargetOriginId: ideecsstackVSCodeIdeGiteaIdeDistributionOrigin1AC13BF83
+          TargetOriginId: springaistackUnicornStoreIdeIdeDistributionOrigin1685097E2
           ViewerProtocolPolicy: allow-all
         Enabled: true
         HttpVersion: http2
@@ -688,14 +687,14 @@ Resources:
                 - TLSv1.2
             DomainName:
               Fn::GetAtt:
-                - VSCodeIdeGiteaIdeEC2Instance51274E6D
+                - UnicornStoreIdeIdeEC2Instance5F393FC5
                 - PublicDnsName
-            Id: ideecsstackVSCodeIdeGiteaIdeDistributionOrigin1AC13BF83
+            Id: springaistackUnicornStoreIdeIdeDistributionOrigin1685097E2
     DependsOn:
-      - VSCodeIdeGiteaIdeEipAssociation2B351459
+      - UnicornStoreIdeIdeEipAssociation14729AD1
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  VSCodeIdeGiteaIdePasswordSecretD25F73F4:
+  UnicornStoreIdeIdePasswordSecret514252E2:
     Type: AWS::SecretsManager::Secret
     Properties:
       GenerateSecretString:
@@ -705,10 +704,10 @@ Resources:
         IncludeSpace: false
         PasswordLength: 32
         SecretStringTemplate: '{"password":""}'
-      Name: workshop-ide-password-lambda
+      Name: unicornstore-ide-password-lambda
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  VSCodeIdeGiteaIdePasswordExporterFunctionServiceRole708F84CF:
+  UnicornStoreIdeIdePasswordExporterFunctionServiceRoleE9BF6179:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -724,7 +723,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  VSCodeIdeGiteaIdePasswordExporterFunctionServiceRoleDefaultPolicy6B7C730A:
+  UnicornStoreIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy0EF930BA:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -734,12 +733,12 @@ Resources:
               - secretsmanager:DescribeSecret
             Effect: Allow
             Resource:
-              Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+              Ref: UnicornStoreIdeIdePasswordSecret514252E2
         Version: "2012-10-17"
-      PolicyName: VSCodeIdeGiteaIdePasswordExporterFunctionServiceRoleDefaultPolicy6B7C730A
+      PolicyName: UnicornStoreIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy0EF930BA
       Roles:
-        - Ref: VSCodeIdeGiteaIdePasswordExporterFunctionServiceRole708F84CF
-  VSCodeIdeGiteaIdePasswordExporterFunctionAC00753B:
+        - Ref: UnicornStoreIdeIdePasswordExporterFunctionServiceRoleE9BF6179
+  UnicornStoreIdeIdePasswordExporterFunction456E6CFA:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -776,23 +775,23 @@ Resources:
                       responseData = {'Error': tb_err}
                   finally:
                       cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
-      FunctionName: workshop-ide-password-lambda
+      FunctionName: unicornstore-ide-password-lambda
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdePasswordExporterFunctionServiceRole708F84CF
+          - UnicornStoreIdeIdePasswordExporterFunctionServiceRoleE9BF6179
           - Arn
       Runtime: python3.13
       Timeout: 180
     DependsOn:
-      - VSCodeIdeGiteaIdePasswordExporterFunctionServiceRoleDefaultPolicy6B7C730A
-      - VSCodeIdeGiteaIdePasswordExporterFunctionServiceRole708F84CF
-  VSCodeIdeGiteaIdePasswordExporterE0C78A5A:
+      - UnicornStoreIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy0EF930BA
+      - UnicornStoreIdeIdePasswordExporterFunctionServiceRoleE9BF6179
+  UnicornStoreIdeIdePasswordExporter0662A4D7:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdePasswordExporterFunctionAC00753B
+          - UnicornStoreIdeIdePasswordExporterFunction456E6CFA
           - Arn
       PasswordName:
         Fn::Join:
@@ -805,7 +804,7 @@ Resources:
                         - 6
                         - Fn::Split:
                             - ":"
-                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                            - Ref: UnicornStoreIdeIdePasswordSecret514252E2
             - Fn::Select:
                 - 1
                 - Fn::Split:
@@ -814,7 +813,7 @@ Resources:
                         - 6
                         - Fn::Split:
                             - ":"
-                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                            - Ref: UnicornStoreIdeIdePasswordSecret514252E2
             - Fn::Select:
                 - 2
                 - Fn::Split:
@@ -823,7 +822,7 @@ Resources:
                         - 6
                         - Fn::Split:
                             - ":"
-                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                            - Ref: UnicornStoreIdeIdePasswordSecret514252E2
             - Fn::Select:
                 - 3
                 - Fn::Split:
@@ -832,10 +831,10 @@ Resources:
                         - 6
                         - Fn::Split:
                             - ":"
-                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                            - Ref: UnicornStoreIdeIdePasswordSecret514252E2
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  VSCodeIdeGiteaIdeBootstrapDocument7FC8732A:
+  UnicornStoreIdeIdeBootstrapDocumentE330810B:
     Type: AWS::SSM::Document
     Properties:
       Content:
@@ -843,9 +842,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            description: (Optional) Custom bootstrap script to run.
             type: String
             default: ""
+            description: (Optional) Custom bootstrap script to run.
         mainSteps:
           - inputs:
               runCommand:
@@ -1101,14 +1100,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - waitConditionHandleUrl:
-                        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
-                      extensions: amazonwebservices.aws-toolkit-vscode,amazonwebservices.amazon-q-vscode,ms-azuretools.vscode-docker,vmware.vscode-boot-dev-pack,vscjava.vscode-java-pack
-                      domain: ""
-                      installGitea: echo bootstrapGitea was not provided
-                      terminalOnStartup: "true"
-                      environmentContentsZip: ""
-                      passwordName:
+                    - passwordName:
                         Fn::Join:
                           - "-"
                           - - Fn::Select:
@@ -1119,7 +1111,7 @@ Resources:
                                         - 6
                                         - Fn::Split:
                                             - ":"
-                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                                            - Ref: UnicornStoreIdeIdePasswordSecret514252E2
                             - Fn::Select:
                                 - 1
                                 - Fn::Split:
@@ -1128,7 +1120,7 @@ Resources:
                                         - 6
                                         - Fn::Split:
                                             - ":"
-                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                                            - Ref: UnicornStoreIdeIdePasswordSecret514252E2
                             - Fn::Select:
                                 - 2
                                 - Fn::Split:
@@ -1137,7 +1129,7 @@ Resources:
                                         - 6
                                         - Fn::Split:
                                             - ":"
-                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                                            - Ref: UnicornStoreIdeIdePasswordSecret514252E2
                             - Fn::Select:
                                 - 3
                                 - Fn::Split:
@@ -1146,7 +1138,7 @@ Resources:
                                         - 6
                                         - Fn::Split:
                                             - ":"
-                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                                            - Ref: UnicornStoreIdeIdePasswordSecret514252E2
                       customBootstrapScript: |
                         date
 
@@ -1158,23 +1150,30 @@ Resources:
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
 
                         # echo '=== Additional Setup ==='
-                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/deploy/build-and-push.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh"
                       codeServerVersion: 4.100.2
                       instanceIamRoleName:
-                        Ref: VSCodeIdeGiteaIdeRole90308F47
+                        Ref: UnicornStoreIdeIdeRole81A2CEAA
                       splashUrl: ""
                       instanceIamRoleArn:
                         Fn::GetAtt:
-                          - VSCodeIdeGiteaIdeRole90308F47
+                          - UnicornStoreIdeIdeRole81A2CEAA
                           - Arn
                       readmeUrl: ""
+                      waitConditionHandleUrl:
+                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
+                      extensions: amazonwebservices.aws-toolkit-vscode,ms-azuretools.vscode-docker,vmware.vscode-boot-dev-pack,vscjava.vscode-java-pack
+                      domain: ""
+                      installGitea: echo bootstrapGitea was not provided
+                      terminalOnStartup: "true"
+                      environmentContentsZip: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
       DocumentType: Command
-      Name: workshop-ide-bootstrap-document
+      Name: unicornstore-ide-bootstrap-document
       UpdateMethod: NewVersion
-  VSCodeIdeGiteaIdeBootstrapFunctionServiceRole80398CD3:
+  UnicornStoreIdeIdeBootstrapFunctionServiceRole3CD8C4AA:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1190,7 +1189,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  VSCodeIdeGiteaIdeBootstrapFunctionServiceRoleDefaultPolicy14D563B8:
+  UnicornStoreIdeIdeBootstrapFunctionServiceRoleDefaultPolicyA8D6D12D:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -1199,7 +1198,7 @@ Resources:
             Effect: Allow
             Resource:
               Fn::GetAtt:
-                - VSCodeIdeGiteaIdeRole90308F47
+                - UnicornStoreIdeIdeRole81A2CEAA
                 - Arn
           - Action:
               - ec2:DescribeInstances
@@ -1210,10 +1209,10 @@ Resources:
             Effect: Allow
             Resource: "*"
         Version: "2012-10-17"
-      PolicyName: VSCodeIdeGiteaIdeBootstrapFunctionServiceRoleDefaultPolicy14D563B8
+      PolicyName: UnicornStoreIdeIdeBootstrapFunctionServiceRoleDefaultPolicyA8D6D12D
       Roles:
-        - Ref: VSCodeIdeGiteaIdeBootstrapFunctionServiceRole80398CD3
-  VSCodeIdeGiteaIdeBootstrapFunction34BA645E:
+        - Ref: UnicornStoreIdeIdeBootstrapFunctionServiceRole3CD8C4AA
+  UnicornStoreIdeIdeBootstrapFunctionF57074A6:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -1287,30 +1286,30 @@ Resources:
                       responseData = {'Error': tb_err}
                   finally:
                       cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
-      FunctionName: workshop-ide-bootstrap-lambda
+      FunctionName: unicornstore-ide-bootstrap-lambda
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdeBootstrapFunctionServiceRole80398CD3
+          - UnicornStoreIdeIdeBootstrapFunctionServiceRole3CD8C4AA
           - Arn
       Runtime: python3.13
       Timeout: 900
     DependsOn:
-      - VSCodeIdeGiteaIdeBootstrapFunctionServiceRoleDefaultPolicy14D563B8
-      - VSCodeIdeGiteaIdeBootstrapFunctionServiceRole80398CD3
-  VSCodeIdeGiteaIdeBootstrapResource2AE02B22:
+      - UnicornStoreIdeIdeBootstrapFunctionServiceRoleDefaultPolicyA8D6D12D
+      - UnicornStoreIdeIdeBootstrapFunctionServiceRole3CD8C4AA
+  UnicornStoreIdeIdeBootstrapResourceB07B1E57:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdeBootstrapFunction34BA645E
+          - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
       LogGroupName:
-        Ref: VSCodeIdeGiteaIdeLogGroupCD76FEFA
+        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
       SsmDocument:
-        Ref: VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
+        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
       InstanceId:
-        Ref: VSCodeIdeGiteaIdeEC2Instance51274E6D
+        Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -1340,7 +1339,7 @@ Resources:
   InfrastructureCoreDatabaseSG7319389B:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: ide-ecs-stack/InfrastructureCore/DatabaseSG
+      GroupDescription: spring-ai-stack/InfrastructureCore/DatabaseSG
       GroupName: unicornstore-db-sg
       SecurityGroupEgress:
         - CidrIp: 255.255.255.255/32
@@ -1355,14 +1354,14 @@ Resources:
           IpProtocol: tcp
           ToPort: 5432
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
+        Ref: UnicornStoreVpc647929A5
   InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
       DBSubnetGroupDescription: Subnets for UnicornStoreDatabase database
       SubnetIds:
-        - Ref: WorkshopVpcPrivateSubnet1Subnet8F30D1E3
-        - Ref: WorkshopVpcPrivateSubnet2Subnet73CC1040
+        - Ref: UnicornStoreVpcPrivateSubnet1Subnet1D81DF60
+        - Ref: UnicornStoreVpcPrivateSubnet2Subnet4710EC68
   InfrastructureCoreUnicornStoreDatabaseF56884BA:
     Type: AWS::RDS::DBCluster
     Properties:
@@ -1409,10 +1408,10 @@ Resources:
       PromotionTier: 0
       PubliclyAccessible: false
     DependsOn:
-      - WorkshopVpcPrivateSubnet1DefaultRouteC53251BD
-      - WorkshopVpcPrivateSubnet1RouteTableAssociation6F25361F
-      - WorkshopVpcPrivateSubnet2DefaultRoute290F73AA
-      - WorkshopVpcPrivateSubnet2RouteTableAssociationDAB78D9E
+      - UnicornStoreVpcPrivateSubnet1DefaultRoute18CAE313
+      - UnicornStoreVpcPrivateSubnet1RouteTableAssociationE6E7A751
+      - UnicornStoreVpcPrivateSubnet2DefaultRouteDA0F8992
+      - UnicornStoreVpcPrivateSubnet2RouteTableAssociation0C455BE6
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCoreUnicornEventBusBBADDC7E:
@@ -1422,14 +1421,14 @@ Resources:
   InfrastructureCoreApplicationSecurityGroup914702B5:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: ide-ecs-stack/InfrastructureCore/ApplicationSecurityGroup
+      GroupDescription: spring-ai-stack/InfrastructureCore/ApplicationSecurityGroup
       GroupName: unicornstore-application-sg
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
+        Ref: UnicornStoreVpc647929A5
   InfrastructureCoreSsmParameterDBConnectionString2EE427D4:
     Type: AWS::SSM::Parameter
     Properties:
@@ -1486,7 +1485,7 @@ Resources:
             - :SecretString:password::}}
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  WorkshopFunctionworkshopfunctionLambdaFunctionServiceRole777E3C8B:
+  SpringAIFunctionspringaifunctionLambdaFunctionServiceRole10FB4585:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1508,11 +1507,11 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
     DependsOn:
-      - WorkshopVpcPrivateSubnet1DefaultRouteC53251BD
-      - WorkshopVpcPrivateSubnet1RouteTableAssociation6F25361F
-      - WorkshopVpcPrivateSubnet2DefaultRoute290F73AA
-      - WorkshopVpcPrivateSubnet2RouteTableAssociationDAB78D9E
-  WorkshopFunctionworkshopfunctionLambdaFunctionServiceRoleDefaultPolicy1A55F454:
+      - UnicornStoreVpcPrivateSubnet1DefaultRoute18CAE313
+      - UnicornStoreVpcPrivateSubnet1RouteTableAssociationE6E7A751
+      - UnicornStoreVpcPrivateSubnet2DefaultRouteDA0F8992
+      - UnicornStoreVpcPrivateSubnet2RouteTableAssociation0C455BE6
+  SpringAIFunctionspringaifunctionLambdaFunctionServiceRoleDefaultPolicyE9494DF6:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -1524,15 +1523,15 @@ Resources:
                 - InfrastructureCoreUnicornEventBusBBADDC7E
                 - Arn
         Version: "2012-10-17"
-      PolicyName: WorkshopFunctionworkshopfunctionLambdaFunctionServiceRoleDefaultPolicy1A55F454
+      PolicyName: SpringAIFunctionspringaifunctionLambdaFunctionServiceRoleDefaultPolicyE9494DF6
       Roles:
-        - Ref: WorkshopFunctionworkshopfunctionLambdaFunctionServiceRole777E3C8B
+        - Ref: SpringAIFunctionspringaifunctionLambdaFunctionServiceRole10FB4585
     DependsOn:
-      - WorkshopVpcPrivateSubnet1DefaultRouteC53251BD
-      - WorkshopVpcPrivateSubnet1RouteTableAssociation6F25361F
-      - WorkshopVpcPrivateSubnet2DefaultRoute290F73AA
-      - WorkshopVpcPrivateSubnet2RouteTableAssociationDAB78D9E
-  WorkshopFunctionworkshopfunctionLambdaFunction6FC058EB:
+      - UnicornStoreVpcPrivateSubnet1DefaultRoute18CAE313
+      - UnicornStoreVpcPrivateSubnet1RouteTableAssociationE6E7A751
+      - UnicornStoreVpcPrivateSubnet2DefaultRouteDA0F8992
+      - UnicornStoreVpcPrivateSubnet2RouteTableAssociation0C455BE6
+  SpringAIFunctionspringaifunctionLambdaFunctionB9DE1734:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -1541,6 +1540,12 @@ Resources:
               return 'placeholder'
       Environment:
         Variables:
+          SPRING_DATASOURCE_PASSWORD:
+            Fn::Join:
+              - ""
+              - - "{{resolve:secretsmanager:"
+                - Ref: InfrastructureCorepostgresB0D0C6BB
+                - :SecretString:password::}}
           JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
           AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
           SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
@@ -1552,18 +1557,12 @@ Resources:
                     - InfrastructureCoreUnicornStoreDatabaseF56884BA
                     - Endpoint.Address
                 - :5432/unicorns
-          SPRING_DATASOURCE_PASSWORD:
-            Fn::Join:
-              - ""
-              - - "{{resolve:secretsmanager:"
-                - Ref: InfrastructureCorepostgresB0D0C6BB
-                - :SecretString:password::}}
-      FunctionName: workshop-function
+      FunctionName: spring-ai-function
       Handler: com.example.StreamLambdaHandler::handleRequest
       MemorySize: 2048
       Role:
         Fn::GetAtt:
-          - WorkshopFunctionworkshopfunctionLambdaFunctionServiceRole777E3C8B
+          - SpringAIFunctionspringaifunctionLambdaFunctionServiceRole10FB4585
           - Arn
       Runtime: python3.13
       Timeout: 29
@@ -1573,27 +1572,27 @@ Resources:
               - InfrastructureCoreApplicationSecurityGroup914702B5
               - GroupId
         SubnetIds:
-          - Ref: WorkshopVpcPrivateSubnet1Subnet8F30D1E3
-          - Ref: WorkshopVpcPrivateSubnet2Subnet73CC1040
+          - Ref: UnicornStoreVpcPrivateSubnet1Subnet1D81DF60
+          - Ref: UnicornStoreVpcPrivateSubnet2Subnet4710EC68
     DependsOn:
-      - WorkshopFunctionworkshopfunctionLambdaFunctionServiceRoleDefaultPolicy1A55F454
-      - WorkshopFunctionworkshopfunctionLambdaFunctionServiceRole777E3C8B
-      - WorkshopVpcPrivateSubnet1DefaultRouteC53251BD
-      - WorkshopVpcPrivateSubnet1RouteTableAssociation6F25361F
-      - WorkshopVpcPrivateSubnet2DefaultRoute290F73AA
-      - WorkshopVpcPrivateSubnet2RouteTableAssociationDAB78D9E
-  WorkshopFunctionworkshopfunctionalias5D2EE4EA:
+      - SpringAIFunctionspringaifunctionLambdaFunctionServiceRoleDefaultPolicyE9494DF6
+      - SpringAIFunctionspringaifunctionLambdaFunctionServiceRole10FB4585
+      - UnicornStoreVpcPrivateSubnet1DefaultRoute18CAE313
+      - UnicornStoreVpcPrivateSubnet1RouteTableAssociationE6E7A751
+      - UnicornStoreVpcPrivateSubnet2DefaultRouteDA0F8992
+      - UnicornStoreVpcPrivateSubnet2RouteTableAssociation0C455BE6
+  SpringAIFunctionspringaifunctionalias8030D8EF:
     Type: AWS::Lambda::Alias
     Properties:
       FunctionName:
-        Ref: WorkshopFunctionworkshopfunctionLambdaFunction6FC058EB
+        Ref: SpringAIFunctionspringaifunctionLambdaFunctionB9DE1734
       FunctionVersion: $LATEST
-      Name: workshop-function-alias
-  WorkshopFunctionworkshopfunctionRestApi8DD0BA04:
+      Name: spring-ai-function-alias
+  SpringAIFunctionspringaifunctionRestApi6111DD65:
     Type: AWS::ApiGateway::RestApi
     Properties:
-      Name: workshop-function-rest-api
-  WorkshopFunctionworkshopfunctionRestApiCloudWatchRole1F6FB832:
+      Name: spring-ai-function-rest-api
+  SpringAIFunctionspringaifunctionRestApiCloudWatchRoleCB9ED60E:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1611,53 +1610,53 @@ Resources:
               - :iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
-  WorkshopFunctionworkshopfunctionRestApiAccountE58AF605:
+  SpringAIFunctionspringaifunctionRestApiAccount6ABD1CC8:
     Type: AWS::ApiGateway::Account
     Properties:
       CloudWatchRoleArn:
         Fn::GetAtt:
-          - WorkshopFunctionworkshopfunctionRestApiCloudWatchRole1F6FB832
+          - SpringAIFunctionspringaifunctionRestApiCloudWatchRoleCB9ED60E
           - Arn
     DependsOn:
-      - WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+      - SpringAIFunctionspringaifunctionRestApi6111DD65
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
-  WorkshopFunctionworkshopfunctionRestApiDeploymentD20557B8583736fdca579868c7406e9b33c50801:
+  SpringAIFunctionspringaifunctionRestApiDeploymentC2346D8752b4507deab093bd96ef0bbcdd2b0206:
     Type: AWS::ApiGateway::Deployment
     Properties:
       Description: Automatically created by the RestApi construct
       RestApiId:
-        Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+        Ref: SpringAIFunctionspringaifunctionRestApi6111DD65
     DependsOn:
-      - WorkshopFunctionworkshopfunctionRestApiproxyANYC0BBC8D8
-      - WorkshopFunctionworkshopfunctionRestApiproxy436E7779
-      - WorkshopFunctionworkshopfunctionRestApiANY730D4F84
-  WorkshopFunctionworkshopfunctionRestApiDeploymentStageprod28E5F453:
+      - SpringAIFunctionspringaifunctionRestApiproxyANY506FFE60
+      - SpringAIFunctionspringaifunctionRestApiproxyF117F6B4
+      - SpringAIFunctionspringaifunctionRestApiANYF72C461F
+  SpringAIFunctionspringaifunctionRestApiDeploymentStageprodC2DE6F3C:
     Type: AWS::ApiGateway::Stage
     Properties:
       DeploymentId:
-        Ref: WorkshopFunctionworkshopfunctionRestApiDeploymentD20557B8583736fdca579868c7406e9b33c50801
+        Ref: SpringAIFunctionspringaifunctionRestApiDeploymentC2346D8752b4507deab093bd96ef0bbcdd2b0206
       RestApiId:
-        Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+        Ref: SpringAIFunctionspringaifunctionRestApi6111DD65
       StageName: prod
     DependsOn:
-      - WorkshopFunctionworkshopfunctionRestApiAccountE58AF605
-  WorkshopFunctionworkshopfunctionRestApiproxy436E7779:
+      - SpringAIFunctionspringaifunctionRestApiAccount6ABD1CC8
+  SpringAIFunctionspringaifunctionRestApiproxyF117F6B4:
     Type: AWS::ApiGateway::Resource
     Properties:
       ParentId:
         Fn::GetAtt:
-          - WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+          - SpringAIFunctionspringaifunctionRestApi6111DD65
           - RootResourceId
       PathPart: "{proxy+}"
       RestApiId:
-        Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
-  WorkshopFunctionworkshopfunctionRestApiproxyANYApiPermissionideecsstackWorkshopFunctionworkshopfunctionRestApi125AD383ANYproxy80810816:
+        Ref: SpringAIFunctionspringaifunctionRestApi6111DD65
+  SpringAIFunctionspringaifunctionRestApiproxyANYApiPermissionspringaistackSpringAIFunctionspringaifunctionRestApi0DCD2157ANYproxy338E5273:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
       FunctionName:
-        Ref: WorkshopFunctionworkshopfunctionalias5D2EE4EA
+        Ref: SpringAIFunctionspringaifunctionalias8030D8EF
       Principal: apigateway.amazonaws.com
       SourceArn:
         Fn::Join:
@@ -1669,16 +1668,16 @@ Resources:
             - ":"
             - Ref: AWS::AccountId
             - ":"
-            - Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+            - Ref: SpringAIFunctionspringaifunctionRestApi6111DD65
             - /
-            - Ref: WorkshopFunctionworkshopfunctionRestApiDeploymentStageprod28E5F453
+            - Ref: SpringAIFunctionspringaifunctionRestApiDeploymentStageprodC2DE6F3C
             - /*/*
-  WorkshopFunctionworkshopfunctionRestApiproxyANYApiPermissionTestideecsstackWorkshopFunctionworkshopfunctionRestApi125AD383ANYproxy0F588C7F:
+  SpringAIFunctionspringaifunctionRestApiproxyANYApiPermissionTestspringaistackSpringAIFunctionspringaifunctionRestApi0DCD2157ANYproxy076A9FE7:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
       FunctionName:
-        Ref: WorkshopFunctionworkshopfunctionalias5D2EE4EA
+        Ref: SpringAIFunctionspringaifunctionalias8030D8EF
       Principal: apigateway.amazonaws.com
       SourceArn:
         Fn::Join:
@@ -1690,9 +1689,9 @@ Resources:
             - ":"
             - Ref: AWS::AccountId
             - ":"
-            - Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+            - Ref: SpringAIFunctionspringaifunctionRestApi6111DD65
             - /test-invoke-stage/*/*
-  WorkshopFunctionworkshopfunctionRestApiproxyANYC0BBC8D8:
+  SpringAIFunctionspringaifunctionRestApiproxyANY506FFE60:
     Type: AWS::ApiGateway::Method
     Properties:
       AuthorizationType: NONE
@@ -1708,18 +1707,18 @@ Resources:
               - ":apigateway:"
               - Ref: AWS::Region
               - :lambda:path/2015-03-31/functions/
-              - Ref: WorkshopFunctionworkshopfunctionalias5D2EE4EA
+              - Ref: SpringAIFunctionspringaifunctionalias8030D8EF
               - /invocations
       ResourceId:
-        Ref: WorkshopFunctionworkshopfunctionRestApiproxy436E7779
+        Ref: SpringAIFunctionspringaifunctionRestApiproxyF117F6B4
       RestApiId:
-        Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
-  WorkshopFunctionworkshopfunctionRestApiANYApiPermissionideecsstackWorkshopFunctionworkshopfunctionRestApi125AD383ANY3C1A01F9:
+        Ref: SpringAIFunctionspringaifunctionRestApi6111DD65
+  SpringAIFunctionspringaifunctionRestApiANYApiPermissionspringaistackSpringAIFunctionspringaifunctionRestApi0DCD2157ANYAE587215:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
       FunctionName:
-        Ref: WorkshopFunctionworkshopfunctionalias5D2EE4EA
+        Ref: SpringAIFunctionspringaifunctionalias8030D8EF
       Principal: apigateway.amazonaws.com
       SourceArn:
         Fn::Join:
@@ -1731,16 +1730,16 @@ Resources:
             - ":"
             - Ref: AWS::AccountId
             - ":"
-            - Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+            - Ref: SpringAIFunctionspringaifunctionRestApi6111DD65
             - /
-            - Ref: WorkshopFunctionworkshopfunctionRestApiDeploymentStageprod28E5F453
+            - Ref: SpringAIFunctionspringaifunctionRestApiDeploymentStageprodC2DE6F3C
             - /*/
-  WorkshopFunctionworkshopfunctionRestApiANYApiPermissionTestideecsstackWorkshopFunctionworkshopfunctionRestApi125AD383ANY188ADAF5:
+  SpringAIFunctionspringaifunctionRestApiANYApiPermissionTestspringaistackSpringAIFunctionspringaifunctionRestApi0DCD2157ANY982DAFFF:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
       FunctionName:
-        Ref: WorkshopFunctionworkshopfunctionalias5D2EE4EA
+        Ref: SpringAIFunctionspringaifunctionalias8030D8EF
       Principal: apigateway.amazonaws.com
       SourceArn:
         Fn::Join:
@@ -1752,9 +1751,9 @@ Resources:
             - ":"
             - Ref: AWS::AccountId
             - ":"
-            - Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+            - Ref: SpringAIFunctionspringaifunctionRestApi6111DD65
             - /test-invoke-stage/*/
-  WorkshopFunctionworkshopfunctionRestApiANY730D4F84:
+  SpringAIFunctionspringaifunctionRestApiANYF72C461F:
     Type: AWS::ApiGateway::Method
     Properties:
       AuthorizationType: NONE
@@ -1770,15 +1769,15 @@ Resources:
               - ":apigateway:"
               - Ref: AWS::Region
               - :lambda:path/2015-03-31/functions/
-              - Ref: WorkshopFunctionworkshopfunctionalias5D2EE4EA
+              - Ref: SpringAIFunctionspringaifunctionalias8030D8EF
               - /invocations
       ResourceId:
         Fn::GetAtt:
-          - WorkshopFunctionworkshopfunctionRestApi8DD0BA04
+          - SpringAIFunctionspringaifunctionRestApi6111DD65
           - RootResourceId
       RestApiId:
-        Ref: WorkshopFunctionworkshopfunctionRestApi8DD0BA04
-  WorkshopFunctionworkshopfunctionLambdaCodeBucketFF2BAD13:
+        Ref: SpringAIFunctionspringaifunctionRestApi6111DD65
+  SpringAIFunctionspringaifunctionLambdaCodeBucket13657B2A:
     Type: AWS::S3::Bucket
     Properties:
       PublicAccessBlockConfiguration:
@@ -1788,11 +1787,11 @@ Resources:
         RestrictPublicBuckets: true
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  WorkshopFunctionworkshopfunctionLambdaCodeBucketPolicy8E8F6AC3:
+  SpringAIFunctionspringaifunctionLambdaCodeBucketPolicy15053A7B:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket:
-        Ref: WorkshopFunctionworkshopfunctionLambdaCodeBucketFF2BAD13
+        Ref: SpringAIFunctionspringaifunctionLambdaCodeBucket13657B2A
       PolicyDocument:
         Statement:
           - Action: s3:*
@@ -1804,40 +1803,40 @@ Resources:
               AWS: "*"
             Resource:
               - Fn::GetAtt:
-                  - WorkshopFunctionworkshopfunctionLambdaCodeBucketFF2BAD13
+                  - SpringAIFunctionspringaifunctionLambdaCodeBucket13657B2A
                   - Arn
               - Fn::Join:
                   - ""
                   - - Fn::GetAtt:
-                        - WorkshopFunctionworkshopfunctionLambdaCodeBucketFF2BAD13
+                        - SpringAIFunctionspringaifunctionLambdaCodeBucket13657B2A
                         - Arn
                     - /*
         Version: "2012-10-17"
-  WorkshopFunctionworkshopfunctionSsmParameterBucketNameB669705B:
+  SpringAIFunctionspringaifunctionSsmParameterBucketNameB9BD472E:
     Type: AWS::SSM::Parameter
     Properties:
       AllowedPattern: .*
       Description: Lambda code bucket name
-      Name: workshop-function-lambda-code-bucket-name
+      Name: spring-ai-function-lambda-code-bucket-name
       Tier: Standard
       Type: String
       Value:
-        Ref: WorkshopFunctionworkshopfunctionLambdaCodeBucketFF2BAD13
-  InfrastructureEcsworkshopappEcrRepository0CEF917F:
+        Ref: SpringAIFunctionspringaifunctionLambdaCodeBucket13657B2A
+  InfrastructureSpringAIspringaiuiEcrRepository1A16DE61:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: workshop-app
+      RepositoryName: spring-ai-ui
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  InfrastructureEcsworkshopappEcsClusterB3813BD4:
+  InfrastructureSpringAIspringaiuiEcsClusterAB2FD5E4:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: workshop-app
-  InfrastructureEcsworkshopappAlbSecurityGroupEBD98072:
+      ClusterName: spring-ai-ui
+  InfrastructureSpringAIspringaiuiAlbSecurityGroup29A341ED:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for workshop-app ALB
-      GroupName: workshop-app-ecs-sg-alb
+      GroupDescription: Security group for spring-ai-ui ALB
+      GroupName: spring-ai-ui-ecs-sg-alb
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
@@ -1849,55 +1848,55 @@ Resources:
           IpProtocol: tcp
           ToPort: 80
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  InfrastructureEcsworkshopappEcsSecurityGroupDCCCD36D:
+        Ref: UnicornStoreVpc647929A5
+  InfrastructureSpringAIspringaiuiEcsSecurityGroup956D9C38:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for workshop-app ECS Service
-      GroupName: workshop-app-ecs-sg
+      GroupDescription: Security group for spring-ai-ui ECS Service
+      GroupName: spring-ai-ui-ecs-sg
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  InfrastructureEcsworkshopappEcsSecurityGroupfromideecsstackInfrastructureEcsworkshopappAlbSecurityGroup8EC582D78080BE381F12:
+        Ref: UnicornStoreVpc647929A5
+  InfrastructureSpringAIspringaiuiEcsSecurityGroupfromspringaistackInfrastructureSpringAIspringaiuiAlbSecurityGroup750495FC80807F9F7A63:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: Allow traffic from ALB on port 8080
       FromPort: 8080
       GroupId:
         Fn::GetAtt:
-          - InfrastructureEcsworkshopappEcsSecurityGroupDCCCD36D
+          - InfrastructureSpringAIspringaiuiEcsSecurityGroup956D9C38
           - GroupId
       IpProtocol: tcp
       SourceSecurityGroupId:
         Fn::GetAtt:
-          - InfrastructureEcsworkshopappAlbSecurityGroupEBD98072
+          - InfrastructureSpringAIspringaiuiAlbSecurityGroup29A341ED
           - GroupId
       ToPort: 8080
-  InfrastructureEcsworkshopappAlbCE5C7639:
+  InfrastructureSpringAIspringaiuiAlb0C0DB393:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       LoadBalancerAttributes:
         - Key: deletion_protection.enabled
           Value: "false"
-      Name: workshop-app
+      Name: spring-ai-ui
       Scheme: internet-facing
       SecurityGroups:
         - Fn::GetAtt:
-            - InfrastructureEcsworkshopappAlbSecurityGroupEBD98072
+            - InfrastructureSpringAIspringaiuiAlbSecurityGroup29A341ED
             - GroupId
       Subnets:
-        - Ref: WorkshopVpcPublicSubnet1SubnetA669A4AA
-        - Ref: WorkshopVpcPublicSubnet2SubnetBDFBF52E
+        - Ref: UnicornStoreVpcPublicSubnet1Subnet5A587A94
+        - Ref: UnicornStoreVpcPublicSubnet2Subnet6C10127F
       Type: application
     DependsOn:
-      - WorkshopVpcPublicSubnet1DefaultRoute46A975C6
-      - WorkshopVpcPublicSubnet1RouteTableAssociationC8DC0A8B
-      - WorkshopVpcPublicSubnet2DefaultRouteBE49FFDD
-      - WorkshopVpcPublicSubnet2RouteTableAssociation005F29A4
-  InfrastructureEcsworkshopappTaskDefTaskRole0BBF050B:
+      - UnicornStoreVpcPublicSubnet1DefaultRoute72D8F029
+      - UnicornStoreVpcPublicSubnet1RouteTableAssociation3D94AF82
+      - UnicornStoreVpcPublicSubnet2DefaultRoute6F034F39
+      - UnicornStoreVpcPublicSubnet2RouteTableAssociationEF6ADCD0
+  InfrastructureSpringAIspringaiuiTaskDefTaskRole159DC1B8:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1907,7 +1906,7 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
         Version: "2012-10-17"
-  InfrastructureEcsworkshopappTaskDef4879426D:
+  InfrastructureSpringAIspringaiuiTaskDefC0FC4CE1:
     Type: AWS::ECS::TaskDefinition
     Properties:
       ContainerDefinitions:
@@ -1915,24 +1914,43 @@ Resources:
             - Name: NGINX_PORT
               Value: "8080"
           Essential: true
-          Image: nginxinc/nginx-unprivileged:stable
+          Image:
+            Fn::Join:
+              - ""
+              - - Fn::Select:
+                    - 4
+                    - Fn::Split:
+                        - ":"
+                        - Fn::GetAtt:
+                            - InfrastructureSpringAIspringaiuiEcrRepository1A16DE61
+                            - Arn
+                - .dkr.ecr.
+                - Fn::Select:
+                    - 3
+                    - Fn::Split:
+                        - ":"
+                        - Fn::GetAtt:
+                            - InfrastructureSpringAIspringaiuiEcrRepository1A16DE61
+                            - Arn
+                - "."
+                - Ref: AWS::URLSuffix
+                - /
+                - Ref: InfrastructureSpringAIspringaiuiEcrRepository1A16DE61
+                - :latest
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group:
-                Ref: InfrastructureEcsworkshopappLogGroup735A0EFD
+                Ref: InfrastructureSpringAIspringaiuiLogGroup0160B2B5
               awslogs-stream-prefix: ecs
               awslogs-region:
                 Ref: AWS::Region
-          Name: workshop-app
+          Name: spring-ai-ui
           PortMappings:
             - ContainerPort: 8080
               HostPort: 8080
               Protocol: tcp
           Secrets:
-            - Name: SPRING_DATASOURCE_PASSWORD
-              ValueFrom:
-                Ref: InfrastructureCorepostgresB0D0C6BB
             - Name: SPRING_DATASOURCE_URL
               ValueFrom:
                 Fn::Join:
@@ -1945,21 +1963,24 @@ Resources:
                     - Ref: AWS::AccountId
                     - :parameter/
                     - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
+            - Name: SPRING_DATASOURCE_PASSWORD
+              ValueFrom:
+                Ref: InfrastructureCorepostgresB0D0C6BB
       Cpu: "1024"
       ExecutionRoleArn:
         Fn::GetAtt:
-          - InfrastructureEcsworkshopappTaskDefExecutionRoleB19A8CB8
+          - InfrastructureSpringAIspringaiuiTaskDefExecutionRole37CFA310
           - Arn
-      Family: workshop-app
+      Family: spring-ai-ui
       Memory: "2048"
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
       TaskRoleArn:
         Fn::GetAtt:
-          - InfrastructureEcsworkshopappTaskDefTaskRole0BBF050B
+          - InfrastructureSpringAIspringaiuiTaskDefTaskRole159DC1B8
           - Arn
-  InfrastructureEcsworkshopappTaskDefExecutionRoleB19A8CB8:
+  InfrastructureSpringAIspringaiuiTaskDefExecutionRole37CFA310:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1969,25 +1990,31 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
         Version: "2012-10-17"
-  InfrastructureEcsworkshopappTaskDefExecutionRoleDefaultPolicy98F42385:
+  InfrastructureSpringAIspringaiuiTaskDefExecutionRoleDefaultPolicy8CADC64D:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
         Statement:
+          - Action:
+              - ecr:BatchCheckLayerAvailability
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - InfrastructureSpringAIspringaiuiEcrRepository1A16DE61
+                - Arn
+          - Action: ecr:GetAuthorizationToken
+            Effect: Allow
+            Resource: "*"
           - Action:
               - logs:CreateLogStream
               - logs:PutLogEvents
             Effect: Allow
             Resource:
               Fn::GetAtt:
-                - InfrastructureEcsworkshopappLogGroup735A0EFD
+                - InfrastructureSpringAIspringaiuiLogGroup0160B2B5
                 - Arn
-          - Action:
-              - secretsmanager:GetSecretValue
-              - secretsmanager:DescribeSecret
-            Effect: Allow
-            Resource:
-              Ref: InfrastructureCorepostgresB0D0C6BB
           - Action:
               - ssm:DescribeParameters
               - ssm:GetParameters
@@ -2006,29 +2033,23 @@ Resources:
                   - :parameter/
                   - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
           - Action:
-              - ecr:BatchCheckLayerAvailability
-              - ecr:GetDownloadUrlForLayer
-              - ecr:BatchGetImage
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
             Effect: Allow
             Resource:
-              Fn::GetAtt:
-                - InfrastructureEcsworkshopappEcrRepository0CEF917F
-                - Arn
-          - Action: ecr:GetAuthorizationToken
-            Effect: Allow
-            Resource: "*"
+              Ref: InfrastructureCorepostgresB0D0C6BB
         Version: "2012-10-17"
-      PolicyName: InfrastructureEcsworkshopappTaskDefExecutionRoleDefaultPolicy98F42385
+      PolicyName: InfrastructureSpringAIspringaiuiTaskDefExecutionRoleDefaultPolicy8CADC64D
       Roles:
-        - Ref: InfrastructureEcsworkshopappTaskDefExecutionRoleB19A8CB8
-  InfrastructureEcsworkshopappLogGroup735A0EFD:
+        - Ref: InfrastructureSpringAIspringaiuiTaskDefExecutionRole37CFA310
+  InfrastructureSpringAIspringaiuiLogGroup0160B2B5:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: /ecs/workshop-app
+      LogGroupName: /ecs/spring-ai-ui
       RetentionInDays: 731
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  InfrastructureEcsworkshopappTargetGroup6BA3811D:
+  InfrastructureSpringAIspringaiuiTargetGroupEB605D25:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckIntervalSeconds: 30
@@ -2036,7 +2057,7 @@ Resources:
       HealthCheckTimeoutSeconds: 5
       Matcher:
         HttpCode: "200"
-      Name: workshop-app
+      Name: spring-ai-ui
       Port: 8080
       Protocol: HTTP
       TargetGroupAttributes:
@@ -2044,23 +2065,23 @@ Resources:
           Value: "false"
       TargetType: ip
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  InfrastructureEcsworkshopappListenerD25EB0D4:
+        Ref: UnicornStoreVpc647929A5
+  InfrastructureSpringAIspringaiuiListener2C83902C:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       DefaultActions:
         - TargetGroupArn:
-            Ref: InfrastructureEcsworkshopappTargetGroup6BA3811D
+            Ref: InfrastructureSpringAIspringaiuiTargetGroupEB605D25
           Type: forward
       LoadBalancerArn:
-        Ref: InfrastructureEcsworkshopappAlbCE5C7639
+        Ref: InfrastructureSpringAIspringaiuiAlb0C0DB393
       Port: 80
       Protocol: HTTP
-  InfrastructureEcsworkshopappService697E688A:
+  InfrastructureSpringAIspringaiuiServiceE34A46B5:
     Type: AWS::ECS::Service
     Properties:
       Cluster:
-        Ref: InfrastructureEcsworkshopappEcsClusterB3813BD4
+        Ref: InfrastructureSpringAIspringaiuiEcsClusterAB2FD5E4
       DeploymentConfiguration:
         Alarms:
           AlarmNames: []
@@ -2073,27 +2094,27 @@ Resources:
       HealthCheckGracePeriodSeconds: 60
       LaunchType: FARGATE
       LoadBalancers:
-        - ContainerName: workshop-app
+        - ContainerName: spring-ai-ui
           ContainerPort: 8080
           TargetGroupArn:
-            Ref: InfrastructureEcsworkshopappTargetGroup6BA3811D
+            Ref: InfrastructureSpringAIspringaiuiTargetGroupEB605D25
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
           SecurityGroups:
             - Fn::GetAtt:
-                - InfrastructureEcsworkshopappEcsSecurityGroupDCCCD36D
+                - InfrastructureSpringAIspringaiuiEcsSecurityGroup956D9C38
                 - GroupId
           Subnets:
-            - Ref: WorkshopVpcPrivateSubnet1Subnet8F30D1E3
-            - Ref: WorkshopVpcPrivateSubnet2Subnet73CC1040
-      ServiceName: workshop-app
+            - Ref: UnicornStoreVpcPrivateSubnet1Subnet1D81DF60
+            - Ref: UnicornStoreVpcPrivateSubnet2Subnet4710EC68
+      ServiceName: spring-ai-ui
       TaskDefinition:
-        Ref: InfrastructureEcsworkshopappTaskDef4879426D
+        Ref: InfrastructureSpringAIspringaiuiTaskDefC0FC4CE1
     DependsOn:
-      - InfrastructureEcsworkshopappListenerD25EB0D4
-      - InfrastructureEcsworkshopappTaskDefTaskRole0BBF050B
-  WorkshopCodeBuildCodeBuildRole92A9C52B:
+      - InfrastructureSpringAIspringaiuiListener2C83902C
+      - InfrastructureSpringAIspringaiuiTaskDefTaskRole159DC1B8
+  UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -2109,8 +2130,8 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AdministratorAccess
-      RoleName: workshop-codebuild-user
-  WorkshopCodeBuildCodeBuildRoleDefaultPolicy7F5D3C53:
+      RoleName: unicornstore-codebuild-user
+  UnicornStoreCodeBuildCodeBuildRoleDefaultPolicy8A3F8164:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -2128,7 +2149,7 @@ Resources:
                         - ":"
                         - Ref: AWS::AccountId
                         - :subnet/
-                        - Ref: WorkshopVpcPrivateSubnet1Subnet8F30D1E3
+                        - Ref: UnicornStoreVpcPrivateSubnet1Subnet1D81DF60
                   - Fn::Join:
                       - ""
                       - - "arn:"
@@ -2138,7 +2159,7 @@ Resources:
                         - ":"
                         - Ref: AWS::AccountId
                         - :subnet/
-                        - Ref: WorkshopVpcPrivateSubnet2Subnet73CC1040
+                        - Ref: UnicornStoreVpcPrivateSubnet2Subnet4710EC68
                 ec2:AuthorizedService: codebuild.amazonaws.com
             Effect: Allow
             Resource:
@@ -2166,7 +2187,7 @@ Resources:
                     - ":"
                     - Ref: AWS::AccountId
                     - :log-group:/aws/codebuild/
-                    - Ref: WorkshopCodeBuildCodeBuildProject8D1C6512
+                    - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
               - Fn::Join:
                   - ""
                   - - "arn:"
@@ -2176,7 +2197,7 @@ Resources:
                     - ":"
                     - Ref: AWS::AccountId
                     - :log-group:/aws/codebuild/
-                    - Ref: WorkshopCodeBuildCodeBuildProject8D1C6512
+                    - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
                     - :*
           - Action:
               - codebuild:CreateReportGroup
@@ -2195,23 +2216,23 @@ Resources:
                   - ":"
                   - Ref: AWS::AccountId
                   - :report-group/
-                  - Ref: WorkshopCodeBuildCodeBuildProject8D1C6512
+                  - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
                   - -*
         Version: "2012-10-17"
-      PolicyName: WorkshopCodeBuildCodeBuildRoleDefaultPolicy7F5D3C53
+      PolicyName: UnicornStoreCodeBuildCodeBuildRoleDefaultPolicy8A3F8164
       Roles:
-        - Ref: WorkshopCodeBuildCodeBuildRole92A9C52B
-  WorkshopCodeBuildCodeBuildProjectSecurityGroup52B757EC:
+        - Ref: UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
+  UnicornStoreCodeBuildCodeBuildProjectSecurityGroup500408F7:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Automatic generated security group for CodeBuild ideecsstackWorkshopCodeBuildCodeBuildProject8E12F63E
+      GroupDescription: Automatic generated security group for CodeBuild springaistackUnicornStoreCodeBuildCodeBuildProject4B707004
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
       VpcId:
-        Ref: WorkshopVpc9CBD39F0
-  WorkshopCodeBuildCodeBuildProject8D1C6512:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreCodeBuildCodeBuildProjectAF799FF7:
     Type: AWS::CodeBuild::Project
     Properties:
       Artifacts:
@@ -2225,10 +2246,10 @@ Resources:
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
         Type: LINUX_CONTAINER
-      Name: workshop-codebuild
+      Name: unicornstore-codebuild
       ServiceRole:
         Fn::GetAtt:
-          - WorkshopCodeBuildCodeBuildRole92A9C52B
+          - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
       Source:
         BuildSpec: |
@@ -2252,16 +2273,16 @@ Resources:
       VpcConfig:
         SecurityGroupIds:
           - Fn::GetAtt:
-              - WorkshopCodeBuildCodeBuildProjectSecurityGroup52B757EC
+              - UnicornStoreCodeBuildCodeBuildProjectSecurityGroup500408F7
               - GroupId
         Subnets:
-          - Ref: WorkshopVpcPrivateSubnet1Subnet8F30D1E3
-          - Ref: WorkshopVpcPrivateSubnet2Subnet73CC1040
+          - Ref: UnicornStoreVpcPrivateSubnet1Subnet1D81DF60
+          - Ref: UnicornStoreVpcPrivateSubnet2Subnet4710EC68
         VpcId:
-          Ref: WorkshopVpc9CBD39F0
+          Ref: UnicornStoreVpc647929A5
     DependsOn:
-      - WorkshopCodeBuildCodeBuildProjectPolicyDocument177DBF00
-  WorkshopCodeBuildCodeBuildProjectPolicyDocument177DBF00:
+      - UnicornStoreCodeBuildCodeBuildProjectPolicyDocument72043627
+  UnicornStoreCodeBuildCodeBuildProjectPolicyDocument72043627:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -2277,10 +2298,10 @@ Resources:
             Effect: Allow
             Resource: "*"
         Version: "2012-10-17"
-      PolicyName: WorkshopCodeBuildCodeBuildProjectPolicyDocument177DBF00
+      PolicyName: UnicornStoreCodeBuildCodeBuildProjectPolicyDocument72043627
       Roles:
-        - Ref: WorkshopCodeBuildCodeBuildRole92A9C52B
-  WorkshopCodeBuildStartBuildFunctionServiceRoleD11C862E:
+        - Ref: UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
+  UnicornStoreCodeBuildStartBuildFunctionServiceRole080F7EB7:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -2296,7 +2317,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  WorkshopCodeBuildStartBuildFunctionServiceRoleDefaultPolicyE128ACF6:
+  UnicornStoreCodeBuildStartBuildFunctionServiceRoleDefaultPolicy9F81C738:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -2305,13 +2326,13 @@ Resources:
             Effect: Allow
             Resource:
               Fn::GetAtt:
-                - WorkshopCodeBuildCodeBuildProject8D1C6512
+                - UnicornStoreCodeBuildCodeBuildProjectAF799FF7
                 - Arn
         Version: "2012-10-17"
-      PolicyName: WorkshopCodeBuildStartBuildFunctionServiceRoleDefaultPolicyE128ACF6
+      PolicyName: UnicornStoreCodeBuildStartBuildFunctionServiceRoleDefaultPolicy9F81C738
       Roles:
-        - Ref: WorkshopCodeBuildStartBuildFunctionServiceRoleD11C862E
-  WorkshopCodeBuildStartBuildFunction1F684F84:
+        - Ref: UnicornStoreCodeBuildStartBuildFunctionServiceRole080F7EB7
+  UnicornStoreCodeBuildStartBuildFunctionB2FE9156:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -2412,18 +2433,18 @@ Resources:
               await respond(event, context, 'FAILED', { Error: error });
             }
           };
-      FunctionName: workshop-codebuild-start-lambda
+      FunctionName: unicornstore-codebuild-start-lambda
       Handler: index.handler
       Role:
         Fn::GetAtt:
-          - WorkshopCodeBuildStartBuildFunctionServiceRoleD11C862E
+          - UnicornStoreCodeBuildStartBuildFunctionServiceRole080F7EB7
           - Arn
       Runtime: nodejs22.x
       Timeout: 60
     DependsOn:
-      - WorkshopCodeBuildStartBuildFunctionServiceRoleDefaultPolicyE128ACF6
-      - WorkshopCodeBuildStartBuildFunctionServiceRoleD11C862E
-  WorkshopCodeBuildReportBuildFunctionServiceRole915029ED:
+      - UnicornStoreCodeBuildStartBuildFunctionServiceRoleDefaultPolicy9F81C738
+      - UnicornStoreCodeBuildStartBuildFunctionServiceRole080F7EB7
+  UnicornStoreCodeBuildReportBuildFunctionServiceRole80B905C6:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -2439,7 +2460,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  WorkshopCodeBuildReportBuildFunctionServiceRoleDefaultPolicy5F514AB5:
+  UnicornStoreCodeBuildReportBuildFunctionServiceRoleDefaultPolicy4D034F3B:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -2450,13 +2471,13 @@ Resources:
             Effect: Allow
             Resource:
               Fn::GetAtt:
-                - WorkshopCodeBuildCodeBuildProject8D1C6512
+                - UnicornStoreCodeBuildCodeBuildProjectAF799FF7
                 - Arn
         Version: "2012-10-17"
-      PolicyName: WorkshopCodeBuildReportBuildFunctionServiceRoleDefaultPolicy5F514AB5
+      PolicyName: UnicornStoreCodeBuildReportBuildFunctionServiceRoleDefaultPolicy4D034F3B
       Roles:
-        - Ref: WorkshopCodeBuildReportBuildFunctionServiceRole915029ED
-  WorkshopCodeBuildReportBuildFunctionAC22F38C:
+        - Ref: UnicornStoreCodeBuildReportBuildFunctionServiceRole80B905C6
+  UnicornStoreCodeBuildReportBuildFunction48D98BC9:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -2542,29 +2563,29 @@ Resources:
               await respond(response, context, 'FAILED', { Error: 'Build failed' });
             }
           };
-      FunctionName: workshop-codebuild-report-lambda
+      FunctionName: unicornstore-codebuild-report-lambda
       Handler: index.handler
       Role:
         Fn::GetAtt:
-          - WorkshopCodeBuildReportBuildFunctionServiceRole915029ED
+          - UnicornStoreCodeBuildReportBuildFunctionServiceRole80B905C6
           - Arn
       Runtime: nodejs22.x
       Timeout: 60
     DependsOn:
-      - WorkshopCodeBuildReportBuildFunctionServiceRoleDefaultPolicy5F514AB5
-      - WorkshopCodeBuildReportBuildFunctionServiceRole915029ED
-  WorkshopCodeBuildBuildCompleteRule47491A6A:
+      - UnicornStoreCodeBuildReportBuildFunctionServiceRoleDefaultPolicy4D034F3B
+      - UnicornStoreCodeBuildReportBuildFunctionServiceRole80B905C6
+  UnicornStoreCodeBuildBuildCompleteRule7E287561:
     Type: AWS::Events::Rule
     Properties:
       Description: Build complete
       EventPattern:
         detail:
+          project-name:
+            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
-          project-name:
-            - Ref: WorkshopCodeBuildCodeBuildProject8D1C6512
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -2573,42 +2594,42 @@ Resources:
       Targets:
         - Arn:
             Fn::GetAtt:
-              - WorkshopCodeBuildReportBuildFunctionAC22F38C
+              - UnicornStoreCodeBuildReportBuildFunction48D98BC9
               - Arn
           Id: Target0
-  WorkshopCodeBuildBuildCompleteRuleAllowEventRuleideecsstackWorkshopCodeBuildReportBuildFunction561B1689F362A3FC:
+  UnicornStoreCodeBuildBuildCompleteRuleAllowEventRulespringaistackUnicornStoreCodeBuildReportBuildFunctionA3347B9EB9A35FA4:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
       FunctionName:
         Fn::GetAtt:
-          - WorkshopCodeBuildReportBuildFunctionAC22F38C
+          - UnicornStoreCodeBuildReportBuildFunction48D98BC9
           - Arn
       Principal: events.amazonaws.com
       SourceArn:
         Fn::GetAtt:
-          - WorkshopCodeBuildBuildCompleteRule47491A6A
+          - UnicornStoreCodeBuildBuildCompleteRule7E287561
           - Arn
-  WorkshopCodeBuildClusterStack9A3F933D:
+  UnicornStoreCodeBuildClusterStackE51384C4:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken:
         Fn::GetAtt:
-          - WorkshopCodeBuildStartBuildFunction1F684F84
+          - UnicornStoreCodeBuildStartBuildFunctionB2FE9156
           - Arn
-      ContentHash: fd70d4491df3a6a44292446f6b364c8a
       ProjectName:
-        Ref: WorkshopCodeBuildCodeBuildProject8D1C6512
+        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
       CodeBuildIamRoleArn:
         Fn::GetAtt:
-          - WorkshopCodeBuildCodeBuildRole92A9C52B
+          - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
+      ContentHash: fd70d4491df3a6a44292446f6b364c8a
     DependsOn:
-      - WorkshopCodeBuildBuildCompleteRuleAllowEventRuleideecsstackWorkshopCodeBuildReportBuildFunction561B1689F362A3FC
-      - WorkshopCodeBuildBuildCompleteRule47491A6A
-      - WorkshopCodeBuildReportBuildFunctionAC22F38C
-      - WorkshopCodeBuildReportBuildFunctionServiceRoleDefaultPolicy5F514AB5
-      - WorkshopCodeBuildReportBuildFunctionServiceRole915029ED
+      - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRulespringaistackUnicornStoreCodeBuildReportBuildFunctionA3347B9EB9A35FA4
+      - UnicornStoreCodeBuildBuildCompleteRule7E287561
+      - UnicornStoreCodeBuildReportBuildFunction48D98BC9
+      - UnicornStoreCodeBuildReportBuildFunctionServiceRoleDefaultPolicy4D034F3B
+      - UnicornStoreCodeBuildReportBuildFunctionServiceRole80B905C6
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 Outputs:
@@ -2619,18 +2640,18 @@ Outputs:
         - ""
         - - https://
           - Fn::GetAtt:
-              - VSCodeIdeGiteaIdeDistribution51935A77
+              - UnicornStoreIdeIdeDistribution9A9F0B03
               - DomainName
     Export:
-      Name: workshop-ide-url
+      Name: unicornstore-ide-url
   IdePassword:
     Description: Workshop IDE Password
     Value:
       Fn::GetAtt:
-        - VSCodeIdeGiteaIdePasswordExporterE0C78A5A
+        - UnicornStoreIdeIdePasswordExporter0662A4D7
         - password
     Export:
-      Name: workshop-ide-password
+      Name: unicornstore-ide-password
 Parameters:
   SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>

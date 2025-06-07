@@ -5,7 +5,7 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 # Use a single variable for app name, repository, service, and cluster
-APP_NAME="workshop-app"
+APP_NAME="spring-ai-ui"
 
 # Check if a Dockerfile path was provided as an argument
 DOCKERFILE_PATH="$1"
@@ -27,6 +27,18 @@ fi
 
 echo "Building and pushing Docker image to ECR in region $AWS_REGION"
 
+# Check if ECR repository exists, if not sleep and retry
+while true; do
+    echo "Checking if ECR repository $APP_NAME exists..."
+    if aws ecr describe-repositories --repository-names $APP_NAME --region $AWS_REGION &> /dev/null; then
+        echo "ECR repository $APP_NAME exists."
+        break
+    else
+        echo "ECR repository $APP_NAME does not exist. Sleeping for 10 seconds..."
+        sleep 10
+    fi
+done
+
 # Login to ECR
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
@@ -40,9 +52,3 @@ docker tag $APP_NAME:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$APP_N
 docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$APP_NAME:latest
 
 echo "Image successfully pushed to $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$APP_NAME:latest"
-
-# Restart ECS deployment by forcing a new deployment
-echo "Restarting ECS deployment for service $APP_NAME in cluster $APP_NAME"
-aws ecs update-service --cluster $APP_NAME --service $APP_NAME --force-new-deployment --region $AWS_REGION --no-cli-pager
-
-echo "ECS deployment restarted successfully"
