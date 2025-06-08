@@ -7,9 +7,10 @@ import com.unicorn.constructs.VSCodeIde;
 import com.unicorn.constructs.VSCodeIde.VSCodeIdeProps;
 import com.unicorn.constructs.CodeBuildResource;
 import com.unicorn.constructs.CodeBuildResource.CodeBuildResourceProps;
+import com.unicorn.constructs.EcsCluster;
 import com.unicorn.core.InfrastructureCore;
-import com.unicorn.core.WorkshopFunction;
-import com.unicorn.core.InfrastructureSpringAI;
+import com.unicorn.core.DatabaseSetup;
+import com.unicorn.core.UnicornStoreSpringLambda;
 
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -29,7 +30,7 @@ public class SpringAIStack extends Stack {
 
         echo '=== Clone Git repository ==='
         sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-        sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout spring-ai-infra"
+        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
 
         echo '=== Setup IDE ==='
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
@@ -74,22 +75,27 @@ public class SpringAIStack extends Stack {
             ideProps.setInstanceName("unicornstore-ide");
             ideProps.setInstanceType(InstanceType.of(InstanceClass.M5, InstanceSize.XLARGE));
             ideProps.setExtensions(Arrays.asList(
-                "amazonwebservices.aws-toolkit-vscode",
+                // "amazonwebservices.aws-toolkit-vscode",
                 // "amazonwebservices.amazon-q-vscode",
-                "ms-azuretools.vscode-docker",
-                "vmware.vscode-boot-dev-pack",
-                "vscjava.vscode-java-pack"
+                "vscjava.vscode-java-pack",
+                // "ms-kubernetes-tools.vscode-kubernetes-tools",
+                "ms-azuretools.vscode-docker"
             ));
         new VSCodeIde(this, "UnicornStoreIde", ideProps);
-        // var ideRole = ideProps.getRole();
-        // ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
 
         // Create Core infrastructure
         var infrastructureCore = new InfrastructureCore(this, "InfrastructureCore", vpc);
+        // var accountId = Stack.of(this).getAccount();
 
-        // Create WorkshopLambda
-        new WorkshopFunction(this, "SpringAIFunction", infrastructureCore, "spring-ai-function");
-        new InfrastructureSpringAI(this, "InfrastructureSpringAI", infrastructureCore, "spring-ai-ui");
+        // Create ECS cluster for the workshop
+        new EcsCluster(this, "UnicornStoreEcsCluster", infrastructureCore, "unicorn-store-spring");
+
+        // Execute Database setup
+        var databaseSetup = new DatabaseSetup(this, "UnicornStoreDatabaseSetup", infrastructureCore);
+        databaseSetup.getNode().addDependency(infrastructureCore.getDatabase());
+
+        // Create UnicornStoreSpringLambda
+        new UnicornStoreSpringLambda(this, "UnicornStoreSpringLambda", infrastructureCore);
 
         // Create Workshop CodeBuild
         var codeBuildProps = new CodeBuildResourceProps();

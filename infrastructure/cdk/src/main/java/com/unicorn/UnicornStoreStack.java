@@ -75,13 +75,13 @@ public class UnicornStoreStack extends Stack {
             ideProps.setBootstrapScript(bootstrapScript);
             ideProps.setVpc(vpc);
             ideProps.setInstanceName("unicornstore-ide");
-            ideProps.setInstanceType(InstanceType.of(InstanceClass.T3, InstanceSize.MEDIUM));
+            ideProps.setInstanceType(InstanceType.of(InstanceClass.M5, InstanceSize.XLARGE));
             ideProps.setExtensions(Arrays.asList(
                 // "amazonwebservices.aws-toolkit-vscode",
                 // "amazonwebservices.amazon-q-vscode",
-                "ms-azuretools.vscode-docker",
+                "vscjava.vscode-java-pack",
                 "ms-kubernetes-tools.vscode-kubernetes-tools",
-                "vscjava.vscode-java-pack"
+                "ms-azuretools.vscode-docker"
             ));
         var ide = new VSCodeIde(this, "UnicornStoreIde", ideProps);
         var ideRole = ideProps.getRole();

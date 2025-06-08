@@ -1,36 +1,43 @@
-package com.unicorn.core;
+package com.unicorn.constructs;
 
-import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.Peer;
+import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.SecurityGroup;
-import software.amazon.awscdk.services.ec2.SubnetSelection;
-import software.amazon.awscdk.services.ec2.SubnetType;
-import software.amazon.awscdk.services.ec2.ISecurityGroup;
-import software.amazon.awscdk.RemovalPolicy;
-import software.constructs.Construct;
-
-import software.amazon.awscdk.services.ecr.Repository;
-import software.amazon.awscdk.services.ecs.Cluster;
-import software.amazon.awscdk.services.ecs.ContainerImage;
-import software.amazon.awscdk.services.ecs.FargateTaskDefinition;
-import software.amazon.awscdk.services.ecs.FargateService;
-import software.amazon.awscdk.services.ecs.AwsLogDriverProps;
-import software.amazon.awscdk.services.ecs.LogDriver;
-import software.amazon.awscdk.services.ecs.Protocol;
-import software.amazon.awscdk.services.ecs.PortMapping;
-import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationLoadBalancer;
 import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationListener;
+import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationLoadBalancer;
 import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationProtocol;
 import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationTargetGroup;
 import software.amazon.awscdk.services.elasticloadbalancingv2.TargetType;
+import software.amazon.awscdk.services.ec2.SubnetType;
+import software.amazon.awscdk.services.ecr.Repository;
+import software.amazon.awscdk.services.ecs.AwsLogDriverProps;
+import software.amazon.awscdk.services.ecs.Cluster;
+import software.amazon.awscdk.services.ecs.ContainerImage;
+import software.amazon.awscdk.services.ecs.FargateService;
+import software.amazon.awscdk.services.ecs.FargateTaskDefinition;
 import software.amazon.awscdk.services.ecs.LoadBalancerTargetOptions;
+import software.amazon.awscdk.services.ecs.LogDriver;
+import software.amazon.awscdk.services.ecs.PortMapping;
+import software.amazon.awscdk.services.ecs.Protocol;
+import software.amazon.awscdk.services.ec2.SubnetSelection;
+import software.amazon.awscdk.services.ec2.ISecurityGroup;
+import software.amazon.awscdk.services.iam.ManagedPolicy;
+import software.amazon.awscdk.services.iam.Role;
+import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.logs.LogGroup;
+import software.amazon.awscdk.services.iam.Effect;
+import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.RemovalPolicy;
+
+import software.constructs.Construct;
+
+import com.unicorn.core.InfrastructureCore;
 
 import java.util.List;
 import java.util.Map;
 
-public class InfrastructureSpringAI extends Construct {
+public class EcsCluster extends Construct {
 
     private final String appName;
     private final Repository ecrRepository;
@@ -40,7 +47,7 @@ public class InfrastructureSpringAI extends Construct {
 
     private final InfrastructureCore infrastructureCore;
 
-    public InfrastructureSpringAI(final Construct scope, final String id, final InfrastructureCore infrastructureCore, final String appName) {
+    public EcsCluster(final Construct scope, final String id, final InfrastructureCore infrastructureCore, final String appName) {
         super(scope, id);
 
         this.appName = appName;
@@ -114,11 +121,36 @@ public class InfrastructureSpringAI extends Construct {
     }
 
     private FargateService createFargateService(ISecurityGroup ecsSecurityGroup, ApplicationLoadBalancer alb) {
+        // Create roles
+        Role escTaskExecutionRole = Role.Builder.create(this, appName + "-EcsTaskExecutionRole")
+            .roleName(appName + "-ecs-task-execution-role")
+            .assumedBy(new ServicePrincipal("ecs-tasks.amazonaws.com")).build();
+        escTaskExecutionRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+            appName + "-EcsTaskExecutionRole-" + "AmazonECSTaskExecutionRolePolicy",
+            "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"));
+        infrastructureCore.getDatabaseSecret().grantRead(escTaskExecutionRole);
+        infrastructureCore.getSecretPassword().grantRead(escTaskExecutionRole);
+        infrastructureCore.getParamDBConnectionString().grantRead(escTaskExecutionRole);
+
+        var escTaskRole = Role.Builder.create(this, appName + "-EcsTaskRole")
+            .roleName(appName + "-ecs-task-role")
+            .assumedBy(new ServicePrincipal("ecs-tasks.amazonaws.com")).build();
+        escTaskRole.addToPolicy(PolicyStatement.Builder.create()
+            .actions(List.of("xray:PutTraceSegments"))
+            .resources(List.of("*"))
+            .build());
+        escTaskRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+            appName + "-EcsTaskRole-" + "AmazonBedrockFullAccess",
+            "arn:aws:iam::aws:policy/AmazonBedrockFullAccess"));
+        infrastructureCore.getEventBridge().grantPutEventsTo(escTaskRole);
+
         // Create Task Definition
         FargateTaskDefinition taskDefinition = FargateTaskDefinition.Builder.create(this, appName + "-TaskDef")
             .family(appName)
             .cpu(1024)
             .memoryLimitMiB(2048)
+            .taskRole(escTaskRole)
+            .executionRole(escTaskExecutionRole)
             .build();
 
         // Use the ECR repository with latest tag instead of building the image
@@ -185,14 +217,12 @@ public class InfrastructureSpringAI extends Construct {
             .assignPublicIp(false)
             .build();
 
-        // Grant ECR pull permissions to the Task Execution Role
-        ecrRepository.grantPull(taskDefinition.getExecutionRole());
-
         // Register the service with the target group
         targetGroup.addTarget(service.loadBalancerTarget(LoadBalancerTargetOptions.builder()
             .containerName(appName)
             .containerPort(8080)
             .build()));
+
         return service;
     }
 
@@ -211,4 +241,5 @@ public class InfrastructureSpringAI extends Construct {
     public FargateService getFargateService() {
         return fargateService;
     }
+
 }
