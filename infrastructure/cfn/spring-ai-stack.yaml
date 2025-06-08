@@ -345,9 +345,6 @@ Resources:
               - ssm:*
               - sts:*
               - bedrock:*
-              - bedrock-agent:*
-              - bedrock-agent-runtime:*
-              - bedrock-runtime:*
             Effect: Allow
             Resource: "*"
             Sid: AllowedServicesEKS
@@ -427,7 +424,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250608-161101
+      LogGroupName: unicornstore-ide-bootstrap-log-20250608-163052
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1105,7 +1102,8 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - domain: ""
+                    - installGitea: echo bootstrapGitea was not provided
+                      domain: ""
                       extensions: vscjava.vscode-java-pack,ms-azuretools.vscode-docker
                       waitConditionHandleUrl:
                         Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
@@ -1171,7 +1169,6 @@ Resources:
                                             - Ref: UnicornStoreIdeIdePasswordSecret514252E2
                       environmentContentsZip: ""
                       terminalOnStartup: "true"
-                      installGitea: echo bootstrapGitea was not provided
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -2106,6 +2103,7 @@ Resources:
               return 'placeholder'
       Environment:
         Variables:
+          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
           JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
           SPRING_DATASOURCE_PASSWORD:
             Fn::Join:
@@ -2122,7 +2120,6 @@ Resources:
                     - Endpoint.Address
                 - :5432/unicorns
           SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
-          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
       FunctionName: unicorn-store-spring
       Handler: com.unicorn.store.StreamLambdaHandler::handleRequest
       MemorySize: 2048
@@ -2854,12 +2851,12 @@ Resources:
       Description: Build complete
       EventPattern:
         detail:
-          project-name:
-            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
+          project-name:
+            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
         detail-type:
           - CodeBuild Build State Change
         source:

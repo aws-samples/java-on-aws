@@ -365,9 +365,6 @@ Resources:
               - ssm:*
               - sts:*
               - bedrock:*
-              - bedrock-agent:*
-              - bedrock-agent-runtime:*
-              - bedrock-runtime:*
             Effect: Allow
             Resource: "*"
             Sid: AllowedServicesEKS
@@ -447,7 +444,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250608-161034
+      LogGroupName: unicornstore-ide-bootstrap-log-20250608-163002
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
