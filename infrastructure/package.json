@@ -3,8 +3,9 @@
     "generate-unicornstore-stack": "cd ./cdk && mvn clean package && cdk synth && cdk synth unicornstore-stack --yaml --path-metadata false --version-reporting false | sed 's/arn:aws:iam::{{.AccountId}}:/!Sub arn:aws:iam::${AWS::AccountId}:/g' > ../cfn/unicornstore-stack.yaml",
     "generate-ide-stack": "cd ./cdk && mvn clean package && cdk synth && cdk synth ide-stack --yaml --path-metadata false --version-reporting false | sed 's/arn:aws:iam::{{.AccountId}}:/!Sub arn:aws:iam::${AWS::AccountId}:/g' > ../cfn/ide-stack.yaml",
     "generate-ide-gitea-stack": "cd ./cdk && mvn clean package && cdk synth && cdk synth ide-gitea-stack --yaml --path-metadata false --version-reporting false | sed 's/arn:aws:iam::{{.AccountId}}:/!Sub arn:aws:iam::${AWS::AccountId}:/g' > ../cfn/ide-gitea-stack.yaml",
-    "sync-workshops-stacks": "cp cfn/unicornstore-stack.yaml ../../java-on-amazon-eks/static/ && cp cfn/unicornstore-stack.yaml ../../java-on-aws-immersion-day/static/",
-    "sync-workshops-policy": "cp cdk/src/main/resources/iam-policy.json ../../java-on-amazon-eks/static/ && cp cdk/src/main/resources/iam-policy.json ../../java-on-aws-immersion-day/static/"
+    "generate-spring-ai-stack": "cd ./cdk && mvn clean package && cdk synth && cdk synth spring-ai-stack --yaml --path-metadata false --version-reporting false | sed 's/arn:aws:iam::{{.AccountId}}:/!Sub arn:aws:iam::${AWS::AccountId}:/g' > ../cfn/spring-ai-stack.yaml",
+    "sync-workshops-stacks": "cp cfn/unicornstore-stack.yaml ../../java-on-amazon-eks/static/ && cp cfn/unicornstore-stack.yaml ../../java-on-aws-immersion-day/static/ && cp cfn/spring-ai-stack.yaml ../../java-spring-ai-agents/static/workshop-stack.yaml",
+    "sync-workshops-policy": "cp cdk/src/main/resources/iam-policy.json ../../java-on-amazon-eks/static/ && cp cdk/src/main/resources/iam-policy.json ../../java-on-aws-immersion-day/static/ && cp cdk/src/main/resources/iam-policy.json ../../java-spring-ai-agents/static/"
   },
   "author": "",
   "license": "ISC",

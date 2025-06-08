@@ -51,13 +51,13 @@ public class IdeStack extends Stack {
             ideProps.setExtensions(Arrays.asList(
                 // "amazonwebservices.aws-toolkit-vscode",
                 // "amazonwebservices.amazon-q-vscode",
-                "ms-azuretools.vscode-docker",
+                // "vscjava.vscode-java-pack",
                 "ms-kubernetes-tools.vscode-kubernetes-tools",
-                "vscjava.vscode-java-pack"
+                "ms-azuretools.vscode-docker"
             ));
             ideProps.setAppPort(8080);
             ideProps.setEnableGitea(false);
-        var ide = new VSCodeIde(this, "VSCodeIdeGitea", ideProps);
+        var ide = new VSCodeIde(this, "VSCodeIde", ideProps);
         var ideRole = ideProps.getRole();
         ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
     }

@@ -15,6 +15,7 @@ public class UnicornStoreApp {
         var unicornStoreStack = new UnicornStoreStack(app, "unicornstore-stack");
         var ideStack = new IdeStack(app, "ide-stack");
         var ideGiteaStack = new IdeGiteaStack(app, "ide-gitea-stack");
+        var springAIStack = new SpringAIStack(app, "spring-ai-stack");
 
         //Add CDK-NAG checks: https://github.com/cdklabs/cdk-nag
         //Add suppression to exclude certain findings that are not needed for Workshop environment
@@ -48,12 +49,16 @@ public class UnicornStoreApp {
                 new NagPackSuppression.Builder().id("AwsSolutions-CFR5").reason("Workshop instance uses http").build(),
                 new NagPackSuppression.Builder().id("AwsSolutions-EKS1").reason("Workshop non-sensitive EKS cluster uses public access" ).build(),
                 new NagPackSuppression.Builder().id("AwsSolutions-CB4").reason("CodeBuild uses default AWS-managed CMK for S3" ).build(),
-                new NagPackSuppression.Builder().id("CdkNagValidationFailure").reason("Suppress warnings see: https://github.com/cdklabs/cdk-nag/issues/817").build()
+                new NagPackSuppression.Builder().id("CdkNagValidationFailure").reason("Suppress warnings see: https://github.com/cdklabs/cdk-nag/issues/817").build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-ELB2").reason("Workshop environment does not need ALB logs").build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-ECS4").reason("Workshop environment does not need Container Insights").build(),
+                new NagPackSuppression.Builder().id("AwsSolutions-ECS2").reason("Workshop environment use temporary container for ECS").build()
         );
 
         NagSuppressions.addStackSuppressions(unicornStoreStack, suppression);
         NagSuppressions.addStackSuppressions(ideStack, suppression);
         NagSuppressions.addStackSuppressions(ideGiteaStack, suppression);
+        NagSuppressions.addStackSuppressions(springAIStack, suppression);
 
         app.synth();
     }

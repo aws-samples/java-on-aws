@@ -14,7 +14,11 @@
 				"q:*",
 				"secretsmanager:*",
 				"ssm:*",
-				"sts:*"
+				"sts:*",
+				"bedrock:*",
+				"bedrock-agent:*",
+				"bedrock-agent-runtime:*",
+				"bedrock-runtime:*"
 			],
 			"Resource": "*",
 			"Effect": "Allow"
