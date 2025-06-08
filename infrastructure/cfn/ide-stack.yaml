@@ -59,12 +59,6 @@ Metadata:
         id: AwsSolutions-CB4
       - reason: "Suppress warnings see: https://github.com/cdklabs/cdk-nag/issues/817"
         id: CdkNagValidationFailure
-      - reason: Workshop environment does not need ALB logs
-        id: AwsSolutions-ELB2
-      - reason: Workshop environment does not need Container Insights
-        id: AwsSolutions-ECS4
-      - reason: Workshop environment use temporary container for ECS
-        id: AwsSolutions-ECS2
 Resources:
   IdeVpcE831425F:
     Type: AWS::EC2::VPC
@@ -279,7 +273,7 @@ Resources:
         Ref: IdeVpcIGWDE157DA5
       VpcId:
         Ref: IdeVpcE831425F
-  VSCodeIdeIdeRole21951A1F:
+  VSCodeIdeGiteaIdeRole90308F47:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -300,14 +294,14 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonSSMManagedInstanceCore
-        - Ref: VSCodeIdeWorkshopIdeUserPolicy98DFEC00
+        - Ref: VSCodeIdeGiteaWorkshopIdeUserPolicy062B10B9
         - Fn::Join:
             - ""
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AdministratorAccess
       RoleName: ide-user
-  VSCodeIdeIdeRoleDefaultPolicyB89C55CF:
+  VSCodeIdeGiteaIdeRoleDefaultPolicy7AA4DC42:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -318,19 +312,19 @@ Resources:
             Effect: Allow
             Resource:
               Fn::GetAtt:
-                - VSCodeIdeIdeLogGroup364F2B78
+                - VSCodeIdeGiteaIdeLogGroupCD76FEFA
                 - Arn
           - Action:
               - secretsmanager:GetSecretValue
               - secretsmanager:DescribeSecret
             Effect: Allow
             Resource:
-              Ref: VSCodeIdeIdePasswordSecret39AD78F3
+              Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
         Version: "2012-10-17"
-      PolicyName: VSCodeIdeIdeRoleDefaultPolicyB89C55CF
+      PolicyName: VSCodeIdeGiteaIdeRoleDefaultPolicy7AA4DC42
       Roles:
-        - Ref: VSCodeIdeIdeRole21951A1F
-  VSCodeIdeWorkshopIdeUserPolicy98DFEC00:
+        - Ref: VSCodeIdeGiteaIdeRole90308F47
+  VSCodeIdeGiteaWorkshopIdeUserPolicy062B10B9:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: ""
@@ -349,10 +343,6 @@ Resources:
               - secretsmanager:*
               - ssm:*
               - sts:*
-              - bedrock:*
-              - bedrock-agent:*
-              - bedrock-agent-runtime:*
-              - bedrock-runtime:*
             Effect: Allow
             Resource: "*"
             Sid: AllowedServicesEKS
@@ -429,14 +419,14 @@ Resources:
             Resource: "*"
             Sid: DenyReservations
         Version: "2012-10-17"
-  VSCodeIdeIdeLogGroup364F2B78:
+  VSCodeIdeGiteaIdeLogGroupCD76FEFA:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250608-154312
+      LogGroupName: ide-bootstrap-log-20250603-125112
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
-  VSCodeIdeIdePrefixListFunctionServiceRoleE64D8247:
+  VSCodeIdeGiteaIdePrefixListFunctionServiceRole8E037D06:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -452,7 +442,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  VSCodeIdeIdePrefixListFunctionServiceRoleDefaultPolicy244F9A17:
+  VSCodeIdeGiteaIdePrefixListFunctionServiceRoleDefaultPolicy6FB01C7B:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -461,10 +451,10 @@ Resources:
             Effect: Allow
             Resource: "*"
         Version: "2012-10-17"
-      PolicyName: VSCodeIdeIdePrefixListFunctionServiceRoleDefaultPolicy244F9A17
+      PolicyName: VSCodeIdeGiteaIdePrefixListFunctionServiceRoleDefaultPolicy6FB01C7B
       Roles:
-        - Ref: VSCodeIdeIdePrefixListFunctionServiceRoleE64D8247
-  VSCodeIdeIdePrefixListFunction06300AAE:
+        - Ref: VSCodeIdeGiteaIdePrefixListFunctionServiceRole8E037D06
+  VSCodeIdeGiteaIdePrefixListFunction61BC1AE7:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -508,23 +498,23 @@ Resources:
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - VSCodeIdeIdePrefixListFunctionServiceRoleE64D8247
+          - VSCodeIdeGiteaIdePrefixListFunctionServiceRole8E037D06
           - Arn
       Runtime: python3.13
       Timeout: 180
     DependsOn:
-      - VSCodeIdeIdePrefixListFunctionServiceRoleDefaultPolicy244F9A17
-      - VSCodeIdeIdePrefixListFunctionServiceRoleE64D8247
-  VSCodeIdeIdePrefixListResourceF63186FA:
+      - VSCodeIdeGiteaIdePrefixListFunctionServiceRoleDefaultPolicy6FB01C7B
+      - VSCodeIdeGiteaIdePrefixListFunctionServiceRole8E037D06
+  VSCodeIdeGiteaIdePrefixListResource6C05F1BC:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken:
         Fn::GetAtt:
-          - VSCodeIdeIdePrefixListFunction06300AAE
+          - VSCodeIdeGiteaIdePrefixListFunction61BC1AE7
           - Arn
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  VSCodeIdeIdeSecurityGroup69EC68AF:
+  VSCodeIdeGiteaIdeSecurityGroupF32C3523:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: IDE security group
@@ -535,22 +525,22 @@ Resources:
           IpProtocol: "-1"
       VpcId:
         Ref: IdeVpcE831425F
-  VSCodeIdeIdeSecurityGroupfromIndirectPeer80614C2C39:
+  VSCodeIdeGiteaIdeSecurityGroupfromIndirectPeer8036B79F7D:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: HTTP from CloudFront only
       FromPort: 80
       GroupId:
         Fn::GetAtt:
-          - VSCodeIdeIdeSecurityGroup69EC68AF
+          - VSCodeIdeGiteaIdeSecurityGroupF32C3523
           - GroupId
       IpProtocol: tcp
       SourcePrefixListId:
         Fn::GetAtt:
-          - VSCodeIdeIdePrefixListResourceF63186FA
+          - VSCodeIdeGiteaIdePrefixListResource6C05F1BC
           - PrefixListId
       ToPort: 80
-  VSCodeIdeAppSecurityGroup3CD2EECD:
+  VSCodeIdeGiteaAppSecurityGroup2574CAA7:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: App security group
@@ -567,18 +557,18 @@ Resources:
           ToPort: 8080
       VpcId:
         Ref: IdeVpcE831425F
-  VSCodeIdeIdeInstanceProfileD50529DC:
+  VSCodeIdeGiteaIdeInstanceProfileCE7EC5EA:
     Type: AWS::IAM::InstanceProfile
     Properties:
       InstanceProfileName:
-        Ref: VSCodeIdeIdeRole21951A1F
+        Ref: VSCodeIdeGiteaIdeRole90308F47
       Roles:
-        - Ref: VSCodeIdeIdeRole21951A1F
-  VSCodeIdeIdeElasticIP9EC1C0FF:
+        - Ref: VSCodeIdeGiteaIdeRole90308F47
+  VSCodeIdeGiteaIdeElasticIPBF6E624D:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
-  VSCodeIdeIdeEC2Instance846AE373:
+  VSCodeIdeGiteaIdeEC2Instance51274E6D:
     Type: AWS::EC2::Instance
     Properties:
       AvailabilityZone:
@@ -593,19 +583,19 @@ Resources:
             VolumeSize: 50
             VolumeType: gp3
       IamInstanceProfile:
-        Ref: VSCodeIdeIdeInstanceProfileD50529DC
+        Ref: VSCodeIdeGiteaIdeInstanceProfileCE7EC5EA
       ImageId:
         Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
       InstanceType: m5.xlarge
       SecurityGroupIds:
         - Fn::GetAtt:
-            - VSCodeIdeIdeSecurityGroup69EC68AF
+            - VSCodeIdeGiteaIdeSecurityGroupF32C3523
             - GroupId
         - Fn::GetAtt:
-            - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
+            - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
             - GroupId
         - Fn::GetAtt:
-            - VSCodeIdeAppSecurityGroup3CD2EECD
+            - VSCodeIdeGiteaAppSecurityGroup2574CAA7
             - GroupId
       SubnetId:
         Ref: IdeVpcPublicSubnet1Subnet5568D48C
@@ -615,64 +605,64 @@ Resources:
       UserData:
         Fn::Base64: "#!/bin/bash"
     DependsOn:
-      - VSCodeIdeIdePasswordSecret39AD78F3
-      - VSCodeIdeIdeRoleDefaultPolicyB89C55CF
-      - VSCodeIdeIdeRole21951A1F
-  VSCodeIdeIdeEipAssociation5CF25E52:
+      - VSCodeIdeGiteaIdePasswordSecretD25F73F4
+      - VSCodeIdeGiteaIdeRoleDefaultPolicy7AA4DC42
+      - VSCodeIdeGiteaIdeRole90308F47
+  VSCodeIdeGiteaIdeEipAssociation2B351459:
     Type: AWS::EC2::EIPAssociation
     Properties:
       AllocationId:
         Fn::GetAtt:
-          - VSCodeIdeIdeElasticIP9EC1C0FF
+          - VSCodeIdeGiteaIdeElasticIPBF6E624D
           - AllocationId
       InstanceId:
-        Ref: VSCodeIdeIdeEC2Instance846AE373
-  VSCodeIdeIdeInternalSecurityGroup84C0CB7B:
+        Ref: VSCodeIdeGiteaIdeEC2Instance51274E6D
+  VSCodeIdeGiteaIdeInternalSecurityGroupD236D648:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: IDE internal security group
       GroupName: ide-internal-sg
       VpcId:
         Ref: IdeVpcE831425F
-  VSCodeIdeIdeInternalSecurityGroupfromidestackVSCodeIdeIdeInternalSecurityGroup1B3E620BALLTRAFFIC5FBB443A:
+  VSCodeIdeGiteaIdeInternalSecurityGroupfromidestackVSCodeIdeGiteaIdeInternalSecurityGroup02E53CC5ALLTRAFFIC8E887199:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: Allow all internal traffic
       GroupId:
         Fn::GetAtt:
-          - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
+          - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
           - GroupId
       IpProtocol: "-1"
       SourceSecurityGroupId:
         Fn::GetAtt:
-          - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
+          - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
           - GroupId
-  VSCodeIdeIdeInternalSecurityGrouptoidestackVSCodeIdeIdeInternalSecurityGroup1B3E620BALLTRAFFIC7F2B7031:
+  VSCodeIdeGiteaIdeInternalSecurityGrouptoidestackVSCodeIdeGiteaIdeInternalSecurityGroup02E53CC5ALLTRAFFIC34EF6E47:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
       Description: Allow all internal traffic
       DestinationSecurityGroupId:
         Fn::GetAtt:
-          - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
+          - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
           - GroupId
       GroupId:
         Fn::GetAtt:
-          - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
+          - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
           - GroupId
       IpProtocol: "-1"
-  VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82:
+  VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5:
     Type: AWS::CloudFormation::WaitConditionHandle
-  VSCodeIdeIdeBootstrapWaitConditionEDA1E0E7:
+  VSCodeIdeGiteaIdeBootstrapWaitCondition7A3D8607:
     Type: AWS::CloudFormation::WaitCondition
     Properties:
       Count: 1
       Handle:
-        Ref: VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82
+        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
       Timeout: "1800"
     DependsOn:
-      - VSCodeIdeIdeBootstrapDocument8DDB05AD
-      - VSCodeIdeIdeEC2Instance846AE373
-  VSCodeIdeIdeDistribution613960F4:
+      - VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
+      - VSCodeIdeGiteaIdeEC2Instance51274E6D
+  VSCodeIdeGiteaIdeDistribution51935A77:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
@@ -688,7 +678,7 @@ Resources:
           CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
           Compress: true
           OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
-          TargetOriginId: idestackVSCodeIdeIdeDistributionOrigin12E9C5C1A
+          TargetOriginId: idestackVSCodeIdeGiteaIdeDistributionOrigin1B5CE5937
           ViewerProtocolPolicy: allow-all
         Enabled: true
         HttpVersion: http2
@@ -701,14 +691,14 @@ Resources:
                 - TLSv1.2
             DomainName:
               Fn::GetAtt:
-                - VSCodeIdeIdeEC2Instance846AE373
+                - VSCodeIdeGiteaIdeEC2Instance51274E6D
                 - PublicDnsName
-            Id: idestackVSCodeIdeIdeDistributionOrigin12E9C5C1A
+            Id: idestackVSCodeIdeGiteaIdeDistributionOrigin1B5CE5937
     DependsOn:
-      - VSCodeIdeIdeEipAssociation5CF25E52
+      - VSCodeIdeGiteaIdeEipAssociation2B351459
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  VSCodeIdeIdePasswordSecret39AD78F3:
+  VSCodeIdeGiteaIdePasswordSecretD25F73F4:
     Type: AWS::SecretsManager::Secret
     Properties:
       GenerateSecretString:
@@ -721,7 +711,7 @@ Resources:
       Name: ide-password-lambda
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  VSCodeIdeIdePasswordExporterFunctionServiceRoleAC3A4C16:
+  VSCodeIdeGiteaIdePasswordExporterFunctionServiceRole708F84CF:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -737,7 +727,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  VSCodeIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy0FACB966:
+  VSCodeIdeGiteaIdePasswordExporterFunctionServiceRoleDefaultPolicy6B7C730A:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -747,12 +737,12 @@ Resources:
               - secretsmanager:DescribeSecret
             Effect: Allow
             Resource:
-              Ref: VSCodeIdeIdePasswordSecret39AD78F3
+              Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
         Version: "2012-10-17"
-      PolicyName: VSCodeIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy0FACB966
+      PolicyName: VSCodeIdeGiteaIdePasswordExporterFunctionServiceRoleDefaultPolicy6B7C730A
       Roles:
-        - Ref: VSCodeIdeIdePasswordExporterFunctionServiceRoleAC3A4C16
-  VSCodeIdeIdePasswordExporterFunction9E9A4082:
+        - Ref: VSCodeIdeGiteaIdePasswordExporterFunctionServiceRole708F84CF
+  VSCodeIdeGiteaIdePasswordExporterFunctionAC00753B:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -793,19 +783,19 @@ Resources:
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - VSCodeIdeIdePasswordExporterFunctionServiceRoleAC3A4C16
+          - VSCodeIdeGiteaIdePasswordExporterFunctionServiceRole708F84CF
           - Arn
       Runtime: python3.13
       Timeout: 180
     DependsOn:
-      - VSCodeIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy0FACB966
-      - VSCodeIdeIdePasswordExporterFunctionServiceRoleAC3A4C16
-  VSCodeIdeIdePasswordExporter93551A8E:
+      - VSCodeIdeGiteaIdePasswordExporterFunctionServiceRoleDefaultPolicy6B7C730A
+      - VSCodeIdeGiteaIdePasswordExporterFunctionServiceRole708F84CF
+  VSCodeIdeGiteaIdePasswordExporterE0C78A5A:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken:
         Fn::GetAtt:
-          - VSCodeIdeIdePasswordExporterFunction9E9A4082
+          - VSCodeIdeGiteaIdePasswordExporterFunctionAC00753B
           - Arn
       PasswordName:
         Fn::Join:
@@ -818,7 +808,7 @@ Resources:
                         - 6
                         - Fn::Split:
                             - ":"
-                            - Ref: VSCodeIdeIdePasswordSecret39AD78F3
+                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
             - Fn::Select:
                 - 1
                 - Fn::Split:
@@ -827,7 +817,7 @@ Resources:
                         - 6
                         - Fn::Split:
                             - ":"
-                            - Ref: VSCodeIdeIdePasswordSecret39AD78F3
+                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
             - Fn::Select:
                 - 2
                 - Fn::Split:
@@ -836,10 +826,10 @@ Resources:
                         - 6
                         - Fn::Split:
                             - ":"
-                            - Ref: VSCodeIdeIdePasswordSecret39AD78F3
+                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  VSCodeIdeIdeBootstrapDocument8DDB05AD:
+  VSCodeIdeGiteaIdeBootstrapDocument7FC8732A:
     Type: AWS::SSM::Document
     Properties:
       Content:
@@ -847,9 +837,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            default: ""
-            description: (Optional) Custom bootstrap script to run.
             type: String
+            description: (Optional) Custom bootstrap script to run.
+            default: ""
         mainSteps:
           - inputs:
               runCommand:
@@ -1056,7 +1046,12 @@ Resources:
                       # Iterate over each entry in the array
                       for extension in "${!array[@]}"; do
                         # Use retries as extension installation seems unreliable
-                        sudo -u ec2-user bash -c "set -e; (r=5;while ! code-server --install-extension $extension --force ; do ((--r))||exit;sleep 5;done)"
+                        echo "Installing extension: $extension"
+                        if sudo -u ec2-user bash -c "set -e; (r=5;while ! code-server --install-extension $extension --force ; do echo 'Retrying installation of $extension...'; ((--r))||break;sleep 5;done)" || true; then
+                          echo "Extension $extension installed successfully"
+                        else
+                          echo "Failed to install extension $extension after multiple retries, continuing anyway"
+                        fi
                       done
 
                       if [ ! -f "/home/ec2-user/.local/share/code-server/coder.json" ]; then
@@ -1106,18 +1101,19 @@ Resources:
 
                       exit $exit_code
                     - splashUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - VSCodeIdeIdeRole21951A1F
-                          - Arn
-                      readmeUrl: ""
-                      waitConditionHandleUrl:
-                        Ref: VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82
-                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
-                      domain: ""
-                      installGitea: echo bootstrapGitea was not provided
-                      terminalOnStartup: "true"
-                      environmentContentsZip: ""
+                      instanceIamRoleName:
+                        Ref: VSCodeIdeGiteaIdeRole90308F47
+                      codeServerVersion: 4.100.2
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1129,7 +1125,7 @@ Resources:
                                         - 6
                                         - Fn::Split:
                                             - ":"
-                                            - Ref: VSCodeIdeIdePasswordSecret39AD78F3
+                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
                             - Fn::Select:
                                 - 1
                                 - Fn::Split:
@@ -1138,7 +1134,7 @@ Resources:
                                         - 6
                                         - Fn::Split:
                                             - ":"
-                                            - Ref: VSCodeIdeIdePasswordSecret39AD78F3
+                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
                             - Fn::Select:
                                 - 2
                                 - Fn::Split:
@@ -1147,27 +1143,26 @@ Resources:
                                         - 6
                                         - Fn::Split:
                                             - ":"
-                                            - Ref: VSCodeIdeIdePasswordSecret39AD78F3
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
-                      codeServerVersion: 4.100.2
-                      instanceIamRoleName:
-                        Ref: VSCodeIdeIdeRole21951A1F
+                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                      environmentContentsZip: ""
+                      terminalOnStartup: "true"
+                      installGitea: echo bootstrapGitea was not provided
+                      domain: ""
+                      extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
+                      waitConditionHandleUrl:
+                        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
+                      readmeUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - VSCodeIdeGiteaIdeRole90308F47
+                          - Arn
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
       DocumentType: Command
       Name: ide-bootstrap-document
       UpdateMethod: NewVersion
-  VSCodeIdeIdeBootstrapFunctionServiceRole45BD56C6:
+  VSCodeIdeGiteaIdeBootstrapFunctionServiceRole80398CD3:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1183,7 +1178,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  VSCodeIdeIdeBootstrapFunctionServiceRoleDefaultPolicyA4D18BC6:
+  VSCodeIdeGiteaIdeBootstrapFunctionServiceRoleDefaultPolicy14D563B8:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -1192,7 +1187,7 @@ Resources:
             Effect: Allow
             Resource:
               Fn::GetAtt:
-                - VSCodeIdeIdeRole21951A1F
+                - VSCodeIdeGiteaIdeRole90308F47
                 - Arn
           - Action:
               - ec2:DescribeInstances
@@ -1203,10 +1198,10 @@ Resources:
             Effect: Allow
             Resource: "*"
         Version: "2012-10-17"
-      PolicyName: VSCodeIdeIdeBootstrapFunctionServiceRoleDefaultPolicyA4D18BC6
+      PolicyName: VSCodeIdeGiteaIdeBootstrapFunctionServiceRoleDefaultPolicy14D563B8
       Roles:
-        - Ref: VSCodeIdeIdeBootstrapFunctionServiceRole45BD56C6
-  VSCodeIdeIdeBootstrapFunctionADFBCE22:
+        - Ref: VSCodeIdeGiteaIdeBootstrapFunctionServiceRole80398CD3
+  VSCodeIdeGiteaIdeBootstrapFunction34BA645E:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -1284,26 +1279,26 @@ Resources:
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - VSCodeIdeIdeBootstrapFunctionServiceRole45BD56C6
+          - VSCodeIdeGiteaIdeBootstrapFunctionServiceRole80398CD3
           - Arn
       Runtime: python3.13
       Timeout: 900
     DependsOn:
-      - VSCodeIdeIdeBootstrapFunctionServiceRoleDefaultPolicyA4D18BC6
-      - VSCodeIdeIdeBootstrapFunctionServiceRole45BD56C6
-  VSCodeIdeIdeBootstrapResourceC2C4DC11:
+      - VSCodeIdeGiteaIdeBootstrapFunctionServiceRoleDefaultPolicy14D563B8
+      - VSCodeIdeGiteaIdeBootstrapFunctionServiceRole80398CD3
+  VSCodeIdeGiteaIdeBootstrapResource2AE02B22:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken:
         Fn::GetAtt:
-          - VSCodeIdeIdeBootstrapFunctionADFBCE22
+          - VSCodeIdeGiteaIdeBootstrapFunction34BA645E
           - Arn
-      InstanceId:
-        Ref: VSCodeIdeIdeEC2Instance846AE373
-      LogGroupName:
-        Ref: VSCodeIdeIdeLogGroup364F2B78
       SsmDocument:
-        Ref: VSCodeIdeIdeBootstrapDocument8DDB05AD
+        Ref: VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
+      LogGroupName:
+        Ref: VSCodeIdeGiteaIdeLogGroupCD76FEFA
+      InstanceId:
+        Ref: VSCodeIdeGiteaIdeEC2Instance51274E6D
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 Outputs:
@@ -1314,7 +1309,7 @@ Outputs:
         - ""
         - - https://
           - Fn::GetAtt:
-              - VSCodeIdeIdeDistribution613960F4
+              - VSCodeIdeGiteaIdeDistribution51935A77
               - DomainName
     Export:
       Name: ide-url
@@ -1322,7 +1317,7 @@ Outputs:
     Description: Workshop IDE Password
     Value:
       Fn::GetAtt:
-        - VSCodeIdeIdePasswordExporter93551A8E
+        - VSCodeIdeGiteaIdePasswordExporterE0C78A5A
         - password
     Export:
       Name: ide-password
