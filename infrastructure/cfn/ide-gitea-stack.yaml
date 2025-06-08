@@ -59,6 +59,12 @@ Metadata:
         id: AwsSolutions-CB4
       - reason: "Suppress warnings see: https://github.com/cdklabs/cdk-nag/issues/817"
         id: CdkNagValidationFailure
+      - reason: Workshop environment does not need ALB logs
+        id: AwsSolutions-ELB2
+      - reason: Workshop environment does not need Container Insights
+        id: AwsSolutions-ECS4
+      - reason: Workshop environment use temporary container for ECS
+        id: AwsSolutions-ECS2
 Resources:
   IdeVpcE831425F:
     Type: AWS::EC2::VPC
@@ -343,6 +349,10 @@ Resources:
               - secretsmanager:*
               - ssm:*
               - sts:*
+              - bedrock:*
+              - bedrock-agent:*
+              - bedrock-agent-runtime:*
+              - bedrock-runtime:*
             Effect: Allow
             Resource: "*"
             Sid: AllowedServicesEKS
@@ -422,7 +432,7 @@ Resources:
   VSCodeIdeGiteaIdeLogGroupCD76FEFA:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250603-125135
+      LogGroupName: ide-bootstrap-log-20250608-161235
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1117,17 +1127,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
-                      passwordName:
+                    - passwordName:
                         Fn::Join:
                           - "-"
                           - - Fn::Select:
@@ -1352,7 +1352,7 @@ Resources:
 
                         source /etc/profile.d/gitea.sh
                       domain: ""
-                      extensions: ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vscjava.vscode-java-pack
+                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
                       waitConditionHandleUrl:
                         Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
                       readmeUrl: ""
@@ -1364,6 +1364,16 @@ Resources:
                       instanceIamRoleName:
                         Ref: VSCodeIdeGiteaIdeRole90308F47
                       codeServerVersion: 4.100.2
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
