@@ -175,7 +175,7 @@ public class EcsCluster extends Construct {
                 .build()))
             .secrets(Map.of(
                 "SPRING_DATASOURCE_URL", software.amazon.awscdk.services.ecs.Secret.fromSsmParameter(infrastructureCore.getParamDBConnectionString()),
-                "SPRING_DATASOURCE_PASSWORD", software.amazon.awscdk.services.ecs.Secret.fromSecretsManager(infrastructureCore.getDatabaseSecret())
+                "SPRING_DATASOURCE_PASSWORD", software.amazon.awscdk.services.ecs.Secret.fromSecretsManager(infrastructureCore.getSecretPassword())
             ))
             .build();
         taskDefinition.addContainer(appName + "-Container", containerDefinitionProps);

@@ -460,7 +460,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250609-205651
+      LogGroupName: unicornstore-ide-bootstrap-log-20250609-221143
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -875,9 +875,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
+            default: ""
             type: String
             description: (Optional) Custom bootstrap script to run.
-            default: ""
         mainSteps:
           - inputs:
               runCommand:
@@ -1138,7 +1138,18 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleName:
+                    - installGitea: echo bootstrapGitea was not provided
+                      domain: ""
+                      extensions: vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
+                      waitConditionHandleUrl:
+                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
+                      readmeUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - UnicornStoreIdeIdeRole81A2CEAA
+                          - Arn
+                      splashUrl: ""
+                      instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
                       codeServerVersion: 4.100.2
                       customBootstrapScript: |
@@ -1195,17 +1206,6 @@ Resources:
                                             - Ref: UnicornStoreIdeIdePasswordSecret514252E2
                       environmentContentsZip: ""
                       terminalOnStartup: "true"
-                      installGitea: echo bootstrapGitea was not provided
-                      domain: ""
-                      extensions: vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
-                      waitConditionHandleUrl:
-                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
-                      readmeUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - UnicornStoreIdeIdeRole81A2CEAA
-                          - Arn
-                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1343,12 +1343,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
-      LogGroupName:
-        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
       InstanceId:
         Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
       SsmDocument:
         Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
+      LogGroupName:
+        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -2294,6 +2294,14 @@ Resources:
               return 'placeholder'
       Environment:
         Variables:
+          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
+          SPRING_DATASOURCE_PASSWORD:
+            Fn::Join:
+              - ""
+              - - "{{resolve:secretsmanager:"
+                - Ref: InfrastructureCorepostgresB0D0C6BB
+                - :SecretString:password::}}
           SPRING_DATASOURCE_URL:
             Fn::Join:
               - ""
@@ -2303,14 +2311,6 @@ Resources:
                     - Endpoint.Address
                 - :5432/unicorns
           SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
-          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
-          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
-          SPRING_DATASOURCE_PASSWORD:
-            Fn::Join:
-              - ""
-              - - "{{resolve:secretsmanager:"
-                - Ref: InfrastructureCorepostgresB0D0C6BB
-                - :SecretString:password::}}
       FunctionName: unicorn-store-spring
       Handler: com.unicorn.store.StreamLambdaHandler::handleRequest
       MemorySize: 2048
@@ -3042,12 +3042,12 @@ Resources:
       Description: Build complete
       EventPattern:
         detail:
+          project-name:
+            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
-          project-name:
-            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -3079,13 +3079,13 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreCodeBuildStartBuildFunctionB2FE9156
           - Arn
-      ContentHash: fd70d4491df3a6a44292446f6b364c8a
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
       ProjectName:
         Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
+      ContentHash: fd70d4491df3a6a44292446f6b364c8a
     DependsOn:
       - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRuleunicornstorestackUnicornStoreCodeBuildReportBuildFunction6189FCDE5C03542B
       - UnicornStoreCodeBuildBuildCompleteRule7E287561
