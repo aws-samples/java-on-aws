@@ -2,6 +2,34 @@
 	"Version": "2012-10-17",
 	"Statement": [
 		{
+            "Effect": "Allow",
+            "Action": [
+                "aws-marketplace:Subscribe"
+            ],
+            "Resource": "*",
+            "Condition": {
+                    "Null": {
+                       "aws-marketplace:ProductId": "false"
+                },
+                "ForAllValues:StringEquals": {
+                    "aws-marketplace:ProductId": [
+                        "prod-4dlfvry4v5hbi",
+                        "prod-cx7ovbu5wex7g",
+                        "prod-5oba7y7jpji56"
+                    ]
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "aws-marketplace:Unsubscribe",
+                "aws-marketplace:ViewSubscriptions",
+				"bedrock:*"
+            ],
+            "Resource": "*"
+        },
+		{
 			"Sid": "AllowedServicesEKS",
 			"Action": [
 				"cloudwatch:*",
@@ -14,8 +42,7 @@
 				"q:*",
 				"secretsmanager:*",
 				"ssm:*",
-				"sts:*",
-				"bedrock:*"
+				"sts:*"
 			],
 			"Resource": "*",
 			"Effect": "Allow"

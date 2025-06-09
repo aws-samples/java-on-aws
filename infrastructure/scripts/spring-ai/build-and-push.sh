@@ -5,7 +5,7 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 # Use a single variable for app name, repository, service, and cluster
-APP_NAME="unicorn-store-spring"
+APP_NAME="unicorn-spring-ai-agent"
 
 # Check if a Dockerfile path was provided as an argument
 DOCKERFILE_PATH="$1"

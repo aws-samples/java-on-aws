@@ -88,7 +88,7 @@ public class SpringAIStack extends Stack {
         // var accountId = Stack.of(this).getAccount();
 
         // Create ECS cluster for the workshop
-        new EcsCluster(this, "UnicornStoreEcsCluster", infrastructureCore, "unicorn-store-spring");
+        new EcsCluster(this, "UnicornStoreEcsCluster", infrastructureCore, "unicorn-spring-ai-agent");
 
         // Execute Database setup
         var databaseSetup = new DatabaseSetup(this, "UnicornStoreDatabaseSetup", infrastructureCore);

@@ -337,6 +337,23 @@ Resources:
       Path: /
       PolicyDocument:
         Statement:
+          - Action: aws-marketplace:Subscribe
+            Condition:
+              "Null":
+                aws-marketplace:ProductId: "false"
+              ForAllValues:StringEquals:
+                aws-marketplace:ProductId:
+                  - prod-4dlfvry4v5hbi
+                  - prod-cx7ovbu5wex7g
+                  - prod-5oba7y7jpji56
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - aws-marketplace:Unsubscribe
+              - aws-marketplace:ViewSubscriptions
+              - bedrock:*
+            Effect: Allow
+            Resource: "*"
           - Action:
               - cloudwatch:*
               - codewhisperer:*
@@ -349,7 +366,6 @@ Resources:
               - secretsmanager:*
               - ssm:*
               - sts:*
-              - bedrock:*
             Effect: Allow
             Resource: "*"
             Sid: AllowedServicesEKS
@@ -429,7 +445,7 @@ Resources:
   VSCodeIdeIdeLogGroup364F2B78:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250608-163018
+      LogGroupName: ide-bootstrap-log-20250609-205711
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
