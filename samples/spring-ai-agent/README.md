@@ -6,19 +6,8 @@
 ## Examples HTTP requests
 chat-requests.http
 
-## Prerequisite for external memory: PostgreSQL, for application started locally without container
-```
-docker run --name my-postgres \                    ✘ 125 
--e POSTGRES_DB=ai-agent-db \
--e POSTGRES_USER=chatuser \
--e POSTGRES_PASSWORD=chatpass \
--p 5432:5432 \
--d pgvector/pgvector:pg16
-```
+## Run locally
+Run with test run to connect a pg-vector test containers  for local dev  
 
-## Build Docker Image with JIB plugin
-- mvn compile jib:dockerBuild
-
-## Run postgres and spring-ai-agent containers
-docker-compose up
+`mvn spring-boot:test-run`
 
