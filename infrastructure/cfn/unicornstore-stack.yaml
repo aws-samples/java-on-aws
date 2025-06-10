@@ -460,7 +460,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250609-221143
+      LogGroupName: unicornstore-ide-bootstrap-log-20250610-101618
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1138,8 +1138,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - installGitea: echo bootstrapGitea was not provided
-                      domain: ""
+                    - domain: ""
                       extensions: vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
                       waitConditionHandleUrl:
                         Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
@@ -1206,6 +1205,7 @@ Resources:
                                             - Ref: UnicornStoreIdeIdePasswordSecret514252E2
                       environmentContentsZip: ""
                       terminalOnStartup: "true"
+                      installGitea: echo bootstrapGitea was not provided
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML

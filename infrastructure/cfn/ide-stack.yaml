@@ -445,7 +445,7 @@ Resources:
   VSCodeIdeIdeLogGroup364F2B78:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250609-221203
+      LogGroupName: ide-bootstrap-log-20250610-101641
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -860,8 +860,8 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            default: ""
             description: (Optional) Custom bootstrap script to run.
+            default: ""
             type: String
         mainSteps:
           - inputs:
@@ -1123,14 +1123,19 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - readmeUrl: ""
-                      waitConditionHandleUrl:
-                        Ref: VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82
-                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
-                      domain: ""
-                      installGitea: echo bootstrapGitea was not provided
-                      terminalOnStartup: "true"
-                      environmentContentsZip: ""
+                    - instanceIamRoleName:
+                        Ref: VSCodeIdeIdeRole21951A1F
+                      codeServerVersion: 4.100.2
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1161,24 +1166,19 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: VSCodeIdeIdePasswordSecret39AD78F3
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
-                      codeServerVersion: 4.100.2
-                      instanceIamRoleName:
-                        Ref: VSCodeIdeIdeRole21951A1F
-                      splashUrl: ""
+                      environmentContentsZip: ""
+                      terminalOnStartup: "true"
+                      installGitea: echo bootstrapGitea was not provided
+                      domain: ""
+                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
+                      waitConditionHandleUrl:
+                        Ref: VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82
+                      readmeUrl: ""
                       instanceIamRoleArn:
                         Fn::GetAtt:
                           - VSCodeIdeIdeRole21951A1F
                           - Arn
+                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1316,12 +1316,12 @@ Resources:
         Fn::GetAtt:
           - VSCodeIdeIdeBootstrapFunctionADFBCE22
           - Arn
-      LogGroupName:
-        Ref: VSCodeIdeIdeLogGroup364F2B78
-      SsmDocument:
-        Ref: VSCodeIdeIdeBootstrapDocument8DDB05AD
       InstanceId:
         Ref: VSCodeIdeIdeEC2Instance846AE373
+      SsmDocument:
+        Ref: VSCodeIdeIdeBootstrapDocument8DDB05AD
+      LogGroupName:
+        Ref: VSCodeIdeIdeLogGroup364F2B78
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 Outputs:
