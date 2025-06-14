@@ -3,8 +3,6 @@ package com.unicorn.store.model;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
-import java.util.UUID;
-
 @Entity(name = "unicorns")
 public class Unicorn {
 
