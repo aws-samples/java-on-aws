@@ -445,7 +445,7 @@ Resources:
   VSCodeIdeIdeLogGroup364F2B78:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250614-180609
+      LogGroupName: ide-bootstrap-log-20250614-193037
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1123,10 +1123,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleName:
-                        Ref: VSCodeIdeIdeRole21951A1F
-                      splashUrl: ""
-                      instanceIamRoleArn:
+                    - instanceIamRoleArn:
                         Fn::GetAtt:
                           - VSCodeIdeIdeRole21951A1F
                           - Arn
@@ -1179,6 +1176,9 @@ Resources:
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
                       codeServerVersion: 4.100.3
+                      instanceIamRoleName:
+                        Ref: VSCodeIdeIdeRole21951A1F
+                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1316,12 +1316,12 @@ Resources:
         Fn::GetAtt:
           - VSCodeIdeIdeBootstrapFunctionADFBCE22
           - Arn
+      LogGroupName:
+        Ref: VSCodeIdeIdeLogGroup364F2B78
       SsmDocument:
         Ref: VSCodeIdeIdeBootstrapDocument8DDB05AD
       InstanceId:
         Ref: VSCodeIdeIdeEC2Instance846AE373
-      LogGroupName:
-        Ref: VSCodeIdeIdeLogGroup364F2B78
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 Outputs:

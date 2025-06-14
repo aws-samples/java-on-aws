@@ -73,7 +73,9 @@ public class EcsCluster extends Construct {
     private Repository createEcrRepository() {
         return Repository.Builder.create(this, appName + "-EcrRepository")
             .repositoryName(appName)
+            .imageScanOnPush(false)
             .removalPolicy(RemovalPolicy.DESTROY)
+            .emptyOnDelete(true)  // This will force delete all images when repository is deleted
             .build();
     }
 

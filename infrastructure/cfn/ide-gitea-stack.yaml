@@ -445,7 +445,7 @@ Resources:
   VSCodeIdeGiteaIdeLogGroupCD76FEFA:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250614-180628
+      LogGroupName: ide-bootstrap-log-20250614-193054
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1524,12 +1524,12 @@ Resources:
         Fn::GetAtt:
           - VSCodeIdeGiteaIdeBootstrapFunction34BA645E
           - Arn
+      SsmDocument:
+        Ref: VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
       LogGroupName:
         Ref: VSCodeIdeGiteaIdeLogGroupCD76FEFA
       InstanceId:
         Ref: VSCodeIdeGiteaIdeEC2Instance51274E6D
-      SsmDocument:
-        Ref: VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 Outputs:
