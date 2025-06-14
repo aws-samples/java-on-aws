@@ -460,7 +460,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250611-151735
+      LogGroupName: unicornstore-ide-bootstrap-log-20250614-180553
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1195,7 +1195,7 @@ Resources:
                         echo '=== Additional Setup ==='
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
-                      codeServerVersion: 4.100.2
+                      codeServerVersion: 4.100.3
                       instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
                       splashUrl: ""

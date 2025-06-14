@@ -114,6 +114,7 @@ public class EcsCluster extends Construct {
             .vpc(infrastructureCore.getVpc())
             .internetFacing(true)
             .securityGroup(albSecurityGroup)
+            .idleTimeout(Duration.hours(1))
             .vpcSubnets(SubnetSelection.builder()
                 .subnetType(SubnetType.PUBLIC)
                 .build())
