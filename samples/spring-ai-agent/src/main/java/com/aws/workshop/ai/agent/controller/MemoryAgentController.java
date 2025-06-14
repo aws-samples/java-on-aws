@@ -2,14 +2,12 @@ package com.aws.workshop.ai.agent.controller;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.web.bind.annotation.*;
-import software.amazon.awssdk.utils.StringInputStream;
-
-import java.io.InputStream;
-import java.util.Objects;
+import reactor.core.publisher.Flux;
 
 @RestController
 @RequestMapping("/memory")
@@ -33,19 +31,22 @@ public class MemoryAgentController {
         return chatClient
                 .prompt()
                 .advisors(promptChatMemoryAdvisor)
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, "logged-user-account"))
                 .user(prompt)
                 .call()
                 .content();
     }
 
     @PostMapping("/chat/stream")
-    public InputStream chatStream(@RequestBody String prompt) {
-        return new StringInputStream(Objects.requireNonNull(chatClient
+    public Flux<String> chatStream(@RequestBody String prompt) {
+        return chatClient
                 .prompt()
                 .advisors(promptChatMemoryAdvisor)
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, "logged-user-account"))
                 .user(prompt)
-                .call()
-                .content()));
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, "logged-user-account"))
+                .stream()
+                .content();
     }
 
     @PostMapping("/model")
