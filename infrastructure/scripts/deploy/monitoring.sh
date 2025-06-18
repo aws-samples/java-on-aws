@@ -28,16 +28,24 @@ kubectl create secret generic "$GRAFANA_SECRET_NAME" \
   --from-literal=password="$GRAFANA_PASSWORD" \
   -n "$NAMESPACE"
 
-  # 📊 Prometheus Installation (with OTEL Collector as Scrape Target)
+  # 📊 Prometheus Installation (with OTEL Collector and Cloud Map targets)
 helm upgrade --install prometheus prometheus-community/prometheus \
   --namespace "$NAMESPACE" \
   --set server.service.type=LoadBalancer \
   --set server.persistentVolume.enabled=true \
   --set server.persistentVolume.storageClass="gp3" \
   --set alertmanager.enabled=false \
-  --set serverFiles.prometheus.yml.scrape_configs[1].job_name="otel-collector" \
-  --set serverFiles.prometheus.yml.scrape_configs[1].static_configs[0].targets[0]="otel-collector-service.unicorn-store-spring.svc.cluster.local:8889" \
-  --set server.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-internal"="\"true\""
+  --set serverFiles.prometheus.yml.scrape_configs[0].job_name="otel-collector" \
+  --set serverFiles.prometheus.yml.scrape_configs[0].static_configs[0].targets[0]="otel-collector-service.unicorn-store-spring.svc.cluster.local:8889" \
+  --set serverFiles.prometheus.yml.scrape_configs[1].job_name="ecs-cloudmap" \
+  --set serverFiles.prometheus.yml.scrape_configs[1].metrics_path="/actuator/prometheus" \
+  --set serverFiles.prometheus.yml.scrape_configs[1].cloudmap_sd_configs[0].namespace="unicornstore.local" \
+  --set serverFiles.prometheus.yml.scrape_configs[1].relabel_configs[0].source_labels[0]="__meta_cloudmap_instance_ipv4" \
+  --set serverFiles.prometheus.yml.scrape_configs[1].relabel_configs[0].target_label="__address__" \
+  --set serverFiles.prometheus.yml.scrape_configs[1].relabel_configs[0].replacement="\${1}:9404" \
+  --set server.service.annotations."service\\.beta\\.kubernetes\\.io/aws-load-balancer-internal"="\"true\""
+
+echo "✅ Prometheus now scrapes OTEL Collector and ECS targets via Cloud Map."
 
 # 🗄 Prometheus Datasource
 cat > "$DATASOURCE_FILE" <<EOF

@@ -99,6 +99,7 @@
 				"lambda:*",
 				"dynamodb:*",
 				"s3:*",
+				"servicediscovery:*",
 				"tag:*",
 				"application-signals:*"
 			],
