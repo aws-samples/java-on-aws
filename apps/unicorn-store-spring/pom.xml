@@ -265,7 +265,7 @@
                                     <BP_SPRING_AOT_ENABLED>true</BP_SPRING_AOT_ENABLED>
                                 </env>
                             </image>
-                        </configuration>
+                    </configuration>
                     </plugin>
                 </plugins>
             </build>

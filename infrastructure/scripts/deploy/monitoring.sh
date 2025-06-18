@@ -28,13 +28,15 @@ kubectl create secret generic "$GRAFANA_SECRET_NAME" \
   --from-literal=password="$GRAFANA_PASSWORD" \
   -n "$NAMESPACE"
 
-# 📊 Prometheus Installation
+  # 📊 Prometheus Installation (with OTEL Collector as Scrape Target)
 helm upgrade --install prometheus prometheus-community/prometheus \
   --namespace "$NAMESPACE" \
   --set server.service.type=LoadBalancer \
   --set server.persistentVolume.enabled=true \
   --set server.persistentVolume.storageClass="gp3" \
   --set alertmanager.enabled=false \
+  --set serverFiles.prometheus.yml.scrape_configs[1].job_name="otel-collector" \
+  --set serverFiles.prometheus.yml.scrape_configs[1].static_configs[0].targets[0]="otel-collector-service.unicorn-store-spring.svc.cluster.local:8889" \
   --set server.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-internal"="\"true\""
 
 # 🗄 Prometheus Datasource
@@ -51,8 +53,8 @@ EOF
 kubectl create configmap unicornstore-datasource --from-file="$DATASOURCE_FILE" -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 kubectl label configmap unicornstore-datasource -n "$NAMESPACE" grafana_datasource=1 --overwrite
 
-# 🗆 JVM Dashboard
-curl -s -o "$DASHBOARD_JSON_FILE" https://grafana.com/api/dashboards/4701/revisions/5/download
+# JVM Dashboard
+curl -s -o "$DASHBOARD_JSON_FILE" https://grafana.com/api/dashboards/22108/revisions/3/download
 
 cat > "$DASHBOARD_PROVISIONING_FILE" <<EOF
 apiVersion: 1
