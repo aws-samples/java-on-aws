@@ -12,6 +12,11 @@ curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/lat
 chmod +x argocd-linux-amd64
 sudo mv argocd-linux-amd64 /usr/local/bin/argocd
 
+echo Installing kubectx
+sudo git clone https://github.com/ahmetb/kubectx /opt/kubectx
+sudo ln -s /opt/kubectx/kubectx /usr/local/bin/kubectx
+sudo ln -s /opt/kubectx/kubens /usr/local/bin/kubens
+
 echo Installing zsh
 rm -rf /home/ec2-user/.oh-my-zsh
 mkdir -p ~/tmp

@@ -346,6 +346,8 @@ Resources:
                   - prod-4dlfvry4v5hbi
                   - prod-cx7ovbu5wex7g
                   - prod-5oba7y7jpji56
+                  - b7568428-a1ab-46d8-bab3-37def50f6f6a
+                  - 38e55671-c3fe-4a44-9783-3584906e7cad
             Effect: Allow
             Resource: "*"
           - Action:
@@ -445,7 +447,7 @@ Resources:
   VSCodeIdeGiteaIdeLogGroupCD76FEFA:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250614-193054
+      LogGroupName: ide-bootstrap-log-20250615-133649
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain

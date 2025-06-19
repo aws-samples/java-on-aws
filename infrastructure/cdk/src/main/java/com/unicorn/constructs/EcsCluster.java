@@ -213,6 +213,7 @@ public class EcsCluster extends Construct {
             .cluster(ecsCluster)
             .taskDefinition(taskDefinition)
             .desiredCount(1)
+            .minHealthyPercent(0)
             .securityGroups(List.of(ecsSecurityGroup))
             .vpcSubnets(SubnetSelection.builder()
                 .subnetType(SubnetType.PRIVATE_WITH_EGRESS)

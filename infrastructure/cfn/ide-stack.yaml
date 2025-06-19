@@ -346,6 +346,8 @@ Resources:
                   - prod-4dlfvry4v5hbi
                   - prod-cx7ovbu5wex7g
                   - prod-5oba7y7jpji56
+                  - b7568428-a1ab-46d8-bab3-37def50f6f6a
+                  - 38e55671-c3fe-4a44-9783-3584906e7cad
             Effect: Allow
             Resource: "*"
           - Action:
@@ -445,7 +447,7 @@ Resources:
   VSCodeIdeIdeLogGroup364F2B78:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250614-193037
+      LogGroupName: ide-bootstrap-log-20250615-133633
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -860,9 +862,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            default: ""
             description: (Optional) Custom bootstrap script to run.
             type: String
+            default: ""
         mainSteps:
           - inputs:
               runCommand:
@@ -1123,12 +1125,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - VSCodeIdeIdeRole21951A1F
-                          - Arn
-                      readmeUrl: ""
-                      waitConditionHandleUrl:
+                    - waitConditionHandleUrl:
                         Ref: VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82
                       extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
                       domain: ""
@@ -1179,6 +1176,11 @@ Resources:
                       instanceIamRoleName:
                         Ref: VSCodeIdeIdeRole21951A1F
                       splashUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - VSCodeIdeIdeRole21951A1F
+                          - Arn
+                      readmeUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
