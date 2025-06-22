@@ -8,6 +8,7 @@ GRAFANA_SECRET_NAME="grafana-admin"
 DATASOURCE_FILE="grafana-datasource.yaml"
 DASHBOARD_JSON_FILE="jvm-dashboard.json"
 DASHBOARD_PROVISIONING_FILE="dashboard-provisioning.yaml"
+EXTRA_SCRAPE_FILE="extra-scrape-configs.yaml"
 
 # 🔐 Generate Grafana credentials
 GRAFANA_USER="admin"
@@ -28,24 +29,101 @@ kubectl create secret generic "$GRAFANA_SECRET_NAME" \
   --from-literal=password="$GRAFANA_PASSWORD" \
   -n "$NAMESPACE"
 
-  # 📊 Prometheus Installation (with OTEL Collector and Cloud Map targets)
+cat > "$EXTRA_SCRAPE_FILE" <<EOF
+- job_name: "otel-collector"
+  static_configs:
+    - targets: ["otel-collector-service.unicorn-store-spring.svc.cluster.local:8889"]
+
+- job_name: "ecs-cloudmap"
+  metrics_path: "/actuator/prometheus"
+  cloudmap_sd_configs:
+    - namespace: "unicornstore.local"
+      service: "unicorn-store-spring"
+  relabel_configs:
+    - source_labels: [__meta_cloudmap_instance_ipv4]
+      regex: (.+)
+      target_label: __address__
+      replacement: "\${1}:9404"
+    - source_labels: [__meta_cloudmap_instance_attribute_ECS_CLUSTER_NAME]
+      target_label: ecs_cluster
+    - source_labels: [__meta_cloudmap_instance_attribute_ECS_SERVICE_NAME]
+      target_label: ecs_service
+    - source_labels: [__meta_cloudmap_instance_attribute_AVAILABILITY_ZONE]
+      target_label: az
+    - source_labels: [__meta_cloudmap_instance_attribute_REGION]
+      target_label: region
+EOF
+
+kubectl create configmap prometheus-extra-scrape --from-file="$EXTRA_SCRAPE_FILE" -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+
+# 📂 Prometheus Installation with internal LoadBalancer
 helm upgrade --install prometheus prometheus-community/prometheus \
   --namespace "$NAMESPACE" \
-  --set server.service.type=LoadBalancer \
-  --set server.persistentVolume.enabled=true \
-  --set server.persistentVolume.storageClass="gp3" \
   --set alertmanager.enabled=false \
-  --set serverFiles.prometheus.yml.scrape_configs[0].job_name="otel-collector" \
-  --set serverFiles.prometheus.yml.scrape_configs[0].static_configs[0].targets[0]="otel-collector-service.unicorn-store-spring.svc.cluster.local:8889" \
-  --set serverFiles.prometheus.yml.scrape_configs[1].job_name="ecs-cloudmap" \
-  --set serverFiles.prometheus.yml.scrape_configs[1].metrics_path="/actuator/prometheus" \
-  --set serverFiles.prometheus.yml.scrape_configs[1].cloudmap_sd_configs[0].namespace="unicornstore.local" \
-  --set serverFiles.prometheus.yml.scrape_configs[1].relabel_configs[0].source_labels[0]="__meta_cloudmap_instance_ipv4" \
-  --set serverFiles.prometheus.yml.scrape_configs[1].relabel_configs[0].target_label="__address__" \
-  --set serverFiles.prometheus.yml.scrape_configs[1].relabel_configs[0].replacement="\${1}:9404" \
-  --set server.service.annotations."service\\.beta\\.kubernetes\\.io/aws-load-balancer-internal"="\"true\""
+  --set server.service.type=LoadBalancer \
+  --set server.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"=internal \
+  --set server.extraScrapeConfigs="$(kubectl get configmap prometheus-extra-scrape -n $NAMESPACE -o jsonpath='{.data.extra-scrape-configs\.yaml}')"
 
-echo "✅ Prometheus now scrapes OTEL Collector and ECS targets via Cloud Map."
+# 🎯 Store Prometheus internal Load Balancer DNS in SSM Parameter Store
+PROM_ILB_DNS=$(kubectl get svc prometheus-server -n "$NAMESPACE" -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
+
+VPC_ID=$(aws ec2 describe-vpcs \
+  --filters "Name=tag:Name,Values=unicornstore-vpc" \
+  --query "Vpcs[0].VpcId" \
+  --output text)
+
+VPC_CIDR=$(aws ec2 describe-vpcs \
+--vpc-ids "$VPC_ID" \
+--query "Vpcs[0].CidrBlock" \
+--output text)
+
+for i in {1..30}; do
+  PROM_LB_HOSTNAME=$(kubectl get svc prometheus-server -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+  if [[ -n "$PROM_LB_HOSTNAME" && "$PROM_LB_HOSTNAME" != "<no value>" ]]; then
+    echo "✅ Prometheus ILB ready: $PROM_LB_HOSTNAME"
+    aws ssm put-parameter --name "/unicornstore/prometheus/internal-dns" \
+      --value "$PROM_LB_HOSTNAME" --type String --overwrite
+
+    echo "🔍 Looking up SG for ILB: $PROM_LB_HOSTNAME"
+
+    # Get Load Balancer ARN by matching its DNS name
+    LB_ARN=$(aws elbv2 describe-load-balancers \
+      --query "LoadBalancers[?DNSName=='$PROM_LB_HOSTNAME'].LoadBalancerArn" \
+      --output text)
+
+    if [[ -z "$LB_ARN" ]]; then
+      echo "❌ Could not find Load Balancer ARN for $PROM_LB_HOSTNAME"
+      exit 1
+    fi
+
+    # Get SG ID from Load Balancer
+    ILB_SG_ID=$(aws elbv2 describe-load-balancers \
+      --load-balancer-arns "$LB_ARN" \
+      --query "LoadBalancers[0].SecurityGroups[0]" \
+      --output text)
+
+    if [[ -z "$ILB_SG_ID" || "$ILB_SG_ID" == "None" ]]; then
+      echo "❌ Could not determine Security Group for Load Balancer $LB_ARN"
+      exit 1
+    fi
+
+    echo "🔐 ILB Security Group: $ILB_SG_ID"
+
+    # Authorize Prometheus port for ECS
+    aws ec2 authorize-security-group-ingress \
+      --group-id "$ILB_SG_ID" \
+      --protocol tcp \
+      --port 9090 \
+      --cidr "$VPC_CIDR" \
+      --output text || echo "ℹ️ Rule may already exist"
+
+    break
+  fi
+  echo "⏳ Waiting for Prometheus ILB... ($i/30)"
+  sleep 10
+done
+
+echo "✅ Prometheus now scrapes OTEL Collector and ECS targets via Cloud Map. Internal LoadBalancer is active."
 
 # 🗄 Prometheus Datasource
 cat > "$DATASOURCE_FILE" <<EOF
