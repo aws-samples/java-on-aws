@@ -57,15 +57,65 @@ EOF
 kubectl create configmap prometheus-extra-scrape --from-file="$EXTRA_SCRAPE_FILE" -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
 # 📂 Prometheus Installation with internal LoadBalancer
+echo "📝 Writing temporary $VALUES_FILE"
+cat <<EOF > $VALUES_FILE
+alertmanager:
+  enabled: false
+
+kube-state-metrics:
+  enabled: true
+
+prometheus-node-exporter:
+  enabled: true
+
+prometheus-pushgateway:
+  enabled: false
+
+server:
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+
+  extraFlags:
+    - web.enable-remote-write-receiver
+
+  extraScrapeConfigs: |
+    - job_name: "otel-collector"
+      static_configs:
+        - targets: ["otel-collector-service.unicorn-store-spring.svc.cluster.local:8889"]
+
+    - job_name: "ecs-cloudmap"
+      metrics_path: "/actuator/prometheus"
+      cloudmap_sd_configs:
+        - namespace: "unicornstore.local"
+          service: "unicorn-store-spring"
+      relabel_configs:
+        - source_labels: [__meta_cloudmap_instance_ipv4]
+          regex: (.+)
+          target_label: __address__
+          replacement: "\${1}:9404"
+        - source_labels: [__meta_cloudmap_instance_attribute_ECS_CLUSTER_NAME]
+          target_label: ecs_cluster
+        - source_labels: [__meta_cloudmap_instance_attribute_ECS_SERVICE_NAME]
+          target_label: ecs_service
+        - source_labels: [__meta_cloudmap_instance_attribute_AVAILABILITY_ZONE]
+          target_label: az
+        - source_labels: [__meta_cloudmap_instance_attribute_REGION]
+          target_label: region
+
+  retention: 24h
+  persistentVolume:
+    size: 25Gi
+EOF
+
+echo "🚀 Deploying Prometheus with Helm values"
 helm upgrade --install prometheus prometheus-community/prometheus \
   --namespace "$NAMESPACE" \
-  --set alertmanager.enabled=false \
-  --set server.service.type=LoadBalancer \
-  --set server.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"=internal \
-  --set server.extraScrapeConfigs="$(kubectl get configmap prometheus-extra-scrape -n $NAMESPACE -o jsonpath='{.data.extra-scrape-configs\.yaml}')"
+  --values "$VALUES_FILE"
 
-# 🎯 Store Prometheus internal Load Balancer DNS in SSM Parameter Store
-PROM_ILB_DNS=$(kubectl get svc prometheus-server -n "$NAMESPACE" -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
+echo "🧹 Cleaning up $VALUES_FILE"
+rm "$VALUES_FILE"
 
 VPC_ID=$(aws ec2 describe-vpcs \
   --filters "Name=tag:Name,Values=unicornstore-vpc" \
