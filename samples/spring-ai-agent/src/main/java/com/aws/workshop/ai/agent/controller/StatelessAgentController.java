@@ -2,11 +2,11 @@ package com.aws.workshop.ai.agent.controller;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.ChatOptions;
-import org.springframework.web.bind.annotation.*;
-import software.amazon.awssdk.utils.StringInputStream;
-
-import java.io.InputStream;
-import java.util.Objects;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Flux;
 
 @RestController
 public class StatelessAgentController {
@@ -28,12 +28,12 @@ public class StatelessAgentController {
     }
 
     @PostMapping("/chat/stream")
-    public InputStream chatStream(@RequestBody String prompt) {
-        return new StringInputStream(Objects.requireNonNull(chatClient
+    public Flux<String> chatStream(@RequestBody String prompt) {
+        return chatClient
                 .prompt()
                 .user(prompt)
-                .call()
-                .content()));
+                .stream()
+                .content();
     }
 
     @PostMapping("/model")

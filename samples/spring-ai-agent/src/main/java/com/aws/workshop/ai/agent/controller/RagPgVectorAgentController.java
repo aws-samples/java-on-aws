@@ -6,11 +6,9 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.web.bind.annotation.*;
-import software.amazon.awssdk.utils.StringInputStream;
+import reactor.core.publisher.Flux;
 
-import java.io.InputStream;
 import java.util.List;
-import java.util.Objects;
 
 @RestController
 @RequestMapping("/rag-pgvector")
@@ -43,13 +41,13 @@ public class RagPgVectorAgentController {
     }
 
     @PostMapping("/chat/stream")
-    public InputStream chatStream(@RequestBody String prompt) {
-        return new StringInputStream(Objects.requireNonNull(chatClient
+    public Flux<String> chatStream(@RequestBody String prompt) {
+        return chatClient
                 .prompt()
                 .advisors(ragAdvisor)
                 .user(prompt)
-                .call()
-                .content()));
+                .stream()
+                .content();
     }
 
     @PostMapping("/model")
