@@ -9,6 +9,7 @@ DATASOURCE_FILE="grafana-datasource.yaml"
 DASHBOARD_JSON_FILE="jvm-dashboard.json"
 DASHBOARD_PROVISIONING_FILE="dashboard-provisioning.yaml"
 EXTRA_SCRAPE_FILE="extra-scrape-configs.yaml"
+VALUES_FILE="prometheus-values.yaml"
 
 # 🔐 Generate Grafana credentials
 GRAFANA_USER="admin"
