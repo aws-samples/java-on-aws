@@ -30,8 +30,13 @@ public class UnicornStoreStack extends Stack {
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
 
         echo '=== Additional Setup ==='
+        echo '=== Checking directory ==='
+        ls -la ~/java-on-aws/infrastructure/scripts/setup/
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
+        if ! test -f ~/java-on-aws/infrastructure/scripts/setup/monitoring.sh; then
+          echo "File monitoring.sh does not exists."
+        fi
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
         """;
 
