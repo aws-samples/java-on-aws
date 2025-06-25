@@ -22,19 +22,22 @@ public class UnicornStoreStack extends Stack {
     private final String bootstrapScript = """
         date
 
-        echo '=== Clone Git repository ==='
+        echo '=== Clone Git repository ===\n'
         sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
         # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
 
-        echo '=== Setup IDE ==='
+        echo '=== Setup IDE ===\n'
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
 
-        echo '=== Additional Setup ==='
+        echo '=== Additional Setup ===\n'
+        echo '===== whoami =====\n'
         whoami
-        echo '=== Checking directory ==='
+        echo '\n'
+        echo '=== Checking directory ===\n'
         sudo -H -i -u ec2-user bash -c "ls -la ~/java-on-aws/infrastructure/scripts/setup/"
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
+        sudo -H -i -u ec2-user bash -c "cd ~/java-on-aws/ && pwd"
         if ! test -f /home/ec2-user/java-on-aws/infrastructure/scripts/setup/monitoring.sh; then
           echo "File monitoring.sh does not exists."
         fi
