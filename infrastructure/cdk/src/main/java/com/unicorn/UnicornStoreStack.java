@@ -109,11 +109,11 @@ public class UnicornStoreStack extends Stack {
         InfrastructureLambdaBedrock lambdaBedrock = new InfrastructureLambdaBedrock(this, "InfrastructureLambdaBedrock", this.getRegion(), analysisBucket.getBucket());
 
         // Create EKS cluster for the workshop
-        var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.32",
+        var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.33",
                 vpc, ideInternalSecurityGroup);
         eksCluster.createAccessEntry(ideRole.getRoleArn(), "unicorn-store", "unicornstore-ide-user");
 
-        // Create AMP and AMG monitoring infrastructure
+        // Create Prometheus und Grafana infrastructure
         MonitoringConstruct monitoring = new MonitoringConstruct(this, "Monitoring", vpc, eksCluster.getCluster(), lambdaBedrock.getThreadDumpFunction());        // Create Grafana dashboards
 
         // Create Core infrastructure
