@@ -53,6 +53,7 @@ public class IdeStack extends Stack {
                 // "amazonwebservices.amazon-q-vscode",
                 // "vscjava.vscode-java-pack",
                 "ms-kubernetes-tools.vscode-kubernetes-tools",
+                "shardulm94.trailing-spaces",
                 "ms-azuretools.vscode-docker"
             ));
             ideProps.setAppPort(8080);
