@@ -318,18 +318,16 @@ sleep 3 # Just to be safe
 
 ALERT_RULE_PAYLOAD=$(cat <<EOF
 {
-  "title": "High JVM Threads Alert",
+  "title": "dump",
   "ruleGroup": "unicornstore-group",
   "folderUID": "$FOLDER_UID",
-  "noDataState": "OK",
-  "execErrState": "Alerting",
+  "uid": "eeq7ut48agpoge",
+  "condition": "C",
   "for": "1m",
+  "noDataState": "NoData",
+  "execErrState": "Error",
+  "isPaused": false,
   "orgId": 1,
-  "uid": "unicornstore-threads",
-  "condition": "B",
-  "annotations": {
-    "summary": "High JVM thread count in other namespaces"
-  },
   "labels": {
     "alert": "High JVM Threads",
     "cluster": "{{ \$labels.cluster }}",
@@ -341,27 +339,28 @@ ALERT_RULE_PAYLOAD=$(cat <<EOF
   "data": [
     {
       "refId": "A",
-      "queryType": "",
       "relativeTimeRange": {
         "from": 600,
         "to": 0
       },
       "datasourceUid": "$DATASOURCE_UID",
       "model": {
-        "expr": "sum by (namespace) (jvm_threads_live_threads{namespace!=\"unicorn-store-spring\"})",
-        "hide": false,
+        "disableTextWrap": false,
+        "editorMode": "builder",
+        "expr": "jvm_threads_live_threads",
+        "fullMetaSearch": false,
+        "includeNullMetadata": true,
+        "instant": true,
         "intervalMs": 1000,
+        "legendFormat": "__auto",
         "maxDataPoints": 43200,
-        "refId": "A"
+        "range": false,
+        "refId": "A",
+        "useBackend": false
       }
     },
     {
-      "refId": "B",
-      "queryType": "",
-      "relativeTimeRange": {
-        "from": 0,
-        "to": 0
-      },
+      "refId": "C",
       "datasourceUid": "-100",
       "model": {
         "conditions": [
@@ -374,7 +373,7 @@ ALERT_RULE_PAYLOAD=$(cat <<EOF
               "type": "and"
             },
             "query": {
-              "params": ["A"]
+              "params": ["C"]
             },
             "reducer": {
               "params": [],
@@ -387,11 +386,11 @@ ALERT_RULE_PAYLOAD=$(cat <<EOF
           "type": "__expr__",
           "uid": "-100"
         },
-        "hide": false,
+        "expression": "A",
         "intervalMs": 1000,
         "maxDataPoints": 43200,
-        "refId": "B",
-        "type": "classic_conditions"
+        "refId": "C",
+        "type": "threshold"
       }
     }
   ],

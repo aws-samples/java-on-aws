@@ -1,13 +1,12 @@
 package com.unicorn.core;
 
-import software.amazon.awscdk.BundlingOptions;
-import software.amazon.awscdk.BundlingOutput;
-import software.amazon.awscdk.DockerImage;
-import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.*;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
+import software.amazon.awscdk.services.logs.LogGroup;
+import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.s3.Bucket;
 import software.amazon.awscdk.services.s3.assets.AssetOptions;
 import software.constructs.Construct;
@@ -90,6 +89,12 @@ public class InfrastructureLambdaBedrock extends Construct {
                 .build();
 
         s3Bucket.grantWrite(this.threadDumpFunction);
+
+        LogGroup.Builder.create(this, "ThreadDumpLogGroup")
+                .logGroupName("/aws/lambda/unicornstore-thread-dump-lambda")
+                .retention(RetentionDays.ONE_WEEK) // Customize retention as needed
+                .removalPolicy(RemovalPolicy.DESTROY)
+                .build();
     }
 
     public Function getThreadDumpFunction() {
