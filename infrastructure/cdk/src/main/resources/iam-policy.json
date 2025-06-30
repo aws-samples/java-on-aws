@@ -9,7 +9,7 @@
             "Resource": "*",
             "Condition": {
                     "Null": {
-                       "aws-marketplace:ProductId": "false"
+                       "aws-marketplace:ProductId": false
                 },
                 "ForAllValues:StringEquals": {
                     "aws-marketplace:ProductId": [
