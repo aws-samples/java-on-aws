@@ -89,80 +89,153 @@ class ECSClient:
         return private_ip
 
 
+def process_alert(cluster_type, cluster_name, task_pod_id, container_name, namespace, s3_bucket):
+    """Extract the alert processing logic into a separate function for reuse"""
+    # Get the thread dump based on cluster type
+    if cluster_type == 'ecs':
+        ecs_client = ECSClient(cluster_name)
+        container_ip = ecs_client.get_container_ip(task_pod_id)
+        response = requests.get(f"http://{container_ip}:9404/actuator/threaddump", timeout=10)
+        response.raise_for_status()
+        thread_dump = response.text
+        
+    elif cluster_type == 'eks':
+        eks_client = EKSClient(cluster_name)
+        thread_dump = eks_client.get_thread_dump(
+            namespace=namespace,
+            pod_name=task_pod_id,
+            container_name=container_name
+        )
+        
+    else:
+        raise ValueError(f"Unsupported cluster type: {cluster_type}")
+    
+    # Analyze and store
+    analysis = analyze_thread_dump(thread_dump)
+    s3 = boto3.client('s3')
+    timestamp = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
+    dump_key = f"thread-dumps/{task_pod_id}/{timestamp}.txt"
+    analysis_key = f"thread-dumps/{task_pod_id}/{timestamp}_analysis.txt"
+    
+    s3.put_object(Bucket=s3_bucket, Key=dump_key, Body=thread_dump.encode('utf-8'))
+    s3.put_object(Bucket=s3_bucket, Key=analysis_key, Body=analysis.encode('utf-8'))
+    
+    result = {
+        'message': 'Thread dump handled from alert',
+        'taskPodId': task_pod_id,
+        'cluster': cluster_name,
+        'threadDumpUrl': f"s3://{s3_bucket}/{dump_key}",
+        'analysisUrl': f"s3://{s3_bucket}/{analysis_key}"
+    }
+    
+    logger.info(json.dumps(result))
+    return result
+
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     try:
         logger.info(f"Received event: {json.dumps(event)}")
-
         s3_bucket = os.environ['S3_BUCKET_NAME']
-        record = event['Records'][0]
-        sns_message = record['Sns']['Message']
-        message_json = json.loads(sns_message)
-
-        # Process only alerts with status 'firing'
-        for alert in message_json.get('alerts', []):
-            if alert.get('status') != 'firing':
-                logger.info("Skipping resolved alert")
-                continue
-
-            labels = alert.get('labels', {})
-            cluster_type = labels.get('cluster_type')
-            cluster_name = labels.get('cluster')
-            task_pod_id = labels.get('task_pod_id')
-            container_name = labels.get('container_name')
-            namespace = labels.get('namespace', 'default')
-
-            # Validate inputs
-            if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
-                raise ValueError(f"Missing or invalid alert labels: cluster_type={cluster_type}, cluster={cluster_name}, task_pod_id={task_pod_id}, container_name={container_name}")
-
-            # Get the thread dump based on cluster type
-            if cluster_type == 'ecs':
-                ecs_client = ECSClient(cluster_name)
-                container_ip = ecs_client.get_container_ip(task_pod_id)
-                response = requests.get(f"http://{container_ip}:9404/actuator/threaddump", timeout=10)
-                response.raise_for_status()
-                thread_dump = response.text
-
-            elif cluster_type == 'eks':
-                eks_client = EKSClient(cluster_name)
-                thread_dump = eks_client.get_thread_dump(
-                    namespace=namespace,
-                    pod_name=task_pod_id,
-                    container_name=container_name
-                )
-
-            else:
-                raise ValueError(f"Unsupported cluster type: {cluster_type}")
-
-            # Analyze and store
-            analysis = analyze_thread_dump(thread_dump)
-            s3 = boto3.client('s3')
-            timestamp = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
-            dump_key = f"thread-dumps/{task_pod_id}/{timestamp}.txt"
-            analysis_key = f"thread-dumps/{task_pod_id}/{timestamp}_analysis.txt"
-
-            s3.put_object(Bucket=s3_bucket, Key=dump_key, Body=thread_dump.encode('utf-8'))
-            s3.put_object(Bucket=s3_bucket, Key=analysis_key, Body=analysis.encode('utf-8'))
-
-            result = {
-                'message': 'Thread dump handled from alert',
-                'taskPodId': task_pod_id,
-                'cluster': cluster_name,
-                'threadDumpUrl': f"s3://{s3_bucket}/{dump_key}",
-                'analysisUrl': f"s3://{s3_bucket}/{analysis_key}"
-            }
-
-            logger.info(json.dumps(result))
-
+        
+        # Check if this is a direct webhook call from Grafana
+        if 'body' in event:
+            logger.info("Processing direct webhook from Grafana")
+            try:
+                # Parse the webhook payload
+                if isinstance(event['body'], str):
+                    body = json.loads(event['body'])
+                else:
+                    body = event['body']
+                
+                alerts = body.get('alerts', [])
+                if not alerts:
+                    return {
+                        'statusCode': 200,
+                        'body': json.dumps({'message': 'No alerts in webhook payload'})
+                    }
+                
+                results = []
+                for alert in alerts:
+                    if alert.get('status') != 'firing':
+                        logger.info("Skipping resolved alert")
+                        continue
+                        
+                    # Extract labels from Grafana alert
+                    labels = alert.get('labels', {})
+                    cluster_type = labels.get('cluster_type')
+                    cluster_name = labels.get('cluster')
+                    task_pod_id = labels.get('task_pod_id')
+                    container_name = labels.get('container_name')
+                    namespace = labels.get('namespace', 'default')
+                    
+                    # Validate inputs
+                    if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
+                        logger.warning(f"Missing or invalid alert labels: cluster_type={cluster_type}, cluster={cluster_name}, task_pod_id={task_pod_id}, container_name={container_name}")
+                        continue
+                    
+                    # Process the alert (reusing your existing logic)
+                    result = process_alert(cluster_type, cluster_name, task_pod_id, container_name, namespace, s3_bucket)
+                    results.append(result)
+                
+                if results:
+                    return {
+                        'statusCode': 200,
+                        'body': json.dumps({'message': f'Processed {len(results)} alerts', 'results': results})
+                    }
+                else:
+                    return {
+                        'statusCode': 200,
+                        'body': json.dumps({'message': 'No valid alerts to process'})
+                    }
+                    
+            except Exception as e:
+                logger.error(f"Error processing webhook: {str(e)}")
+                return {
+                    'statusCode': 500,
+                    'body': json.dumps({'error': f"Error processing webhook: {str(e)}"})
+                }
+        
+        # Original SNS handling logic
+        elif 'Records' in event and event['Records'][0].get('Sns'):
+            record = event['Records'][0]
+            sns_message = record['Sns']['Message']
+            message_json = json.loads(sns_message)
+            
+            # Process only alerts with status 'firing'
+            for alert in message_json.get('alerts', []):
+                if alert.get('status') != 'firing':
+                    logger.info("Skipping resolved alert")
+                    continue
+                
+                labels = alert.get('labels', {})
+                cluster_type = labels.get('cluster_type')
+                cluster_name = labels.get('cluster')
+                task_pod_id = labels.get('task_pod_id')
+                container_name = labels.get('container_name')
+                namespace = labels.get('namespace', 'default')
+                
+                # Validate inputs
+                if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
+                    raise ValueError(f"Missing or invalid alert labels: cluster_type={cluster_type}, cluster={cluster_name}, task_pod_id={task_pod_id}, container_name={container_name}")
+                
+                # Process the alert
+                result = process_alert(cluster_type, cluster_name, task_pod_id, container_name, namespace, s3_bucket)
+                
+                return {
+                    'statusCode': 200,
+                    'body': json.dumps(result)
+                }
+            
+            # No firing alerts found
+            logger.info("No firing alerts to process")
+            return {'statusCode': 204, 'body': json.dumps({'message': 'No active alerts'})}
+        
+        else:
+            logger.warning("Event doesn't match expected formats")
             return {
-                'statusCode': 200,
-                'body': json.dumps(result)
+                'statusCode': 400,
+                'body': json.dumps({'error': 'Invalid event format'})
             }
-
-        # No firing alerts found
-        logger.info("No firing alerts to process")
-        return {'statusCode': 204, 'body': json.dumps({'message': 'No active alerts'})}
-
+            
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}

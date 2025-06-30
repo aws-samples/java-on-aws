@@ -10,6 +10,8 @@ import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.s3.Bucket;
 import software.amazon.awscdk.services.s3.assets.AssetOptions;
 import software.constructs.Construct;
+import software.amazon.awscdk.services.lambda.FunctionUrl;
+import software.amazon.awscdk.services.lambda.FunctionUrlAuthType;
 
 import java.util.List;
 import java.util.Map;
@@ -94,6 +96,18 @@ public class InfrastructureLambdaBedrock extends Construct {
                 .logGroupName("/aws/lambda/unicornstore-thread-dump-lambda")
                 .retention(RetentionDays.ONE_WEEK) // Customize retention as needed
                 .removalPolicy(RemovalPolicy.DESTROY)
+                .build();
+
+        // Create Function URL for Grafana webhook integration
+        FunctionUrl functionUrl = FunctionUrl.Builder.create(this, "ThreadDumpFunctionUrl")
+                .function(this.threadDumpFunction)
+                .authType(FunctionUrlAuthType.NONE) // For simplicity; consider using AWS_IAM for production
+                .build();
+
+        // Output the Function URL for reference
+        CfnOutput.Builder.create(this, "ThreadDumpFunctionUrlOutput")
+                .description("URL for invoking the Thread Dump Lambda function")
+                .value(functionUrl.getUrl())
                 .build();
     }
 
