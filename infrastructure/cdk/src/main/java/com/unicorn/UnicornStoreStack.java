@@ -101,13 +101,13 @@ public class UnicornStoreStack extends Stack {
                         .build()
         );
 
-        // Create Lambda function to create thread dump
-        InfrastructureLambdaBedrock lambdaBedrock = new InfrastructureLambdaBedrock(this, "InfrastructureLambdaBedrock", this.getRegion(), analysisBucket.getBucket());
-
         // Create EKS cluster for the workshop
         var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.33",
                 vpc, ideInternalSecurityGroup);
         eksCluster.createAccessEntry(ideRole.getRoleArn(), "unicorn-store", "unicornstore-ide-user");
+
+        // Create Lambda function to create thread dump
+        InfrastructureLambdaBedrock lambdaBedrock = new InfrastructureLambdaBedrock(this, "InfrastructureLambdaBedrock", this.getRegion(), analysisBucket.getBucket(), eksCluster);
 
         // Create Prometheus und Grafana infrastructure
         MonitoringConstruct monitoring = new MonitoringConstruct(this, "Monitoring", vpc, eksCluster.getCluster(), lambdaBedrock.getThreadDumpFunction());        // Create Grafana dashboards
