@@ -20,10 +20,11 @@ DASHBOARD_PROVISIONING_FILE="dashboard-provisioning.yaml"
 ALERT_RULE_FILE="grafana-alert-rules.yaml"
 GRAFANA_VALUES_FILE="grafana-values.yaml"
 LAMBDA_ALERT_RULE_FILE="lambda-alert-rule.json"
+NOTIFICATION_POLICY_CONFIGMAP_FILE="notification-policy.yaml"
 
 cleanup() {
   log "🚹 Cleaning up temporary files..."
-  rm -f "$VALUES_FILE" "$EXTRA_SCRAPE_FILE" "$DATASOURCE_FILE" \
+  rm -f "$VALUES_FILE" "$EXTRA_SCRAPE_FILE" "$DATASOURCE_FILE" "$NOTIFICATION_POLICY_CONFIGMAP_FILE" \
         "$DASHBOARD_JSON_FILE" "$DASHBOARD_PROVISIONING_FILE" \
         "$ALERT_RULE_FILE" "$GRAFANA_VALUES_FILE" "$LAMBDA_ALERT_RULE_FILE"
 }
@@ -78,119 +79,75 @@ admin:
   existingSecret: grafana-admin
   userKey: username
   passwordKey: password
+
 service:
   enabled: true
   type: LoadBalancer
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+
 persistence:
   enabled: true
   storageClassName: gp3
   size: 10Gi
+
 grafana.ini:
+  server:
+    http_port: 3000
+  log:
+    level: debug
   unified_alerting:
     enabled: true
   alerting:
     enabled: false
+
 provisioning:
   enabled: true
-  datasources:
+  alerting:
     enabled: true
-    path: /etc/grafana/provisioning/datasources
+    path: /etc/grafana/provisioning/policies
   dashboards:
     enabled: true
     path: /etc/grafana/provisioning/dashboards
-resources:
-  limits:
-    cpu: 200m
-    memory: 256Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-sidecar:
   datasources:
     enabled: true
-    label: grafana_datasource
-    labelValue: "1"
-    searchNamespace: ALL
+    path: /etc/grafana/provisioning/datasources
+  policy:
+    enabled: true
+
+sidecar:
+  image:
+    repository: kiwigrid/k8s-sidecar
+    tag: 1.23.1
   dashboards:
     enabled: true
     label: grafana_dashboard
-    labelValue: "1"
+    folder: /etc/grafana/provisioning/dashboards
     searchNamespace: ALL
-  alerts:
+  datasources:
     enabled: true
-    label: grafana_alert
-    labelValue: "1"
+    label: grafana_datasource
+    folder: /etc/grafana/provisioning/datasources
     searchNamespace: ALL
+  notifiers:
+    enabled: true
+    label: grafana_notifier
+    folder: /etc/grafana/provisioning/notifiers
+    searchNamespace: ALL
+  policy:
+    enabled: true
+    label: grafana_policy
+    folder: /etc/grafana/provisioning/policies
+    searchNamespace: ALL
+
+resources:
+  limits:
+    cpu: 400m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
 EOF
-
-# --- Alert rule provisioning ---
-cat > "$ALERT_RULE_FILE" <<EOF
-apiVersion: 1
-groups:
-  - orgId: 1
-    name: unicornstore-group
-    folder: Unicorn Store Dashboards
-    interval: 1m
-    rules:
-      - uid: high-jvm-threads
-        title: High JVM Threads
-        condition: B
-        data:
-          - refId: A
-            relativeTimeRange:
-              from: 600
-              to: 0
-            datasourceUid: promds
-            model:
-              expr: sum(jvm_threads_live_threads) by (pod, cluster_type, cluster, container_name, namespace)
-              instant: true
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: B
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: "-100"
-            model:
-              conditions:
-                - evaluator:
-                    type: gt
-                    params: [200]
-                  operator:
-                    type: and
-                  query:
-                    params: ["A"]
-                  reducer:
-                    type: last
-                    params: []
-                  type: query
-              refId: B
-              type: classic_conditions
-        noDataState: NoData
-        execErrState: Error
-        for: 1m
-        annotations:
-          summary: High JVM Threads
-          description: High number of JVM threads detected. Triggering Lambda thread dump.
-        labels:
-          alert: High JVM Threads
-          cluster: "{{ \$labels.cluster }}"
-          cluster_type: "{{ \$labels.cluster_type }}"
-          container_name: "{{ \$labels.container_name }}"
-          namespace: "{{ \$labels.namespace }}"
-          task_pod_id: "{{ \$labels.task_pod_id }}"
-        isPaused: false
-EOF
-
-kubectl create configmap unicornstore-alert-rule \
-  --from-file="$ALERT_RULE_FILE" \
-  -n "$NAMESPACE" \
-  --dry-run=client -o yaml | kubectl apply -f -
-
-kubectl label configmap unicornstore-alert-rule -n "$NAMESPACE" grafana_alert=1 --overwrite
 
 log "🚀 Deploying Grafana..."
 helm upgrade --install grafana grafana/grafana \
@@ -222,8 +179,14 @@ datasources:
     isDefault: true
 EOF
 
-kubectl create configmap unicornstore-datasource --from-file="$DATASOURCE_FILE" -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
-kubectl label configmap unicornstore-datasource -n "$NAMESPACE" grafana_datasource=1 --overwrite
+# WICHTIG: Der Keyname muss auf `.yaml` enden, z. B. prometheus-datasource.yaml
+kubectl create configmap unicornstore-datasource \
+  --from-file=prometheus-datasource.yaml="$DATASOURCE_FILE" \
+  -n "$NAMESPACE" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl label configmap unicornstore-datasource \
+  -n "$NAMESPACE" grafana_datasource=1 --overwrite
 
 # --- Dashboard ConfigMap ---
 curl -s -o "$DASHBOARD_JSON_FILE" https://grafana.com/api/dashboards/22108/revisions/3/download
@@ -259,9 +222,39 @@ log "✅ Lambda Function URL: $LAMBDA_URL"
 GRAFANA_URL="http://$GRAFANA_LB"
 
 # 1. Search for a dashboard containing "JVM" in the title
+
+set -x
+
+log "⏳ Waiting for Grafana to become healthy..."
+for i in {1..20}; do
+  STATUS=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/health" | jq -r .database || true)
+  if [[ "$STATUS" == "ok" ]]; then
+    log "✅ Grafana is healthy"
+    break
+  fi
+  log "⏳ ($i/20) Grafana not ready yet..."
+  sleep 5
+done
+
+if [[ "$STATUS" != "ok" ]]; then
+  log "❌ Grafana did not become healthy in time"
+  exit 1
+fi
+
 log "🔍 Searching for dashboard with 'JVM' in title..."
-DASHBOARD_SEARCH=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+DASHBOARD_SEARCH=$(curl --connect-timeout 5 --max-time 10 -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
   "$GRAFANA_URL/api/search?query=JVM")
+
+if [[ -z "$DASHBOARD_SEARCH" ]]; then
+  log "❌ Empty response from dashboard search API"
+  exit 1
+fi
+
+if ! echo "$DASHBOARD_SEARCH" | jq . >/dev/null 2>&1; then
+  log "❌ Invalid JSON returned from dashboard search"
+  echo "$DASHBOARD_SEARCH"
+  exit 1
+fi
 
 DASHBOARD_UID=$(echo "$DASHBOARD_SEARCH" | jq -r '
   .[] |
@@ -293,14 +286,85 @@ fi
 log "✅ Found panel ID: $PANEL_ID"
 
 # 4. Build the alert rule JSON using the dashboardUID and panelID
+
+log "🔧 Resolving contact point and folder..."
+
+# Get Contact Point UID
+# Check and create contact point if necessary
+NOTIF_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+  "$GRAFANA_URL/api/v1/provisioning/contact-points" | \
+  jq -r '.[] | select(.name=="lambda-webhook") | .uid')
+
+if [[ -z "$NOTIF_UID" ]]; then
+  log "🔧 Contact point not found, creating..."
+
+  CONTACT_POINT_JSON=$(jq -n \
+    --arg name "lambda-webhook" \
+    --arg url "$LAMBDA_URL" \
+    '{
+      name: $name,
+      type: "webhook",
+      settings: {
+        url: $url,
+        httpMethod: "POST"
+      },
+      disableResolveMessage: false,
+      isDefault: false
+    }')
+
+  curl -s -X POST -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+    -H "Content-Type: application/json" \
+    -d "$CONTACT_POINT_JSON" \
+    "$GRAFANA_URL/api/v1/provisioning/contact-points"
+
+  sleep 2
+
+  NOTIF_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+    "$GRAFANA_URL/api/v1/provisioning/contact-points" | \
+    jq -r '.[] | select(.name=="lambda-webhook") | .uid')
+fi
+
+if [[ -z "$NOTIF_UID" ]]; then
+  log "❌ Failed to create contact point 'lambda-webhook'"
+  exit 1
+else
+  log "✅ Contact point UID: $NOTIF_UID"
+fi
+
+# Get or create folder
+FOLDER_TITLE="Unicorn Store Dashboards"
+FOLDER_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+  "$GRAFANA_URL/api/folders" | jq -r --arg title "$FOLDER_TITLE" '.[] | select(.title == $title) | .uid')
+
+if [[ -z "$FOLDER_UID" ]]; then
+  log "📁 Folder not found. Creating '$FOLDER_TITLE'..."
+  FOLDER_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+    -H "Content-Type: application/json" \
+    -d "{\"title\": \"$FOLDER_TITLE\"}" \
+    "$GRAFANA_URL/api/folders" | jq -r '.uid')
+
+  if [[ -z "$FOLDER_UID" ]]; then
+    log "❌ Failed to create folder '$FOLDER_TITLE'"
+    exit 1
+  fi
+  log "📁 Folder '$FOLDER_TITLE' created with UID: $FOLDER_UID"
+else
+  log "📁 Found folder UID: $FOLDER_UID"
+fi
+
+# Build alert rule JSON
+log "🛠️ Generating alert rule JSON..."
+
 ALERT_RULE_JSON=$(jq -n \
   --arg url "$LAMBDA_URL" \
   --arg uid "$DASHBOARD_UID" \
-  --argjson pid "$PANEL_ID" '
+  --argjson pid "$PANEL_ID" \
+  --arg notifUid "$NOTIF_UID" \
+  --arg folderUid "$FOLDER_UID" '
 {
   dashboardUID: $uid,
   panelId: $pid,
-  folderUID: "general",
+  folderUID: $folderUid,
   ruleGroup: "lambda-alerts",
   title: "High JVM Threads - Lambda",
   condition: "B",
@@ -345,8 +409,17 @@ ALERT_RULE_JSON=$(jq -n \
     webhookUrl: $url
   },
   labels: {
-    severity: "critical"
-  }
+    severity: "critical",
+    alertname: "High JVM Threads",
+    cluster: "{{ $labels.cluster }}",
+    cluster_type: "{{ $labels.cluster_type }}",
+    container_name: "{{ $labels.container_name }}",
+    namespace: "{{ $labels.namespace }}",
+    task_pod_id: "{{ $labels.pod }}"
+  },
+  notifications: [
+    { "uid": $notifUid }
+  ]
 }
 ')
 
@@ -365,6 +438,8 @@ else
   exit 1
 fi
 
+set +x
+
 # --- Final output ---
 echo -e "\n✅ Monitoring Stack + Lambda Alert Setup Complete!"
 echo "🌍 Grafana URL: http://$GRAFANA_LB"
@@ -373,6 +448,146 @@ echo "🔑 Password: $GRAFANA_PASSWORD"
 echo -e "Grafana URL: http://$GRAFANA_LB\nUsername: $GRAFANA_USER\nPassword: $GRAFANA_PASSWORD" > grafana-credentials.txt
 log "💾 Credentials saved to grafana-credentials.txt"
 
+# --- Get Prometheus LoadBalancer Hostname ---
+PROM_LB_HOSTNAME=$(kubectl get svc prometheus-server -n "$NAMESPACE" -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || true)
+
+if [[ -z "$PROM_LB_HOSTNAME" ]]; then
+  log "❌ Prometheus Load Balancer Hostname not found"
+  exit 1
+fi
+
+set -x
+
+# --- Contact Point and Notification Policy for Lambda ---
+
+for i in {1..5}; do
+  NOTIF_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+    "$GRAFANA_URL/api/v1/provisioning/contact-points" \
+    | jq -r '.[] | select(.name=="lambda-webhook") | .uid')
+
+  if [[ -n "$NOTIF_UID" ]]; then
+    log "✅ Contact Point UID resolved: $NOTIF_UID"
+    break
+  fi
+
+  log "⏳ Waiting for Contact Point to be available... ($i/5)"
+  sleep 2
+done
+
+if [[ -z "$NOTIF_UID" ]]; then
+  log "❌ Failed to resolve Contact Point UID after creation"
+  exit 1
+fi
+
+# --- Create and apply notification policy ---
+log "🔔 Setting up notification policy for lambda-webhook..."
+
+# Wait for Grafana to be ready
+log "⏳ Waiting for Grafana API to be available..."
+for i in {1..30}; do
+  if curl -s -o /dev/null -w "%{http_code}" -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "http://$GRAFANA_LB/api/health" | grep -q "200"; then
+    log "✅ Grafana API is available"
+    break
+  fi
+  log "⏳ Waiting for Grafana API... ($i/30)"
+  sleep 5
+done
+
+# Create notification policy via API
+POLICY_JSON=$(cat <<EOF
+{
+  "receiver": "lambda-webhook",
+  "group_by": ["alertname"],
+  "routes": [
+    {
+      "receiver": "lambda-webhook",
+      "group_by": ["alertname", "pod"],
+      "matchers": [
+        "severity = critical"
+      ],
+      "mute_timings": [],
+      "group_wait": "30s",
+      "group_interval": "5m",
+      "repeat_interval": "4h"
+    }
+  ],
+  "group_wait": "30s",
+  "group_interval": "5m",
+  "repeat_interval": "1h"
+}
+EOF
+)
+
+# Apply the notification policy
+log "📤 Applying notification policy via API..."
+POLICY_RESULT=$(curl -s -X PUT -H "Content-Type: application/json" \
+  -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+  -d "$POLICY_JSON" \
+  "http://$GRAFANA_LB/api/v1/provisioning/policies")
+
+if echo "$POLICY_RESULT" | grep -q "policies updated"; then
+  log "✅ Notification policy successfully applied"
+else
+  log "⚠️ Warning: Notification policy application returned: $POLICY_RESULT"
+  
+  # Fallback to ConfigMap method if API fails
+  log "🔄 Trying fallback method with ConfigMap..."
+  cat > "$NOTIFICATION_POLICY_CONFIGMAP_FILE" <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unicornstore-notification-policy
+  namespace: $NAMESPACE
+  labels:
+    grafana_policy: "1"
+data:
+  notification-policy.yaml: |
+    apiVersion: 1
+    policies:
+      - orgId: 1
+        receiver: lambda-webhook
+        group_by: ['alertname']
+        matchers:
+          - alertname = "High JVM Threads"
+        routes:
+          - receiver: lambda-webhook
+            group_by: ['alertname', 'pod']
+            matchers:
+              - severity = "critical"
+            mute_timings: []
+            group_wait: 30s
+            group_interval: 5m
+            repeat_interval: 4h
+        continue: false
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 1h
+        mute_timings: []
+    default_policy:
+      receiver: lambda-webhook
+      group_by: ['alertname']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 1h
+      mute_timings: []
+EOF
+
+  kubectl apply -f "$NOTIFICATION_POLICY_CONFIGMAP_FILE"
+  log "🔄 Restarting Grafana to apply ConfigMap policy..."
+  kubectl rollout restart deployment grafana -n "$NAMESPACE"
+  kubectl rollout status deployment grafana -n "$NAMESPACE" --timeout=60s
+fi
+
+# Verify policy was applied
+log "🔍 Verifying notification policy..."
+VERIFY_POLICY=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+  "http://$GRAFANA_LB/api/v1/provisioning/policies" | jq -r '.receiver')
+
+if [[ "$VERIFY_POLICY" == "lambda-webhook" ]]; then
+  log "✅ Notification policy verification successful"
+else
+  log "⚠️ Warning: Notification policy verification failed, please check manually"
+fi
 
 # --- Allow VPC access to Prometheus LoadBalancer on port 9090 ---
 log "🔐 Configuring Prometheus ILB Security Group..."
@@ -380,11 +595,11 @@ log "🔐 Configuring Prometheus ILB Security Group..."
 VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=unicornstore-vpc" --query "Vpcs[0].VpcId" --output text)
 VPC_CIDR=$(aws ec2 describe-vpcs --vpc-ids "$VPC_ID" --query "Vpcs[0].CidrBlock" --output text)
 
-PROM_LB_HOSTNAME=$(kubectl get svc prometheus-server -n "$NAMESPACE" -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
-
 LB_ARN=$(aws elbv2 describe-load-balancers \
-  --query "LoadBalancers[?DNSName=='$PROM_LB_HOSTNAME'].LoadBalancerArn" \
-  --output text)
+  --output json | jq -r \
+  --arg dns "$PROM_LB_HOSTNAME" '
+    .LoadBalancers[] | select(.DNSName == $dns) | .LoadBalancerArn' \
+)
 
 if [[ -z "$LB_ARN" ]]; then
   log "❌ Could not find Load Balancer ARN for $PROM_LB_HOSTNAME"
@@ -413,14 +628,6 @@ aws ec2 authorize-security-group-ingress \
 # --- Final validation of Grafana setup ---
 log "🔍 Validating Grafana configuration..."
 
-# Validate Prometheus datasource
-DATASOURCES=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "http://$GRAFANA_LB/api/datasources")
-if echo "$DATASOURCES" | jq -e '.[] | select(.type=="prometheus")' > /dev/null; then
-  log "✅ Prometheus datasource is configured"
-else
-  log "❌ Prometheus datasource is missing"
-fi
-
 # Validate dashboards
 DASHBOARDS=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "http://$GRAFANA_LB/api/search?query=JVM")
 if [[ -n "$DASHBOARDS" && "$DASHBOARDS" != "[]" ]]; then
@@ -439,31 +646,6 @@ else
   log "❌ No alert rules found"
 fi
 
-# Optional: check if Lambda URL is invoked
-log "🔍 Test Lambda webhook manually with a mock alert"
-curl -s -X POST "$LAMBDA_URL" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "alerts": [
-      {
-        "status": "firing",
-        "labels": {
-          "alertname": "HighJVMThreads",
-          "severity": "critical",
-          "cluster_type": "eks",
-          "cluster": "unicorn-store",
-          "task_pod_id": "test-pod",
-          "container_name": "unicorn-store-spring",
-          "namespace": "unicorn-store-spring"
-        },
-        "annotations": {
-          "summary": "Test Alert",
-          "description": "This is a test alert from Grafana setup script"
-        },
-        "startsAt": "'"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'",
-        "endsAt": "'"$(date -u -d "+10 minutes" +"%Y-%m-%dT%H:%M:%SZ")"'"
-      }
-    ]
-  }' | jq
+set +x
 
 log "✅ Validation complete"

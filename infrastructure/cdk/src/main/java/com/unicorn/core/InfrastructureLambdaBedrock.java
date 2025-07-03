@@ -13,8 +13,6 @@ import software.amazon.awscdk.services.s3.assets.AssetOptions;
 import software.constructs.Construct;
 import software.amazon.awscdk.services.lambda.FunctionUrl;
 import software.amazon.awscdk.services.lambda.FunctionUrlAuthType;
-import software.amazon.awscdk.services.eks.AccessEntry;
-import software.amazon.awscdk.services.eks.AccessPolicy;
 
 import java.util.List;
 import java.util.Map;
@@ -48,23 +46,36 @@ public class InfrastructureLambdaBedrock extends Construct {
                 .build();
 
         // Add permissions for Bedrock, S3, and SNS
+        // Add permissions for Bedrock, S3, and SNS
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
                 .effect(Effect.ALLOW)
                 .actions(List.of(
                         "logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents",
-                        "bedrock:InvokeModel", "bedrock:ListFoundationModels",
+                        "bedrock:InvokeModel", "bedrock:ListFoundationModels"
+                ))
+                .resources(List.of(
+                        "arn:aws:logs:*:*:*",
+                        "arn:aws:bedrock:*:*:foundation-model/anthropic.claude-3-sonnet-20240229-v1:0",
+                        "arn:aws:bedrock:eu-west-1::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0",
+                        "arn:aws:bedrock:eu-west-1::foundation-model/eu.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                        "arn:aws:bedrock:*:*:inference-profile/eu.anthropic.claude-3-7-sonnet-20250219-v1:0"
+                ))
+                .build());
+
+        // Add separate policy for S3 and SNS
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+                .effect(Effect.ALLOW)
+                .actions(List.of(
                         "s3:PutObject", "s3:GetObject", "s3:ListBucket",
                         "sns:Publish"
                 ))
                 .resources(List.of(
-                        "arn:aws:logs:*:*:*",
-                        "arn:aws:bedrock:*:*:inference-profile/eu.anthropic.claude-3-7-sonnet-20250219-v1:0",
                         String.format("arn:aws:s3:::%s/*", s3Bucket.getBucketName()),
                         String.format("arn:aws:s3:::%s", s3Bucket.getBucketName()),
-                        "arn:aws:sns:*:*:*",
-                        "arn:aws:bedrock:*:*:foundation-model/*"
+                        "arn:aws:sns:*:*:*"
                 ))
                 .build());
+
 
         // Add permissions for EKS API access
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()

@@ -5,6 +5,7 @@ import boto3
 import requests
 import time
 import random
+import re  # Add this import for regex
 from datetime import datetime
 from typing import Dict, Any
 from kubernetes import client, config
@@ -14,10 +15,47 @@ from eks_client import EKSClient  # Your own implementation
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-
 def is_invalid(value: str) -> bool:
     return value is None or value.strip() in ["", "[no value]"]
 
+def extract_pod_info_from_valuestring(value_string: str) -> Dict[str, str]:
+    """Extract pod information from Grafana alert valueString"""
+    try:
+        logger.info(f"Extracting pod info from valueString: {value_string}")
+        
+        # First, extract the labels section
+        labels_match = re.search(r'labels=\{([^}]+)\}', value_string)
+        if not labels_match:
+            logger.warning("Could not find labels section in valueString")
+            return {}
+            
+        labels_str = labels_match.group(1)
+        logger.info(f"Extracted labels section: {labels_str}")
+        
+        # Now extract individual labels from the labels section
+        labels = {}
+        for label_pair in labels_str.split(', '):
+            if '=' in label_pair:
+                key, value = label_pair.split('=', 1)
+                labels[key.strip()] = value.strip()
+                logger.info(f"Parsed label: {key.strip()}={value.strip()}")
+        
+        logger.info(f"All parsed labels: {labels}")
+        
+        # Map the labels to our expected keys
+        result = {
+            'cluster': labels.get('cluster'),
+            'cluster_type': labels.get('cluster_type'),
+            'container_name': labels.get('container_name'),
+            'task_pod_id': labels.get('task_pod_id') or labels.get('pod'),  # Use pod if task_pod_id not found
+            'namespace': labels.get('namespace')
+        }
+        
+        logger.info(f"Final extracted values: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error extracting pod info from valueString: {str(e)}")
+        return {}
 
 def analyze_thread_dump(thread_dump: str) -> str:
     bedrock = boto3.client("bedrock-runtime", region_name="eu-west-1")
@@ -167,9 +205,38 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     container_name = labels.get('container_name')
                     namespace = labels.get('namespace', 'default')
                     
-                    # Validate inputs
+                    # Check if we need to extract from valueString
                     if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
-                        logger.warning(f"Missing or invalid alert labels: cluster_type={cluster_type}, cluster={cluster_name}, task_pod_id={task_pod_id}, container_name={container_name}")
+                        logger.info("Some labels are missing or invalid, trying to extract from valueString")
+                        
+                        # Try to extract from valueString
+                        if 'valueString' in alert:
+                            extracted_info = extract_pod_info_from_valuestring(alert['valueString'])
+                            logger.info(f"Raw extracted info: {extracted_info}")
+                            
+                            # Update missing values
+                            if is_invalid(cluster_type) and extracted_info.get('cluster_type'):
+                                cluster_type = extracted_info['cluster_type']
+                                
+                            if is_invalid(cluster_name) and extracted_info.get('cluster'):
+                                cluster_name = extracted_info['cluster']
+                                
+                            if is_invalid(task_pod_id) and extracted_info.get('task_pod_id'):
+                                task_pod_id = extracted_info['task_pod_id']
+                                
+                            if is_invalid(container_name) and extracted_info.get('container_name'):
+                                container_name = extracted_info['container_name']
+                            
+                            # IMPORTANT: Always override namespace with extracted value if available
+                            if extracted_info.get('namespace'):
+                                namespace = extracted_info['namespace']
+                                logger.info(f"Overriding namespace with extracted value: {namespace}")
+                            
+                            logger.info(f"Final extracted values: cluster_type={cluster_type}, cluster={cluster_name}, task_pod_id={task_pod_id}, container_name={container_name}, namespace={namespace}")
+
+                    # Validate inputs after extraction attempt
+                    if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
+                        logger.warning(f"Still missing or invalid alert labels after extraction: cluster_type={cluster_type}, cluster={cluster_name}, task_pod_id={task_pod_id}, container_name={container_name}")
                         continue
                     
                     # Process the alert (reusing your existing logic)
@@ -213,7 +280,33 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 container_name = labels.get('container_name')
                 namespace = labels.get('namespace', 'default')
                 
-                # Validate inputs
+                # Check if we need to extract from valueString (adding the same logic to SNS handling)
+                if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
+                    logger.info("Some labels are missing or invalid in SNS message, trying to extract from valueString")
+                    
+                    # Try to extract from valueString
+                    if 'valueString' in alert:
+                        extracted_info = extract_pod_info_from_valuestring(alert['valueString'])
+                        
+                        # Update missing values
+                        if is_invalid(cluster_type) and 'cluster_type' in extracted_info:
+                            cluster_type = extracted_info['cluster_type']
+                            
+                        if is_invalid(cluster_name) and 'cluster' in extracted_info:
+                            cluster_name = extracted_info['cluster']
+                            
+                        if is_invalid(task_pod_id) and 'task_pod_id' in extracted_info:
+                            task_pod_id = extracted_info['task_pod_id']
+                            
+                        if is_invalid(container_name) and 'container_name' in extracted_info:
+                            container_name = extracted_info['container_name']
+                            
+                        if is_invalid(namespace) and 'namespace' in extracted_info:
+                            namespace = extracted_info['namespace']
+                            
+                        logger.info(f"Extracted values from valueString in SNS: cluster_type={cluster_type}, cluster={cluster_name}, task_pod_id={task_pod_id}, container_name={container_name}, namespace={namespace}")
+                
+                # Validate inputs after extraction attempt
                 if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
                     raise ValueError(f"Missing or invalid alert labels: cluster_type={cluster_type}, cluster={cluster_name}, task_pod_id={task_pod_id}, container_name={container_name}")
                 
@@ -229,11 +322,28 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             logger.info("No firing alerts to process")
             return {'statusCode': 204, 'body': json.dumps({'message': 'No active alerts'})}
         
+        # Direct invocation (non-webhook, non-SNS)
         else:
-            logger.warning("Event doesn't match expected formats")
+            # Check if this is a direct invocation with parameters
+            cluster_type = event.get('cluster_type')
+            cluster_name = event.get('cluster')
+            task_pod_id = event.get('task_pod_id')
+            container_name = event.get('container_name')
+            namespace = event.get('namespace', 'default')
+            
+            # Validate inputs
+            if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
+                logger.warning("Event doesn't match expected formats and is missing required parameters")
+                return {
+                    'statusCode': 400,
+                    'body': json.dumps({'error': 'Invalid event format or missing required parameters'})
+                }
+            
+            # Process direct invocation
+            result = process_alert(cluster_type, cluster_name, task_pod_id, container_name, namespace, s3_bucket)
             return {
-                'statusCode': 400,
-                'body': json.dumps({'error': 'Invalid event format'})
+                'statusCode': 200,
+                'body': json.dumps(result)
             }
             
     except Exception as e:
