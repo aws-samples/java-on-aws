@@ -153,7 +153,7 @@ def process_alert(cluster_type, cluster_name, task_pod_id, container_name, names
     s3 = boto3.client('s3')
     timestamp = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
     dump_key = f"thread-dumps/{task_pod_id}/{timestamp}.txt"
-    analysis_key = f"thread-dumps/{task_pod_id}/{timestamp}_analysis.txt"
+    analysis_key = f"thread-dumps/{task_pod_id}/{timestamp}_analysis.md"
     
     s3.put_object(Bucket=s3_bucket, Key=dump_key, Body=thread_dump.encode('utf-8'))
     s3.put_object(Bucket=s3_bucket, Key=analysis_key, Body=analysis.encode('utf-8'))
