@@ -47,19 +47,26 @@ public class InfrastructureLambdaBedrock extends Construct {
 
         // Add permissions for Bedrock, S3, and SNS
         // Add permissions for Bedrock, S3, and SNS
+        // Add permissions for logs
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
                 .effect(Effect.ALLOW)
                 .actions(List.of(
-                        "logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents",
-                        "bedrock:InvokeModel", "bedrock:ListFoundationModels"
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents"
                 ))
-                .resources(List.of(
-                        "arn:aws:logs:*:*:*",
-                        "arn:aws:bedrock:*:*:foundation-model/anthropic.claude-3-sonnet-20240229-v1:0",
-                        "arn:aws:bedrock:eu-west-1::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0",
-                        "arn:aws:bedrock:eu-west-1::foundation-model/eu.anthropic.claude-3-7-sonnet-20250219-v1:0",
-                        "arn:aws:bedrock:*:*:inference-profile/eu.anthropic.claude-3-7-sonnet-20250219-v1:0"
+                .resources(List.of("arn:aws:logs:*:*:*"))
+                .build());
+
+        // Add broader permissions for Bedrock
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+                .effect(Effect.ALLOW)
+                .actions(List.of(
+                        "bedrock:InvokeModel",
+                        "bedrock:InvokeModelWithResponseStream",
+                        "bedrock:ListFoundationModels"
                 ))
+                .resources(List.of("*"))  // Grant access to all Bedrock resources
                 .build());
 
         // Add separate policy for S3 and SNS

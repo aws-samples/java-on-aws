@@ -58,7 +58,7 @@ def extract_pod_info_from_valuestring(value_string: str) -> Dict[str, str]:
         return {}
 
 def analyze_thread_dump(thread_dump: str) -> str:
-    bedrock = boto3.client("bedrock-runtime", region_name="eu-west-1")
+    bedrock = boto3.client("bedrock-runtime", region_name="us-west-2")
 
     logger.info(f"Using Bedrock in region: {bedrock.meta.region_name}")
     prompt = f"""Please analyze the following Java thread dump. Your task is to identify performance issues and provide actionable insights. Structure the output into the following four sections:
@@ -89,7 +89,7 @@ Thread Dump:
         logger.info(f"Invoking Bedrock with payload ... ")
         try:
             response = bedrock.invoke_model(
-                modelId="eu.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                modelId="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
                 body=payload
             )
             body = json.loads(response.get("body").read())
