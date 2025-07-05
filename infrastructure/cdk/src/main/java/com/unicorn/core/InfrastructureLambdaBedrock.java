@@ -134,7 +134,7 @@ public class InfrastructureLambdaBedrock extends Construct {
                 // Add VPC configuration - use private subnets with NAT
                 .vpc(vpc)
                 .vpcSubnets(SubnetSelection.builder()
-                        .subnetType(SubnetType.PRIVATE_WITH_NAT)
+                        .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
                         .build())
                 .securityGroups(List.of(lambdaSg))
                 .environment(Map.of(
