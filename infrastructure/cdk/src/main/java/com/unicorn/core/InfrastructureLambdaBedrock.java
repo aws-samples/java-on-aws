@@ -179,12 +179,14 @@ public class InfrastructureLambdaBedrock extends Construct {
 
         // Output the Function URL for reference
         CfnOutput.Builder.create(this, "ThreadDumpFunctionUrlOutput")
+                .exportName("ThreadDumpFunctionUrl")
                 .description("URL for invoking the Thread Dump Lambda function")
                 .value(functionUrl.getUrl())
                 .build();
 
         // Output the Lambda security group ID for reference
         CfnOutput.Builder.create(this, "LambdaSecurityGroupOutput")
+                .exportName("LambdaSecurityGroupId")
                 .description("Security Group ID for the Lambda function")
                 .value(lambdaSg.getSecurityGroupId())
                 .build();
