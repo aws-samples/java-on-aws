@@ -62,6 +62,8 @@ server:
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-scheme: internal
   retention: 24h
+  extraFlags:
+    - web.enable-remote-write-receiver
   extraScrapeConfigs: |
     - job_name: "otel-collector"
       static_configs:
@@ -374,7 +376,7 @@ ALERT_RULE_JSON=$(jq -n \
       relativeTimeRange: { from: 600, to: 0 },
       datasourceUid: "promds",
       model: {
-        expr: "sum(jvm_threads_live_threads) by (pod, cluster_type, cluster, container_name, namespace)",
+        expr: "sum(jvm_threads_live_threads) by (task_pod_id, cluster_type, cluster, container_name, namespace, container_ip)",
         instant: true,
         intervalMs: 1000,
         maxDataPoints: 43200,
@@ -415,10 +417,11 @@ ALERT_RULE_JSON=$(jq -n \
     cluster_type: "{{ $labels.cluster_type }}",
     container_name: "{{ $labels.container_name }}",
     namespace: "{{ $labels.namespace }}",
-    task_pod_id: "{{ $labels.pod }}"
+    task_pod_id: "{{ $labels.task_pod_id }}",
+    container_ip: "{{ $labels.container_ip }}"
   },
   notifications: [
-    { "uid": $notifUid }
+    { uid: $notifUid }
   ]
 }
 ')
@@ -454,6 +457,33 @@ PROM_LB_HOSTNAME=$(kubectl get svc prometheus-server -n "$NAMESPACE" -o jsonpath
 if [[ -z "$PROM_LB_HOSTNAME" ]]; then
   log "❌ Prometheus Load Balancer Hostname not found"
   exit 1
+fi
+
+# Store Prometheus hostname in SSM Parameter Store
+PARAM_NAME="/unicornstore/prometheus/internal-dns"
+log "📝 Storing Prometheus hostname in SSM Parameter Store..."
+
+# First, put or update the parameter without tags
+aws ssm put-parameter \
+  --name "$PARAM_NAME" \
+  --value "$PROM_LB_HOSTNAME" \
+  --type "String" \
+  --overwrite \
+  --description "Prometheus internal load balancer hostname" \
+  --region "$AWS_REGION" \
+  --output text
+
+if [ $? -eq 0 ]; then
+  # Then, add tags separately
+  aws ssm add-tags-to-resource \
+    --resource-type "Parameter" \
+    --resource-id "$PARAM_NAME" \
+    --tags "Key=Project,Value=UnicornStore" "Key=Environment,Value=Development" \
+    --region "$AWS_REGION"
+    
+  log "✅ Successfully stored Prometheus hostname in SSM Parameter Store at $PARAM_NAME"
+else
+  log "⚠️ Warning: Failed to store Prometheus hostname in SSM Parameter Store"
 fi
 
 set -x

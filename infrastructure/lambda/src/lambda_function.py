@@ -48,7 +48,8 @@ def extract_pod_info_from_valuestring(value_string: str) -> Dict[str, str]:
             'cluster_type': labels.get('cluster_type'),
             'container_name': labels.get('container_name'),
             'task_pod_id': labels.get('task_pod_id') or labels.get('pod'),  # Use pod if task_pod_id not found
-            'namespace': labels.get('namespace')
+            'namespace': labels.get('namespace'),
+            'container_ip': labels.get('container_ip') or labels.get('exported_instance')  # Add container_ip extraction
         }
         
         logger.info(f"Final extracted values: {result}")
@@ -61,42 +62,16 @@ def analyze_thread_dump(thread_dump: str) -> str:
     bedrock = boto3.client("bedrock-runtime", region_name="us-west-2")
 
     logger.info(f"Using Bedrock in region: {bedrock.meta.region_name}")
-    prompt = f"""Please analyze the following Java thread dump from a Java application. Your task is to identify performance issues and provide actionable insights. Structure the output in Markdown format with the following sections:
+    prompt = f"""Please analyze the following Java thread dump. Your task is to identify performance issues and provide actionable insights. Structure the output into the following four sections:
 
-    ## Summary of Thread States
-    - Count and categorize all thread states (RUNNABLE, WAITING, BLOCKED, TIMED_WAITING, etc.)
-    - Provide percentages for each state category
-    - Highlight any concerning ratios (e.g., high percentage of BLOCKED threads)
+1. **Summary of Thread States**: Count and categorize all thread states (e.g., RUNNABLE, WAITING).
+2. **Key Issues Identified**: Describe any threads that appear stuck, blocked, or problematic (e.g., deadlocks, high CPU).
+3. **Optimization Recommendations**: Suggest practical improvements based on your findings (e.g., code, configuration, GC tuning).
+4. **Detailed Analysis**: Provide a technical breakdown of the most interesting or problematic threads.
 
-    ## Key Issues Identified
-    - Identify any deadlocks, thread contention, or resource bottlenecks
-    - Highlight threads with high CPU usage or those that appear stuck
-    - Note any suspicious patterns in thread behavior (e.g., many threads waiting on the same lock)
-    - Identify any known problematic patterns in Java applications
-    - If possible, identify framework specific issue
-
-    ## Optimization Recommendations
-    - Suggest specific code improvements to resolve identified issues
-    - Recommend JVM configuration changes if appropriate
-    - Suggest application architecture improvements
-    - Provide guidance on thread pool sizing and configuration
-    - Recommend monitoring strategies for the identified issues
-
-    ## Detailed Analysis
-    - Analyze the stack traces of the most problematic threads
-    - Identify specific methods or code paths causing issues
-    - Explain the root cause of any bottlenecks
-    - Reference common Java/framework specific patterns that might be relevant
-
-    ## Thread Groups of Interest
-    - HTTP Request Processing Threads
-    - Database Connection Pool Threads
-    - Background Task Threads
-    - Garbage Collection Related Threads
-
-    Thread Dump:
-    {thread_dump}
-    """
+Thread Dump:
+{thread_dump}
+"""
 
     payload = json.dumps({
         "anthropic_version": "bedrock-2023-05-31",
@@ -153,23 +128,47 @@ class ECSClient:
         return private_ip
 
 
-def process_alert(cluster_type, cluster_name, task_pod_id, container_name, namespace, s3_bucket):
+def process_alert(cluster_type, cluster_name, task_pod_id, container_name, namespace, s3_bucket, container_ip=None):
     """Extract the alert processing logic into a separate function for reuse"""
     # Get the thread dump based on cluster type
     if cluster_type == 'ecs':
-        ecs_client = ECSClient(cluster_name)
-        container_ip = ecs_client.get_container_ip(task_pod_id)
+        if container_ip:
+            # Use the container_ip provided in the alert
+            logger.info(f"Using container IP from alert: {container_ip}")
+        else:
+            # Fallback to getting IP from ECS API
+            ecs_client = ECSClient(cluster_name)
+            container_ip = ecs_client.get_container_ip(task_pod_id)
+            
         response = requests.get(f"http://{container_ip}:9404/actuator/threaddump", timeout=10)
         response.raise_for_status()
         thread_dump = response.text
         
     elif cluster_type == 'eks':
-        eks_client = EKSClient(cluster_name)
-        thread_dump = eks_client.get_thread_dump(
-            namespace=namespace,
-            pod_name=task_pod_id,
-            container_name=container_name
-        )
+        if container_ip:
+            # Use the container_ip provided in the alert
+            logger.info(f"Using pod IP from alert: {container_ip}")
+            try:
+                response = requests.get(f"http://{container_ip}:9404/actuator/threaddump", timeout=10)
+                response.raise_for_status()
+                thread_dump = response.text
+            except Exception as e:
+                logger.warning(f"Failed to get thread dump using pod IP: {str(e)}")
+                # Fallback to kubectl exec
+                eks_client = EKSClient(cluster_name)
+                thread_dump = eks_client.get_thread_dump(
+                    namespace=namespace,
+                    pod_name=task_pod_id,
+                    container_name=container_name
+                )
+        else:
+            # Fallback to kubectl exec
+            eks_client = EKSClient(cluster_name)
+            thread_dump = eks_client.get_thread_dump(
+                namespace=namespace,
+                pod_name=task_pod_id,
+                container_name=container_name
+            )
         
     else:
         raise ValueError(f"Unsupported cluster type: {cluster_type}")
@@ -230,6 +229,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     task_pod_id = labels.get('task_pod_id')
                     container_name = labels.get('container_name')
                     namespace = labels.get('namespace', 'default')
+                    container_ip = labels.get('instance')  # Get container_ip from the instance label
                     
                     # Check if we need to extract from valueString
                     if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
@@ -252,7 +252,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                                 
                             if is_invalid(container_name) and extracted_info.get('container_name'):
                                 container_name = extracted_info['container_name']
-                            
+
+                            if is_invalid(container_ip) and extracted_info.get('container_ip'):
+                                container_ip = extracted_info['container_ip']
+                                logger.info(f"Using container_ip from valueString: {container_ip}")
+
                             # IMPORTANT: Always override namespace with extracted value if available
                             if extracted_info.get('namespace'):
                                 namespace = extracted_info['namespace']
@@ -266,7 +270,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         continue
                     
                     # Process the alert (reusing your existing logic)
-                    result = process_alert(cluster_type, cluster_name, task_pod_id, container_name, namespace, s3_bucket)
+                    result = process_alert(cluster_type, cluster_name, task_pod_id, container_name, namespace, s3_bucket, container_ip)
                     results.append(result)
                 
                 if results:

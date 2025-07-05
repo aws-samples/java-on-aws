@@ -10,7 +10,9 @@ import org.springframework.context.annotation.Configuration;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -26,17 +28,22 @@ public class MonitoringConfig {
     @Bean
     public MeterRegistryCustomizer<MeterRegistry> meterRegistryCustomizer() {
         return registry -> {
-            String cluster = Optional.ofNullable(System.getenv("CLUSTER")).orElse("unknown");
+            String clusterType = System.getenv("ECS_CONTAINER_METADATA_URI_V4") != null ? "ecs" : "eks";
+            String cluster = clusterType.equals("ecs") ? extractClusterNameFromMetadata().orElse("unknown") : Optional.ofNullable(System.getenv("CLUSTER")).orElse("unknown");
             String containerName = "unicorn-store-spring";
             String taskOrPodId = extractTaskOrPodId().orElse("unknown");
-            String clusterType = System.getenv("ECS_CONTAINER_METADATA_URI_V4") != null ? "ecs" : "eks";
             String namespace = clusterType.equals("eks") ? readNamespaceFile().orElse("default") : "";
+
+            // Get the container/pod IP address
+            String ipAddress = getContainerOrPodIp().orElse("unknown");
 
             registry.config().commonTags(
                     "cluster", cluster,
                     "cluster_type", clusterType,
                     "container_name", containerName,
-                    "task_pod_id", taskOrPodId
+                    "task_pod_id", taskOrPodId,
+                    "instance", ipAddress,       // Keep this for backward compatibility
+                    "container_ip", ipAddress    // Add this new tag that won't be overwritten
             );
 
             if (!namespace.isEmpty()) {
@@ -83,6 +90,29 @@ public class MonitoringConfig {
         return readFile("/etc/podinfo/name");
     }
 
+    private Optional<String> extractClusterNameFromMetadata() {
+        String metadataUri = System.getenv("ECS_CONTAINER_METADATA_URI_V4");
+        if (metadataUri != null) {
+            try {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(metadataUri + "/task"))
+                        .build();
+
+                HttpResponse<String> response = HttpClient.newHttpClient()
+                        .send(request, HttpResponse.BodyHandlers.ofString());
+
+                JsonNode root = OBJECT_MAPPER.readTree(response.body());
+                String clusterArn = root.path("Cluster").asText();
+                String[] parts = clusterArn.split("/");
+                return parts.length > 1 ? Optional.of(parts[parts.length - 1]) : Optional.empty();
+
+            } catch (IOException | InterruptedException e) {
+                return Optional.empty();
+            }
+        }
+        return Optional.empty();
+    }
+
     private Optional<String> readNamespaceFile() {
         return readFile(NAMESPACE_FILE.getAbsolutePath());
     }
@@ -91,6 +121,47 @@ public class MonitoringConfig {
         try {
             return Optional.of(Files.readString(new File(path).toPath()).trim());
         } catch (IOException e) {
+            return Optional.empty();
+        }
+    }
+
+    // New method to get the container or pod IP address
+    private Optional<String> getContainerOrPodIp() {
+        // For ECS
+        String metadataUri = System.getenv("ECS_CONTAINER_METADATA_URI_V4");
+        if (metadataUri != null) {
+            try {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(metadataUri))
+                        .build();
+
+                HttpResponse<String> response = HttpClient.newHttpClient()
+                        .send(request, HttpResponse.BodyHandlers.ofString());
+
+                JsonNode root = OBJECT_MAPPER.readTree(response.body());
+
+                if (root.has("Networks") && root.path("Networks").isArray() && root.path("Networks").size() > 0) {
+                    JsonNode network = root.path("Networks").get(0);
+                    if (network.has("IPv4Addresses") && network.path("IPv4Addresses").isArray() &&
+                            network.path("IPv4Addresses").size() > 0) {
+                        return Optional.of(network.path("IPv4Addresses").get(0).asText());
+                    }
+                }
+            } catch (IOException | InterruptedException e) {
+                // Fall through to next method
+            }
+        }
+
+        // For Kubernetes/EKS
+        String podIp = System.getenv("KUBERNETES_POD_IP");
+        if (podIp != null && !podIp.isEmpty()) {
+            return Optional.of(podIp);
+        }
+
+        // Try to get local IP as fallback
+        try {
+            return Optional.of(InetAddress.getLocalHost().getHostAddress());
+        } catch (UnknownHostException e) {
             return Optional.empty();
         }
     }
