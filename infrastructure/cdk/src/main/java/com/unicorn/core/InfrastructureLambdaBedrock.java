@@ -2,7 +2,10 @@ package com.unicorn.core;
 
 import com.unicorn.constructs.EksCluster;
 import software.amazon.awscdk.*;
-import software.amazon.awscdk.services.ec2.*;
+import software.amazon.awscdk.services.ec2.IVpc;
+import software.amazon.awscdk.services.ec2.SecurityGroup;
+import software.amazon.awscdk.services.ec2.SubnetSelection;
+import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
@@ -22,13 +25,8 @@ public class InfrastructureLambdaBedrock extends Construct {
 
     private final Function threadDumpFunction;
 
-    public InfrastructureLambdaBedrock(Construct scope, String id, String region, Bucket s3Bucket, EksCluster eksCluster) {
+    public InfrastructureLambdaBedrock(Construct scope, String id, String region, Bucket s3Bucket, EksCluster eksCluster, IVpc vpc) {
         super(scope, id);
-
-        // Look up the existing VPC
-        IVpc vpc = Vpc.fromLookup(this, "ImportedVpc", VpcLookupOptions.builder()
-                .vpcName("unicornstore-vpc")
-                .build());
 
         // Create a security group for the Lambda function
         SecurityGroup lambdaSg = SecurityGroup.Builder.create(this, "LambdaSecurityGroup")
@@ -50,6 +48,7 @@ public class InfrastructureLambdaBedrock extends Construct {
                 .build());
 
         // IAM Role for Lambda
+        // IAM Role for Lambda
         Role lambdaRole = Role.Builder.create(this, "LambdaBedrockRole")
                 .assumedBy(new ServicePrincipal("lambda.amazonaws.com"))
                 .description("Role for Lambda to access Bedrock and EKS")
@@ -60,6 +59,8 @@ public class InfrastructureLambdaBedrock extends Construct {
                 ))
                 .build();
 
+        // Add permissions for Bedrock, S3, and SNS
+        // Add permissions for Bedrock, S3, and SNS
         // Add permissions for logs
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
                 .effect(Effect.ALLOW)
@@ -96,6 +97,7 @@ public class InfrastructureLambdaBedrock extends Construct {
                 ))
                 .build());
 
+
         // Add permissions for EKS API access
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
                 .effect(Effect.ALLOW)
@@ -104,19 +106,6 @@ public class InfrastructureLambdaBedrock extends Construct {
                         "eks:AccessKubernetesApi",
                         "eks:ListClusters",
                         "sts:GetCallerIdentity"
-                ))
-                .resources(List.of("*"))
-                .build());
-
-        // Add permissions for ECS API access
-        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
-                .effect(Effect.ALLOW)
-                .actions(List.of(
-                        "ecs:DescribeTasks",
-                        "ecs:ListTasks",
-                        "ecs:DescribeClusters",
-                        "ecs:ListClusters",
-                        "ecs:ExecuteCommand"
                 ))
                 .resources(List.of("*"))
                 .build());
@@ -131,7 +120,7 @@ public class InfrastructureLambdaBedrock extends Construct {
                 .outputType(BundlingOutput.ARCHIVED)
                 .build();
 
-        // Lambda function definition with VPC configuration
+        // Lambda function definition
         this.threadDumpFunction = Function.Builder.create(this, "unicornstore-thread-dump-lambda-eks")
                 .functionName("unicornstore-thread-dump-lambda")
                 .runtime(Runtime.PYTHON_3_13)
@@ -156,6 +145,7 @@ public class InfrastructureLambdaBedrock extends Construct {
                         "KUBERNETES_AUTH_TYPE", "aws"  // Use AWS IAM authentication for EKS
                 ))
                 .build();
+
 
         s3Bucket.grantWrite(this.threadDumpFunction);
         s3Bucket.grantRead(this.threadDumpFunction);
@@ -191,12 +181,6 @@ public class InfrastructureLambdaBedrock extends Construct {
         CfnOutput.Builder.create(this, "ThreadDumpFunctionUrlOutput")
                 .description("URL for invoking the Thread Dump Lambda function")
                 .value(functionUrl.getUrl())
-                .build();
-
-        // Output the Lambda security group ID for reference
-        CfnOutput.Builder.create(this, "LambdaSecurityGroupOutput")
-                .description("Security Group ID for the Lambda function")
-                .value(lambdaSg.getSecurityGroupId())
                 .build();
     }
 
