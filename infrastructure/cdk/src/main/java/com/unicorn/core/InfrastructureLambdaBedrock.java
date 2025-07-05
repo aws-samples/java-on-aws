@@ -182,6 +182,13 @@ public class InfrastructureLambdaBedrock extends Construct {
                 .description("URL for invoking the Thread Dump Lambda function")
                 .value(functionUrl.getUrl())
                 .build();
+
+        // Output the Lambda security group ID for reference
+        CfnOutput.Builder.create(this, "LambdaSecurityGroupOutput")
+                .description("Security Group ID for the Lambda function")
+                .value(lambdaSg.getSecurityGroupId())
+                .build();
+
     }
 
     public Function getThreadDumpFunction() {

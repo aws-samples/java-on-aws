@@ -140,7 +140,7 @@ def process_alert(cluster_type, cluster_name, task_pod_id, container_name, names
             ecs_client = ECSClient(cluster_name)
             container_ip = ecs_client.get_container_ip(task_pod_id)
             
-        response = requests.get(f"http://{container_ip}:9404/actuator/threaddump", timeout=10)
+        response = requests.get(f"http://{container_ip}:8080/actuator/threaddump", timeout=10)
         response.raise_for_status()
         thread_dump = response.text
         
@@ -149,7 +149,7 @@ def process_alert(cluster_type, cluster_name, task_pod_id, container_name, names
             # Use the container_ip provided in the alert
             logger.info(f"Using pod IP from alert: {container_ip}")
             try:
-                response = requests.get(f"http://{container_ip}:9404/actuator/threaddump", timeout=10)
+                response = requests.get(f"http://{container_ip}:8080/actuator/threaddump", timeout=10)
                 response.raise_for_status()
                 thread_dump = response.text
             except Exception as e:
