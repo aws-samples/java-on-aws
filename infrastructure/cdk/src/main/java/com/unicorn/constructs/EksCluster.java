@@ -194,7 +194,7 @@ public class EksCluster extends Construct {
     public ISecurityGroup getClusterSecurityGroup() {
         return SecurityGroup.fromSecurityGroupId(
                 this,
-                "ClusterSecurityGroup",
+                "APIClusterSecurityGroup",
                 cluster.getAttrClusterSecurityGroupId()
         );
     }
