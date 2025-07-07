@@ -33,9 +33,11 @@ public class InfrastructureLambdaBedrock extends Construct {
                 .allowAllOutbound(true)
                 .build();
 
+        ISecurityGroup clusterSG = eksCluster.getClusterSecurityGroup();
+
         // Allow Lambda to communicate with EKS API server
         // The Kubernetes API typically runs on port 443 (HTTPS)
-        eksCluster.getClusterSecurityGroup().addIngressRule(
+        clusterSG.addIngressRule(
                 Peer.securityGroupId(lambdaSg.getSecurityGroupId()),
                 Port.tcp(443),
                 "Allow Lambda access to Kubernetes API"
@@ -43,13 +45,13 @@ public class InfrastructureLambdaBedrock extends Construct {
 
         // Allow Lambda to reach EKS cluster
         lambdaSg.addEgressRule(
-                Peer.securityGroupId(eksCluster.getClusterSecurityGroup().getSecurityGroupId()),
+                Peer.securityGroupId(clusterSG.getSecurityGroupId()),
                 Port.tcp(443),
                 "Allow Lambda to reach Kubernetes API"
         );
 
         // Allow EKS cluster to respond back to Lambda
-        eksCluster.getClusterSecurityGroup().addIngressRule(
+        clusterSG.addIngressRule(
                 Peer.securityGroupId(lambdaSg.getSecurityGroupId()),
                 Port.tcp(443),
                 "Allow Lambda access to Kubernetes API"
