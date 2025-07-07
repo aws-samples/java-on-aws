@@ -34,10 +34,9 @@ public class UnicornStoreStack extends Stack {
         whoami
         echo '\n'
         echo '=== Checking directory ===\n'
-        sudo -H -i -u ec2-user bash -c "ls -la ~/java-on-aws/infrastructure/scripts/setup/"
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
-        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
         """;
 
     private final String buildspec = """
@@ -54,7 +53,6 @@ public class UnicornStoreStack extends Stack {
                     - |
                         # Resolution for when creating the first service in the account
                         aws organizations enable-all-features
-                        aws sso-admin create-instance --name "grafana-instance" --region eu-west-1
                         aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
                         aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com 2>/dev/null || true
                         aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true

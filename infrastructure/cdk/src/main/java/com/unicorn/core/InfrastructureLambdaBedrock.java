@@ -2,10 +2,7 @@ package com.unicorn.core;
 
 import com.unicorn.constructs.EksCluster;
 import software.amazon.awscdk.*;
-import software.amazon.awscdk.services.ec2.IVpc;
-import software.amazon.awscdk.services.ec2.SecurityGroup;
-import software.amazon.awscdk.services.ec2.SubnetSelection;
-import software.amazon.awscdk.services.ec2.SubnetType;
+import software.amazon.awscdk.services.ec2.*;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
@@ -31,9 +28,32 @@ public class InfrastructureLambdaBedrock extends Construct {
         // Create a security group for the Lambda function
         SecurityGroup lambdaSg = SecurityGroup.Builder.create(this, "LambdaSecurityGroup")
                 .vpc(vpc)
+                .securityGroupName("unicornstore-thread-dump-lambda-sg")
                 .description("Security group for Thread Dump Lambda function")
                 .allowAllOutbound(true)
                 .build();
+
+        // Allow Lambda to communicate with EKS API server
+        // The Kubernetes API typically runs on port 443 (HTTPS)
+        eksCluster.getClusterSecurityGroup().addIngressRule(
+                Peer.securityGroupId(lambdaSg.getSecurityGroupId()),
+                Port.tcp(443),
+                "Allow Lambda access to Kubernetes API"
+        );
+
+        // Allow Lambda to reach EKS cluster
+        lambdaSg.addEgressRule(
+                Peer.securityGroupId(eksCluster.getClusterSecurityGroup().getSecurityGroupId()),
+                Port.tcp(443),
+                "Allow Lambda to reach Kubernetes API"
+        );
+
+        // Allow EKS cluster to respond back to Lambda
+        eksCluster.getClusterSecurityGroup().addIngressRule(
+                Peer.securityGroupId(lambdaSg.getSecurityGroupId()),
+                Port.tcp(443),
+                "Allow Lambda access to Kubernetes API"
+        );
 
         // IAM Role for Bedrock
         Role bedrockRole = Role.Builder.create(this, "BedrockAccessRole")
