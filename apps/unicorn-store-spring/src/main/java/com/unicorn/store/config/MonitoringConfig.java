@@ -140,10 +140,10 @@ public class MonitoringConfig {
 
                 JsonNode root = OBJECT_MAPPER.readTree(response.body());
 
-                if (root.has("Networks") && root.path("Networks").isArray() && root.path("Networks").size() > 0) {
+                if (root.has("Networks") && root.path("Networks").isArray() && !root.path("Networks").isEmpty()) {
                     JsonNode network = root.path("Networks").get(0);
                     if (network.has("IPv4Addresses") && network.path("IPv4Addresses").isArray() &&
-                            network.path("IPv4Addresses").size() > 0) {
+                            !network.path("IPv4Addresses").isEmpty()) {
                         return Optional.of(network.path("IPv4Addresses").get(0).asText());
                     }
                 }
