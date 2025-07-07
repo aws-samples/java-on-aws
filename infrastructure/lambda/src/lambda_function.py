@@ -75,7 +75,7 @@ Thread Dump:
 
     payload = json.dumps({
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 1024,
+        "max_tokens": 8192,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7
     })
@@ -145,31 +145,13 @@ def process_alert(cluster_type, cluster_name, task_pod_id, container_name, names
         thread_dump = response.text
         
     elif cluster_type == 'eks':
-        if container_ip:
-            # Use the container_ip provided in the alert
-            logger.info(f"Using pod IP from alert: {container_ip}")
-            try:
-                response = requests.get(f"http://{container_ip}:8080/actuator/threaddump", timeout=10)
-                response.raise_for_status()
-                thread_dump = response.text
-            except Exception as e:
-                logger.warning(f"Failed to get thread dump using pod IP: {str(e)}")
-                # Fallback to kubectl exec
-                eks_client = EKSClient(cluster_name)
-                thread_dump = eks_client.get_thread_dump(
-                    namespace=namespace,
-                    pod_name=task_pod_id,
-                    container_name=container_name
-                )
-        else:
-            # Fallback to kubectl exec
-            eks_client = EKSClient(cluster_name)
-            thread_dump = eks_client.get_thread_dump(
-                namespace=namespace,
-                pod_name=task_pod_id,
-                container_name=container_name
-            )
-        
+        eks_client = EKSClient(cluster_name)
+        thread_dump = eks_client.get_thread_dump(
+            namespace=namespace,
+            pod_name=task_pod_id,
+            container_name=container_name
+        )
+
     else:
         raise ValueError(f"Unsupported cluster type: {cluster_type}")
     
