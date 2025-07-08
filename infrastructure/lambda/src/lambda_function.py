@@ -5,7 +5,8 @@ import boto3
 import requests
 import time
 import random
-import re  # Add this import for regex
+import re
+import base64
 from datetime import datetime
 from typing import Dict, Any
 from kubernetes import client, config
@@ -17,6 +18,62 @@ logger.setLevel(logging.INFO)
 
 def is_invalid(value: str) -> bool:
     return value is None or value.strip() in ["", "[no value]"]
+
+def verify_basic_auth(event: Dict[str, Any]) -> bool:
+    """
+    Verify Basic Authentication credentials from the request headers.
+    Returns True if authentication is successful, False otherwise.
+    """
+    try:
+        # Get headers from the event
+        headers = event.get('headers', {})
+        if not headers:
+            logger.warning("No headers found in the request")
+            return False
+        
+        # Look for authorization header (case-insensitive)
+        auth_header = None
+        for key in headers:
+            if key.lower() == 'authorization':
+                auth_header = headers[key]
+                break
+        
+        if not auth_header or not auth_header.startswith('Basic '):
+            logger.warning("No Basic Authorization header found")
+            return False
+        
+        # Extract and decode credentials
+        encoded_credentials = auth_header.split(' ')[1]
+        decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
+        username, password = decoded_credentials.split(':')
+        
+        # Get expected credentials from AWS Secrets Manager
+        secret_name = "grafana-webhook-credentials"
+        region_name = os.environ.get('AWS_REGION', 'us-east-1')
+        
+        session = boto3.session.Session()
+        client = session.client(
+            service_name='secretsmanager',
+            region_name=region_name
+        )
+        
+        response = client.get_secret_value(SecretId=secret_name)
+        secret = json.loads(response['SecretString'])
+        
+        # Validate credentials
+        if username != secret['username'] or password != secret['password']:
+            logger.warning("Invalid credentials provided")
+            return False
+        
+        logger.info("Authentication successful")
+        return True
+        
+    except ClientError as e:
+        logger.error(f"Error retrieving credentials from Secrets Manager: {str(e)}")
+        return False
+    except Exception as e:
+        logger.error(f"Authentication error: {str(e)}")
+        return False
 
 def extract_pod_info_from_valuestring(value_string: str) -> Dict[str, str]:
     """Extract pod information from Grafana alert valueString"""
@@ -184,6 +241,16 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Check if this is a direct webhook call from Grafana
         if 'body' in event:
             logger.info("Processing direct webhook from Grafana")
+            
+            # Verify authentication for webhook calls
+            if not verify_basic_auth(event):
+                logger.warning("Authentication failed")
+                return {
+                    'statusCode': 401,
+                    'headers': {'WWW-Authenticate': 'Basic'},
+                    'body': json.dumps({'error': 'Authentication failed'})
+                }
+            
             try:
                 # Parse the webhook payload
                 if isinstance(event['body'], str):
@@ -191,6 +258,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 else:
                     body = event['body']
                 
+                # Rest of your webhook handling code remains the same
                 alerts = body.get('alerts', [])
                 if not alerts:
                     return {
@@ -200,6 +268,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 
                 results = []
                 for alert in alerts:
+                    # Your existing alert processing code...
+                    # No changes needed here
                     if alert.get('status') != 'firing':
                         logger.info("Skipping resolved alert")
                         continue

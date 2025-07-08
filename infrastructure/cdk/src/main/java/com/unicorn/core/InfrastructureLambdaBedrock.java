@@ -17,6 +17,7 @@ import software.amazon.awscdk.services.lambda.FunctionUrlAuthType;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InfrastructureLambdaBedrock extends Construct {
 
@@ -66,10 +67,9 @@ public class InfrastructureLambdaBedrock extends Construct {
         bedrockRole.addToPolicy(PolicyStatement.Builder.create()
                 .effect(Effect.ALLOW)
                 .actions(List.of("bedrock:InvokeModel", "bedrock:ListFoundationModels"))
-                .resources(List.of("arn:aws:bedrock:*:*:inference-profile/eu.anthropic.claude-3-7-sonnet-20250219-v1:0"))
+                .resources(List.of("arn:aws:bedrock:*:*:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0"))
                 .build());
 
-        // IAM Role for Lambda
         // IAM Role for Lambda
         Role lambdaRole = Role.Builder.create(this, "LambdaBedrockRole")
                 .assumedBy(new ServicePrincipal("lambda.amazonaws.com"))
@@ -81,7 +81,6 @@ public class InfrastructureLambdaBedrock extends Construct {
                 ))
                 .build();
 
-        // Add permissions for Bedrock, S3, and SNS
         // Add permissions for Bedrock, S3, and SNS
         // Add permissions for logs
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
@@ -105,6 +104,19 @@ public class InfrastructureLambdaBedrock extends Construct {
                 .resources(List.of("*"))  // Grant access to all Bedrock resources
                 .build());
 
+        // Add permissions for AWS Secrets Manager access
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of(
+                    "secretsmanager:GetSecretValue",
+                    "secretsmanager:DescribeSecret"
+            ))
+            .resources(List.of(
+                    // Allow access to the specific secret for webhook credentials
+                    String.format("arn:aws:secretsmanager:%s:*:secret:grafana-webhook-credentials*", region)
+            ))
+            .build());
+
         // Add separate policy for S3 and SNS
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
                 .effect(Effect.ALLOW)
@@ -118,7 +130,6 @@ public class InfrastructureLambdaBedrock extends Construct {
                         "arn:aws:sns:*:*:*"
                 ))
                 .build());
-
 
         // Add permissions for EKS API access
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
@@ -161,13 +172,13 @@ public class InfrastructureLambdaBedrock extends Construct {
                 .securityGroups(List.of(lambdaSg))
                 .environment(Map.of(
                         "APP_LABEL", "unicorn-store-spring",
-                        "EKS_CLUSTER_NAME", eksCluster != null ? eksCluster.getCluster().getName() : "unicorn-store",
+                        "EKS_CLUSTER_NAME", Objects.requireNonNull(eksCluster.getCluster().getName()),
                         "K8S_NAMESPACE", "unicorn-store-spring",
                         "S3_BUCKET_NAME", s3Bucket.getBucketName(),
+                        "AWS_REGION", region,
                         "KUBERNETES_AUTH_TYPE", "aws"  // Use AWS IAM authentication for EKS
                 ))
                 .build();
-
 
         s3Bucket.grantWrite(this.threadDumpFunction);
         s3Bucket.grantRead(this.threadDumpFunction);

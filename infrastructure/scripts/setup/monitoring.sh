@@ -30,6 +30,22 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# -- Generate secure username and password for webhook
+WEBHOOK_USER="grafana-alerts"
+WEBHOOK_PASSWORD=$(openssl rand -base64 16 | tr -d '\n')
+
+# -- Create the secret for webhook
+aws secretsmanager create-secret \
+    --name grafana-webhook-credentials \
+    --description "Basic auth credentials for Grafana webhook to Lambda" \
+    --secret-string "{\"username\":\"$WEBHOOK_USER\",\"password\":\"$WEBHOOK_PASSWORD\"}"
+
+echo "Webhook credentials created:"
+echo "Username: $WEBHOOK_USER"
+echo "Password: $WEBHOOK_PASSWORD"
+echo "Save these credentials securely!"
+
+
 # --- Namespace & Helm setup ---
 kubectl create namespace "$NAMESPACE" 2>/dev/null || true
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
@@ -303,16 +319,22 @@ if [[ -z "$NOTIF_UID" ]]; then
   CONTACT_POINT_JSON=$(jq -n \
     --arg name "lambda-webhook" \
     --arg url "$LAMBDA_URL" \
-    '{
-      name: $name,
-      type: "webhook",
-      settings: {
-        url: $url,
-        httpMethod: "POST"
-      },
-      disableResolveMessage: false,
-      isDefault: false
-    }')
+    --arg user "$WEBHOOK_USER" \
+    --arg pass "$WEBHOOK_PASSWORD" \
+  '{
+    name: $name,
+    type: "webhook",
+    settings: {
+      url: $url,
+      httpMethod: "POST",
+      username: $user,
+      password: $pass,
+      authorization_scheme: "basic"
+    },
+    disableResolveMessage: false,
+    isDefault: false
+  }')
+
 
   curl -s -X POST -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
     -H "Content-Type: application/json" \
