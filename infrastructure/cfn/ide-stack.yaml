@@ -447,7 +447,7 @@ Resources:
   VSCodeIdeIdeLogGroup364F2B78:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250615-133633
+      LogGroupName: ide-bootstrap-log-20250619-133344
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1127,7 +1127,7 @@ Resources:
                       exit $exit_code
                     - waitConditionHandleUrl:
                         Ref: VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82
-                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
+                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,shardulm94.trailing-spaces,ms-azuretools.vscode-docker
                       domain: ""
                       installGitea: echo bootstrapGitea was not provided
                       terminalOnStartup: "true"
