@@ -175,7 +175,6 @@ public class InfrastructureLambdaBedrock extends Construct {
                         "EKS_CLUSTER_NAME", Objects.requireNonNull(eksCluster.getCluster().getName()),
                         "K8S_NAMESPACE", "unicorn-store-spring",
                         "S3_BUCKET_NAME", s3Bucket.getBucketName(),
-                        "AWS_REGION", region,
                         "KUBERNETES_AUTH_TYPE", "aws"  // Use AWS IAM authentication for EKS
                 ))
                 .build();
