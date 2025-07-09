@@ -10,7 +10,7 @@ import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.s3.Bucket;
-import software.amazon.awscdk.services.s3.assets.AssetOptions;
+
 import software.constructs.Construct;
 import software.amazon.awscdk.services.lambda.FunctionUrl;
 import software.amazon.awscdk.services.lambda.FunctionUrlAuthType;
@@ -143,24 +143,35 @@ public class InfrastructureLambdaBedrock extends Construct {
                 .resources(List.of("*"))
                 .build());
 
-        // Docker bundling config for Lambda
-        BundlingOptions bundlingOptions = BundlingOptions.builder()
-                .image(DockerImage.fromRegistry("public.ecr.aws/sam/build-python3.13:latest"))
-                .command(List.of(
-                        "bash", "-c", "chmod +x build.sh && ./build.sh"
-                ))
-                .user("root")
-                .outputType(BundlingOutput.ARCHIVED)
-                .build();
-
-        // Lambda function definition
+        // Lambda function definition with inline dummy code
         this.threadDumpFunction = Function.Builder.create(this, "unicornstore-thread-dump-lambda-eks")
                 .functionName("unicornstore-thread-dump-lambda")
                 .runtime(Runtime.PYTHON_3_13)
-                .code(Code.fromAsset("../lambda", AssetOptions.builder()
-                        .bundling(bundlingOptions)
-                        .build()))
-                .handler("lambda_function.lambda_handler")
+                .code(Code.fromInline(
+                        "import json\n" +
+                        "import logging\n" +
+                        "\n" +
+                        "logger = logging.getLogger()\n" +
+                        "logger.setLevel(logging.INFO)\n" +
+                        "\n" +
+                        "def lambda_handler(event, context):\n" +
+                        "    logger.info('Dummy Lambda function invoked')\n" +
+                        "    logger.info(f'Event: {json.dumps(event)}')\n" +
+                        "    \n" +
+                        "    return {\n" +
+                        "        'statusCode': 200,\n" +
+                        "        'headers': {\n" +
+                        "            'Content-Type': 'application/json',\n" +
+                        "            'Access-Control-Allow-Origin': '*'\n" +
+                        "        },\n" +
+                        "        'body': json.dumps({\n" +
+                        "            'message': 'Hello from dummy Lambda function!',\n" +
+                        "            'timestamp': context.aws_request_id,\n" +
+                        "            'function_name': context.function_name\n" +
+                        "        })\n" +
+                        "    }\n"
+                ))
+                .handler("index.lambda_handler")
                 .role(lambdaRole)
                 .timeout(Duration.minutes(5))
                 .memorySize(512)
