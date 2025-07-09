@@ -37,7 +37,7 @@ pip install -r requirements.txt --target "$TEMP_DIR/package"
 
 # Copy function code
 echo "Copying function code..."
-cp src/lambda_function.py "$TEMP_DIR/package/"
+cp src/index.py "$TEMP_DIR/package/"
 cp src/eks_client.py "$TEMP_DIR/package/"
 
 # Create deployment package
