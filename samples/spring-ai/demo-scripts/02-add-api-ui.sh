@@ -105,10 +105,12 @@ fi
 
 echo "Files copied successfully."
 
+cd assistant
 # Show git status
 echo ""
 echo "Git status:"
 git status
 
 echo ""
-echo "Done!"
+echo Done!
+cd ..

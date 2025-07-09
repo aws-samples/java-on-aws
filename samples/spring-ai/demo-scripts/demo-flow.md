@@ -4,7 +4,10 @@
 
 ```bash
 mkdir spring-ai-demo
-cd spring-ai-demo/
+code spring-ai-demo/
+```
+
+```bash
 git clone https://github.com/aws-samples/java-on-aws.git ./java-on-aws
 export SOURCES_FOLDER=$(pwd)/java-on-aws/samples/spring-ai
 export AWS_REGION=us-east-1
@@ -33,11 +36,12 @@ $SOURCES_FOLDER/demo-scripts/02-add-api-ui.sh
 
 ```bash
 export AWS_REGION=us-east-1
-cd spring-ai-demo/assistant/
+cd assistant/
 ./mvnw spring-boot:run
 ```
 
 > What is my name?
+
 > My name is ...
 
 ## Add Memory
@@ -51,7 +55,7 @@ $SOURCES_FOLDER/demo-scripts/03-add-memory.sh
 > In the new terminal
 
 ```bash
-cd spring-ai-demo/database/
+cd database/
 ./start-postgres.sh
 ```
 
@@ -62,6 +66,7 @@ cd spring-ai-demo/database/
 ```
 
 > my name is ...
+
 > What is my name?
 
 > What is our travel and expenses policy?
@@ -92,7 +97,7 @@ curl -X POST \
 
 > What is our travel and expenses policy?
 
-> What is the date next monday
+> What is the date today?
 
 ## Add Tools
 
@@ -108,11 +113,11 @@ $SOURCES_FOLDER/demo-scripts/05-add-tools.sh
 ./mvnw spring-boot:run
 ```
 
-> What is the date next monday
+> What is the date today?
 
 > What is the weather in Paris next Monday?
 
-## Add Memory
+## Add MCP
 
 > In the main terminal:
 
@@ -123,14 +128,14 @@ $SOURCES_FOLDER/demo-scripts/06-add-mcp.sh
 > In the new terminal
 
 ```bash
-cd spring-ai-demo/travel/
+cd travel/
 ./start-postgres.sh
 ```
 
 > In the new terminal (optional):
 
 ```bash
-cd spring-ai-demo/backoffice/
+cd backoffice/
 ./start-postgres.sh
 ```
 
@@ -140,15 +145,14 @@ cd spring-ai-demo/backoffice/
 ./mvnw spring-boot:run
 ```
 
-> my name is ...
-> What is my name?
-
-> What is our travel and expenses policy?
-
 > What is the weather in Paris next Monday?
 
 > Could you please book me a flight from London to Paris and back, from next Monday to next Friday?
+
 > I would take BA flights
+
 > John Doe, john@example.com, 1, 1
+
 > Please book me accommodation
+
 > Could you please give me a summary of travel?
