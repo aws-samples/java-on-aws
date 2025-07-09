@@ -12,8 +12,6 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 
-import org.springframework.ai.tool.ToolCallbackProvider;
-
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
@@ -36,8 +34,7 @@ public class ChatService {
     public ChatService(ChatClient.Builder chatClientBuilder,
                       ChatMemoryService chatMemoryService,
                       VectorStore vectorStore,
-                      DateTimeService dateTimeService,
-                      ToolCallbackProvider tools) {
+                      DateTimeService dateTimeService) {
 
         this.chatClient = chatClientBuilder
             .defaultSystem(PromptConfig.SYSTEM_PROMPT)
@@ -46,7 +43,6 @@ public class ChatService {
                 QuestionAnswerAdvisor.builder(vectorStore).build()
             )
             .defaultTools(dateTimeService)
-            .defaultToolCallbacks(tools)
             .build();
 
         this.chatMemoryService = chatMemoryService;
