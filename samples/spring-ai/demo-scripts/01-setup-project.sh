@@ -123,7 +123,7 @@ read -n 1 -s
 
 echo ""
 echo "Building the project with Maven..."
-SPRING_MAIN_WEB_APPLICATION_TYPE=none LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_AI_BEDROCK_CONVERSE_BEDROCKPROXYCHATMODEL=ERROR ./mvnw spring-boot:run -Dspring-boot.run.arguments="--logging.level.org.springframework.ai=INFO"
+SPRING_MAIN_WEB_APPLICATION_TYPE=none ./mvnw spring-boot:run -Dspring-boot.run.arguments="--logging.level.root=ERROR"
 
 echo ""
 echo "Reverting AssistantApplication.java to original state..."
