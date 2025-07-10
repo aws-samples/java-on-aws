@@ -6,6 +6,8 @@ log() {
   echo "[$(date +'%H:%M:%S')] $*"
 }
 
+set -x
+
 # --- Configuration ---
 NAMESPACE="monitoring"
 GRAFANA_SECRET_NAME="grafana-admin"
@@ -20,6 +22,8 @@ if [ -z "$IDE_PASSWORD" ]; then
 else
   GRAFANA_PASSWORD="$IDE_PASSWORD"
 fi
+
+echo "GRAFANA_PASSWORD is $GRAFANA_PASSWORD"
 
 VALUES_FILE="prometheus-values.yaml"
 EXTRA_SCRAPE_FILE="extra-scrape-configs.yaml"
@@ -249,8 +253,6 @@ log "✅ Lambda Function URL: $LAMBDA_URL"
 GRAFANA_URL="http://$GRAFANA_LB"
 
 # 1. Search for a dashboard containing "JVM" in the title
-
-set -x
 
 log "⏳ Waiting for Grafana to become healthy..."
 for i in {1..20}; do
