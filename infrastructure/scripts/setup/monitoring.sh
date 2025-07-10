@@ -6,24 +6,11 @@ log() {
   echo "[$(date +'%H:%M:%S')] $*"
 }
 
-set -x
-
 # --- Configuration ---
 NAMESPACE="monitoring"
 GRAFANA_SECRET_NAME="grafana-admin"
 GRAFANA_USER="admin"
-
-source /etc/profile.d/workshop.sh
-
-# Use IDE_PASSWORD if set; otherwise generate random Grafana password
-if [ -z "$IDE_PASSWORD" ]; then
-  echo "⚠️  Warning: GRAFANA_PASSWORD is not set via IDE_PASSWORD. A random password will be generated."
-  GRAFANA_PASSWORD="$(openssl rand -base64 16 | tr -d '\n')"
-else
-  GRAFANA_PASSWORD="$IDE_PASSWORD"
-fi
-
-echo "GRAFANA_PASSWORD is $GRAFANA_PASSWORD"
+GRAFANA_PASSWORD="$(openssl rand -base64 16 | tr -d '\n')"
 
 VALUES_FILE="prometheus-values.yaml"
 EXTRA_SCRAPE_FILE="extra-scrape-configs.yaml"
@@ -45,23 +32,13 @@ trap cleanup EXIT
 
 # -- Generate secure username and password for webhook
 WEBHOOK_USER="grafana-alerts"
-WEBHOOK_PASSWORD="$(openssl rand -base64 16 | tr -d '\n')"
-SECRET_NAME="grafana-webhook-credentials"
-SECRET_VALUE="{\"username\":\"$WEBHOOK_USER\",\"password\":\"$WEBHOOK_PASSWORD\"}"
+WEBHOOK_PASSWORD=$(openssl rand -base64 16 | tr -d '\n')
 
-# -- Create or update the secret for webhook
-if aws secretsmanager describe-secret --secret-id "$SECRET_NAME" >/dev/null 2>&1; then
-  echo "🔁 Secret '$SECRET_NAME' exists. Updating..."
-  aws secretsmanager put-secret-value \
-    --secret-id "$SECRET_NAME" \
-    --secret-string "$SECRET_VALUE"
-else
-  echo "➕ Creating secret '$SECRET_NAME'..."
-  aws secretsmanager create-secret \
-    --name "$SECRET_NAME" \
+# -- Create the secret for webhook
+aws secretsmanager create-secret \
+    --name grafana-webhook-credentials \
     --description "Basic auth credentials for Grafana webhook to Lambda" \
-    --secret-string "$SECRET_VALUE"
-fi
+    --secret-string "{\"username\":\"$WEBHOOK_USER\",\"password\":\"$WEBHOOK_PASSWORD\"}"
 
 echo "Webhook credentials created:"
 echo "Username: $WEBHOOK_USER"
@@ -263,6 +240,8 @@ log "✅ Lambda Function URL: $LAMBDA_URL"
 GRAFANA_URL="http://$GRAFANA_LB"
 
 # 1. Search for a dashboard containing "JVM" in the title
+
+set -x
 
 log "⏳ Waiting for Grafana to become healthy..."
 for i in {1..20}; do
