@@ -23,6 +23,8 @@ export AWS_REGION=us-east-1
 $SOURCES_FOLDER/demo-scripts/01-setup-project.sh
 ```
 
+> Who are you?
+
 ## Add ChatController and UI
 
 > In the main terminal:
@@ -40,9 +42,9 @@ cd assistant/
 ./mvnw spring-boot:run
 ```
 
-> What is my name?
+> Who are you?
 
-> My name is ...
+> What is our company name?
 
 ## Add Memory
 
@@ -65,9 +67,9 @@ cd database/
 ./mvnw spring-boot:run
 ```
 
-> my name is ...
+> Our company name is Company1
 
-> What is my name?
+> What is our company name?
 
 > What is our travel and expenses policy?
 
