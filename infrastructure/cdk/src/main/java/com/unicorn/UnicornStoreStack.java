@@ -30,9 +30,7 @@ public class UnicornStoreStack extends Stack {
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
 
         echo '=== Additional Setup ===\n'
-        echo '===== whoami =====\n'
-        whoami
-        echo '\n'
+
         echo '=== Checking directory ===\n'
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
@@ -69,9 +67,14 @@ public class UnicornStoreStack extends Stack {
         // Create VPC
         var vpc = new WorkshopVpc(this, "UnicornStoreVpc", "unicornstore-vpc").getVpc();
 
+        String bootstrapScriptWithRegion = bootstrapScript + String.format(
+                "sudo -H -i -u ec2-user bash -c \"cd ~/java-on-aws/infrastructure/lambda/ && ./build-and-deploy.sh --region %s\"",
+                this.getRegion()
+        );
+
         // Create VSCode IDE
         var ideProps = new VSCodeIdeProps();
-            ideProps.setBootstrapScript(bootstrapScript);
+            ideProps.setBootstrapScript(bootstrapScriptWithRegion);
             ideProps.setVpc(vpc);
             ideProps.setInstanceName("unicornstore-ide");
             ideProps.setInstanceType(InstanceType.of(InstanceClass.M5, InstanceSize.XLARGE));

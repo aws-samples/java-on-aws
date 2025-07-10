@@ -10,7 +10,16 @@ log() {
 NAMESPACE="monitoring"
 GRAFANA_SECRET_NAME="grafana-admin"
 GRAFANA_USER="admin"
-GRAFANA_PASSWORD="$(openssl rand -base64 16 | tr -d '\n')"
+
+source /etc/profile.d/workshop.sh
+
+# Use IDE_PASSWORD if set; otherwise generate random Grafana password
+if [ -z "$IDE_PASSWORD" ]; then
+  echo "⚠️  Warning: GRAFANA_PASSWORD is not set via IDE_PASSWORD. A random password will be generated."
+  GRAFANA_PASSWORD="$(openssl rand -base64 16 | tr -d '\n')"
+else
+  GRAFANA_PASSWORD="$IDE_PASSWORD"
+fi
 
 VALUES_FILE="prometheus-values.yaml"
 EXTRA_SCRAPE_FILE="extra-scrape-configs.yaml"
