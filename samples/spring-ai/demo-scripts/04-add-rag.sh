@@ -2,9 +2,6 @@
 
 # Script to add RAG functionality to the assistant app
 
-# Set the source folder path
-SOURCES_FOLDER="/Users/bezsonov/sources/workshops/java-on-aws/samples/spring-ai"
-
 # Check if source folder exists
 if [ ! -d "$SOURCES_FOLDER" ]; then
     echo "Error: Source folder $SOURCES_FOLDER does not exist."

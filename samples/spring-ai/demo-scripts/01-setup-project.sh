@@ -38,7 +38,7 @@ echo "   --type=maven-project \\"
 echo "   --artifact-id=assistant \\"
 echo "   --name=assistant \\"
 echo "   --group-id=com.example \\"
-echo -e "   \033[1m--dependencies=web,thymeleaf,spring-ai-bedrock-converse \033[0m\\"
+echo -e "   \033[1m--dependencies=spring-ai-bedrock-converse \033[0m\\"
 echo "   --extract \\"
 echo "   assistant"
 
@@ -55,43 +55,20 @@ echo "Initializing Spring Boot project..."
    --artifact-id=assistant \
    --name=assistant \
    --group-id=com.example \
-   --dependencies=web,thymeleaf,spring-ai-bedrock-converse \
+   --dependencies=spring-ai-bedrock-converse \
    --extract \
    assistant
 
 echo ""
 echo "Configuring application.properties..."
 cd assistant
-cat > src/main/resources/application.properties << 'EOL'
-# Simplified logging pattern - only show the message
-logging.pattern.console=%msg%n
-
-# Debugging
-logging.level.org.springframework.ai=DEBUG
-spring.ai.chat.observations.log-completion=true
-spring.ai.chat.observations.include-error-logging=true
-spring.ai.tools.observations.include-content=true
-
-# Thymeleaf Configuration
-spring.thymeleaf.cache=false
-spring.thymeleaf.prefix=classpath:/templates/
-spring.thymeleaf.suffix=.html
+cat >> src/main/resources/application.properties << 'EOL'
 
 # Amazon Bedrock Configuration
 spring.ai.bedrock.aws.region=us-east-1
-spring.ai.bedrock.converse.chat.options.max-tokens=10000
 spring.ai.bedrock.converse.chat.options.model=us.anthropic.claude-3-7-sonnet-20250219-v1:0
+spring.ai.bedrock.converse.chat.options.max-tokens=10000
 EOL
-
-echo ""
-echo "Opening files in VS Code..."
-code pom.xml
-code src/main/java/com/example/assistant/AssistantApplication.java
-code src/main/resources/application.properties
-
-echo ""
-echo "Press any key to continue with updating AssistantApplication.java..."
-read -n 1 -s
 
 echo ""
 echo "Updating AssistantApplication.java with CommandLineRunner..."
@@ -117,7 +94,6 @@ public class AssistantApplication {
     public CommandLineRunner cli(ChatClient.Builder chatClientBuilder) {
         return args -> {
             var chatClient = chatClientBuilder
-                .defaultSystem("You are a AI Assistant, expert in all sorts of things related to travel and expenses management.")
                 .build();
 
             System.out.println("\nI am your AI Assistant.\n");
@@ -136,12 +112,18 @@ public class AssistantApplication {
 EOL
 
 echo ""
-echo "Building the project with Maven..."
-./mvnw spring-boot:run -Dspring-boot.run.arguments="--logging.level.org.springframework.ai=INFO"
+echo "Opening files in VS Code..."
+code src/main/resources/application.properties
+code pom.xml
+code src/main/java/com/example/assistant/AssistantApplication.java
 
 echo ""
-echo "Press any key after you've exited the application..."
+echo "Press any key to continue with updating AssistantApplication.java..."
 read -n 1 -s
+
+echo ""
+echo "Building the project with Maven..."
+SPRING_MAIN_WEB_APPLICATION_TYPE=none ./mvnw spring-boot:run -Dspring-boot.run.arguments="--logging.level.org.springframework.ai=INFO"
 
 echo ""
 echo "Reverting AssistantApplication.java to original state..."
