@@ -45,13 +45,23 @@ trap cleanup EXIT
 
 # -- Generate secure username and password for webhook
 WEBHOOK_USER="grafana-alerts"
-WEBHOOK_PASSWORD=$(openssl rand -base64 16 | tr -d '\n')
+WEBHOOK_PASSWORD="$(openssl rand -base64 16 | tr -d '\n')"
+SECRET_NAME="grafana-webhook-credentials"
+SECRET_VALUE="{\"username\":\"$WEBHOOK_USER\",\"password\":\"$WEBHOOK_PASSWORD\"}"
 
-# -- Create the secret for webhook
-aws secretsmanager create-secret \
-    --name grafana-webhook-credentials \
+# -- Create or update the secret for webhook
+if aws secretsmanager describe-secret --secret-id "$SECRET_NAME" >/dev/null 2>&1; then
+  echo "🔁 Secret '$SECRET_NAME' exists. Updating..."
+  aws secretsmanager put-secret-value \
+    --secret-id "$SECRET_NAME" \
+    --secret-string "$SECRET_VALUE"
+else
+  echo "➕ Creating secret '$SECRET_NAME'..."
+  aws secretsmanager create-secret \
+    --name "$SECRET_NAME" \
     --description "Basic auth credentials for Grafana webhook to Lambda" \
-    --secret-string "{\"username\":\"$WEBHOOK_USER\",\"password\":\"$WEBHOOK_PASSWORD\"}"
+    --secret-string "$SECRET_VALUE"
+fi
 
 echo "Webhook credentials created:"
 echo "Username: $WEBHOOK_USER"
