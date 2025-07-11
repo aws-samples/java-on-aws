@@ -32,7 +32,20 @@ trap cleanup EXIT
 
 # -- Generate secure username and password for webhook
 WEBHOOK_USER="grafana-alerts"
-WEBHOOK_PASSWORD=$(openssl rand -base64 16 | tr -d '\n')
+
+# Try to source IDE_PASSWORD from workshop configuration
+if [[ -f /etc/profile.d/workshop.sh ]]; then
+    source /etc/profile.d/workshop.sh
+fi
+
+# Use IDE_PASSWORD if available and not empty, otherwise generate random password
+if [[ -n "${IDE_PASSWORD:-}" ]]; then
+    WEBHOOK_PASSWORD="$IDE_PASSWORD"
+    log "Using IDE_PASSWORD from workshop configuration"
+else
+    WEBHOOK_PASSWORD=$(openssl rand -base64 16 | tr -d '\n')
+    log "Generated random webhook password (IDE_PASSWORD not available)"
+fi
 
 # -- Create the secret for webhook
 aws secretsmanager create-secret \
