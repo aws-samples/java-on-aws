@@ -41,6 +41,8 @@ The AI Assistant is the central application in the ecosystem, providing:
 - PostgreSQL with pgvector for vector embeddings
 - Thymeleaf web interface
 
+![assistant-ui](assistant/docs/assistant-ui.png)
+
 ### [Travel Service](travel/README.md)
 
 The Travel service provides specialized functionality for travel management:

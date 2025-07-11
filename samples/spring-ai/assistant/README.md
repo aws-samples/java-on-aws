@@ -43,6 +43,8 @@ This application serves as:
 - **Thymeleaf**: Server-side templating for the web interface
 - **Docker**: Containerization for database and application
 
+![assistant-ui](docs/assistant-ui.png)
+
 ## Architecture
 
 ### Component Architecture
