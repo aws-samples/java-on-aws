@@ -1,0 +1,71 @@
+@startuml
+!include <C4/C4_Component>
+
+LAYOUT_WITH_LEGEND()
+
+title Spring AI Travel Application Architecture
+
+Person(user, "User", "Uses the travel application")
+
+System_Boundary(travel_system, "Travel System") {
+    Container(travel_app, "Travel Application", "Spring Boot", "Provides travel services including hotel and flight booking")
+
+    Component(mcp_server, "MCP Server", "Spring AI MCP", "Provides AI tools for travel services")
+
+    ComponentDb(travel_db, "Travel Database", "PostgreSQL", "Stores travel data including hotels, flights, and bookings")
+
+    Component(accommodations, "Accommodations Module", "Spring Boot", "Manages hotel information and bookings")
+    Component(transportation, "Transportation Module", "Spring Boot", "Manages airport and flight information and bookings")
+    Component(weather, "Weather Module", "Spring Boot", "Provides weather forecasts for destinations")
+
+    Component(hotel_controller, "Hotel Controller", "REST API", "Exposes hotel endpoints")
+    Component(hotel_service, "Hotel Service", "Business Logic", "Implements hotel business logic")
+    Component(hotel_tools, "Hotel Tools", "AI Tools", "Exposes hotel functionality to AI")
+
+    Component(flight_controller, "Flight Controller", "REST API", "Exposes flight endpoints")
+    Component(flight_service, "Flight Service", "Business Logic", "Implements flight business logic")
+    Component(flight_tools, "Flight Tools", "AI Tools", "Exposes flight functionality to AI")
+
+    Component(weather_controller, "Weather Controller", "REST API", "Exposes weather endpoints")
+    Component(weather_service, "Weather Service", "Business Logic", "Implements weather business logic")
+    Component(weather_tools, "Weather Tools", "AI Tools", "Exposes weather functionality to AI")
+
+    Component(weather_api_client, "Weather API Client", "WebClient", "Fetches weather data from external API")
+}
+
+System_Ext(external_weather_api, "External Weather API", "Provides weather forecast data")
+
+Rel(user, travel_app, "Uses", "HTTP")
+Rel(travel_app, mcp_server, "Exposes", "HTTP")
+
+Rel(accommodations, hotel_controller, "Contains")
+Rel(accommodations, hotel_service, "Contains")
+Rel(accommodations, hotel_tools, "Contains")
+
+Rel(transportation, flight_controller, "Contains")
+Rel(transportation, flight_service, "Contains")
+Rel(transportation, flight_tools, "Contains")
+
+Rel(weather, weather_controller, "Contains")
+Rel(weather, weather_service, "Contains")
+Rel(weather, weather_tools, "Contains")
+Rel(weather, weather_api_client, "Contains")
+
+Rel(hotel_controller, hotel_service, "Uses")
+Rel(hotel_tools, hotel_service, "Uses")
+Rel(hotel_service, travel_db, "Reads/Writes", "JPA")
+
+Rel(flight_controller, flight_service, "Uses")
+Rel(flight_tools, flight_service, "Uses")
+Rel(flight_service, travel_db, "Reads/Writes", "JPA")
+
+Rel(weather_controller, weather_service, "Uses")
+Rel(weather_tools, weather_service, "Uses")
+Rel(weather_service, weather_api_client, "Uses")
+Rel(weather_api_client, external_weather_api, "Fetches data", "HTTP")
+
+Rel(mcp_server, hotel_tools, "Exposes")
+Rel(mcp_server, flight_tools, "Exposes")
+Rel(mcp_server, weather_tools, "Exposes")
+
+@enduml

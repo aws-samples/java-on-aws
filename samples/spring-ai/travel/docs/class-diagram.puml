@@ -1,0 +1,379 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+package "com.example.travel" {
+    class TravelApplication {
+        + main(args: String[]): void
+    }
+}
+
+package "com.example.travel.accommodations" {
+    enum HotelStatus {
+        ACTIVE
+        INACTIVE
+        MAINTENANCE
+    }
+
+    enum RoomType {
+        STANDARD
+        DELUXE
+        SUITE
+        EXECUTIVE
+    }
+
+    enum BookingStatus {
+        PENDING
+        CONFIRMED
+        CANCELLED
+        CHECKED_IN
+        CHECKED_OUT
+        NO_SHOW
+    }
+
+    class Hotel {
+        - id: String
+        - hotelName: String
+        - hotelChain: String
+        - city: String
+        - country: String
+        - address: String
+        - starRating: Integer
+        - pricePerNight: BigDecimal
+        - currency: String
+        - availableRooms: Integer
+        - totalRooms: Integer
+        - roomType: RoomType
+        - amenities: String
+        - description: String
+        - status: HotelStatus
+        - createdAt: LocalDateTime
+        - updatedAt: LocalDateTime
+        + getters/setters
+        # onCreate(): void
+        # onUpdate(): void
+    }
+
+    class HotelBooking {
+        - id: String
+        - bookingReference: String
+        - hotelId: String
+        - customerName: String
+        - customerEmail: String
+        - checkInDate: LocalDate
+        - checkOutDate: LocalDate
+        - numberOfGuests: Integer
+        - numberOfRooms: Integer
+        - totalPrice: BigDecimal
+        - currency: String
+        - status: BookingStatus
+        - createdAt: LocalDateTime
+        - updatedAt: LocalDateTime
+        + getters/setters
+        # onCreate(): void
+        # onUpdate(): void
+    }
+
+    interface HotelRepository {
+        + findByCity(city: String): List<Hotel>
+        + findByHotelNameContainingIgnoreCase(name: String): List<Hotel>
+    }
+
+    interface HotelBookingRepository {
+        + findByBookingReference(reference: String): Optional<HotelBooking>
+    }
+
+    class HotelService {
+        - hotelRepository: HotelRepository
+        + findHotelsByCity(city: String): List<Hotel>
+        + findHotelsByName(name: String): List<Hotel>
+        + findHotelById(id: String): Hotel
+        + getHotel(id: String): Hotel
+    }
+
+    class HotelBookingService {
+        - bookingRepository: HotelBookingRepository
+        - hotelRepository: HotelRepository
+        + getBooking(id: String): HotelBooking
+        + findByBookingReference(reference: String): HotelBooking
+        + createBooking(booking: HotelBooking): HotelBooking
+        + updateBooking(booking: HotelBooking): HotelBooking
+        + confirmBooking(reference: String): HotelBooking
+        + cancelBooking(reference: String): HotelBooking
+        - findAndValidateHotel(id: String, rooms: Integer): Hotel
+        - enrichBookingData(booking: HotelBooking, hotel: Hotel): void
+        - updateHotelInventory(hotel: Hotel, roomChange: Integer): void
+        - handleHotelChange(existing: HotelBooking, updated: HotelBooking): void
+    }
+
+    class HotelController {
+        - hotelService: HotelService
+        + searchHotels(city: String, name: String): List<Hotel>
+        + getHotelById(id: String): Hotel
+    }
+
+    class HotelBookingController {
+        - hotelBookingService: HotelBookingService
+        + createBooking(request: HotelBooking): HotelBooking
+        + getBookingByReference(reference: String): HotelBooking
+        + confirmBooking(reference: String): HotelBooking
+        + cancelBooking(reference: String): HotelBooking
+    }
+
+    class HotelTools {
+        - hotelService: HotelService
+        + findHotelsByCity(city: String): List<Hotel>
+        + findHotelsByName(name: String): List<Hotel>
+        + getHotelDetails(id: String): Hotel
+    }
+
+    class HotelBookingTools {
+        - bookingService: HotelBookingService
+        - hotelService: HotelService
+        + findHotelBookingByBookingReference(reference: String): HotelBooking
+        + createHotelBookingByHotelName(hotelName: String, customerName: String, customerEmail: String, checkInDate: LocalDate, checkOutDate: LocalDate, numberOfGuests: Integer, numberOfRooms: Integer): HotelBooking
+        + createHotelBookingByHotelId(hotelId: String, customerName: String, customerEmail: String, checkInDate: LocalDate, checkOutDate: LocalDate, numberOfGuests: Integer, numberOfRooms: Integer): HotelBooking
+        + confirmHotelBooking(reference: String): HotelBooking
+        + cancelHotelBooking(reference: String): HotelBooking
+    }
+}
+
+package "com.example.travel.transportation" {
+    enum FlightStatus {
+        SCHEDULED
+        BOARDING
+        DEPARTED
+        IN_FLIGHT
+        ARRIVED
+        DELAYED
+        CANCELLED
+    }
+
+    enum AircraftType {
+        BOEING_737
+        BOEING_747
+        BOEING_777
+        BOEING_787
+        AIRBUS_A320
+        AIRBUS_A330
+        AIRBUS_A350
+        AIRBUS_A380
+    }
+
+    enum SeatClass {
+        ECONOMY
+        PREMIUM_ECONOMY
+        BUSINESS
+        FIRST
+    }
+
+    enum FlightBookingStatus {
+        PENDING
+        CONFIRMED
+        CANCELLED
+        COMPLETED
+    }
+
+    class Airport {
+        - id: String
+        - airportCode: String
+        - airportName: String
+        - city: String
+        - country: String
+        - timezone: String
+        - latitude: Double
+        - longitude: Double
+        - status: String
+        - createdAt: LocalDateTime
+        - updatedAt: LocalDateTime
+        + getters/setters
+        # onCreate(): void
+        # onUpdate(): void
+    }
+
+    class Flight {
+        - id: String
+        - flightNumber: String
+        - airlineName: String
+        - departureAirport: String
+        - arrivalAirport: String
+        - departureTime: LocalTime
+        - arrivalTime: LocalTime
+        - durationMinutes: Integer
+        - price: BigDecimal
+        - currency: String
+        - availableSeats: Integer
+        - totalSeats: Integer
+        - aircraftType: AircraftType
+        - seatClass: SeatClass
+        - status: FlightStatus
+        - createdAt: LocalDateTime
+        - updatedAt: LocalDateTime
+        + getters/setters
+        # onCreate(): void
+        # onUpdate(): void
+        - calculateDuration(): Integer
+    }
+
+    class FlightBooking {
+        - id: String
+        - bookingReference: String
+        - flightId: String
+        - flightDate: LocalDate
+        - customerName: String
+        - customerEmail: String
+        - numberOfPassengers: Integer
+        - totalPrice: BigDecimal
+        - currency: String
+        - status: FlightBookingStatus
+        - createdAt: LocalDateTime
+        - updatedAt: LocalDateTime
+        + getters/setters
+        # onCreate(): void
+        # onUpdate(): void
+    }
+
+    interface AirportRepository {
+        + findByCity(city: String): List<Airport>
+        + findByAirportCode(code: String): Optional<Airport>
+    }
+
+    interface FlightRepository {
+        + findByFlightNumber(flightNumber: String): Optional<Flight>
+    }
+
+    interface FlightBookingRepository {
+        + findByBookingReference(reference: String): Optional<FlightBooking>
+    }
+
+    class AirportService {
+        - airportRepository: AirportRepository
+        + findAirportsByCity(city: String): List<Airport>
+        + findAirportByCode(code: String): Optional<Airport>
+        + findAirportById(id: String): Airport
+    }
+
+    class FlightService {
+        - flightRepository: FlightRepository
+        - airportRepository: AirportRepository
+        + findFlightsByRoute(origin: String, destination: String, date: LocalDate): List<Flight>
+        + findFlightByNumber(flightNumber: String): Optional<Flight>
+        + findFlightById(id: String): Flight
+    }
+
+    class FlightBookingService {
+        - bookingRepository: FlightBookingRepository
+        - flightRepository: FlightRepository
+        + getBooking(id: String): FlightBooking
+        + findByBookingReference(reference: String): FlightBooking
+        + createBooking(booking: FlightBooking): FlightBooking
+        + createBookingByFlightNumber(flightNumber: String, flightDate: LocalDate, customerName: String, customerEmail: String, numberOfPassengers: Integer): FlightBooking
+        + confirmBooking(reference: String): FlightBooking
+        + cancelBooking(reference: String): FlightBooking
+        - getFlightByIdOrThrow(id: String): Flight
+        - getFlightByNumberOrThrow(flightNumber: String): Flight
+    }
+
+    class AirportController {
+        - airportService: AirportService
+        + searchAirports(city: String, code: String): List<Airport>
+        + getAirportById(id: String): Airport
+    }
+
+    class FlightController {
+        - flightService: FlightService
+        + searchFlights(origin: String, destination: String, date: String): List<Flight>
+        + getFlightById(id: String): Flight
+    }
+
+    class FlightBookingController {
+        - flightBookingService: FlightBookingService
+        + createBooking(booking: FlightBooking): FlightBooking
+        + getBookingByReference(reference: String): FlightBooking
+        + confirmBooking(reference: String): FlightBooking
+        + cancelBooking(reference: String): FlightBooking
+    }
+
+    class AirportTools {
+        - airportService: AirportService
+        + findAirportsByCity(city: String): List<Airport>
+        + findAirportByCode(code: String): Airport
+    }
+
+    class FlightTools {
+        - flightService: FlightService
+        + findFlightsByRoute(origin: String, destination: String, date: LocalDate): List<Flight>
+        + getFlightDetails(flightNumber: String): Flight
+    }
+
+    class FlightBookingTools {
+        - bookingService: FlightBookingService
+        + findFlightBookingByBookingReference(reference: String): FlightBooking
+        + createFlightBooking(flightNumber: String, flightDate: LocalDate, customerName: String, customerEmail: String, numberOfPassengers: Integer): FlightBooking
+        + confirmFlightBooking(reference: String): FlightBooking
+        + cancelFlightBooking(reference: String): FlightBooking
+    }
+}
+
+package "com.example.travel.weather" {
+    interface WeatherApiClient {
+        + getWeatherForecast(city: String): WeatherForecast
+    }
+
+    class WeatherApiClientImpl {
+        - webClient: WebClient
+        + getWeatherForecast(city: String): WeatherForecast
+    }
+
+    class WeatherService {
+        - weatherApiClient: WeatherApiClient
+        + getWeatherForecast(city: String): WeatherForecast
+    }
+
+    class WeatherController {
+        - weatherService: WeatherService
+        + getWeatherForecast(city: String): WeatherForecast
+    }
+
+    class WeatherTools {
+        - weatherService: WeatherService
+        + getWeatherForecast(city: String): WeatherForecast
+    }
+}
+
+package "com.example.travel.common" {
+    class ReferenceGenerator {
+        + {static} generateWithPrefix(prefix: String, length: Integer): String
+        + {static} generateNumeric(length: Integer): String
+        + {static} generateAlphanumeric(length: Integer): String
+    }
+}
+
+' Relationships
+HotelService --> HotelRepository
+HotelBookingService --> HotelBookingRepository
+HotelBookingService --> HotelRepository
+HotelController --> HotelService
+HotelBookingController --> HotelBookingService
+HotelTools --> HotelService
+HotelBookingTools --> HotelBookingService
+HotelBookingTools --> HotelService
+
+AirportService --> AirportRepository
+FlightService --> FlightRepository
+FlightService --> AirportRepository
+FlightBookingService --> FlightBookingRepository
+FlightBookingService --> FlightRepository
+AirportController --> AirportService
+FlightController --> FlightService
+FlightBookingController --> FlightBookingService
+AirportTools --> AirportService
+FlightTools --> FlightService
+FlightBookingTools --> FlightBookingService
+
+WeatherService --> WeatherApiClient
+WeatherController --> WeatherService
+WeatherTools --> WeatherService
+WeatherApiClientImpl ..|> WeatherApiClient
+
+@enduml

@@ -1,0 +1,104 @@
+@startuml
+!define table(x) class x << (T,#FFAAAA) >>
+!define primary_key(x) <b>x</b>
+!define foreign_key(x) <u>x</u>
+hide methods
+hide stereotypes
+
+skinparam linetype ortho
+skinparam class {
+    BackgroundColor White
+    ArrowColor Black
+    BorderColor Black
+}
+
+table(hotels) {
+    primary_key(id) VARCHAR
+    hotel_name VARCHAR
+    hotel_chain VARCHAR
+    city VARCHAR
+    country VARCHAR
+    address VARCHAR
+    star_rating INTEGER
+    price_per_night DECIMAL
+    currency VARCHAR
+    available_rooms INTEGER
+    total_rooms INTEGER
+    room_type VARCHAR
+    amenities TEXT
+    description TEXT
+    status VARCHAR
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+}
+
+table(hotel_bookings) {
+    primary_key(id) VARCHAR
+    booking_reference VARCHAR
+    foreign_key(hotel_id) VARCHAR
+    customer_name VARCHAR
+    customer_email VARCHAR
+    check_in_date DATE
+    check_out_date DATE
+    number_of_guests INTEGER
+    number_of_rooms INTEGER
+    total_price DECIMAL
+    currency VARCHAR
+    status VARCHAR
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+}
+
+table(airports) {
+    primary_key(id) VARCHAR
+    airport_code VARCHAR
+    airport_name VARCHAR
+    city VARCHAR
+    country VARCHAR
+    timezone VARCHAR
+    latitude DOUBLE
+    longitude DOUBLE
+    status VARCHAR
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+}
+
+table(flights) {
+    primary_key(id) VARCHAR
+    flight_number VARCHAR
+    airline_name VARCHAR
+    departure_airport VARCHAR
+    arrival_airport VARCHAR
+    departure_time TIME
+    arrival_time TIME
+    duration_minutes INTEGER
+    aircraft_type VARCHAR
+    seat_class VARCHAR
+    price DECIMAL
+    currency VARCHAR
+    available_seats INTEGER
+    total_seats INTEGER
+    status VARCHAR
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+}
+
+table(flight_bookings) {
+    primary_key(id) VARCHAR
+    booking_reference VARCHAR
+    foreign_key(flight_id) VARCHAR
+    flight_date DATE
+    customer_name VARCHAR
+    customer_email VARCHAR
+    number_of_passengers INTEGER
+    total_price DECIMAL
+    currency VARCHAR
+    status VARCHAR
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+}
+
+hotel_bookings }|--|| hotels
+flight_bookings }|--|| flights
+
+@enduml

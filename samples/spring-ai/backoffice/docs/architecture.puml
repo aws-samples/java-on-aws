@@ -1,0 +1,57 @@
+@startuml
+!include <C4/C4_Component>
+
+LAYOUT_WITH_LEGEND()
+
+title Spring AI Backoffice Application Architecture
+
+Person(user, "User", "Uses the backoffice application")
+
+System_Boundary(backoffice_system, "Backoffice System") {
+    Container(backoffice_app, "Backoffice Application", "Spring Boot", "Provides expense management and currency conversion services")
+
+    Component(mcp_server, "MCP Server", "Spring AI MCP", "Provides AI tools for backoffice services")
+
+    ComponentDb(backoffice_db, "Backoffice Database", "PostgreSQL", "Stores expense data")
+
+    Component(expenses_module, "Expenses Module", "Spring Boot", "Manages expense records")
+    Component(currencies_module, "Currencies Module", "Spring Boot", "Provides currency conversion services")
+
+    Component(expense_controller, "Expense Controller", "REST API", "Exposes expense endpoints")
+    Component(expense_service, "Expense Service", "Business Logic", "Implements expense business logic")
+    Component(expense_tools, "Expense Tools", "AI Tools", "Exposes expense functionality to AI")
+
+    Component(currency_controller, "Currency Controller", "REST API", "Exposes currency endpoints")
+    Component(currency_service, "Currency Service", "Business Logic", "Implements currency business logic")
+    Component(currency_tools, "Currency Tools", "AI Tools", "Exposes currency functionality to AI")
+
+    Component(currency_api_client, "Currency API Client", "WebClient", "Fetches currency data from external API")
+}
+
+System_Ext(external_currency_api, "External Currency API", "Provides currency exchange rates")
+
+Rel(user, backoffice_app, "Uses", "HTTP")
+Rel(backoffice_app, mcp_server, "Exposes", "HTTP")
+
+Rel(expenses_module, expense_controller, "Contains")
+Rel(expenses_module, expense_service, "Contains")
+Rel(expenses_module, expense_tools, "Contains")
+
+Rel(currencies_module, currency_controller, "Contains")
+Rel(currencies_module, currency_service, "Contains")
+Rel(currencies_module, currency_tools, "Contains")
+Rel(currencies_module, currency_api_client, "Contains")
+
+Rel(expense_controller, expense_service, "Uses")
+Rel(expense_tools, expense_service, "Uses")
+Rel(expense_service, backoffice_db, "Reads/Writes", "JPA")
+
+Rel(currency_controller, currency_service, "Uses")
+Rel(currency_tools, currency_service, "Uses")
+Rel(currency_service, currency_api_client, "Uses")
+Rel(currency_api_client, external_currency_api, "Fetches data", "HTTP")
+
+Rel(mcp_server, expense_tools, "Exposes")
+Rel(mcp_server, currency_tools, "Exposes")
+
+@enduml
