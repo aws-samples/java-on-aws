@@ -1,0 +1,160 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+package "com.example.backoffice" {
+    class BackofficeApplication {
+        + main(args: String[]): void
+    }
+}
+
+package "com.example.backoffice.expenses" {
+    enum DocumentType {
+        RECEIPT
+        INVOICE
+        TICKET
+        BILL
+        OTHER
+    }
+
+    enum ExpenseType {
+        MEALS
+        TRANSPORTATION
+        OFFICE_SUPPLIES
+        ACCOMMODATION
+        HOTEL
+        OTHER
+    }
+
+    enum ExpenseStatus {
+        DRAFT
+        SUBMITTED
+        PROCESSING
+        APPROVED
+        REJECTED
+    }
+
+    enum PolicyStatus {
+        APPROVED
+        REQUIRES_MANAGER_APPROVAL
+        REQUIRES_DIRECTOR_APPROVAL
+        REQUIRES_EXECUTIVE_APPROVAL
+        POLICY_VIOLATION
+    }
+
+    class Expense {
+        - id: String
+        - expenseReference: String
+        - documentType: DocumentType
+        - expenseType: ExpenseType
+        - amountOriginal: BigDecimal
+        - amountEur: BigDecimal
+        - currency: String
+        - date: LocalDate
+        - createdAt: LocalDateTime
+        - updatedAt: LocalDateTime
+        - userId: String
+        - expenseStatus: ExpenseStatus
+        - policyStatus: PolicyStatus
+        - approvalReason: String
+        - policyNotes: String
+        - expenseDetails: String
+        - description: String
+        + getters/setters
+        # onCreate(): void
+        # onUpdate(): void
+    }
+
+    interface ExpenseRepository {
+        + findByExpenseReference(reference: String): Optional<Expense>
+        + findByUserId(userId: String): List<Expense>
+        + findByExpenseStatus(status: ExpenseStatus): List<Expense>
+        + findByUserIdAndExpenseStatus(userId: String, status: ExpenseStatus): List<Expense>
+    }
+
+    class ExpenseService {
+        - expenseRepository: ExpenseRepository
+        + createExpense(expense: Expense): Expense
+        + createExpense(documentType: DocumentType, expenseType: ExpenseType, amountOriginal: BigDecimal, amountEur: BigDecimal, currency: String, date: LocalDate, userId: String, description: String, expenseDetails: String, expenseStatus: ExpenseStatus): Expense
+        + getExpense(id: String): Expense
+        + findByExpenseReference(reference: String): Expense
+        + getExpensesByUserIdAndStatus(userId: String, status: ExpenseStatus): List<Expense>
+        + updateExpense(id: String, expense: Expense): Expense
+        + updateExpense(id: String, documentType: DocumentType, expenseType: ExpenseType, amountOriginal: BigDecimal, amountEur: BigDecimal, currency: String, date: LocalDate, userId: String, description: String, expenseDetails: String, expenseStatus: ExpenseStatus): Expense
+        + deleteExpense(id: String): void
+    }
+
+    class ExpenseController {
+        - expenseService: ExpenseService
+        + createExpense(expense: Expense): Expense
+        + search(userId: String, status: ExpenseStatus, reference: String): List<Expense>
+        + getExpense(expenseId: String): Expense
+        + updateExpense(expenseId: String, expense: Expense): Expense
+        + deleteExpense(expenseId: String): void
+    }
+
+    class ExpenseTools {
+        - expenseService: ExpenseService
+        + createExpense(documentType: DocumentType, expenseType: ExpenseType, amountOriginal: BigDecimal, amountEur: BigDecimal, currency: String, date: LocalDate, userId: String, description: String, expenseDetails: String, expenseStatus: ExpenseStatus): Expense
+        + getExpense(expenseId: String): Expense
+        + searchExpenses(userId: String, status: ExpenseStatus): List<Expense>
+        + updateExpense(expenseId: String, documentType: DocumentType, expenseType: ExpenseType, amountOriginal: BigDecimal, amountEur: BigDecimal, currency: String, date: LocalDate, userId: String, description: String, expenseDetails: String, expenseStatus: ExpenseStatus): Expense
+        + deleteExpense(expenseId: String): void
+    }
+}
+
+package "com.example.backoffice.currencies" {
+    interface CurrencyApiClient {
+        + convertCurrency(fromCurrency: String, toCurrency: String, amount: BigDecimal, date: String): String
+        + getExchangeRates(baseCurrency: String, targetCurrencies: String): String
+        + getSupportedCurrencies(): String
+    }
+
+    class CurrencyApiClientImpl {
+        - webClient: WebClient
+        + convertCurrency(fromCurrency: String, toCurrency: String, amount: BigDecimal, date: String): String
+        + getExchangeRates(baseCurrency: String, targetCurrencies: String): String
+        + getSupportedCurrencies(): String
+    }
+
+    class CurrencyService {
+        - currencyApiClient: CurrencyApiClient
+        + convertCurrency(fromCurrency: String, toCurrency: String, amount: BigDecimal, date: String): String
+        + getExchangeRates(baseCurrency: String, targetCurrencies: String): String
+        + getSupportedCurrencies(): String
+    }
+
+    class CurrencyController {
+        - currencyService: CurrencyService
+        + search(fromCurrency: String, toCurrency: String, amount: BigDecimal, date: String, baseCurrency: String, targetCurrencies: String, listCurrencies: Boolean): String
+        + convertCurrency(fromCurrency: String, toCurrency: String, amount: BigDecimal, date: String): String
+        + getExchangeRates(baseCurrency: String, targetCurrencies: String): String
+        + getSupportedCurrencies(): String
+    }
+
+    class CurrencyTools {
+        - currencyService: CurrencyService
+        + convertCurrency(fromCurrency: String, toCurrency: String, amount: BigDecimal, date: String): String
+        + getSupportedCurrencies(): String
+    }
+}
+
+package "com.example.backoffice.common" {
+    class ReferenceGenerator {
+        + {static} generateWithPrefix(prefix: String, length: Integer): String
+        + {static} generateNumeric(length: Integer): String
+        + {static} generateAlphanumeric(length: Integer): String
+    }
+}
+
+' Relationships
+ExpenseService --> ExpenseRepository
+ExpenseController --> ExpenseService
+ExpenseTools --> ExpenseService
+
+CurrencyService --> CurrencyApiClient
+CurrencyController --> CurrencyService
+CurrencyTools --> CurrencyService
+CurrencyApiClientImpl ..|> CurrencyApiClient
+
+@enduml

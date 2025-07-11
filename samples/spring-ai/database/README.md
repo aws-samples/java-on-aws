@@ -1,86 +1,175 @@
-# Spring AI Database Setup
+# Spring AI Database Infrastructure
 
-This directory contains the PostgreSQL database setup for the Spring AI application, combining databases from the agent and backoffice projects.
+This project provides a comprehensive database infrastructure for Spring AI applications, featuring PostgreSQL with pgvector extension for vector embeddings storage and retrieval. The setup includes multiple databases for different application components and a pre-configured pgAdmin interface for easy database management.
 
-## Database Configuration
+## Stack Overview
 
-- **PostgreSQL Version**: 16 with pgvector extension
-- **Container**: Single PostgreSQL container with 3 databases
-- **Port**: 5432 (standard PostgreSQL port)
-- **Username/Password**: postgres/postgres for all databases
+- **PostgreSQL 16** with pgvector extension for vector similarity search
+- **pgAdmin 4 (v9.5)** for database administration via web interface
+- **Docker Compose** for containerized deployment
+- **Pre-initialized databases** for various application domains
 
-## Databases
+## Purpose
 
-1. **assistant_db** - Main AI assistant database with pgvector extension for vector operations
-2. **backoffice_db** - BackOffice application database
-3. **travel_db** - Travel and expenses database
+This database infrastructure serves as the foundation for Spring AI applications that require:
 
-## pgAdmin Configuration
+1. Vector storage and similarity search capabilities (via pgvector)
+2. Structured data storage for business applications
+3. Sample data for demonstration and testing purposes
 
-- **Version**: 9.5
-- **Port**: 8090
-- **URL**: http://localhost:8090
-- **Login**: admin@admin.com / admin
-- **Auto-configured**: All 3 databases are pre-configured and ready to use
+The setup is designed to support a microservices architecture with separate databases for different application domains while providing a unified management interface.
 
-## Usage
+## Quick Start
 
-### Start the Database
+### Starting the Database Environment
 
 ```bash
-cd /Users/bezsonov/sources/spring-ai/database
+cd samples/spring-ai/database/
 ./start-postgres.sh
 ```
 
-### Stop the Database
+This script will:
+- Start PostgreSQL with pgvector extension
+- Initialize all databases and load sample data
+- Start pgAdmin web interface
+- Display connection information
 
-Press `Ctrl+C` in the terminal where the script is running, or run:
+### Stopping the Database Environment
 
-```bash
-docker-compose down --volumes
-```
+Either:
+- Press `Ctrl+C` in the terminal where the start script is running
+- Or run: `docker-compose down --volumes`
 
-### Connect to Databases
+## Architecture
 
-#### Via pgAdmin
-1. Open http://localhost:8090
-2. Login with admin@admin.com / admin
-3. All databases will be available in the "Spring AI Databases" group
+### Database Structure
 
-#### Via Command Line
-```bash
-# Connect to assistant_db (with pgvector)
-psql -h localhost -p 5432 -U postgres -d assistant_db
+The setup creates three separate databases within a single PostgreSQL instance:
 
-# Connect to backoffice_db
-psql -h localhost -p 5432 -U postgres -d backoffice_db
+1. **assistant_db**
+   - Primary database for AI assistant functionality
+   - Includes pgvector extension for embedding storage and similarity search
+   - Optimized for vector operations
 
-# Connect to travel_db
-psql -h localhost -p 5432 -U postgres -d travel_db
-```
+2. **backoffice_db**
+   - Administrative and management functionality
+   - Standard PostgreSQL database without specialized extensions
 
-#### Via Application Properties
+3. **travel_db**
+   - Sample travel domain data
+   - Contains structured data for various travel entities
+   - Used for demonstration and testing purposes
+
+### Container Architecture
+
+The infrastructure consists of two Docker containers:
+
+1. **PostgreSQL Container (pgvector/pgvector:pg16)**
+   - Runs PostgreSQL 16 with pgvector extension
+   - Exposes port 5432 for database connections
+   - Mounts initialization scripts for database setup
+   - Persists data via Docker volume
+
+2. **pgAdmin Container (dpage/pgadmin4:9.5)**
+   - Provides web-based database administration
+   - Pre-configured with connection to PostgreSQL
+   - Exposes port 8090 for web access
+   - Persists configuration via Docker volume
+
+## Connection Details
+
+### PostgreSQL
+
+- **Host**: localhost
+- **Port**: 5432
+- **Username**: postgres
+- **Password**: postgres
+- **Databases**: assistant_db, backoffice_db, travel_db
+
+### pgAdmin
+
+- **URL**: http://localhost:8090
+- **Email**: admin@admin.com
+- **Password**: admin
+- **Pre-configured Servers**: All databases are automatically configured
+
+## Application Integration
+
+### Spring Boot Configuration
+
+Add the following to your `application.properties` or `application.yml` file:
+
 ```properties
-# Assistant DB (with pgvector)
+# For assistant_db with pgvector
 spring.datasource.url=jdbc:postgresql://localhost:5432/assistant_db
 spring.datasource.username=postgres
 spring.datasource.password=postgres
 
-# BackOffice DB
+# For backoffice_db
 spring.datasource.url=jdbc:postgresql://localhost:5432/backoffice_db
 spring.datasource.username=postgres
 spring.datasource.password=postgres
 
-# Travel DB
+# For travel_db
 spring.datasource.url=jdbc:postgresql://localhost:5432/travel_db
 spring.datasource.username=postgres
 spring.datasource.password=postgres
 ```
 
-## Files
+## Best Practices
 
-- `docker-compose.yml` - Docker Compose configuration
-- `init-databases.sql` - Database initialization script
-- `pgadmin-servers.json` - pgAdmin server configuration
-- `start-postgres.sh` - Startup script
-- `README.md` - This documentation
+### Security Considerations
+
+- **Production Deployment**: Change default credentials before deploying to production
+- **Network Security**: Restrict database access using network policies
+- **Encryption**: Enable SSL for database connections in production
+- **Backup Strategy**: Implement regular database backups
+
+### Performance Optimization
+
+- **pgvector Indexing**: Create appropriate indexes for vector columns
+- **Connection Pooling**: Use connection pooling in your application
+- **Query Optimization**: Monitor and optimize slow queries
+- **Resource Allocation**: Adjust container resources based on workload
+
+### Development Workflow
+
+- **Database Migrations**: Use tools like Flyway or Liquibase for schema evolution
+- **Version Control**: Keep database scripts in version control
+- **Testing**: Create separate test databases with minimal test data
+- **Local Development**: Use this setup for local development only
+
+## Project Files
+
+- `docker-compose.yml` - Container configuration
+- `init-databases.sql` - Creates the three databases and enables pgvector
+- `init-travel-hotels.sql` - Initializes hotel data in travel_db
+- `init-travel-flights.sql` - Initializes flight and airport data in travel_db
+- `pgadmin-servers.json` - Pre-configures pgAdmin connections
+- `start-postgres.sh` - Convenience script to start the environment
+- `.gitignore` - Prevents committing temporary files
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Port Conflicts**: If port 5432 or 8090 is already in use, modify the port mappings in `docker-compose.yml`
+2. **Container Startup Failures**: Check Docker logs with `docker-compose logs`
+3. **Data Persistence Issues**: Ensure Docker volumes are properly configured
+4. **pgAdmin Connection Problems**: Verify network settings and container health
+
+### Resetting the Environment
+
+To completely reset the environment and start fresh:
+
+```bash
+docker-compose down --volumes --remove-orphans
+docker-compose up
+```
+
+## Future Enhancements
+
+- Add support for additional PostgreSQL extensions
+- Implement automated backup and restore functionality
+- Add more sample datasets for different domains
+- Create Kubernetes deployment configuration

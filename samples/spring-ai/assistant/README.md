@@ -2,413 +2,342 @@
 
 A comprehensive AI-powered office assistant built with Spring AI framework, featuring multimodal chat capabilities, document analysis, RAG (Retrieval-Augmented Generation), persistent memory, and tool integration.
 
-## 🏗️ Architecture Overview
+## Related Documentation
 
-### Core Components
+This project is part of a larger microservices ecosystem:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Spring AI Assistant                      │
-├─────────────────────────────────────────────────────────────┤
-│  Web Layer (Thymeleaf + REST API)                           │
-│  ├── WebController (/)                                      │
-│  └── ChatController (/api/chat, /api/rag-load)              │
-├─────────────────────────────────────────────────────────────┤
-│  AI Integration Layer                                       │
-│  ├── Amazon Bedrock (Claude Sonnet 4)                       │
-│  ├── Chat Memory (PostgreSQL-backed)                        │
-│  ├── Vector Store (pgvector)                                │
-│  ├── RAG System (Document Retrieval)                        │
-│  └── Tools Integration (DateTime, MCP Clients)              │
-├─────────────────────────────────────────────────────────────┤
-│  Data Layer                                                 │
-│  ├── PostgreSQL Database (assistant_db)                     │
-│  ├── Chat Memory Repository                                 │
-│  └── Vector Embeddings (Titan v2)                           │
-└─────────────────────────────────────────────────────────────┘
-```
+- [Travel Service Documentation](../travel/README.md) - Travel booking service with hotel and flight management
+- [Backoffice Service Documentation](../backoffice/README.md) - Expense management and currency conversion service
+- [Database Infrastructure Documentation](../database/README.md) - Shared PostgreSQL database with pgvector extension
+
+## Project Overview
+
+### Description
+
+The Spring AI Office Assistant is a demonstration of how to build modern AI-powered applications using the Spring AI framework. It provides a complete set of capabilities for interacting with AI models, including:
+
+- Text-based conversations with persistent memory
+- Document analysis (PDF, JPG, JPEG, PNG)
+- Retrieval-Augmented Generation (RAG) for knowledge base integration
+- Tool integration for enhanced capabilities
+- Model Context Protocol (MCP) client for connecting to external services
+
+The application serves as the central component in a microservices architecture, connecting to specialized services like the Travel and Backoffice applications through the Model Context Protocol (MCP).
+
+### Purpose
+
+This application serves as:
+
+1. A reference implementation for Spring AI integration in enterprise applications
+2. A demonstration of key AI application patterns (RAG, memory, tools, MCP)
+3. A practical example of building AI assistants with Spring Boot
+4. A showcase for integrating with Amazon Bedrock and other AI services
 
 ### Technology Stack
 
-- **Framework**: Spring Boot 3.5.3 with Spring AI 1.0.0
-- **Java Version**: 21
-- **AI Provider**: Amazon Bedrock (Claude Sonnet 4)
-- **Database**: PostgreSQL 16 with pgvector extension
-- **Embeddings**: Amazon Titan Embed Text v2
-- **Frontend**: Thymeleaf + Tailwind CSS
-- **Build Tool**: Maven
+- **Java 21**: Latest LTS version with modern language features
+- **Spring Boot 3.5.3**: Core framework for building the application
+- **Spring AI 1.0.0**: AI integration framework
+- **Amazon Bedrock**: AI model provider (Claude Sonnet 4)
+- **PostgreSQL**: Database with pgvector extension for vector operations
+- **Thymeleaf**: Server-side templating for the web interface
+- **Docker**: Containerization for database and application
 
-## 🎯 Purpose and Features
+## Architecture
 
-### Primary Capabilities
+### Component Architecture
 
-1. **Multimodal Chat Interface**
-   - Text-based conversations with persistent memory
-   - Document analysis (PDF, JPG, JPEG, PNG)
-   - File upload and automatic analysis
-   - Real-time web interface
+![Architecture Diagram](docs/architecture.png)
 
-2. **Document Intelligence**
-   - Expense report analysis and policy compliance checking
-   - Receipt and invoice processing
-   - Travel document analysis
-   - Structured data extraction
+### Class Diagram
 
-3. **RAG (Retrieval-Augmented Generation)**
-   - Knowledge base integration
-   - Document embedding and retrieval
-   - Context-aware responses
-   - Policy and procedure queries
+![Class Diagram](docs/class-diagram.png)
 
-4. **Persistent Memory**
-   - Conversation history across sessions
-   - User context retention
-   - JDBC-backed chat memory
-
-5. **Tool Integration**
-   - DateTime utilities
-   - MCP (Model Context Protocol) client support
-   - Extensible tool framework
-
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- Java 21+
-- PostgreSQL 16 with pgvector extension
-- AWS Account with Bedrock access
-- Maven 3.6+
-
-### Environment Setup
-
-1. **Set AWS Region** (Required):
-   ```bash
-   export AWS_REGION=us-east-1
-   ```
-
-2. **Configure AWS Credentials**:
-   ```bash
-   # Option 1: AWS CLI
-   aws configure
-
-   # Option 2: Environment variables
-   export AWS_ACCESS_KEY_ID=your_access_key
-   export AWS_SECRET_ACCESS_KEY=your_secret_key
-   ```
-
-3. **Database Setup**:
-   - Start the database from the `../database` directory
-   - PostgreSQL 16 with pgvector extension required
-   - Default connection: `localhost:5432/assistant_db` (postgres/postgres)
-   - See [Database Setup](#database-setup) section below
+- Java 21 or higher
+- Maven 3.8 or higher
+- Docker and Docker Compose
+- PostgreSQL with pgvector extension (provided via Docker)
+- AWS account with Amazon Bedrock access
 
 ### Database Setup
 
-Before running the application, you need to start the PostgreSQL database with pgvector extension:
+The application requires a PostgreSQL database with the pgvector extension. A Docker Compose setup is provided in the [`database`](../database/README.md) directory.
 
 ```bash
-# Navigate to the database directory (one folder up from assistant)
-cd ../database
-
-# Start the database using the provided script (keep this terminal open)
+cd samples/spring-ai/database/
 ./start-postgres.sh
 ```
 
-**Note**: Keep the database terminal open as it runs in the foreground. You'll need a separate terminal to run the application.
+This script will:
+- Start PostgreSQL with pgvector extension
+- Initialize the assistant_db database
+- Start pgAdmin web interface for database management
+- Display connection information
 
-This will start:
-- PostgreSQL 16 with pgvector extension
-- pgAdmin web interface at http://localhost:8090
-- Creates `assistant_db`, `backoffice_db`, `travel_db`, and `postgres` databases
+For more details on the database infrastructure, see the [Database Documentation](../database/README.md).
 
-For detailed database setup instructions, see the [database README](../database/README.md).
+### AWS Configuration
 
-### Running the Application
+1. Configure AWS credentials:
+   ```bash
+   aws configure
+   ```
 
-```bash
-# In a new terminal, from the assistant directory, run the application
-./mvnw spring-boot:run
-```
+2. Ensure you have access to Amazon Bedrock and the required models (Claude Sonnet 4).
 
-The application will be available at:
-- **Web Interface**: http://localhost:8080
-- **API Endpoints**: http://localhost:8080/api/*
+### Building and Running the Application
 
-### Loading RAG Data
+1. Build the application:
+   ```bash
+   cd samples/spring-ai/assistant/
+   mvn clean package
+   ```
 
-To populate the knowledge base with documents:
+2. Run the application:
+   ```bash
+   mvn spring-boot:run
+   ```
 
-```bash
-# Load travel and expenses policy
-curl -X POST \
-  -H "Content-Type: text/plain" \
-  --data-binary @./travel_and_expenses_policy.md \
-  http://localhost:8080/api/rag-load
+3. The application will be available at:
+   ```
+   http://localhost:8080
+   ```
 
-# Load any text document
-curl -X POST \
-  -H "Content-Type: text/plain" \
-  --data-binary @./your-document.txt \
-  http://localhost:8080/api/rag-load
-```
+## Key Spring AI Features
 
-## 📚 Spring AI Framework Reference
+This project demonstrates key features of the [Spring AI framework](https://docs.spring.io/spring-ai/reference/index.html). For comprehensive documentation, refer to the [Spring AI Reference Guide](https://docs.spring.io/spring-ai/reference/index.html).
 
-For comprehensive documentation, visit: [Spring AI Reference Documentation](https://docs.spring.io/spring-ai/reference/)
+### System Prompt Configuration
 
-### Key Spring AI Concepts
-
-#### 🗣️ [Chat](https://docs.spring.io/spring-ai/reference/api/chat.html)
-The foundation of conversational AI interactions.
-- **ChatClient**: Fluent API for building chat interactions
-- **ChatModel**: Interface for different AI providers
-- **Message Types**: System, User, Assistant, Tool messages
-- **Streaming Support**: Real-time response streaming
+Spring AI allows you to define [system prompts](https://docs.spring.io/spring-ai/reference/api/clients/prompt-template.html) that set the behavior and capabilities of the AI assistant. The system prompt is configured in the `PromptConfig` class:
 
 ```java
-// Example from our ChatController
-var chatResponse = chatClient
-    .prompt()
-    .user(prompt)
-    .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
-    .call().chatResponse();
+public static final String SYSTEM_PROMPT = """
+    You are a helpful and honest AI Assistant for our company.
+    You can help with questions related to policies and procedures.
+    Follow these guidelines strictly:
+    1. ACCURACY FIRST: Only provide information you are confident about based on your training data.
+    2. ADMIT UNCERTAINTY: If you are unsure about any fact, detail, or answer, respond with "I don't know" or "I'm not certain about that."
+    3. NO SPECULATION: Do not guess, speculate, or make up information. It's better to say "I don't know" than to provide potentially incorrect information.
+    4. PARTIAL KNOWLEDGE: If you know some aspects of a topic but not others, clearly state what you know and what you don't know.
+    5. SOURCES: Do not claim to have access to real-time information, current events after your training cutoff, or specific databases unless explicitly provided.
+    Example responses:
+    - "I don't know the current stock price of that company."
+    - "I'm not certain about the specific details of that recent event."
+    - "I don't have enough information to answer that question accurately."
+    Remember: Being honest about limitations builds trust. Always choose "I don't know" over potentially incorrect information.
+    """;
 ```
 
-#### 🎨 [Multimodal](https://docs.spring.io/spring-ai/reference/api/multimodal.html)
-Support for text, image, and document processing.
-- **Media Support**: Images (JPG, PNG), Documents (PDF)
-- **Vision Models**: Document analysis and image understanding
-- **File Processing**: Base64 encoding and MIME type handling
+The system prompt is applied when building the ChatClient:
 
 ```java
-// Multimodal processing in our application
-userSpec.text(prompt);
-userSpec.media(mimeType, resource);
-```
-
-#### 🧠 [Memory](https://docs.spring.io/spring-ai/reference/api/chat-memory.html)
-Persistent conversation context and history.
-- **Chat Memory**: Conversation state management
-- **JDBC Repository**: Database-backed memory storage
-- **Message Windows**: Configurable conversation length
-- **Memory Advisors**: Automatic context injection
-
-```java
-// Memory configuration
-var chatMemory = MessageWindowChatMemory.builder()
-    .chatMemoryRepository(chatMemoryRepository)
-    .maxMessages(20)
+this.chatClient = chatClientBuilder
+    .defaultSystem(PromptConfig.SYSTEM_PROMPT)
+    // other configuration
     .build();
 ```
 
-#### 🔍 [RAG (Retrieval-Augmented Generation)](https://docs.spring.io/spring-ai/reference/api/vectordbs.html)
-Knowledge retrieval and context enhancement.
-- **Vector Stores**: Document embedding storage
-- **Similarity Search**: Semantic document retrieval
-- **Question-Answer Advisors**: Automatic context injection
-- **Embedding Models**: Text vectorization
+### Chat Memory Integration
+
+Spring AI provides built-in support for [persistent chat memory](https://docs.spring.io/spring-ai/reference/api/clients/chat-memory.html), allowing the assistant to remember conversation history. This is implemented in the `ChatMemoryService`:
 
 ```java
-// RAG implementation
-QuestionAnswerAdvisor.builder(vectorStore).build()
+public ChatMemoryService(DataSource dataSource) {
+    var chatMemoryRepository = JdbcChatMemoryRepository.builder()
+        .dataSource(dataSource)
+        .dialect(new PostgresChatMemoryRepositoryDialect())
+        .build();
+
+    this.chatMemory = MessageWindowChatMemory.builder()
+        .chatMemoryRepository(chatMemoryRepository)
+        .maxMessages(20)
+        .build();
+}
 ```
 
-#### 🛠️ [Tools](https://docs.spring.io/spring-ai/reference/api/tools.html)
-Function calling and external system integration.
-- **Tool Annotations**: `@Tool` for function definitions
-- **Tool Callbacks**: Dynamic tool registration
-- **Function Calling**: AI-driven tool selection
-- **Parameter Binding**: Automatic argument mapping
+The memory is integrated with the ChatClient using the MessageChatMemoryAdvisor:
 
 ```java
-// Tool example
-@Tool(description = "Get the current date and time")
+this.chatClient = chatClientBuilder
+    // other configuration
+    .defaultAdvisors(
+        MessageChatMemoryAdvisor.builder(chatMemoryService.getChatMemory()).build(),
+        // other advisors
+    )
+    .build();
+```
+
+### RAG (Retrieval-Augmented Generation)
+
+Spring AI provides built-in support for [RAG](https://docs.spring.io/spring-ai/reference/api/vectordbs.html), allowing the assistant to retrieve relevant information from a vector database. This is implemented using the VectorStore and QuestionAnswerAdvisor:
+
+```java
+this.chatClient = chatClientBuilder
+    // other configuration
+    .defaultAdvisors(
+        // other advisors
+        QuestionAnswerAdvisor.builder(vectorStore).build()
+    )
+    .build();
+```
+
+Documents can be added to the vector store using the VectorStoreService:
+
+```java
+public void addContent(String content) {
+    vectorStore.add(List.of(new Document(content)));
+}
+```
+
+### Tool Integration
+
+Spring AI supports [tool integration](https://docs.spring.io/spring-ai/reference/api/clients/tools.html), allowing the assistant to call external functions. Tools are defined using the @Tool annotation:
+
+```java
+@Tool(description = """
+    Get the current date and time in the specified timezone.
+    Requires: timeZone - A valid timezone ID (e.g., 'UTC', 'America/New_York', 'Europe/London').
+    Returns: The current date and time in ISO format (YYYY-MM-DDTHH:MM:SS).
+    Errors: ILLEGAL_ARGUMENT if the timezone ID is invalid.
+    Note: For future dates, use getCurrentDateTime and calculate the future date based on the current date.
+    """)
 public String getCurrentDateTime(String timeZone) {
-    return ZonedDateTime.now(ZoneId.of(timeZone))
+    return java.time.ZonedDateTime.now(java.time.ZoneId.of(timeZone))
             .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
 }
 ```
 
-#### 🔌 [MCP Clients](https://docs.spring.io/spring-ai/reference/api/mcp.html)
-Model Context Protocol for external tool integration.
-- **Protocol Support**: Standardized tool communication
-- **Server Connections**: External service integration
-- **Tool Discovery**: Dynamic capability detection
-- **Callback Providers**: Tool execution handling
+Tools are integrated with the ChatClient:
 
-## 🔧 Configuration
+```java
+this.chatClient = chatClientBuilder
+    // other configuration
+    .defaultTools(dateTimeService)
+    .build();
+```
+
+### MCP (Model Context Protocol) Integration
+
+Spring AI supports the [Model Context Protocol](https://docs.spring.io/spring-ai/reference/api/clients/mcp.html), allowing the assistant to connect to external services. The MCP client is configured in the application.properties:
+
+```properties
+# MCP Client Configuration
+spring.ai.mcp.client.toolcallback.enabled=true
+spring.ai.mcp.client.sse.connections.server1.url=http://localhost:8081
+spring.ai.mcp.client.sse.connections.server2.url=http://localhost:8082
+```
+
+The MCP client is integrated with the ChatClient:
+
+```java
+this.chatClient = chatClientBuilder
+    // other configuration
+    .defaultToolCallbacks(tools)
+    .build();
+```
+
+## Microservices Integration
+
+The assistant is designed to work with other microservices in the ecosystem through the MCP protocol.
+
+### Travel Service Integration
+
+The assistant connects to the [Travel service](../travel/README.md) through the MCP protocol, allowing it to:
+
+1. Search for hotels and flights
+2. Book accommodations and transportation
+3. Get weather forecasts for destinations
+
+The Travel service exposes its functionality through MCP tools, which the assistant can call directly.
+
+### Backoffice Service Integration
+
+The assistant connects to the [Backoffice service](../backoffice/README.md) through the MCP protocol, allowing it to:
+
+1. Create and manage expenses
+2. Convert currencies
+3. Access company policies and procedures
+
+The Backoffice service exposes its functionality through MCP tools, which the assistant can call directly.
+
+## Web Interface
+
+The application provides a web interface built with Thymeleaf and Tailwind CSS, allowing users to:
+
+1. Chat with the AI assistant
+2. Upload documents for analysis
+3. View conversation history
+4. Add content to the knowledge base
+
+## Configuration
 
 ### Application Properties
 
-Key configuration options in `application.properties`:
-
 ```properties
-# AI Model Configuration
-spring.ai.bedrock.converse.chat.options.model=us.anthropic.claude-sonnet-4-20250514-v1:0
+# Amazon Bedrock Configuration
+spring.ai.bedrock.aws.region=us-east-1
 spring.ai.bedrock.converse.chat.options.max-tokens=10000
+spring.ai.bedrock.converse.chat.options.model=us.anthropic.claude-3-7-sonnet-20250219-v1:0
 
-# Database Configuration
+# PostgreSQL Configuration
 spring.datasource.url=jdbc:postgresql://localhost:5432/assistant_db
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# JDBC Memory properties
 spring.ai.chat.memory.repository.jdbc.initialize-schema=always
 
-# Vector Store Configuration
+# RAG Configuration
+spring.ai.model.embedding=bedrock-titan
+spring.ai.bedrock.titan.embedding.model=amazon.titan-embed-text-v2:0
+spring.ai.bedrock.titan.embedding.input-type=text
+
 spring.ai.vectorstore.pgvector.initialize-schema=true
 spring.ai.vectorstore.pgvector.dimensions=1024
 
-# Embeddings Configuration
-spring.ai.bedrock.titan.embedding.model=amazon.titan-embed-text-v2:0
+# MCP Client Configuration
+spring.ai.mcp.client.toolcallback.enabled=true
+spring.ai.mcp.client.sse.connections.server1.url=http://localhost:8081
+spring.ai.mcp.client.sse.connections.server2.url=http://localhost:8082
 ```
 
-### Model Options
+## Best Practices
 
-Available Bedrock models (configure in application.properties):
-- `us.anthropic.claude-sonnet-4-20250514-v1:0` (Default - Latest Claude)
-- `amazon.nova-pro-v1:0` (Amazon Nova Pro)
-- `eu.amazon.nova-lite-v1:0` (Amazon Nova Lite - EU)
-- `eu.anthropic.claude-3-7-sonnet-20250219-v1:0` (Claude 3.7 Sonnet - EU)
+### AI Integration Best Practices
 
-## 📁 Project Structure
+1. **System Prompts**: Use clear, specific system prompts to guide the AI's behavior
+2. **Memory Management**: Limit memory size to prevent token overflow
+3. **Error Handling**: Implement retry logic for API throttling and failures
+4. **Tool Integration**: Provide detailed descriptions for tools to ensure proper use
+5. **RAG Implementation**: Use appropriate chunk sizes and overlap for document indexing
 
-```
-src/main/java/com/example/assistant/
-├── AssistantApplication.java          # Spring Boot main class
-├── ChatController.java            # REST API endpoints
-├── WebController.java             # Web interface controller
-└── DateTimeTools.java             # Tool implementation
+### Spring AI Best Practices
 
-src/main/resources/
-├── application.properties         # Configuration
-├── document_analysis_prompt.md    # Document analysis template
-└── templates/
-    └── chat.html                  # Web interface
+1. **ChatClient Builder**: Use the builder pattern for configuring the ChatClient
+2. **Advisors**: Use advisors to extend the ChatClient's capabilities
+3. **Tool Annotations**: Use detailed descriptions in @Tool annotations
+4. **Vector Store**: Use appropriate dimensions and similarity metrics for your embeddings
+5. **MCP Integration**: Use the MCP protocol for microservices integration
 
-travel_and_expenses_policy.md      # Sample RAG document
-```
+## Future Enhancements
 
-## 🔌 API Endpoints
+- Add user authentication and authorization
+- Implement fine-tuning for domain-specific knowledge
+- Add support for more document types
+- Implement streaming responses
+- Add support for more AI models
+- Enhance the web interface with real-time updates
 
-### Chat API
-```http
-POST /api/chat
-Content-Type: application/json
+## Contributing
 
-{
-  "prompt": "Your question here",
-  "fileBase64": "base64_encoded_file_data",
-  "fileName": "document.pdf"
-}
-```
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-> fileBase64 and fileName can be null
+## License
 
-### RAG Data Loading
-```http
-POST /api/rag-load
-Content-Type: text/plain
-
-Document content to be indexed...
-```
-
-### Web Interface
-```http
-GET /
-```
-Interactive chat interface with file upload support.
-
-## 🎛️ Advanced Features
-
-### Document Analysis Pipeline
-
-1. **File Upload**: Supports PDF, JPG, JPEG, PNG
-2. **Automatic Analysis**: Uses specialized prompts for document types
-3. **Policy Compliance**: Validates against company policies
-4. **Structured Extraction**: Extracts key information fields
-5. **Approval Workflow**: Determines required approval levels
-
-### Memory Management
-
-- **Conversation Persistence**: Maintains context across sessions
-- **User Identification**: Supports multi-user conversations
-- **Message Windowing**: Configurable conversation length (20 messages default)
-- **Database Storage**: PostgreSQL-backed for reliability
-
-### RAG System
-
-- **Document Embedding**: Automatic vectorization of loaded content
-- **Semantic Search**: Context-aware document retrieval
-- **Policy Integration**: Company policy and procedure queries
-- **Dynamic Context**: Automatic context injection into conversations
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-1. **AWS Region Not Set**:
-   ```bash
-   export AWS_REGION=us-east-1
-   ```
-
-2. **Database Connection Issues**:
-   - Start the database: `cd ../database && ./start-postgres.sh`
-   - Verify PostgreSQL is running on port 5432
-   - Check database credentials in application.properties
-   - Ensure pgvector extension is installed (handled by database setup)
-
-3. **Bedrock Access Issues**:
-   - Verify AWS credentials are configured
-   - Check Bedrock model access in your AWS region
-   - Ensure proper IAM permissions
-
-4. **File Upload Issues**:
-   - Check file size limits
-   - Verify supported file types (PDF, JPG, JPEG, PNG)
-   - Ensure proper base64 encoding
-
-### Logging
-
-Enable debug logging for troubleshooting:
-```properties
-logging.level.org.springframework.ai=DEBUG
-logging.level.com.example.assistant=DEBUG
-```
-
-## 🚀 Development and Extension
-
-### Adding New Tools
-
-1. Create a new tool class:
-```java
-@Component
-public class MyCustomTool {
-    @Tool(description = "Description of what this tool does")
-    public String myToolMethod(String parameter) {
-        // Tool implementation
-        return "Result";
-    }
-}
-```
-
-2. Register in ChatController constructor:
-```java
-.defaultTools(new DateTimeTools(), new MyCustomTool())
-```
-
-### Extending Document Analysis
-
-1. Modify `document_analysis_prompt.md` for new document types
-2. Add new MIME type support in `getMimeType()` method
-3. Extend policy validation logic
-
-### Adding New RAG Sources
-
-```bash
-# Load additional documents
-curl -X POST \
-  -H "Content-Type: text/plain" \
-  --data-binary @./samples/travel_and_expenses_policy.md \
-  http://localhost:8080/api/rag-load
-```
-
----
-
-For more information about Spring AI capabilities, visit the [official documentation](https://docs.spring.io/spring-ai/reference/).
+This project is licensed under the MIT License - see the LICENSE file for details.
