@@ -8,6 +8,8 @@ ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-store-spring 
 SPRING_DATASOURCE_URL=$(aws ssm get-parameter --name unicornstore-db-connection-string \
   | jq --raw-output '.Parameter.Value')
 
+mkdir -p ~/environment/unicorn-store-spring/k8s
+
 cat <<EOF > ~/environment/unicorn-store-spring/k8s/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment

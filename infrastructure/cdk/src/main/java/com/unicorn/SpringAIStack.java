@@ -8,9 +8,11 @@ import com.unicorn.constructs.VSCodeIde.VSCodeIdeProps;
 import com.unicorn.constructs.CodeBuildResource;
 import com.unicorn.constructs.CodeBuildResource.CodeBuildResourceProps;
 import com.unicorn.constructs.EcsCluster;
+import com.unicorn.constructs.EksCluster;
 import com.unicorn.core.InfrastructureCore;
+import com.unicorn.core.InfrastructureContainers;
 import com.unicorn.core.DatabaseSetup;
-import com.unicorn.core.UnicornStoreSpringLambda;
+// import com.unicorn.core.UnicornStoreSpringLambda;
 
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -35,8 +37,10 @@ public class SpringAIStack extends Stack {
         echo '=== Setup IDE ==='
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
 
-        # echo '=== Additional Setup ==='
-        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh"
+        echo '=== Additional Setup ==='
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh unicorn-spring-ai-agent"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh unicorn-store-mcp-server"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
         """;
 
     private final String buildspec = """
@@ -81,22 +85,32 @@ public class SpringAIStack extends Stack {
                 // "ms-kubernetes-tools.vscode-kubernetes-tools",
                 "ms-azuretools.vscode-docker"
             ));
-        new VSCodeIde(this, "UnicornStoreIde", ideProps);
+        var ide = new VSCodeIde(this, "UnicornStoreIde", ideProps);
+        var ideRole = ideProps.getRole();
+        var ideInternalSecurityGroup = ide.getIdeInternalSecurityGroup();
 
         // Create Core infrastructure
         var infrastructureCore = new InfrastructureCore(this, "InfrastructureCore", vpc);
         // var accountId = Stack.of(this).getAccount();
 
         // Create ECS clusters for the workshop
-        new EcsCluster(this, "UnicornAgentEcsCluster", infrastructureCore, "unicorn-spring-ai-agent");
-        new EcsCluster(this, "UnicornStoreEcsCluster", infrastructureCore, "unicorn-store-spring");
+        new EcsCluster(this, "UnicornSpringAiAgentEcsCluster", infrastructureCore, "unicorn-spring-ai-agent");
+        new EcsCluster(this, "UnicornStoreMcpServerEcsCluster", infrastructureCore, "unicorn-store-mcp-server");
+
+        // Create additional infrastructure for Containers modules of Java on AWS Immersion Day
+        new InfrastructureContainers(this, "InfrastructureContainers", infrastructureCore);
+
+        // Create EKS cluster for the workshop
+        var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.32",
+            vpc, ideInternalSecurityGroup);
+        eksCluster.createAccessEntry(ideRole.getRoleArn(), "unicorn-store", "unicornstore-ide-user");
 
         // Execute Database setup
         var databaseSetup = new DatabaseSetup(this, "UnicornStoreDatabaseSetup", infrastructureCore);
         databaseSetup.getNode().addDependency(infrastructureCore.getDatabase());
 
         // Create UnicornStoreSpringLambda
-        new UnicornStoreSpringLambda(this, "UnicornStoreSpringLambda", infrastructureCore);
+        // new UnicornStoreSpringLambda(this, "UnicornStoreSpringLambda", infrastructureCore);
 
         // Create Workshop CodeBuild
         var codeBuildProps = new CodeBuildResourceProps();

@@ -1,4 +1,4 @@
-package com.unicorn.core;
+package com.unicorn.constructs;
 
 import software.amazon.awscdk.services.apigateway.LambdaRestApi;
 import software.amazon.awscdk.services.apigateway.RestApi;
@@ -13,6 +13,8 @@ import software.amazon.awscdk.services.ssm.StringParameter;
 import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Duration;
 import software.constructs.Construct;
+
+import com.unicorn.core.InfrastructureCore;
 
 import java.util.List;
 import java.util.Map;

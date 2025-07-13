@@ -6,11 +6,6 @@ import software.amazon.awscdk.services.lambda.Alias;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
-import software.amazon.awscdk.services.s3.BlockPublicAccess;
-import software.amazon.awscdk.services.s3.Bucket;
-import software.amazon.awscdk.services.ssm.ParameterTier;
-import software.amazon.awscdk.services.ssm.StringParameter;
-import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Duration;
 import software.constructs.Construct;
 
@@ -20,8 +15,6 @@ import java.util.Map;
 public class UnicornStoreSpringLambda extends Construct {
 
     private final InfrastructureCore infrastructureCore;
-    private final StringParameter paramBucketName;
-    private final Bucket lambdaCodeBucket;
 
     public UnicornStoreSpringLambda(final Construct scope, final String id,
         final InfrastructureCore infrastructureCore) {
@@ -42,28 +35,6 @@ public class UnicornStoreSpringLambda extends Construct {
             .build();
         // Setup a Proxy-Rest API to access the Spring Lambda function
         setupRestApi(alias);
-
-        lambdaCodeBucket = Bucket.Builder
-            .create(this, "LambdaCodeBucket")
-            .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
-            .enforceSsl(true)
-            .removalPolicy(RemovalPolicy.DESTROY)
-            .build();
-        paramBucketName = createParamBucketName();
-    }
-
-    private StringParameter createParamBucketName() {
-        return StringParameter.Builder.create(this, "SsmParameterUnicornStoreBucketName")
-            .allowedPattern(".*")
-            .description("Unicorn Store Lambda code bucket name")
-            .parameterName("unicornstore-lambda-bucket-name")
-            .stringValue(lambdaCodeBucket.getBucketName())
-            .tier(ParameterTier.STANDARD)
-            .build();
-    }
-
-    public StringParameter getParamBucketName() {
-        return paramBucketName;
     }
 
     private RestApi setupRestApi(Alias unicornStoreSpringLambdaAlias) {
@@ -95,8 +66,8 @@ public class UnicornStoreSpringLambda extends Construct {
                 "SPRING_DATASOURCE_URL", infrastructureCore.getDBConnectionString(),
                 "SPRING_DATASOURCE_HIKARI_maximumPoolSize", "1",
                 "AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME", "500",
-                    "JAVA_TOOL_OPTIONS", "-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+                "JAVA_TOOL_OPTIONS", "-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
             ))
             .build();
-}
+    }
 }

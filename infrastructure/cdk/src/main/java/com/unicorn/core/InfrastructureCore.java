@@ -9,8 +9,16 @@ import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.ISecurityGroup;
 import software.amazon.awscdk.services.ec2.SecurityGroupProps;
 import software.amazon.awscdk.services.events.EventBus;
+import software.amazon.awscdk.services.iam.ArnPrincipal;
+import software.amazon.awscdk.services.iam.Effect;
+import software.amazon.awscdk.services.iam.ManagedPolicy;
+import software.amazon.awscdk.services.iam.PolicyStatement;
+import software.amazon.awscdk.services.iam.Role;
+import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.rds.AuroraPostgresClusterEngineProps;
 import software.amazon.awscdk.services.rds.ServerlessV2ClusterInstanceProps;
+import software.amazon.awscdk.services.s3.BlockPublicAccess;
+import software.amazon.awscdk.services.s3.Bucket;
 import software.amazon.awscdk.services.rds.AuroraPostgresEngineVersion;
 import software.amazon.awscdk.services.rds.Credentials;
 import software.amazon.awscdk.services.rds.ClusterInstance;
@@ -36,6 +44,8 @@ public class InfrastructureCore extends Construct {
     private final ISecurityGroup applicationSecurityGroup;
     private final StringParameter paramDBConnectionString;
     private final Secret secretPassword;
+    private final StringParameter paramBucketName;
+    private final Bucket lambdaCodeBucket;
 
     public InfrastructureCore(final Construct scope, final String id, final IVpc vpc) {
         super(scope, id);
@@ -54,6 +64,50 @@ public class InfrastructureCore extends Construct {
 
         paramDBConnectionString = createParamDBConnectionString();
         secretPassword = createSecretPassword();
+        lambdaCodeBucket = createLambdaCodeBucket();
+        paramBucketName = createParamBucketName();
+        createRolesLambdaBedrock();
+    }
+
+    private Bucket createLambdaCodeBucket() {
+        var lambdaCodeBucket = Bucket.Builder
+            .create(this, "LambdaCodeBucket")
+            .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
+            .enforceSsl(true)
+            .removalPolicy(RemovalPolicy.DESTROY)
+            .build();
+        return lambdaCodeBucket;
+    }
+
+
+    private StringParameter createParamBucketName() {
+        return StringParameter.Builder.create(this, "SsmParameterUnicornStoreBucketName")
+            .allowedPattern(".*")
+            .description("Lambda code bucket name")
+            .parameterName("unicornstore-lambda-bucket-name")
+            .stringValue(lambdaCodeBucket.getBucketName())
+            .tier(ParameterTier.STANDARD)
+            .build();
+    }
+
+    public StringParameter getParamBucketName() {
+        return paramBucketName;
+    }
+
+    private void createRolesLambdaBedrock() {
+        ServicePrincipal lambdaServicePrincipal = new ServicePrincipal("lambda.amazonaws.com");
+
+        var unicornStoreLambdaBedrockRole = Role.Builder.create(this, "UnicornStoreLambdaBedrockRole")
+            .roleName("unicornstore-lambda-bedrock-role")
+            .assumedBy(lambdaServicePrincipal.withSessionTags())
+            .build();
+        unicornStoreLambdaBedrockRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+            "UnicornStoreLambdaBedrockRole-" + "AmazonBedrockLimitedAccess",
+            "arn:aws:iam::aws:policy/AmazonBedrockLimitedAccess"));
+
+        getEventBridge().grantPutEventsTo(unicornStoreLambdaBedrockRole);
+        getDatabaseSecret().grantRead(unicornStoreLambdaBedrockRole);
+        getParamDBConnectionString().grantRead(unicornStoreLambdaBedrockRole);
     }
 
     private EventBus createEventBus() {
