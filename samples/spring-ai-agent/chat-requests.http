@@ -4,7 +4,15 @@
 POST localhost:8080/chat
 Content-Type: text/plain
 
-What is the weather in Munich?
+What is the weather in Munich on 19.06.2025?
+
+#########################################
+# Simple Stateless Chat
+### ask the AI generic question
+POST localhost:8080/chat
+Content-Type: text/plain
+
+What is the local time in Barcelona?
 
 #########################################
 ### Attempt memory with stateless: fail
@@ -54,10 +62,10 @@ What is my name?
 POST localhost:8080/rag-pgvector/load
 Content-Type: text/plain
 
-Weather in Munich today is 20 degrees and sunny
+Unicorn have origins in different cultures: Chinese Qilin, Indian unicorn seals, Greek accounts
 
-### Ask about the weather, check if RAG is active
+### Ask about the unicorn, check if RAG is active
 POST localhost:8080/rag-pgvector/chat
 Content-Type: text/plain
 
-What is the weather in Munich?
+What are the unicorn origins?
