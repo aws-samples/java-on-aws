@@ -63,7 +63,7 @@ public class ChatService {
                 return RetryUtils.executeWithRetry(() -> {
                     var chatResponse = chatClient
                         .prompt().user(request.prompt())
-                        .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, chatMemoryService.getCurrentConversationId()))
+                        .advisors(chatMemoryService::addConversationIdToAdvisor)
                         .call().chatResponse();
 
                     return (chatResponse != null) ? chatResponse.getResult().getOutput().getText() : "I don't know - no response received.";
