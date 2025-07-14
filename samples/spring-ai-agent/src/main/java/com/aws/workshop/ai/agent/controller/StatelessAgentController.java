@@ -1,5 +1,7 @@
 package com.aws.workshop.ai.agent.controller;
 
+import com.aws.workshop.ai.agent.DateTimeTools;
+import com.aws.workshop.ai.agent.WeatherTools;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +25,7 @@ public class StatelessAgentController {
         return chatClient
                 .prompt()
                 .user(prompt)
+                .tools(new WeatherTools(), new DateTimeTools())
                 .call()
                 .content();
     }
