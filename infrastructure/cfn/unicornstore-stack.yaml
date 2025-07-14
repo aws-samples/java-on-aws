@@ -462,7 +462,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250713-174412
+      LogGroupName: unicornstore-ide-bootstrap-log-20250714-075958
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -877,9 +877,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
+            type: String
             description: (Optional) Custom bootstrap script to run.
             default: ""
-            type: String
         mainSteps:
           - inputs:
               runCommand:
@@ -1140,7 +1140,28 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - passwordName:
+                    - instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - UnicornStoreIdeIdeRole81A2CEAA
+                          - Arn
+                      splashUrl: ""
+                      instanceIamRoleName:
+                        Ref: UnicornStoreIdeIdeRole81A2CEAA
+                      codeServerVersion: 4.101.2
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+
+                        echo '=== Additional Setup ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
+                      passwordName:
                         Fn::Join:
                           - "-"
                           - - Fn::Select:
@@ -1187,27 +1208,6 @@ Resources:
                       waitConditionHandleUrl:
                         Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
                       readmeUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - UnicornStoreIdeIdeRole81A2CEAA
-                          - Arn
-                      splashUrl: ""
-                      instanceIamRoleName:
-                        Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      codeServerVersion: 4.100.3
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
-
-                        echo '=== Additional Setup ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1863,7 +1863,7 @@ Resources:
       PolicyName: InfrastructureContainersUnicornStoreEcsTaskExecutionRoleDefaultPolicyF404CE8F
       Roles:
         - Ref: InfrastructureContainersUnicornStoreEcsTaskExecutionRoleFD9A4DF3
-  InfrastructureContainersUnicornStoreEksPodRole8FEB03DC:
+  InfrastructureEksUnicornStoreEksPodRoleA3EE8DDD:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1878,7 +1878,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
       RoleName: unicornstore-eks-pod-role
-  InfrastructureContainersUnicornStoreEksPodRoleDefaultPolicy220DC0A8:
+  InfrastructureEksUnicornStoreEksPodRoleDefaultPolicy79DB9DD5:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -1916,10 +1916,10 @@ Resources:
                   - :parameter/
                   - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
         Version: "2012-10-17"
-      PolicyName: InfrastructureContainersUnicornStoreEksPodRoleDefaultPolicy220DC0A8
+      PolicyName: InfrastructureEksUnicornStoreEksPodRoleDefaultPolicy79DB9DD5
       Roles:
-        - Ref: InfrastructureContainersUnicornStoreEksPodRole8FEB03DC
-  InfrastructureContainersUnicornStoreDbSecretsManagerPolicyC7CCFF70:
+        - Ref: InfrastructureEksUnicornStoreEksPodRoleA3EE8DDD
+  InfrastructureEksUnicornStoreDbSecretsManagerPolicyCE68F97A:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: ""
@@ -1939,7 +1939,7 @@ Resources:
             Resource:
               Ref: InfrastructureCorepostgresB0D0C6BB
         Version: "2012-10-17"
-  InfrastructureContainersUnicornStoreEksEsoRole9C22FF84:
+  InfrastructureEksUnicornStoreEksEsoRole4D6C8705:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1952,7 +1952,7 @@ Resources:
               Service: pods.eks.amazonaws.com
         Version: "2012-10-17"
       RoleName: unicornstore-eks-eso-role
-  InfrastructureContainersUnicornStoreEksEsoSmRole630D3E08:
+  InfrastructureEksUnicornStoreEksEsoSmRole6651573A:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1964,11 +1964,11 @@ Resources:
             Principal:
               AWS:
                 Fn::GetAtt:
-                  - InfrastructureContainersUnicornStoreEksEsoRole9C22FF84
+                  - InfrastructureEksUnicornStoreEksEsoRole4D6C8705
                   - Arn
         Version: "2012-10-17"
       ManagedPolicyArns:
-        - Ref: InfrastructureContainersUnicornStoreDbSecretsManagerPolicyC7CCFF70
+        - Ref: InfrastructureEksUnicornStoreDbSecretsManagerPolicyCE68F97A
       RoleName: unicornstore-eks-eso-sm-role
   UnicornStoreEksClusterEKSClusterRole0A87A100:
     Type: AWS::IAM::Role
@@ -2367,9 +2367,6 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreDatabaseSetupDatabaseSetupFunction83636DD9
           - Arn
-      SqlStatements: |-
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -2400,6 +2397,9 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: InfrastructureCorepostgresB0D0C6BB
+      SqlStatements: |-
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - InfrastructureCoreUnicornStoreDatabaseF56884BA
       - InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8
@@ -2461,9 +2461,6 @@ Resources:
               return 'placeholder'
       Environment:
         Variables:
-          SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
-          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
-          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
           SPRING_DATASOURCE_PASSWORD:
             Fn::Join:
               - ""
@@ -2478,6 +2475,9 @@ Resources:
                     - InfrastructureCoreUnicornStoreDatabaseF56884BA
                     - Endpoint.Address
                 - :5432/unicorns
+          SPRING_DATASOURCE_HIKARI_maximumPoolSize: "1"
+          AWS_SERVERLESS_JAVA_CONTAINER_INIT_GRACE_TIME: "500"
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
       FunctionName: unicorn-store-spring
       Handler: com.unicorn.store.StreamLambdaHandler::handleRequest
       MemorySize: 2048
@@ -3164,12 +3164,12 @@ Resources:
       Description: Build complete
       EventPattern:
         detail:
+          project-name:
+            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
-          project-name:
-            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -3201,13 +3201,13 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreCodeBuildStartBuildFunctionB2FE9156
           - Arn
+      ProjectName:
+        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
       ContentHash: fd70d4491df3a6a44292446f6b364c8a
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
-      ProjectName:
-        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
     DependsOn:
       - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRuleunicornstorestackUnicornStoreCodeBuildReportBuildFunction6189FCDE5C03542B
       - UnicornStoreCodeBuildBuildCompleteRule7E287561

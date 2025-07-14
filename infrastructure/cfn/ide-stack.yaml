@@ -447,7 +447,7 @@ Resources:
   VSCodeIdeIdeLogGroup364F2B78:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250713-174437
+      LogGroupName: ide-bootstrap-log-20250714-080018
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1137,7 +1137,7 @@ Resources:
                       splashUrl: ""
                       instanceIamRoleName:
                         Ref: VSCodeIdeIdeRole21951A1F
-                      codeServerVersion: 4.100.3
+                      codeServerVersion: 4.101.2
                       customBootstrapScript: |
                         date
 

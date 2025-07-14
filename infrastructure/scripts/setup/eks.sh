@@ -161,6 +161,7 @@ EOF
 setup_namespace_and_service_account "unicorn-store-spring" "unicorn-store"
 setup_namespace_and_service_account "unicorn-store-wildfly" "unicorn-store"
 setup_namespace_and_service_account "unicorn-store-quarkus" "unicorn-store"
+setup_namespace_and_service_account "unicorn-spring-ai-agent" "unicorn-store"
 
 aws eks create-access-entry --cluster-name unicorn-store \
   --principal-arn arn:aws:iam::$ACCOUNT_ID:role/WSParticipantRole \
@@ -169,6 +170,5 @@ aws eks associate-access-policy --cluster-name unicorn-store \
   --principal-arn arn:aws:iam::$ACCOUNT_ID:role/WSParticipantRole \
   --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
   --access-scope type=cluster 2>/dev/null || true
-
 
 echo "EKS cluster setup is complete."

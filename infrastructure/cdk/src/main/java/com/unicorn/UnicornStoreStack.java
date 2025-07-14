@@ -10,6 +10,7 @@ import com.unicorn.constructs.CodeBuildResource.CodeBuildResourceProps;
 import com.unicorn.constructs.EksCluster;
 import com.unicorn.core.InfrastructureCore;
 import com.unicorn.core.InfrastructureContainers;
+import com.unicorn.core.InfrastructureEks;
 import com.unicorn.core.DatabaseSetup;
 import com.unicorn.core.UnicornStoreSpringLambda;
 
@@ -93,6 +94,7 @@ public class UnicornStoreStack extends Stack {
 
         // Create additional infrastructure for Containers modules of Java on AWS Immersion Day
         new InfrastructureContainers(this, "InfrastructureContainers", infrastructureCore);
+        new InfrastructureEks(this, "InfrastructureEks", infrastructureCore);
 
         // Create EKS cluster for the workshop
         var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.32",

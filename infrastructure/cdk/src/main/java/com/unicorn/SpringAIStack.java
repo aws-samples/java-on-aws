@@ -10,9 +10,8 @@ import com.unicorn.constructs.CodeBuildResource.CodeBuildResourceProps;
 import com.unicorn.constructs.EcsCluster;
 import com.unicorn.constructs.EksCluster;
 import com.unicorn.core.InfrastructureCore;
-import com.unicorn.core.InfrastructureContainers;
+import com.unicorn.core.InfrastructureEks;
 import com.unicorn.core.DatabaseSetup;
-// import com.unicorn.core.UnicornStoreSpringLambda;
 
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -39,7 +38,7 @@ public class SpringAIStack extends Stack {
 
         echo '=== Additional Setup ==='
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh unicorn-spring-ai-agent"
-        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh unicorn-store-mcp-server"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh unicorn-store-spring"
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
         """;
 
@@ -95,10 +94,10 @@ public class SpringAIStack extends Stack {
 
         // Create ECS clusters for the workshop
         new EcsCluster(this, "UnicornSpringAiAgentEcsCluster", infrastructureCore, "unicorn-spring-ai-agent");
-        new EcsCluster(this, "UnicornStoreMcpServerEcsCluster", infrastructureCore, "unicorn-store-mcp-server");
+        new EcsCluster(this, "UnicornStoreMcpServerEcsCluster", infrastructureCore, "unicorn-store-spring");
 
-        // Create additional infrastructure for Containers modules of Java on AWS Immersion Day
-        new InfrastructureContainers(this, "InfrastructureContainers", infrastructureCore);
+        // Create additional infrastructure for EKS
+        new InfrastructureEks(this, "InfrastructureEks", infrastructureCore);
 
         // Create EKS cluster for the workshop
         var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.32",

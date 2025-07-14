@@ -81,7 +81,7 @@ public class VSCodeIde extends Construct {
         private String availabilityZone;
         private IMachineImage machineImage = MachineImage.latestAmazonLinux2023();
         private InstanceType instanceType = InstanceType.of(InstanceClass.T3, InstanceSize.MEDIUM);
-        private String codeServerVersion = "4.100.3";
+        private String codeServerVersion = "4.101.2";
         private List<IManagedPolicy> additionalIamPolicies = new ArrayList<>();
         private List<ISecurityGroup> additionalSecurityGroups = new ArrayList<>();
         private int bootstrapTimeoutMinutes = 30;
