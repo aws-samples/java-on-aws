@@ -5,6 +5,15 @@ set -e
 
 echo "Starting deployment process for Spring AI Agent..."
 
+# Get ECR URI - exit if not found
+echo "Getting ECR URI..."
+if ! ECR_URI=$(aws ecr describe-repositories --repository-names unicorn-spring-ai-agent | jq --raw-output '.repositories[0].repositoryUri' 2>/dev/null); then
+  echo "Error: Could not get ECR URI. Repository 'unicorn-spring-ai-agent' may not exist. Exiting."
+  exit 1
+else
+  echo "ECR URI: $ECR_URI"
+fi
+
 # Login to ECR
 echo "Logging in to Amazon ECR..."
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URI

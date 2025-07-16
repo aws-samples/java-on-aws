@@ -170,7 +170,7 @@ spec:
 EOF
 kubectl apply -f ~/environment/unicorn-spring-ai-agent/k8s/ingress.yaml
 
-# Checking the application status ...
+echo "Checking the application status ..."
 kubectl wait deployment unicorn-spring-ai-agent -n unicorn-spring-ai-agent --for condition=Available=True --timeout=120s
 kubectl get deployment unicorn-spring-ai-agent -n unicorn-spring-ai-agent
 SVC_URL=http://$(kubectl get ingress unicorn-spring-ai-agent -n unicorn-spring-ai-agent -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
