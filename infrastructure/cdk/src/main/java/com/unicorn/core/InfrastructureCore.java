@@ -104,6 +104,9 @@ public class InfrastructureCore extends Construct {
         unicornStoreLambdaBedrockRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
             "UnicornStoreLambdaBedrockRole-" + "AmazonBedrockLimitedAccess",
             "arn:aws:iam::aws:policy/AmazonBedrockLimitedAccess"));
+        unicornStoreLambdaBedrockRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+            "UnicornStoreLambdaBedrockRole-" + "AWSLambdaVPCAccessExecutionRole",
+            "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"));
 
         getEventBridge().grantPutEventsTo(unicornStoreLambdaBedrockRole);
         getDatabaseSecret().grantRead(unicornStoreLambdaBedrockRole);

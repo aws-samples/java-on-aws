@@ -40,6 +40,9 @@ public class InfrastructureEks extends Construct {
         unicornStoreEksPodRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
             "UnicornStoreEksPodRole-" + "CloudWatchAgentServerPolicy",
             "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"));
+        unicornStoreEksPodRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
+            "UnicornStoreEksPodRole-" + "AmazonBedrockLimitedAccess",
+            "arn:aws:iam::aws:policy/AmazonBedrockLimitedAccess"));
 
         infrastructureCore.getEventBridge().grantPutEventsTo(unicornStoreEksPodRole);
         infrastructureCore.getDatabaseSecret().grantRead(unicornStoreEksPodRole);

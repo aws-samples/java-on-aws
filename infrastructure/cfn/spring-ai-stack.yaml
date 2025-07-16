@@ -462,7 +462,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250714-080100
+      LogGroupName: unicornstore-ide-bootstrap-log-20250716-122038
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -877,9 +877,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
+            default: ""
             description: (Optional) Custom bootstrap script to run.
             type: String
-            default: ""
         mainSteps:
           - inputs:
               runCommand:
@@ -1140,7 +1140,15 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - extensions: vscjava.vscode-java-pack,ms-azuretools.vscode-docker
+                    - splashUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - UnicornStoreIdeIdeRole81A2CEAA
+                          - Arn
+                      readmeUrl: ""
+                      waitConditionHandleUrl:
+                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
+                      extensions: vscjava.vscode-java-pack,ms-azuretools.vscode-docker
                       domain: ""
                       installGitea: echo bootstrapGitea was not provided
                       terminalOnStartup: "true"
@@ -1201,14 +1209,6 @@ Resources:
                       codeServerVersion: 4.101.2
                       instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      splashUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - UnicornStoreIdeIdeRole81A2CEAA
-                          - Arn
-                      readmeUrl: ""
-                      waitConditionHandleUrl:
-                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1346,12 +1346,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
+      InstanceId:
+        Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
       LogGroupName:
         Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
       SsmDocument:
         Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
-      InstanceId:
-        Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -1586,6 +1586,7 @@ Resources:
         Version: "2012-10-17"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonBedrockLimitedAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       RoleName: unicornstore-lambda-bedrock-role
   InfrastructureCoreUnicornStoreLambdaBedrockRoleDefaultPolicyF74ACC64:
     Type: AWS::IAM::Policy
@@ -2295,6 +2296,7 @@ Resources:
         Version: "2012-10-17"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+        - arn:aws:iam::aws:policy/AmazonBedrockLimitedAccess
       RoleName: unicornstore-eks-pod-role
   InfrastructureEksUnicornStoreEksPodRoleDefaultPolicy79DB9DD5:
     Type: AWS::IAM::Policy
@@ -2785,6 +2787,9 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreDatabaseSetupDatabaseSetupFunction83636DD9
           - Arn
+      SqlStatements: |-
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -2815,9 +2820,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: InfrastructureCorepostgresB0D0C6BB
-      SqlStatements: |-
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - InfrastructureCoreUnicornStoreDatabaseF56884BA
       - InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8
@@ -3327,13 +3329,13 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreCodeBuildStartBuildFunctionB2FE9156
           - Arn
-      ContentHash: fd70d4491df3a6a44292446f6b364c8a
       ProjectName:
         Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
+      ContentHash: fd70d4491df3a6a44292446f6b364c8a
     DependsOn:
       - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRulespringaistackUnicornStoreCodeBuildReportBuildFunctionA3347B9EB9A35FA4
       - UnicornStoreCodeBuildBuildCompleteRule7E287561

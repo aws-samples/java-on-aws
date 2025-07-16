@@ -447,7 +447,7 @@ Resources:
   VSCodeIdeIdeLogGroup364F2B78:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250714-080018
+      LogGroupName: ide-bootstrap-log-20250716-121954
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1125,7 +1125,10 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - domain: ""
+                    - environmentContentsZip: ""
+                      terminalOnStartup: "true"
+                      installGitea: echo bootstrapGitea was not provided
+                      domain: ""
                       extensions: ms-kubernetes-tools.vscode-kubernetes-tools,shardulm94.trailing-spaces,ms-azuretools.vscode-docker
                       waitConditionHandleUrl:
                         Ref: VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82
@@ -1178,9 +1181,6 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: VSCodeIdeIdePasswordSecret39AD78F3
-                      environmentContentsZip: ""
-                      terminalOnStartup: "true"
-                      installGitea: echo bootstrapGitea was not provided
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
