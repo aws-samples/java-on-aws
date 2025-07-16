@@ -103,7 +103,7 @@ spec:
             initialDelaySeconds: 10
           startupProbe:
             httpGet:
-              path: /
+              path: /actuator/health
               port: 8080
             failureThreshold: 6
             periodSeconds: 5
