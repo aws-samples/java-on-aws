@@ -1,5 +1,7 @@
 package com.example.assistant.service;
 
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 import org.springframework.ai.chat.memory.repository.jdbc.PostgresChatMemoryRepositoryDialect;
@@ -51,9 +53,9 @@ public class ChatMemoryService {
     /**
      * Add the conversation ID parameter to the advisor
      */
-    public void addConversationIdToAdvisor(Object advisor) {
+    public void addConversationIdToAdvisor(ChatClient.AdvisorSpec advisor) {
         String conversationId = getCurrentConversationId();
-        advisor.getClass().cast(advisor);
         logger.debug("Adding conversation ID {} to advisor", conversationId);
+        advisor.param(ChatMemory.CONVERSATION_ID, conversationId);
     }
 }
