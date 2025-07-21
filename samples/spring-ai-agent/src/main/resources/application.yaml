@@ -8,11 +8,12 @@ spring:
           enabled: true
           options:
             model: amazon.nova-pro-v1:0
-      cohere:
+      titan:
         embedding:
-          enabled: true
+          model: amazon.titan-embed-text-v2:0
+          input-type: text
     model:
-      embedding: bedrock-cohere
+      embedding: bedrock-titan
     vectorstore:
       pgvector:
         initialize-schema: true
