@@ -44,7 +44,6 @@ public class MemoryAgentController {
                 .advisors(promptChatMemoryAdvisor)
                 .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, "logged-user-account"))
                 .user(prompt)
-                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, "logged-user-account"))
                 .stream()
                 .content();
     }

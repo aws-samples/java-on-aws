@@ -41,8 +41,8 @@ public class ExternalizedMemoryAgentController {
         return chatClient
                 .prompt()
                 .advisors(promptChatMemoryAdvisor)
-                .user(prompt)
                 .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, "logged-user-account"))
+                .user(prompt)
                 .stream()
                 .content();
     }

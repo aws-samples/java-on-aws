@@ -11,6 +11,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import reactor.core.publisher.Flux;
+
+import java.util.function.Consumer;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -42,6 +45,7 @@ class MemoryAgentControllerTest {
         when(chatClient
                 .prompt()
                 .advisors(any(Advisor.class))
+                .advisors(any(Consumer.class))
                 .user(request)
                 .call()
                 .content()).thenReturn(response);
@@ -63,17 +67,17 @@ class MemoryAgentControllerTest {
         when(chatClient
                 .prompt()
                 .advisors(any(Advisor.class))
+                .advisors(any(Consumer.class))
                 .user(request)
-                .call()
-                .content()).thenReturn(response);
+                .stream()
+                .content()).thenReturn(Flux.just(response));
 
         // When & Then
         mockMvc.perform(post("/memory/chat/stream")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isOk())
-                .andExpect(content().string("""
-                        {"string":"Hello Human"}"""));
+                .andExpect(content().string("Hello Human"));
     }
 
     @Test
