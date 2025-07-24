@@ -100,7 +100,7 @@ public class SpringAIStack extends Stack {
         new InfrastructureEks(this, "InfrastructureEks", infrastructureCore);
 
         // Create EKS cluster for the workshop
-        var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.32",
+        var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.33",
             vpc, ideInternalSecurityGroup);
         eksCluster.createAccessEntry(ideRole.getRoleArn(), "unicorn-store", "unicornstore-ide-user");
 

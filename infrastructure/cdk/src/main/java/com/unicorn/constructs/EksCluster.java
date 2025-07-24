@@ -164,7 +164,7 @@ public class EksCluster extends Construct {
         return cluster;
     }
 
-    public CfnAccessEntry createAccessEntry(final String principalArn, 
+    public CfnAccessEntry createAccessEntry(final String principalArn,
         final String clusterName, final String roleName) {
         var accessEntry = CfnAccessEntry.Builder.create(this, "AccessEntry-" + roleName)
             .clusterName(clusterName)
@@ -180,7 +180,7 @@ public class EksCluster extends Construct {
         return accessEntry;
     }
 
-    public void createPodIdentity(final String principalArn, final String clusterName, 
+    public void createPodIdentity(final String principalArn, final String clusterName,
         final String namespace, final String serviceAccount) {
         var podIdentityAssociation = CfnPodIdentityAssociation.Builder.create(this, "CfnPodIdentityAssociationESO")
             .clusterName(clusterName)
