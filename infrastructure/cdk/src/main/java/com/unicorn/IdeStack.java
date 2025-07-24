@@ -23,7 +23,7 @@ public class IdeStack extends Stack {
         date
 
         echo '=== Clone Git repository ==='bash
-        sudo -H -u ec2-user  -c "git clone https://github.com/smoell/java-on-aws ~/java-on-aws/"
+        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
         # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
 
         echo '=== Setup IDE ==='

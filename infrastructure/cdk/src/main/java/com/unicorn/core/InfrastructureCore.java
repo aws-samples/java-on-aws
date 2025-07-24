@@ -9,10 +9,7 @@ import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.ISecurityGroup;
 import software.amazon.awscdk.services.ec2.SecurityGroupProps;
 import software.amazon.awscdk.services.events.EventBus;
-import software.amazon.awscdk.services.iam.ArnPrincipal;
-import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
-import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.rds.AuroraPostgresClusterEngineProps;
@@ -44,8 +41,8 @@ public class InfrastructureCore extends Construct {
     private final ISecurityGroup applicationSecurityGroup;
     private final StringParameter paramDBConnectionString;
     private final Secret secretPassword;
-    private final StringParameter paramBucketName;
-    private final Bucket lambdaCodeBucket;
+    private final StringParameter parameterWorkshopBucketName;
+    private final Bucket workshopBucket;
 
     public InfrastructureCore(final Construct scope, final String id, final IVpc vpc) {
         super(scope, id);
@@ -64,34 +61,34 @@ public class InfrastructureCore extends Construct {
 
         paramDBConnectionString = createParamDBConnectionString();
         secretPassword = createSecretPassword();
-        lambdaCodeBucket = createLambdaCodeBucket();
-        paramBucketName = createParamBucketName();
+        workshopBucket = createWorkshopBucket();
+        parameterWorkshopBucketName = createParameterWorkshopBucketName();
         createRolesLambdaBedrock();
     }
 
-    private Bucket createLambdaCodeBucket() {
-        var lambdaCodeBucket = Bucket.Builder
-            .create(this, "LambdaCodeBucket")
+    private Bucket createWorkshopBucket() {
+        var workshopBucket = Bucket.Builder
+            .create(this, "WorkshopBucket")
             .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
             .enforceSsl(true)
             .removalPolicy(RemovalPolicy.DESTROY)
             .build();
-        return lambdaCodeBucket;
+        return workshopBucket;
     }
 
 
-    private StringParameter createParamBucketName() {
-        return StringParameter.Builder.create(this, "SsmParameterUnicornStoreBucketName")
+    private StringParameter createParameterWorkshopBucketName() {
+        return StringParameter.Builder.create(this, "SsmParameterWorkshopBucketName")
             .allowedPattern(".*")
-            .description("Lambda code bucket name")
+            .description("Workshop bucket name")
             .parameterName("unicornstore-lambda-bucket-name")
-            .stringValue(lambdaCodeBucket.getBucketName())
+            .stringValue(workshopBucket.getBucketName())
             .tier(ParameterTier.STANDARD)
             .build();
     }
 
     public StringParameter getParamBucketName() {
-        return paramBucketName;
+        return parameterWorkshopBucketName;
     }
 
     private void createRolesLambdaBedrock() {
@@ -223,5 +220,9 @@ public class InfrastructureCore extends Construct {
 
     public DatabaseCluster getDatabase() {
         return database;
+    }
+
+    public Bucket getWorkshopBucket() {
+        return workshopBucket;
     }
 }

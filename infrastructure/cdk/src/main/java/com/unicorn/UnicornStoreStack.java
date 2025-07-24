@@ -86,29 +86,10 @@ public class UnicornStoreStack extends Stack {
         var ideRole = ideProps.getRole();
         var ideInternalSecurityGroup = ide.getIdeInternalSecurityGroup();
 
-        // Create S3 bucket for thread dumps
-        AnalysisBucketConstruct analysisBucket = new AnalysisBucketConstruct(
-                this,
-                "ThreadDumpBucket",
-                AnalysisBucketProps.builder()
-                        .bucketPrefix("unicorn-analysis")
-                        .versioningEnabled(true)
-                        .retentionDays(90)
-                        .noncurrentVersionRetentionDays(30)
-                        .removalPolicy(RemovalPolicy.DESTROY)
-                        .build()
-        );
-
         // Create EKS cluster for the workshop
         var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.33",
                 vpc, ideInternalSecurityGroup);
         eksCluster.createAccessEntry(ideRole.getRoleArn(), "unicorn-store", "unicornstore-ide-user");
-
-        // Create Lambda function to create thread dump
-        InfrastructureLambdaBedrock lambdaBedrock = new InfrastructureLambdaBedrock(this, "InfrastructureLambdaBedrock", this.getRegion(), analysisBucket.getBucket(), eksCluster, vpc);
-
-        // Create Prometheus und Grafana infrastructure
-        MonitoringConstruct monitoring = new MonitoringConstruct(this, "Monitoring", vpc, eksCluster.getCluster(), lambdaBedrock.getThreadDumpFunction());        // Create Grafana dashboards
 
         // Create Core infrastructure
         var infrastructureCore = new InfrastructureCore(this, "InfrastructureCore", vpc);
@@ -118,11 +99,15 @@ public class UnicornStoreStack extends Stack {
         new InfrastructureContainers(this, "InfrastructureContainers", infrastructureCore);
         new InfrastructureEks(this, "InfrastructureEks", infrastructureCore);
 
+        // Create Lambda function to create thread dump (after InfrastructureEks)
+        InfrastructureLambdaBedrock lambdaBedrock = new InfrastructureLambdaBedrock(this, "InfrastructureLambdaBedrock", this.getRegion(), infrastructureCore.getWorkshopBucket(), eksCluster, vpc);
+
+        // Create Prometheus and Grafana infrastructure. Create Grafana dashboards (after InfrastructureEks)
+        MonitoringConstruct monitoring = new MonitoringConstruct(this, "Monitoring", vpc, eksCluster.getCluster(), lambdaBedrock.getThreadDumpFunction());
+
         // Execute Database setup
         var databaseSetup = new DatabaseSetup(this, "UnicornStoreDatabaseSetup", infrastructureCore);
         databaseSetup.getNode().addDependency(infrastructureCore.getDatabase());
-
-        String bucketName = analysisBucket.getBucket().getBucketName();
 
         // Create UnicornStoreSpringLambda
         new UnicornStoreSpringLambda(this, "UnicornStoreSpringLambda", infrastructureCore);
