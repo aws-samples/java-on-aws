@@ -1023,53 +1023,719 @@ Resources:
                       sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/User/settings.json'
                       tee /home/ec2-user/.local/share/code-server/User/settings.json <<EOF
                       {
-                        "extensions.autoUpdate": false,
-                        "extensions.autoCheckUpdates": false,
-                        "security.workspace.trust.enabled": false,
-                        "workbench.startupEditor": "$STARTUP_EDITOR",
-                        "task.allowAutomaticTasks": "on",
-                        "telemetry.telemetryLevel": "off",
-                        "update.mode": "none"
-                      }
-                      EOF
-
-                      sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/User/keybindings.json'
-                      tee /home/ec2-user/.local/share/code-server/User/keybindings.json << 'EOF'
-                      [
-                        {
-                          "key": "shift+cmd+/",
-                          "command": "remote.tunnel.forwardCommandPalette"
-                        }
-                      ]
-                      EOF
-
-                      if [ ! -z "${splashUrl}" ]; then
-                      echo "Configuring splash URL..."
-
-                      sudo -u ec2-user bash -c 'touch ~/.local/share/code-server/User/tasks.json'
-                      tee /home/ec2-user/.local/share/code-server/User/tasks.json << 'EOF'
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":role/unicorn*"
+                    ]
+                  ]
+                }
+              ],
+              "Effect": "Allow",
+              "Sid": "PassRoleEKS"
+            },
+            {
+              "Action": [
+                "iam:CreateRole",
+                "iam:TagRole",
+                "iam:DeleteRole",
+                "iam:CreatePolicy",
+                "iam:CreatePolicyVersion",
+                "iam:DeletePolicy",
+                "iam:DeletePolicyVersion",
+                "iam:AttachRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:PutRolePolicy",
+                "iam:DeleteRolePolicy",
+                "iam:PassRole"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:iam::",
                       {
-                        "version": "2.0.0",
-                        "tasks": [
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":role/*unicorn*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:iam::",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":policy/*unicorn*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:iam::",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":role/*Unicorn*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:iam::",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":policy/*Unicorn*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:iam::",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":policy/*AWSLambdaTracerAccessExecutionRole*"
+                    ]
+                  ]
+                }
+              ],
+              "Effect": "Allow",
+              "Sid": "IamLimitedAccessForUnicorns"
+            },
+            {
+              "Action": [
+                "cloudformation:*",
+                "codeartifact:*",
+                "apprunner:*",
+                "ec2:*",
+                "ecs:*",
+                "elasticloadbalancing:*",
+                "xray:*",
+                "logs:*",
+                "lambda:*",
+                "dynamodb:*",
+                "route53:*",
+                "s3:*",
+                "servicediscovery:*",
+                "tag:*",
+                "application-signals:*"
+              ],
+              "Resource": "*",
+              "Effect": "Allow",
+              "Sid": "AllowedServicesOthers"
+            },
+            {
+              "Condition": {
+                "StringLike": {
+                  "ec2:InstanceType": [
+                    "*4xlarge",
+                    "*6xlarge",
+                    "*8xlarge",
+                    "*9xlarge",
+                    "*10xlarge",
+                    "*12xlarge",
+                    "*16xlarge",
+                    "*18xlarge",
+                    "*24xlarge",
+                    "f1*",
+                    "x1*",
+                    "z1*",
+                    "*metal"
+                  ]
+                }
+              },
+              "Action": "ec2:RunInstances",
+              "Resource": [
+                "arn:aws:ec2:*:*:instance/*"
+              ],
+              "Effect": "Deny",
+              "Sid": "DenyXXLInstances"
+            },
+            {
+              "Action": [
+                "ec2:ModifyReservedInstances",
+                "ec2:PurchaseHostReservation",
+                "ec2:PurchaseReservedInstancesOffering",
+                "ec2:PurchaseScheduledInstances",
+                "rds:PurchaseReservedDBInstancesOffering",
+                "dynamodb:PurchaseReservedCapacityOfferings"
+              ],
+              "Resource": "*",
+              "Effect": "Deny",
+              "Sid": "DenyReservations"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "UnicornStoreIdeIdeRole81A2CEAA"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/WorkshopIdeUserPolicy"
+      }
+    },
+    "UnicornStoreIdeIdeLogGroup7A5EFA50": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "unicornstore-ide-bootstrap-log-20250623-191725",
+        "RetentionInDays": 7
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeLogGroup/Resource"
+      }
+    },
+    "UnicornStoreIdeIdePrefixListFunctionServiceRole32E30C10": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdePrefixListFunction/ServiceRole/Resource"
+      }
+    },
+    "UnicornStoreIdeIdePrefixListFunctionServiceRoleDefaultPolicy33F10FE5": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "ec2:DescribeManagedPrefixLists",
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "UnicornStoreIdeIdePrefixListFunctionServiceRoleDefaultPolicy33F10FE5",
+        "Roles": [
+          {
+            "Ref": "UnicornStoreIdeIdePrefixListFunctionServiceRole32E30C10"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdePrefixListFunction/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "UnicornStoreIdeIdePrefixListFunctionA6A4129C": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "ZipFile": "from __future__ import print_function\nimport boto3\nimport traceback\nimport cfnresponse\n\ndef lambda_handler(event, context):\n    print('Event: {}'.format(event))\n    print('context: {}'.format(context))\n    responseData = {}\n\n    status = cfnresponse.SUCCESS\n\n    if event['RequestType'] == 'Delete':\n        responseData = {'Success': 'Custom Resource removed'}\n        cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')\n    else:\n        try:\n            # Open AWS clients\n            ec2 = boto3.client('ec2')\n\n            res = ec2.describe_managed_prefix_lists(\n               Filters=[{\n                  'Name': 'prefix-list-name',\n                  'Values': ['com.amazonaws.global.cloudfront.origin-facing']\n               }]\n            )\n\n            responseData = {'PrefixListId': str(res['PrefixLists'][0]['PrefixListId'])}\n        except Exception as e:\n            status = cfnresponse.FAILED\n            tb_err = traceback.format_exc()\n            print(tb_err)\n            responseData = {'Error': tb_err}\n        finally:\n            cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')"
+        },
+        "FunctionName": "unicornstore-ide-prefix-list-lambda",
+        "Handler": "index.lambda_handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "UnicornStoreIdeIdePrefixListFunctionServiceRole32E30C10",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180
+      },
+      "DependsOn": [
+        "UnicornStoreIdeIdePrefixListFunctionServiceRoleDefaultPolicy33F10FE5",
+        "UnicornStoreIdeIdePrefixListFunctionServiceRole32E30C10"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdePrefixListFunction/Resource"
+      }
+    },
+    "UnicornStoreIdeIdePrefixListResource228B9344": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "UnicornStoreIdeIdePrefixListFunctionA6A4129C",
+            "Arn"
+          ]
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdePrefixListResource/Default"
+      }
+    },
+    "UnicornStoreIdeIdeSecurityGroupD6434416": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "IDE security group",
+        "GroupName": "unicornstore-ide-cloudfront-ide-sg",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "UnicornStoreVpc647929A5"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeSecurityGroup/Resource"
+      }
+    },
+    "UnicornStoreIdeIdeSecurityGroupfromIndirectPeer80C455E18A": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "Description": "HTTP from CloudFront only",
+        "FromPort": 80,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "UnicornStoreIdeIdeSecurityGroupD6434416",
+            "GroupId"
+          ]
+        },
+        "IpProtocol": "tcp",
+        "SourcePrefixListId": {
+          "Fn::GetAtt": [
+            "UnicornStoreIdeIdePrefixListResource228B9344",
+            "PrefixListId"
+          ]
+        },
+        "ToPort": 80
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeSecurityGroup/from {IndirectPeer}:80"
+      }
+    },
+    "UnicornStoreIdeAppSecurityGroupA4858227": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "App security group",
+        "GroupName": "unicornstore-ide-cloudfront-app-sg",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "UnicornStoreVpc647929A5"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/AppSecurityGroup/Resource"
+      }
+    },
+    "UnicornStoreIdeIdeInstanceProfileCEFB2BB2": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "InstanceProfileName": {
+          "Ref": "UnicornStoreIdeIdeRole81A2CEAA"
+        },
+        "Roles": [
+          {
+            "Ref": "UnicornStoreIdeIdeRole81A2CEAA"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeInstanceProfile/Resource"
+      }
+    },
+    "UnicornStoreIdeIdeElasticIP832AF6A3": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeElasticIP"
+      }
+    },
+    "UnicornStoreIdeIdeEC2Instance5F393FC5": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "BlockDeviceMappings": [
+          {
+            "DeviceName": "/dev/xvda",
+            "Ebs": {
+              "DeleteOnTermination": true,
+              "Encrypted": true,
+              "VolumeSize": 50,
+              "VolumeType": "gp3"
+            }
+          }
+        ],
+        "IamInstanceProfile": {
+          "Ref": "UnicornStoreIdeIdeInstanceProfileCEFB2BB2"
+        },
+        "ImageId": {
+          "Ref": "SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter"
+        },
+        "InstanceType": "t3.medium",
+        "SecurityGroupIds": [
+          {
+            "Fn::GetAtt": [
+              "UnicornStoreIdeIdeSecurityGroupD6434416",
+              "GroupId"
+            ]
+          },
+          {
+            "Fn::GetAtt": [
+              "UnicornStoreIdeIdeInternalSecurityGroup29539F21",
+              "GroupId"
+            ]
+          }
+        ],
+        "SubnetId": {
+          "Ref": "UnicornStoreVpcPublicSubnet1Subnet5A587A94"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "unicornstore-ide"
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": "#!/bin/bash"
+        }
+      },
+      "DependsOn": [
+        "UnicornStoreIdeIdePasswordSecret514252E2",
+        "UnicornStoreIdeIdeRoleDefaultPolicy7083F507",
+        "UnicornStoreIdeIdeRole81A2CEAA"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeEC2Instance/Resource"
+      }
+    },
+    "UnicornStoreIdeIdeEipAssociation14729AD1": {
+      "Type": "AWS::EC2::EIPAssociation",
+      "Properties": {
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "UnicornStoreIdeIdeElasticIP832AF6A3",
+            "AllocationId"
+          ]
+        },
+        "InstanceId": {
+          "Ref": "UnicornStoreIdeIdeEC2Instance5F393FC5"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeEipAssociation"
+      }
+    },
+    "UnicornStoreIdeIdeInternalSecurityGroup29539F21": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "IDE internal security group",
+        "GroupName": "unicornstore-ide-internal-sg",
+        "VpcId": {
+          "Ref": "UnicornStoreVpc647929A5"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeInternalSecurityGroup/Resource"
+      }
+    },
+    "UnicornStoreIdeIdeInternalSecurityGroupfromunicornstorestackUnicornStoreIdeIdeInternalSecurityGroupF7E4BE88ALLTRAFFIC61889ED2": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "Description": "Allow all internal traffic",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "UnicornStoreIdeIdeInternalSecurityGroup29539F21",
+            "GroupId"
+          ]
+        },
+        "IpProtocol": "-1",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "UnicornStoreIdeIdeInternalSecurityGroup29539F21",
+            "GroupId"
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeInternalSecurityGroup/from unicornstorestackUnicornStoreIdeIdeInternalSecurityGroupF7E4BE88:ALL TRAFFIC"
+      }
+    },
+    "UnicornStoreIdeIdeInternalSecurityGrouptounicornstorestackUnicornStoreIdeIdeInternalSecurityGroupF7E4BE88ALLTRAFFIC40FBB5D0": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "Description": "Allow all internal traffic",
+        "DestinationSecurityGroupId": {
+          "Fn::GetAtt": [
+            "UnicornStoreIdeIdeInternalSecurityGroup29539F21",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "UnicornStoreIdeIdeInternalSecurityGroup29539F21",
+            "GroupId"
+          ]
+        },
+        "IpProtocol": "-1"
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeInternalSecurityGroup/to unicornstorestackUnicornStoreIdeIdeInternalSecurityGroupF7E4BE88:ALL TRAFFIC"
+      }
+    },
+    "UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle",
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeBootstrapWaitConditionHandle"
+      }
+    },
+    "UnicornStoreIdeIdeBootstrapWaitConditionE9768A2E": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "Properties": {
+        "Count": 1,
+        "Handle": {
+          "Ref": "UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1"
+        },
+        "Timeout": "1800"
+      },
+      "DependsOn": [
+        "UnicornStoreIdeIdeBootstrapDocumentE330810B",
+        "UnicornStoreIdeIdeEC2Instance5F393FC5"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeBootstrapWaitCondition"
+      }
+    },
+    "UnicornStoreIdeIdeDistribution9A9F0B03": {
+      "Type": "AWS::CloudFront::Distribution",
+      "Properties": {
+        "DistributionConfig": {
+          "DefaultCacheBehavior": {
+            "AllowedMethods": [
+              "GET",
+              "HEAD",
+              "OPTIONS",
+              "PUT",
+              "PATCH",
+              "POST",
+              "DELETE"
+            ],
+            "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+            "Compress": true,
+            "OriginRequestPolicyId": "216adef6-5c7f-47e4-b989-5492eafa07d3",
+            "TargetOriginId": "unicornstorestackUnicornStoreIdeIdeDistributionOrigin1E50C9FB6",
+            "ViewerProtocolPolicy": "allow-all"
+          },
+          "Enabled": true,
+          "HttpVersion": "http2",
+          "IPV6Enabled": true,
+          "Origins": [
+            {
+              "CustomOriginConfig": {
+                "HTTPPort": 80,
+                "OriginProtocolPolicy": "http-only",
+                "OriginSSLProtocols": [
+                  "TLSv1.2"
+                ]
+              },
+              "DomainName": {
+                "Fn::GetAtt": [
+                  "UnicornStoreIdeIdeEC2Instance5F393FC5",
+                  "PublicDnsName"
+                ]
+              },
+              "Id": "unicornstorestackUnicornStoreIdeIdeDistributionOrigin1E50C9FB6"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "UnicornStoreIdeIdeEipAssociation14729AD1"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdeDistribution/Resource"
+      }
+    },
+    "UnicornStoreIdeIdePasswordSecret514252E2": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "GenerateSecretString": {
+          "ExcludeCharacters": "\"@/\\\\",
+          "ExcludePunctuation": true,
+          "GenerateStringKey": "password",
+          "IncludeSpace": false,
+          "PasswordLength": 32,
+          "SecretStringTemplate": "{\"password\":\"\"}"
+        },
+        "Name": "unicornstore-ide-password-lambda"
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdePasswordSecret/Resource"
+      }
+    },
+    "UnicornStoreIdeIdePasswordExporterFunctionServiceRoleE9BF6179": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdePasswordExporterFunction/ServiceRole/Resource"
+      }
+    },
+    "UnicornStoreIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy0EF930BA": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Ref": "UnicornStoreIdeIdePasswordSecret514252E2"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "UnicornStoreIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy0EF930BA",
+        "Roles": [
+          {
+            "Ref": "UnicornStoreIdeIdePasswordExporterFunctionServiceRoleE9BF6179"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdePasswordExporterFunction/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "UnicornStoreIdeIdePasswordExporterFunction456E6CFA": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "ZipFile": "import traceback\nimport cfnresponse\nimport boto3\nimport json\n\ndef lambda_handler(event, context):\n    print('Event: {}'.format(event))\n    print('context: {}'.format(context))\n    responseData = {}\n\n    status = cfnresponse.SUCCESS\n\n    if event['RequestType'] == 'Delete':\n        cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')\n    else:\n        try:\n            passwordName = event['ResourceProperties']['PasswordName']\n\n            secretsmanager = boto3.client('secretsmanager')\n\n            response = secretsmanager.get_secret_value(\n                SecretId=passwordName,\n            )\n\n            responseData = json.loads(response['SecretString'])\n        except Exception as e:\n            status = cfnresponse.FAILED\n            tb_err = traceback.format_exc()\n            print(tb_err)\n            responseData = {'Error': tb_err}\n        finally:\n            cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')"
+        },
+        "FunctionName": "unicornstore-ide-password-lambda",
+        "Handler": "index.lambda_handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "UnicornStoreIdeIdePasswordExporterFunctionServiceRoleE9BF6179",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180
+      },
+      "DependsOn": [
+        "UnicornStoreIdeIdePasswordExporterFunctionServiceRoleDefaultPolicy0EF930BA",
+        "UnicornStoreIdeIdePasswordExporterFunctionServiceRoleE9BF6179"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdePasswordExporterFunction/Resource"
+      }
+    },
+    "UnicornStoreIdeIdePasswordExporter0662A4D7": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "UnicornStoreIdeIdePasswordExporterFunction456E6CFA",
+            "Arn"
+          ]
+        },
+        "PasswordName": {
+          "Fn::Join": [
+            "-",
+            [
+              {
+                "Fn::Select": [
+                  0,
+                  {
+                    "Fn::Split": [
+                      "-",
+                      {
+                        "Fn::Select": [
+                          6,
                           {
-                            "label": "Open Splash",
-                            "command": "${!input:openSimpleBrowser}",
-                            "presentation": {
-                              "reveal": "always",
-                              "panel": "new"
-                            },
-                            "runOptions": {
-                              "runOn": "folderOpen"
-                            }
-                          }
-                        ],
-                        "inputs": [
-                          {
-                            "id": "openSimpleBrowser",
-                            "type": "command",
-                            "command": "simpleBrowser.show",
-                            "args": [
-                              "${splashUrl}"
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "UnicornStoreIdeIdePasswordSecret514252E2"
+                              }
                             ]
                           }
                         ]
@@ -3012,141 +3678,97 @@ Resources:
                     value: codeBuildIamRoleArn
                   }
                 ]
-              }));
-              console.log(`Build id ${build.id} started - resource completion handled by EventBridge`);
-            } catch(error) {
-              console.error(error);
-              await respond(event, context, 'FAILED', { Error: error });
-            }
-          };
-      FunctionName: unicornstore-codebuild-start-lambda
-      Handler: index.handler
-      Role:
-        Fn::GetAtt:
-          - UnicornStoreCodeBuildStartBuildFunctionServiceRole080F7EB7
-          - Arn
-      Runtime: nodejs22.x
-      Timeout: 60
-    DependsOn:
-      - UnicornStoreCodeBuildStartBuildFunctionServiceRoleDefaultPolicy9F81C738
-      - UnicornStoreCodeBuildStartBuildFunctionServiceRole080F7EB7
-  UnicornStoreCodeBuildReportBuildFunctionServiceRole80B905C6:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-        Version: "2012-10-17"
-      ManagedPolicyArns:
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  UnicornStoreCodeBuildReportBuildFunctionServiceRoleDefaultPolicy4D034F3B:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyDocument:
-        Statement:
-          - Action:
-              - codebuild:BatchGetBuilds
-              - codebuild:ListBuildsForProject
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - UnicornStoreCodeBuildCodeBuildProjectAF799FF7
-                - Arn
-        Version: "2012-10-17"
-      PolicyName: UnicornStoreCodeBuildReportBuildFunctionServiceRoleDefaultPolicy4D034F3B
-      Roles:
-        - Ref: UnicornStoreCodeBuildReportBuildFunctionServiceRole80B905C6
-  UnicornStoreCodeBuildReportBuildFunction48D98BC9:
-    Type: AWS::Lambda::Function
-    Properties:
-      Code:
-        ZipFile: |
-          // This function is based on the cfnresponse JS module that is published
-          // by CloudFormation. It's an async function that makes coding much easier.
-          const respond = async function(event, context, responseStatus, responseData, physicalResourceId, noEcho) {
-            return new Promise((resolve, reject) => {
-              var responseBody = JSON.stringify({
-                  Status: responseStatus,
-                  Reason: "See the details in CloudWatch Log Stream: " + context.logGroupName + " " + context.logStreamName,
-                  PhysicalResourceId: physicalResourceId || context.logStreamName,
-                  StackId: event.StackId,
-                  RequestId: event.RequestId,
-                  LogicalResourceId: event.LogicalResourceId,
-                  NoEcho: noEcho || false,
-                  Data: responseData
-              });
-
-              console.log("Response body:\\n", responseBody);
-
-              var https = require("https");
-              var url = require("url");
-
-              var parsedUrl = url.parse(event.ResponseURL);
-              var options = {
-                  hostname: parsedUrl.hostname,
-                  port: 443,
-                  path: parsedUrl.path,
-                  method: "PUT",
-                  headers: {
-                      "content-type": "",
-                      "content-length": responseBody.length
+              },
+              {
+                "Fn::Select": [
+                  1,
+                  {
+                    "Fn::Split": [
+                      "-",
+                      {
+                        "Fn::Select": [
+                          6,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "UnicornStoreIdeIdePasswordSecret514252E2"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
                   }
-              };
-
-              var request = https.request(options, function(response) {
-                  console.log("Status code: " + response.statusCode);
-                  console.log("Status message: " + response.statusMessage);
-                  resolve();
-              });
-
-              request.on("error", function(error) {
-                  console.log("respond(..) failed executing https.request(..): " + error);
-                  resolve();
-              });
-
-              request.write(responseBody);
-              request.end();
-            });
-          };
-          const { CodeBuildClient, BatchGetBuildsCommand } = require("@aws-sdk/client-codebuild");
-
-          exports.handler = async function (event, context) {
-            console.log(JSON.stringify(event, null, 4));
-
-            const projectName = event['detail']['project-name'];
-
-            const codebuild = new CodeBuildClient();
-
-            const buildId = event['detail']['build-id'];
-            const { builds } = await codebuild.send(new BatchGetBuildsCommand({
-              ids: [ buildId ]
-            }));
-
-            console.log(JSON.stringify(builds, null, 4));
-
-            const build = builds[0];
-            // Fetch the CFN resource and response parameters from the build environment.
-            const environment = {};
-            build.environment.environmentVariables.forEach(e => environment[e.name] = e.value);
-
-            const response = {
-              ResponseURL: environment.CFN_RESPONSE_URL,
-              StackId: environment.CFN_STACK_ID,
-              LogicalResourceId: environment.CFN_LOGICAL_RESOURCE_ID,
-              RequestId: environment.CFN_REQUEST_ID
-            };
-
-            if (event['detail']['build-status'] === 'SUCCEEDED') {
-              await respond(response, context, 'SUCCESS', {}, 'build');
-            } else {
-              await respond(response, context, 'FAILED', { Error: 'Build failed' });
+                ]
+              },
+              {
+                "Fn::Select": [
+                  2,
+                  {
+                    "Fn::Split": [
+                      "-",
+                      {
+                        "Fn::Select": [
+                          6,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "UnicornStoreIdeIdePasswordSecret514252E2"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "Fn::Select": [
+                  3,
+                  {
+                    "Fn::Split": [
+                      "-",
+                      {
+                        "Fn::Select": [
+                          6,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "UnicornStoreIdeIdePasswordSecret514252E2"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "unicornstore-stack/UnicornStoreIde/IdePasswordExporter/Default"
+      }
+    },
+    "UnicornStoreIdeIdeBootstrapDocumentE330810B": {
+      "Type": "AWS::SSM::Document",
+      "Properties": {
+        "Content": {
+          "schemaVersion": "2.2",
+          "description": "Bootstrap IDE",
+          "parameters": {
+            "BootstrapScript": {
+              "default": "",
+              "description": "(Optional) Custom bootstrap script to run.",
+              "type": "String"
             }
           };
       FunctionName: unicornstore-codebuild-report-lambda

@@ -146,4 +146,50 @@ curl --location --request POST $SVC_URL'/unicorns' --header 'Content-Type: appli
     "size": "Very big"
 }' | jq
 
+cat <<EOF > ~/environment/unicorn-store-spring/k8s/storage-class.yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.eks.amazonaws.com
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  type: gp3
+  encrypted: "true"
+EOF
+kubectl apply -f ~/environment/unicorn-store-spring/k8s/storage-class.yaml
+
+cat <<EOF > ~/environment/unicorn-store-spring/k8s/rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-collector
+  namespace: unicorn-store-spring
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: otel-collector
+  namespace: unicorn-store-spring
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: otel-collector
+  namespace: unicorn-store-spring
+subjects:
+  - kind: ServiceAccount
+    name: otel-collector
+    namespace: unicorn-store-spring
+roleRef:
+  kind: Role
+  name: otel-collector
+  apiGroup: rbac.authorization.k8s.io
+EOF
+kubectl apply -f ~/environment/unicorn-store-spring/k8s/rbac.yaml
+
 echo "App deployment to EKS cluster is complete."

@@ -75,5 +75,10 @@
           <version>${junit.version}</version>
           <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>software.constructs</groupId>
+            <artifactId>constructs</artifactId>
+            <version>10.3.0</version>
+        </dependency>
     </dependencies>
 </project>

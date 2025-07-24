@@ -9,7 +9,7 @@
             "Resource": "*",
             "Condition": {
                     "Null": {
-                       "aws-marketplace:ProductId": "false"
+                       "aws-marketplace:ProductId": false
                 },
                 "ForAllValues:StringEquals": {
                     "aws-marketplace:ProductId": [
@@ -98,7 +98,9 @@
 				"logs:*",
 				"lambda:*",
 				"dynamodb:*",
+				"route53:*",
 				"s3:*",
+				"servicediscovery:*",
 				"tag:*",
 				"application-signals:*"
 			],

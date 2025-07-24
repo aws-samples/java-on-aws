@@ -1,11 +1,6 @@
 package com.unicorn.constructs;
 
-import software.amazon.awscdk.CfnWaitCondition;
-import software.amazon.awscdk.CfnWaitConditionHandle;
-import software.amazon.awscdk.CustomResource;
-import software.amazon.awscdk.Duration;
-import software.amazon.awscdk.Fn;
-import software.amazon.awscdk.RemovalPolicy;
+import software.amazon.awscdk.*;
 // import software.amazon.awscdk.services.cloudfront.AddBehaviorOptions;
 import software.amazon.awscdk.services.cloudfront.AllowedMethods;
 import software.amazon.awscdk.services.cloudfront.BehaviorOptions;
@@ -36,13 +31,7 @@ import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
-import software.amazon.awscdk.services.iam.IManagedPolicy;
-import software.amazon.awscdk.services.iam.InstanceProfile;
-import software.amazon.awscdk.services.iam.ManagedPolicy;
-import software.amazon.awscdk.services.iam.PolicyDocument;
-import software.amazon.awscdk.services.iam.PolicyStatement;
-import software.amazon.awscdk.services.iam.Role;
-import software.amazon.awscdk.services.iam.ServicePrincipal;
+import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
@@ -51,7 +40,6 @@ import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.secretsmanager.Secret;
 import software.amazon.awscdk.services.secretsmanager.SecretStringGenerator;
 import software.amazon.awscdk.services.ssm.CfnDocument;
-import software.amazon.awscdk.CfnOutput;
 
 import software.constructs.Construct;
 import org.json.JSONObject;
@@ -181,13 +169,23 @@ public class VSCodeIde extends Construct {
         props.getRole().addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
 
         var filePath = props.getAdditionalIamPolicyPath();
-        if (Files.exists(Path.of(getClass().getResource(filePath).getPath()))) {
-            var policyDocumentJson = loadFile(filePath);
-            var policyDocument = PolicyDocument.fromJson(new JSONObject(policyDocumentJson).toMap());
-            var policy = ManagedPolicy.Builder.create(this, "WorkshopIdeUserPolicy")
-                .document(policyDocument)
-                .build();
-                props.getRole().addManagedPolicy(policy);
+        try {
+            var policyPath = Path.of(getClass().getResource(filePath).toURI());
+            if (Files.exists(policyPath)) {
+                var jsonPolicy = loadFile(filePath);
+                // AccountId dynamisch einsetzen
+                String accountId = Stack.of(this).getAccount();
+                String replaced = jsonPolicy.replace("{{.AccountId}}", accountId);
+                var policyDoc = new JSONObject(replaced).toMap();
+
+                CfnManagedPolicy.Builder.create(this, "WorkshopIdeUserPolicy")
+                        .policyDocument(policyDoc)
+                        .managedPolicyName("WorkshopIdeUserPolicy")
+                        .roles(List.of(props.getRole().getRoleName()))
+                        .build();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read or parse IAM policy file: " + filePath, e);
         }
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");

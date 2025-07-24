@@ -23,6 +23,8 @@ public class WorkshopVpc extends Construct{
         vpc = Vpc.Builder.create(this, "Vpc")
             .vpcName(vpcName)
             .ipAddresses(IpAddresses.cidr("10.0.0.0/16"))
+            .enableDnsSupport(true)
+            .enableDnsHostnames(true)
             .maxAzs(2)  // Use 2 Availability Zones
             .subnetConfiguration(Arrays.asList(
                 SubnetConfiguration.builder()
