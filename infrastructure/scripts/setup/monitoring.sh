@@ -73,7 +73,7 @@ server:
   extraFlags:
     - web.enable-remote-write-receiver
   extraScrapeConfigs: |
-    # Additional scrape configs will be loaded from ConfigMap
+    # Additional scrape configs can be added here if needed
 EOF
 
 log "🚀 Deploying Prometheus..."

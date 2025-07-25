@@ -115,7 +115,8 @@ deploy_function() {
             --function-name "$FUNCTION_NAME" \
             --zip-file "fileb://$OUTPUT_ZIP" \
             --region "$AWS_REGION" \
-            --output table
+            --output table \
+            --no-cli-pager
         print_success "Function code updated successfully"
     else
         print_error "Function '$FUNCTION_NAME' does not exist"
@@ -127,7 +128,8 @@ deploy_function() {
     print_status "Waiting for function update to complete"
     aws lambda wait function-updated \
         --function-name "$FUNCTION_NAME" \
-        --region "$AWS_REGION"
+        --region "$AWS_REGION" \
+        --no-cli-pager
     print_success "Function update completed"
 
     # Get function info
@@ -136,7 +138,8 @@ deploy_function() {
         --function-name "$FUNCTION_NAME" \
         --region "$AWS_REGION" \
         --query '{FunctionName:Configuration.FunctionName,Runtime:Configuration.Runtime,Handler:Configuration.Handler,CodeSize:Configuration.CodeSize,LastModified:Configuration.LastModified}' \
-        --output table
+        --output table \
+        --no-cli-pager
 }
 
 # Test the deployed function
@@ -150,6 +153,7 @@ test_function() {
         --region "$AWS_REGION" \
         --payload "$test_payload" \
         --cli-binary-format raw-in-base64-out \
+        --no-cli-pager \
         response.json
 
     if [ -f "response.json" ]; then
@@ -210,7 +214,7 @@ main() {
     fi
 
     print_success "Script completed successfully!"
-    
+
     # Clean up build artifacts
     print_status "Cleaning up build artifacts"
     rm -rf "$DIST_DIR"

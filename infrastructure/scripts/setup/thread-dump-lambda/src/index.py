@@ -48,7 +48,7 @@ def verify_basic_auth(event: Dict[str, Any]) -> bool:
         username, password = decoded_credentials.split(':')
 
         # Get expected credentials from AWS Secrets Manager
-        secret_name = "grafana-webhook-credentials"
+        secret_name = "unicornstore-ide-password-lambda"
         region_name = os.environ.get('AWS_REGION', 'us-east-1')
 
         session = boto3.session.Session()
@@ -60,8 +60,12 @@ def verify_basic_auth(event: Dict[str, Any]) -> bool:
         response = client.get_secret_value(SecretId=secret_name)
         secret = json.loads(response['SecretString'])
 
+        # Expected credentials: username is 'grafana-alerts', password from secret
+        expected_username = "grafana-alerts"
+        expected_password = secret['password']
+
         # Validate credentials
-        if username != secret['username'] or password != secret['password']:
+        if username != expected_username or password != expected_password:
             logger.warning("Invalid credentials provided")
             return False
 

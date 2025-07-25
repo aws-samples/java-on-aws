@@ -26,7 +26,7 @@ done
 
 echo "Deploying common manifests ..."
 
-cat <<EOF | kubectl create -f -
+cat <<EOF | kubectl apply -f -
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:

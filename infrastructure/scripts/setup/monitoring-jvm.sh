@@ -76,7 +76,12 @@ if kubectl get secret grafana-admin -n "$NAMESPACE" >/dev/null 2>&1; then
 fi
 
 echo "Setting up JVM-specific RBAC entries"
-cat <<EOF | kubectl apply -f -
+
+# Ensure k8s directory exists
+mkdir -p ~/environment/unicorn-store-spring/k8s/
+
+# Create RBAC YAML file
+cat > ~/environment/unicorn-store-spring/k8s/otel-rbac.yaml <<EOF
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -108,6 +113,9 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 EOF
 
+# Apply the RBAC configuration
+kubectl apply -f ~/environment/unicorn-store-spring/k8s/otel-rbac.yaml
+
 # Set webhook credentials
 WEBHOOK_USER="grafana-alerts"
 WEBHOOK_PASSWORD="$GRAFANA_PASSWORD"
@@ -126,8 +134,57 @@ EOF
 
 kubectl create configmap prometheus-extra-scrape --from-file="$EXTRA_SCRAPE_FILE" -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-# Restart Prometheus to pick up new scrape config
-kubectl rollout restart deployment prometheus-server -n "$NAMESPACE"
+# Fix otel-collector configuration to use correct service port
+log "🔧 Updating otel-collector configuration to use correct service port..."
+
+kubectl patch configmap otel-collector-config -n unicorn-store-spring --type merge -p '{
+  "data": {
+    "adot-config.yaml": "receivers:\n  otlp:\n    protocols:\n      grpc:\n        endpoint: \"0.0.0.0:4317\"\n      http:\n        endpoint: \"0.0.0.0:4318\"\n  prometheus:\n    config:\n      scrape_configs:\n        - job_name: unicorn-store-spring-direct\n          metrics_path: /actuator/prometheus\n          static_configs:\n            - targets: [\"unicorn-store-spring.unicorn-store-spring.svc.cluster.local:80\"]\n\nprocessors:\n  batch: {}\n  resource:\n    attributes:\n      - key: service.name\n        value: unicorn-store\n        action: insert\n\nexporters:\n  awsemf:\n    namespace: unicorn-store-spring\n    log_group_name: /aws/ecs/ecs-jmx-demo\n    dimension_rollup_option: NoDimensionRollup\n    resource_to_telemetry_conversion:\n      enabled: true\n  prometheus:\n    endpoint: \"0.0.0.0:8889\"\n\nservice:\n  telemetry:\n    logs:\n      level: \"debug\"\n  pipelines:\n    metrics:\n      receivers: [otlp, prometheus]\n      processors: [resource, batch]\n      exporters: [awsemf]\n    metrics/prometheus:\n      receivers: [prometheus]\n      processors: []\n      exporters: [prometheus]\n"
+  }
+}'
+
+# Restart otel-collector to pick up new configuration
+log "🔄 Restarting otel-collector to apply new configuration..."
+kubectl rollout restart deployment otel-collector -n unicorn-store-spring
+kubectl rollout status deployment otel-collector -n unicorn-store-spring --timeout=60s
+
+# Update Prometheus to include otel-collector scrape config
+log "🔧 Updating Prometheus configuration to include otel-collector scrape target..."
+
+# Create updated Prometheus values with otel-collector scrape config
+cat > prometheus-update-values.yaml <<EOF
+server:
+  extraScrapeConfigs: |
+    - job_name: "otel-collector"
+      static_configs:
+        - targets: ["otel-collector-service.unicorn-store-spring.svc.cluster.local:8889"]
+EOF
+
+# Upgrade Prometheus with additional scrape config
+helm upgrade prometheus prometheus-community/prometheus \
+  --namespace "$NAMESPACE" \
+  --reuse-values \
+  --values prometheus-update-values.yaml
+
+# Wait for otel-collector to start collecting metrics
+log "⏳ Waiting for otel-collector to collect JVM metrics..."
+sleep 30
+
+# Validate that JVM metrics are available in Prometheus
+PROM_URL="http://k8s-monitori-promethe-839906953e-c69c90636273d9b9.elb.us-east-1.amazonaws.com:9090"
+for i in {1..6}; do
+  METRIC_COUNT=$(curl -s "$PROM_URL/api/v1/query?query=jvm_threads_live_threads" | jq '.data.result | length' 2>/dev/null || echo "0")
+  if [[ "$METRIC_COUNT" -gt 0 ]]; then
+    log "✅ JVM metrics are available in Prometheus ($METRIC_COUNT series found)"
+    break
+  fi
+  if [[ $i -eq 6 ]]; then
+    log "⚠️ JVM metrics not yet available in Prometheus. Alert rule will be created but may not work until metrics are available."
+    break
+  fi
+  log "⏳ Waiting for JVM metrics to appear in Prometheus... ($i/6)"
+  sleep 10
+done
 
 # --- JVM Dashboard ---
 cat > "$DASHBOARD_JSON_FILE" <<EOF
@@ -443,32 +500,39 @@ else
   log "✅ Contact point UID: $NOTIF_UID"
 fi
 
-# Folder UID is already set from dashboard creation above
-# FOLDER_UID is already available from the dashboard creation section
+log "🔍 Finding panel ID for JVM threads metric..."
 
-# We already have the dashboard UID from the API creation above
-# DASHBOARD_UID is already set from the dashboard creation
-if [[ -z "$DASHBOARD_UID" || "$DASHBOARD_UID" == "null" ]]; then
-  # Fallback: try to find the dashboard
-  DASHBOARD_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/search?query=JVM" | jq -r '.[0].uid // empty')
-  if [[ -z "$DASHBOARD_UID" || "$DASHBOARD_UID" == "null" ]]; then
-    log "ℹ️ JVM dashboard not found, creating alert rule without dashboard reference"
-    DASHBOARD_UID=""
-  fi
+DASHBOARD_JSON=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+  "$GRAFANA_URL/api/dashboards/uid/$DASHBOARD_UID")
+
+if [[ -z "$DASHBOARD_JSON" ]]; then
+  log "❌ Failed to retrieve dashboard JSON"
+  exit 1
 fi
 
-# Build alert rule JSON with fixed UID for idempotency
+PANEL_ID=$(echo "$DASHBOARD_JSON" | jq -r '
+  .dashboard.panels[] |
+  select(.targets[]?.expr | test("jvm_threads_live_threads")) |
+  .id' | head -n1
+)
+
+if [[ -z "$PANEL_ID" ]]; then
+  log "❌ No panel found with expression 'jvm_threads_live_threads'"
+  exit 1
+fi
+log "✅ Found panel ID: $PANEL_ID"
+
 log "🛠️ Generating alert rule JSON..."
 
-RULE_UID="jvm-thread-dump-alert"
 ALERT_RULE_JSON=$(jq -n \
   --arg url "$LAMBDA_URL" \
   --arg uid "$DASHBOARD_UID" \
+  --argjson pid "$PANEL_ID" \
   --arg notifUid "$NOTIF_UID" \
-  --arg folderUid "$FOLDER_UID" \
-  --arg ruleUid "$RULE_UID" '
+  --arg folderUid "$FOLDER_UID" '
 {
-  uid: $ruleUid,
+  dashboardUID: $uid,
+  panelId: $pid,
   folderUID: $folderUid,
   ruleGroup: "lambda-alerts",
   title: "High JVM Threads - Lambda",
@@ -476,47 +540,38 @@ ALERT_RULE_JSON=$(jq -n \
   data: [
     {
       refId: "A",
-      queryType: "",
-      relativeTimeRange: {
-        from: 600,
-        to: 0
-      },
+      relativeTimeRange: { from: 600, to: 0 },
+      datasourceUid: "promds",
       model: {
-        expr: "jvm_threads_live_threads{job=\"otel-collector\"}",
-        refId: "A",
+        expr: "sum(jvm_threads_live_threads{job=\"otel-collector\"}) by (task_pod_id, cluster_type, cluster, container_name, namespace, container_ip)",
+        instant: true,
         intervalMs: 1000,
-        maxDataPoints: 43200
-      },
-      datasourceUid: "promds"
+        maxDataPoints: 43200,
+        refId: "A"
+      }
     },
     {
       refId: "B",
-      queryType: "",
-      relativeTimeRange: {
-        from: 0,
-        to: 0
-      },
+      relativeTimeRange: { from: 0, to: 0 },
+      datasourceUid: "__expr__",
       model: {
         conditions: [
           {
-            evaluator: {
-              params: [80],
-              type: "gt"
-            },
-            operator: {
-              type: "and"
-            },
-            query: {
-              params: ["A"]
-            },
-            reducer: {
-              params: [],
-              type: "last"
-            },
+            evaluator: { params: [80], type: "gt" },
+            operator: { type: "and" },
+            query: { params: ["A"] },
+            reducer: { params: [], type: "last" },
             type: "query"
           }
         ],
-        refId: "B"
+        datasource: { type: "__expr__", uid: "__expr__" },
+        expression: "A",
+        hide: false,
+        intervalMs: 1000,
+        maxDataPoints: 43200,
+        reducer: "last",
+        refId: "B",
+        type: "reduce"
       }
     }
   ],
@@ -526,108 +581,36 @@ ALERT_RULE_JSON=$(jq -n \
   for: "1m",
   annotations: {
     summary: "High JVM Threads",
-    description: "High number of JVM threads detected. Triggering Lambda thread dump.",
+    description: "High number of JVM threads detected (>80). Triggering Lambda thread dump.",
     webhookUrl: $url
   },
   labels: {
     severity: "critical",
-    service: "unicorn-store"
-  }
-} + (if $uid != "" then {dashboardUID: $uid, panelId: 1} else {} end)')
+    alertname: "High JVM Threads",
+    cluster: "{{ $labels.cluster }}",
+    cluster_type: "{{ $labels.cluster_type }}",
+    container_name: "{{ $labels.container_name }}",
+    namespace: "{{ $labels.namespace }}",
+    task_pod_id: "{{ $labels.task_pod_id }}",
+    container_ip: "{{ $labels.container_ip }}"
+  },
+  notifications: [
+    { uid: $notifUid }
+  ]
+}')
 
-echo "$ALERT_RULE_JSON" > "$LAMBDA_ALERT_RULE_FILE"
-
-log "📤 Creating/updating alert rule (idempotent)..."
-
-RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" \
+log "📤 Creating alert rule for dashboard '$DASHBOARD_UID', panel $PANEL_ID..."
+RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
   -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
   -d "$ALERT_RULE_JSON" \
-  "$GRAFANA_URL/api/v1/provisioning/alert-rules/$RULE_UID")
+  "$GRAFANA_URL/api/v1/provisioning/alert-rules")
 
-if echo "$RESPONSE" | jq -e '.uid' > /dev/null 2>&1; then
-  RETURNED_UID=$(echo "$RESPONSE" | jq -r '.uid')
-  log "✅ Alert rule created/updated with UID: $RETURNED_UID"
+if echo "$RESPONSE" | jq -e '.uid' > /dev/null; then
+  log "✅ Lambda alert rule created: RULE_UID $(echo "$RESPONSE" | jq -r '.uid')"
 else
-  log "❌ Failed to create/update alert rule via API"
-  log "Response: $RESPONSE"
-  log "🔄 Trying ConfigMap fallback approach..."
-
-  # Create alert rule via ConfigMap
-  cat > alert-rule-configmap.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: jvm-alert-rules
-  namespace: $NAMESPACE
-  labels:
-    grafana_alert: "1"
-data:
-  alert-rules.yaml: |
-    apiVersion: 1
-    groups:
-      - name: lambda-alerts
-        orgId: 1
-        folder: Unicorn Store Dashboards
-        interval: 1m
-        rules:
-          - uid: jvm-thread-dump-alert
-            title: High JVM Threads - Lambda
-            condition: B
-            data:
-              - refId: A
-                queryType: ''
-                relativeTimeRange:
-                  from: 600
-                  to: 0
-                model:
-                  expr: jvm_threads_live_threads{job="otel-collector"}
-                  refId: A
-                  intervalMs: 1000
-                  maxDataPoints: 43200
-                datasourceUid: promds
-              - refId: B
-                queryType: ''
-                relativeTimeRange:
-                  from: 0
-                  to: 0
-                model:
-                  conditions:
-                    - evaluator:
-                        params: [80]
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params: [A]
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                  refId: B
-            intervalSeconds: 60
-            noDataState: NoData
-            execErrState: Alerting
-            for: 1m
-            annotations:
-              summary: High JVM Threads
-              description: High number of JVM threads detected. Triggering Lambda thread dump.
-              webhookUrl: $LAMBDA_URL
-            labels:
-              severity: critical
-              service: unicorn-store
-EOF
-
-  kubectl apply -f alert-rule-configmap.yaml
-
-  # Restart Grafana to pick up the ConfigMap
-  log "🔄 Restarting Grafana to apply alert rule ConfigMap..."
-  kubectl rollout restart deployment grafana -n "$NAMESPACE"
-  kubectl rollout status deployment grafana -n "$NAMESPACE" --timeout=120s
-
-  # Clean up temporary file
-  rm -f alert-rule-configmap.yaml
-
-  log "✅ Alert rule created via ConfigMap fallback"
+  log "❌ Failed to create Lambda alert rule"
+  echo "$RESPONSE"
+  exit 1
 fi
 
 set +x
@@ -775,31 +758,3 @@ else
 fi
 
 # --- Final validation of JVM setup ---
-log "🔍 Validating JVM monitoring configuration..."
-
-# Validate dashboards
-DASHBOARDS=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "http://$GRAFANA_LB/api/search?query=JVM")
-if [[ -n "$DASHBOARDS" && "$DASHBOARDS" != "[]" ]]; then
-  log "✅ JVM dashboard is available"
-else
-  log "❌ JVM dashboard not found"
-fi
-
-# Validate alert rules
-ALERT_RULES=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "http://$GRAFANA_LB/api/v1/provisioning/alert-rules")
-if [[ -n "$ALERT_RULES" && "$ALERT_RULES" != "[]" ]]; then
-  log "✅ Alert rules are configured"
-  RULE_COUNT=$(echo "$ALERT_RULES" | jq '. | length')
-  log "   Found $RULE_COUNT alert rule(s)"
-else
-  log "❌ No alert rules found"
-fi
-
-# --- Final output ---
-echo -e "\n✅ JVM Monitoring + Lambda Alert Setup Complete!"
-echo "🌍 Grafana URL: http://$GRAFANA_LB"
-echo "👤 Username: $GRAFANA_USER"
-echo "🔑 Password: $GRAFANA_PASSWORD"
-echo "🔗 Lambda Webhook URL: $LAMBDA_URL"
-
-log "✅ JVM monitoring validation complete"
