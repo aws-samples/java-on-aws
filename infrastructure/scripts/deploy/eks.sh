@@ -51,6 +51,12 @@ spec:
               value: ${SPRING_DATASOURCE_URL}
           ports:
             - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            failureThreshold: 6
+            periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
@@ -58,15 +64,13 @@ spec:
             failureThreshold: 6
             periodSeconds: 5
             initialDelaySeconds: 10
-            timeoutSeconds: 5
           startupProbe:
             httpGet:
-              path: /
+              path: /actuator/health/liveness
               port: 8080
-            failureThreshold: 6
+            failureThreshold: 10
             periodSeconds: 5
-            initialDelaySeconds: 10
-            timeoutSeconds: 5
+            initialDelaySeconds: 20
           lifecycle:
             preStop:
               exec:
@@ -87,7 +91,7 @@ metadata:
     project: unicorn-store
     app: unicorn-store-spring
 spec:
-  type: NodePort
+  type: ClusterIP
   ports:
     - port: 80
       targetPort: 8080

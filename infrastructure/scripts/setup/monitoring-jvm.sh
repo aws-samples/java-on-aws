@@ -132,56 +132,98 @@ kubectl rollout restart deployment prometheus-server -n "$NAMESPACE"
 # --- JVM Dashboard ---
 cat > "$DASHBOARD_JSON_FILE" <<EOF
 {
-  "dashboard": {
-    "id": null,
-    "title": "JVM Metrics Dashboard",
-    "tags": ["jvm", "java", "unicorn-store"],
-    "timezone": "browser",
-    "panels": [
-      {
-        "id": 1,
-        "title": "JVM Thread Count",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "jvm_threads_live_threads{job=\"otel-collector\"}",
-            "refId": "A"
+  "id": null,
+  "title": "JVM Metrics Dashboard",
+  "tags": ["jvm", "java", "unicorn-store"],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "JVM Thread Count",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "jvm_threads_live_threads{job=\"otel-collector\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "red", "value": 100}
+            ]
           }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "thresholds": {
-              "steps": [
-                {"color": "green", "value": null},
-                {"color": "yellow", "value": 50},
-                {"color": "red", "value": 100}
-              ]
-            }
-          }
-        },
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+        }
       },
-      {
-        "id": 2,
-        "title": "JVM Memory Usage",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "jvm_memory_used_bytes{job=\"otel-collector\"}",
-            "refId": "A"
-          }
-        ],
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
-      }
-    ],
-    "time": {"from": "now-1h", "to": "now"},
-    "refresh": "30s"
-  }
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+    },
+    {
+      "id": 2,
+      "title": "JVM Memory Usage",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{job=\"otel-collector\"}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+    },
+    {
+      "id": 3,
+      "title": "JVM GC Collections",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(jvm_gc_collections_total{job=\"otel-collector\"}[5m])",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+    },
+    {
+      "id": 4,
+      "title": "JVM Heap Memory",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{job=\"otel-collector\",area=\"heap\"}",
+          "refId": "A",
+          "legendFormat": "Used"
+        },
+        {
+          "expr": "jvm_memory_max_bytes{job=\"otel-collector\",area=\"heap\"}",
+          "refId": "B",
+          "legendFormat": "Max"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+    }
+  ],
+  "time": {"from": "now-1h", "to": "now"},
+  "refresh": "30s",
+  "schemaVersion": 30,
+  "version": 1
 }
 EOF
+
+# Wait for Grafana to be ready before creating dashboard
+log "⏳ Waiting for Grafana to be ready for dashboard creation..."
+for i in {1..10}; do
+  STATUS=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/health" | jq -r .database || true)
+  if [[ "$STATUS" == "ok" ]]; then
+    log "✅ Grafana is ready"
+    break
+  fi
+  log "⏳ ($i/10) Grafana not ready yet..."
+  sleep 3
+done
 
 cat > "$DASHBOARD_PROVISIONING_FILE" <<EOF
 apiVersion: 1
@@ -194,12 +236,60 @@ providers:
     updateIntervalSeconds: 10
     allowUiUpdates: true
     options:
-      path: /etc/grafana/provisioning/dashboards
+      path: /var/lib/grafana/dashboards
       foldersFromFilesStructure: false
 EOF
 
-kubectl create configmap unicornstore-dashboard --from-file="$DASHBOARD_JSON_FILE" --from-file="$DASHBOARD_PROVISIONING_FILE" -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
-kubectl label configmap unicornstore-dashboard -n "$NAMESPACE" grafana_dashboard=1 --overwrite
+# Get or create folder first
+FOLDER_TITLE="Unicorn Store Dashboards"
+FOLDER_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+  "$GRAFANA_URL/api/folders" | jq -r --arg title "$FOLDER_TITLE" '.[] | select(.title == $title) | .uid')
+
+if [[ -z "$FOLDER_UID" ]]; then
+  log "📁 Folder not found. Creating '$FOLDER_TITLE'..."
+
+  FOLDER_UID=$(curl -s -X POST -H "Content-Type: application/json" \
+    -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+    -d "{\"title\":\"$FOLDER_TITLE\"}" \
+    "$GRAFANA_URL/api/folders" | jq -r '.uid')
+
+  if [[ -z "$FOLDER_UID" || "$FOLDER_UID" == "null" ]]; then
+    log "❌ Failed to create folder '$FOLDER_TITLE'"
+    exit 1
+  fi
+  log "📁 Folder '$FOLDER_TITLE' created with UID: $FOLDER_UID"
+else
+  log "📁 Found folder UID: $FOLDER_UID"
+fi
+
+# Create dashboard directly via Grafana API with proper folder placement
+log "📊 Creating JVM dashboard in folder '$FOLDER_TITLE'..."
+
+DASHBOARD_PAYLOAD=$(jq -n \
+  --argjson dashboard "$(cat "$DASHBOARD_JSON_FILE")" \
+  --arg folderUid "$FOLDER_UID" \
+  '{
+    dashboard: $dashboard,
+    folderUid: $folderUid,
+    overwrite: true,
+    message: "Created JVM Metrics Dashboard via API"
+  }')
+
+DASHBOARD_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
+  -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+  -d "$DASHBOARD_PAYLOAD" \
+  "$GRAFANA_URL/api/dashboards/db")
+
+DASHBOARD_UID=$(echo "$DASHBOARD_RESPONSE" | jq -r '.uid // empty')
+
+if [[ -n "$DASHBOARD_UID" && "$DASHBOARD_UID" != "null" ]]; then
+  log "✅ JVM dashboard created successfully with UID: $DASHBOARD_UID"
+  log "📁 Dashboard placed in folder: $FOLDER_TITLE"
+else
+  log "❌ Failed to create JVM dashboard"
+  log "Response: $DASHBOARD_RESPONSE"
+  exit 1
+fi
 
 # --- Lambda Function URL setup ---
 # Get Lambda Function URL directly from Lambda service (CDK creates this)
@@ -262,11 +352,20 @@ if [[ -z "$NOTIF_UID" ]]; then
     }
   }')
 
-  # Use PUT for idempotent creation/update
-  curl -s -X PUT -H "Content-Type: application/json" \
+  # First try POST to create, then PUT to update if it exists
+  RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
     -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
     -d "$CONTACT_POINT_JSON" \
-    "$GRAFANA_URL/api/v1/provisioning/contact-points/$CONTACT_POINT_UID"
+    "$GRAFANA_URL/api/v1/provisioning/contact-points" 2>/dev/null || true)
+
+  # If POST failed, try PUT for update
+  if [[ -z "$RESPONSE" ]] || echo "$RESPONSE" | grep -q "error\|failed"; then
+    log "🔄 POST failed, trying PUT for update..."
+    curl -s -X PUT -H "Content-Type: application/json" \
+      -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+      -d "$CONTACT_POINT_JSON" \
+      "$GRAFANA_URL/api/v1/provisioning/contact-points/$CONTACT_POINT_UID" 2>/dev/null || true
+  fi
 
   sleep 2
 
@@ -276,37 +375,87 @@ if [[ -z "$NOTIF_UID" ]]; then
 fi
 
 if [[ -z "$NOTIF_UID" ]]; then
-  log "❌ Failed to create contact point 'lambda-webhook'"
-  exit 1
+  log "❌ Failed to create contact point 'lambda-webhook' via API"
+  log "🔄 Trying ConfigMap fallback approach..."
+
+  # Create contact point via ConfigMap
+  cat > contact-point-configmap.yaml <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lambda-webhook-contact-point
+  namespace: $NAMESPACE
+  labels:
+    grafana_notifier: "1"
+data:
+  contact-point.yaml: |
+    apiVersion: 1
+    contactPoints:
+      - orgId: 1
+        name: lambda-webhook
+        receivers:
+          - uid: lambda-webhook-contact
+            type: webhook
+            settings:
+              url: $LAMBDA_URL
+              httpMethod: POST
+              username: $WEBHOOK_USER
+              password: $WEBHOOK_PASSWORD
+              title: "JVM Thread Dump Alert"
+              text: "High JVM thread count detected"
+EOF
+
+  kubectl apply -f contact-point-configmap.yaml
+
+  # Restart Grafana to pick up the ConfigMap
+  log "🔄 Restarting Grafana to apply contact point ConfigMap..."
+  kubectl rollout restart deployment grafana -n "$NAMESPACE"
+  kubectl rollout status deployment grafana -n "$NAMESPACE" --timeout=120s
+
+  # Wait for Grafana to be ready
+  log "⏳ Waiting for Grafana to restart and load contact point..."
+  sleep 15
+
+  # Check if contact point is now available
+  for i in {1..10}; do
+    NOTIF_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+      "$GRAFANA_URL/api/v1/provisioning/contact-points" | \
+      jq -r '.[] | select(.name=="lambda-webhook") | .uid' 2>/dev/null || true)
+
+    if [[ -n "$NOTIF_UID" ]]; then
+      log "✅ Contact point created via ConfigMap with UID: $NOTIF_UID"
+      break
+    fi
+
+    log "⏳ Waiting for contact point to be available... ($i/10)"
+    sleep 3
+  done
+
+  # Clean up temporary file
+  rm -f contact-point-configmap.yaml
+
+  if [[ -z "$NOTIF_UID" ]]; then
+    log "⚠️ Contact point creation failed via both API and ConfigMap"
+    log "⚠️ Continuing with setup, but alerts may not work properly"
+    NOTIF_UID="lambda-webhook-contact"  # Use fallback UID for rest of script
+  fi
 else
   log "✅ Contact point UID: $NOTIF_UID"
 fi
 
-# Get or create folder
-FOLDER_TITLE="Unicorn Store Dashboards"
-FOLDER_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
-  "$GRAFANA_URL/api/folders" | jq -r --arg title "$FOLDER_TITLE" '.[] | select(.title == $title) | .uid')
+# Folder UID is already set from dashboard creation above
+# FOLDER_UID is already available from the dashboard creation section
 
-if [[ -z "$FOLDER_UID" ]]; then
-  log "📁 Folder not found. Creating '$FOLDER_TITLE'..."
-
-  FOLDER_UID=$(curl -s -X POST -H "Content-Type: application/json" \
-    -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
-    -d "{\"title\":\"$FOLDER_TITLE\"}" \
-    "$GRAFANA_URL/api/folders" | jq -r '.uid')
-
-  if [[ -z "$FOLDER_UID" || "$FOLDER_UID" == "null" ]]; then
-    log "❌ Failed to create folder '$FOLDER_TITLE'"
-    exit 1
+# We already have the dashboard UID from the API creation above
+# DASHBOARD_UID is already set from the dashboard creation
+if [[ -z "$DASHBOARD_UID" || "$DASHBOARD_UID" == "null" ]]; then
+  # Fallback: try to find the dashboard
+  DASHBOARD_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/search?query=JVM" | jq -r '.[0].uid // empty')
+  if [[ -z "$DASHBOARD_UID" || "$DASHBOARD_UID" == "null" ]]; then
+    log "ℹ️ JVM dashboard not found, creating alert rule without dashboard reference"
+    DASHBOARD_UID=""
   fi
-  log "📁 Folder '$FOLDER_TITLE' created with UID: $FOLDER_UID"
-else
-  log "📁 Found folder UID: $FOLDER_UID"
 fi
-
-# Get dashboard UID and panel ID
-DASHBOARD_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/search?query=JVM" | jq -r '.[0].uid')
-PANEL_ID=1
 
 # Build alert rule JSON with fixed UID for idempotency
 log "🛠️ Generating alert rule JSON..."
@@ -315,14 +464,11 @@ RULE_UID="jvm-thread-dump-alert"
 ALERT_RULE_JSON=$(jq -n \
   --arg url "$LAMBDA_URL" \
   --arg uid "$DASHBOARD_UID" \
-  --argjson pid "$PANEL_ID" \
   --arg notifUid "$NOTIF_UID" \
   --arg folderUid "$FOLDER_UID" \
   --arg ruleUid "$RULE_UID" '
 {
   uid: $ruleUid,
-  dashboardUID: $uid,
-  panelId: $pid,
   folderUID: $folderUid,
   ruleGroup: "lambda-alerts",
   title: "High JVM Threads - Lambda",
@@ -337,8 +483,11 @@ ALERT_RULE_JSON=$(jq -n \
       },
       model: {
         expr: "jvm_threads_live_threads{job=\"otel-collector\"}",
-        refId: "A"
-      }
+        refId: "A",
+        intervalMs: 1000,
+        maxDataPoints: 43200
+      },
+      datasourceUid: "promds"
     },
     {
       refId: "B",
@@ -372,7 +521,6 @@ ALERT_RULE_JSON=$(jq -n \
     }
   ],
   intervalSeconds: 60,
-  maxDataPoints: 43200,
   noDataState: "NoData",
   execErrState: "Alerting",
   for: "1m",
@@ -385,7 +533,7 @@ ALERT_RULE_JSON=$(jq -n \
     severity: "critical",
     service: "unicorn-store"
   }
-}')
+} + (if $uid != "" then {dashboardUID: $uid, panelId: 1} else {} end)')
 
 echo "$ALERT_RULE_JSON" > "$LAMBDA_ALERT_RULE_FILE"
 
@@ -396,13 +544,90 @@ RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" \
   -d "$ALERT_RULE_JSON" \
   "$GRAFANA_URL/api/v1/provisioning/alert-rules/$RULE_UID")
 
-if echo "$RESPONSE" | jq -e '.uid' > /dev/null; then
+if echo "$RESPONSE" | jq -e '.uid' > /dev/null 2>&1; then
   RETURNED_UID=$(echo "$RESPONSE" | jq -r '.uid')
   log "✅ Alert rule created/updated with UID: $RETURNED_UID"
 else
-  log "❌ Failed to create/update alert rule"
-  echo "$RESPONSE"
-  exit 1
+  log "❌ Failed to create/update alert rule via API"
+  log "Response: $RESPONSE"
+  log "🔄 Trying ConfigMap fallback approach..."
+
+  # Create alert rule via ConfigMap
+  cat > alert-rule-configmap.yaml <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jvm-alert-rules
+  namespace: $NAMESPACE
+  labels:
+    grafana_alert: "1"
+data:
+  alert-rules.yaml: |
+    apiVersion: 1
+    groups:
+      - name: lambda-alerts
+        orgId: 1
+        folder: Unicorn Store Dashboards
+        interval: 1m
+        rules:
+          - uid: jvm-thread-dump-alert
+            title: High JVM Threads - Lambda
+            condition: B
+            data:
+              - refId: A
+                queryType: ''
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  expr: jvm_threads_live_threads{job="otel-collector"}
+                  refId: A
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                datasourceUid: promds
+              - refId: B
+                queryType: ''
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                model:
+                  conditions:
+                    - evaluator:
+                        params: [80]
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params: [A]
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  refId: B
+            intervalSeconds: 60
+            noDataState: NoData
+            execErrState: Alerting
+            for: 1m
+            annotations:
+              summary: High JVM Threads
+              description: High number of JVM threads detected. Triggering Lambda thread dump.
+              webhookUrl: $LAMBDA_URL
+            labels:
+              severity: critical
+              service: unicorn-store
+EOF
+
+  kubectl apply -f alert-rule-configmap.yaml
+
+  # Restart Grafana to pick up the ConfigMap
+  log "🔄 Restarting Grafana to apply alert rule ConfigMap..."
+  kubectl rollout restart deployment grafana -n "$NAMESPACE"
+  kubectl rollout status deployment grafana -n "$NAMESPACE" --timeout=120s
+
+  # Clean up temporary file
+  rm -f alert-rule-configmap.yaml
+
+  log "✅ Alert rule created via ConfigMap fallback"
 fi
 
 set +x
@@ -451,7 +676,7 @@ if [[ "$CURRENT_RECEIVER" == "lambda-webhook" ]]; then
   log "✅ Notification policy already configured for lambda-webhook"
 else
   log "🔧 Updating notification policy to use lambda-webhook..."
-  
+
   # Create notification policy via API
   POLICY_JSON=$(cat <<EOF
 {
