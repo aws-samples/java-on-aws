@@ -128,9 +128,8 @@ EKS_VPC_CIDR=$(aws ec2 describe-vpcs \
   --vpc-ids "$VPC_ID" \
   --query "Vpcs[0].CidrBlock" --output text)
 
-LAMBDA_SG_ID=$(aws cloudformation describe-stacks --stack-name unicornstore-stack --query "Stacks[0].Outputs[?ExportName=='LambdaSecurityGroupId'].OutputValue" --output text)
-
-ECS_SG_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=unicorn-store-spring-ecs-sg" --query "SecurityGroups[0].GroupId" --output text)
+LAMBDA_SG_ID=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values='$VPC_ID'" \
+  --query 'SecurityGroups[?GroupName==`'unicornstore-thread-dump-lambda-sg'`].GroupId' --output text)
 
 sleep 1
 
