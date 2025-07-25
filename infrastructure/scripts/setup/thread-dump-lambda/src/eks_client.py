@@ -103,7 +103,7 @@ class EKSClient:
     def _get_cluster_endpoint(self) -> str:
         """
         Get the cluster endpoint URL
-        
+
         Returns:
             str: The cluster endpoint URL
         """
@@ -182,10 +182,10 @@ class EKSClient:
     def make_kube_client(self, api_cls: Type[T]) -> T:
         """
         Create a Kubernetes client of the specified type
-        
+
         Args:
             api_cls: The Kubernetes API client class to create
-            
+
         Returns:
             An instance of the specified client class
         """
@@ -208,45 +208,45 @@ class EKSClient:
     def find_pod_by_pattern(self, namespace: str, name_pattern: str) -> str:
         """
         Find a pod in the namespace matching the given pattern
-        
+
         Args:
             namespace: The namespace to search in
             name_pattern: Pattern to match against pod names
-            
+
         Returns:
             str: Name of the first matching pod
-            
+
         Raises:
             Exception: If no matching pod is found or on API errors
         """
         try:
             pods = self.core_v1_api.list_namespaced_pod(namespace=namespace)
-            
+
             for pod in pods.items:
                 if re.search(name_pattern, pod.metadata.name):
                     logger.info(f"Found matching pod: {pod.metadata.name}")
                     return pod.metadata.name
-            
+
             raise ValueError(f"No pod found matching pattern '{name_pattern}' in namespace '{namespace}'")
-        
+
         except ApiException as e:
             logger.error(f"Kubernetes API error while finding pod: {str(e)}")
             raise Exception(f"Kubernetes API error: {e}")
 
-    def create_heap_dump(self, namespace: str, pod_name: str, container_name: Optional[str] = None, 
+    def create_heap_dump(self, namespace: str, pod_name: str, container_name: Optional[str] = None,
                          output_path: str = "/tmp/heapdump.hprof") -> str:
         """
         Create a heap dump from a Java application running in a pod
-        
+
         Args:
             namespace: Kubernetes namespace where the pod is running
             pod_name: Name of the pod or pattern to match
             container_name: Optional name of the container (if pod has multiple containers)
             output_path: Path where the heap dump should be saved in the container
-            
+
         Returns:
             str: The path to the created heap dump file
-            
+
         Raises:
             Exception: On various error conditions
         """
@@ -271,8 +271,8 @@ class EKSClient:
 
             # Command to create heap dump
             exec_command = [
-                '/bin/sh', 
-                '-c', 
+                '/bin/sh',
+                '-c',
                 (f'if command -v jcmd >/dev/null 2>&1; then '
                  f'PID=$(jcmd | grep -v jcmd | cut -d" " -f1); '
                  f'jcmd $PID GC.heap_dump {output_path}; '
@@ -286,7 +286,7 @@ class EKSClient:
             ]
 
             logger.info(f"Executing heap dump command in pod {pod_name}, container {container_name}")
-            
+
             resp = stream(
                 self.core_v1_api.connect_get_namespaced_pod_exec,
                 pod_name,
@@ -316,18 +316,18 @@ class EKSClient:
             logger.error(f"Unexpected error in create_heap_dump: {str(e)}")
             raise Exception(f"Unexpected error while creating heap dump: {e}")
 
-    def copy_file_from_pod(self, namespace: str, pod_name: str, src_path: str, 
+    def copy_file_from_pod(self, namespace: str, pod_name: str, src_path: str,
                            dest_path: str, container_name: Optional[str] = None) -> None:
         """
         Copy a file from a pod to the local filesystem
-        
+
         Args:
             namespace: Kubernetes namespace where the pod is running
             pod_name: Name of the pod
             src_path: Source path of the file in the pod
             dest_path: Destination path on the local filesystem
             container_name: Optional name of the container (if pod has multiple containers)
-            
+
         Raises:
             Exception: On various error conditions
         """
@@ -347,7 +347,7 @@ class EKSClient:
 
             with open(dest_path, 'wb') as f:
                 f.write(resp.encode('utf-8'))
-            
+
             logger.info(f"Successfully copied file from {src_path} to {dest_path}")
 
         except ApiException as e:
@@ -360,15 +360,15 @@ class EKSClient:
     def get_thread_dump(self, namespace: str, pod_name: str, container_name: str = None) -> str:
         """
         Get a thread dump from a Java application running in a pod
-        
+
         Args:
             namespace: Kubernetes namespace where the pod is running
             pod_name: Name of the pod or pattern to match
             container_name: Optional name of the container (if pod has multiple containers)
-            
+
         Returns:
             str: The thread dump output
-            
+
         Raises:
             Exception: On various error conditions
         """
@@ -393,8 +393,8 @@ class EKSClient:
 
             # Command to get thread dump
             exec_command = [
-                '/bin/sh', 
-                '-c', 
+                '/bin/sh',
+                '-c',
                 ('if command -v jcmd >/dev/null 2>&1; then '
                  'PID=$(jcmd | grep -v jcmd | cut -d" " -f1); '
                  'jcmd $PID Thread.print; '
@@ -406,7 +406,7 @@ class EKSClient:
             ]
 
             logger.info(f"Executing thread dump command in pod {pod_name}, container {container_name}")
-            
+
             resp = stream(
                 self.core_v1_api.connect_get_namespaced_pod_exec,
                 pod_name,

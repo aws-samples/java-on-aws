@@ -28,6 +28,7 @@ import software.amazon.awscdk.services.secretsmanager.Secret;
 import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.SecretValue;
 import software.amazon.awscdk.SecretsManagerSecretOptions;
+import software.amazon.awscdk.Stack;
 import software.constructs.Construct;
 
 import java.util.List;
@@ -67,8 +68,18 @@ public class InfrastructureCore extends Construct {
     }
 
     private Bucket createWorkshopBucket() {
+        String timestamp = java.time.LocalDateTime.now().format(
+            java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
+        );
+        String bucketName = String.format("workshop-%s-%s-%s",
+            Stack.of(this).getAccount(),
+            Stack.of(this).getRegion(),
+            timestamp
+        );
+
         var workshopBucket = Bucket.Builder
             .create(this, "WorkshopBucket")
+            .bucketName(bucketName)
             .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
             .enforceSsl(true)
             .removalPolicy(RemovalPolicy.DESTROY)

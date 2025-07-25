@@ -62,7 +62,6 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
-            <version>1.14.7</version>
         </dependency>
         <!-- AWS SDK dependencies -->
         <dependency>

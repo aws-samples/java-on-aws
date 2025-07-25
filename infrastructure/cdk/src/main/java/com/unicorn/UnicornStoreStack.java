@@ -32,7 +32,10 @@ public class UnicornStoreStack extends Stack {
         echo '=== Additional Setup ===\n'
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
+
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/thread-dump-lambda/build-and-deploy.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring-jvm.sh"
         """;
 
     private final String buildspec = """
@@ -64,14 +67,9 @@ public class UnicornStoreStack extends Stack {
         // Create VPC
         var vpc = new WorkshopVpc(this, "UnicornStoreVpc", "unicornstore-vpc").getVpc();
 
-        String bootstrapScriptWithRegion = bootstrapScript + String.format(
-                "sudo -H -i -u ec2-user bash -c \"cd ~/java-on-aws/infrastructure/lambda/ && ./build-and-deploy.sh --region %s\"",
-                this.getRegion()
-        );
-
         // Create VSCode IDE
         var ideProps = new VSCodeIdeProps();
-            ideProps.setBootstrapScript(bootstrapScriptWithRegion);
+            ideProps.setBootstrapScript(bootstrapScript);
             ideProps.setVpc(vpc);
             ideProps.setInstanceName("unicornstore-ide");
             ideProps.setInstanceType(InstanceType.of(InstanceClass.M5, InstanceSize.XLARGE));
@@ -99,11 +97,8 @@ public class UnicornStoreStack extends Stack {
         new InfrastructureContainers(this, "InfrastructureContainers", infrastructureCore);
         new InfrastructureEks(this, "InfrastructureEks", infrastructureCore);
 
-        // Create Lambda function to create thread dump (after InfrastructureEks)
-        InfrastructureLambdaBedrock lambdaBedrock = new InfrastructureLambdaBedrock(this, "InfrastructureLambdaBedrock", this.getRegion(), infrastructureCore.getWorkshopBucket(), eksCluster, vpc);
-
-        // Create Prometheus and Grafana infrastructure. Create Grafana dashboards (after InfrastructureEks)
-        MonitoringConstruct monitoring = new MonitoringConstruct(this, "Monitoring", vpc, eksCluster.getCluster(), lambdaBedrock.getThreadDumpFunction());
+        // Create JVM monitoring infrastructure with Lambda thread dump
+        new InfrastructureMonitoringJVM(this, "InfrastructureMonitoringJVM", infrastructureCore.getWorkshopBucket(), eksCluster, vpc);
 
         // Execute Database setup
         var databaseSetup = new DatabaseSetup(this, "UnicornStoreDatabaseSetup", infrastructureCore);

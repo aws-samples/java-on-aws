@@ -9,8 +9,6 @@ log() {
 # --- Configuration ---
 NAMESPACE="monitoring"
 GRAFANA_SECRET_NAME="grafana-admin"
-SECRET_NAME="grafana-webhook-credentials"
-PARAM_NAME="/unicornstore/prometheus/internal-dns"
 
 # Temporary files to clean up
 VALUES_FILE="prometheus-values.yaml"
@@ -27,8 +25,7 @@ cleanup_temp_files() {
   log "🧹 Cleaning up temporary files..."
   rm -f "$VALUES_FILE" "$EXTRA_SCRAPE_FILE" "$DATASOURCE_FILE" "$NOTIFICATION_POLICY_CONFIGMAP_FILE" \
         "$DASHBOARD_JSON_FILE" "$DASHBOARD_PROVISIONING_FILE" \
-        "$ALERT_RULE_FILE" "$GRAFANA_VALUES_FILE" "$LAMBDA_ALERT_RULE_FILE" \
-        "grafana-credentials.txt"
+        "$ALERT_RULE_FILE" "$GRAFANA_VALUES_FILE" "$LAMBDA_ALERT_RULE_FILE"
 }
 trap cleanup_temp_files EXIT
 
@@ -59,7 +56,7 @@ fi
 # --- Clean up Grafana alert rules (if Grafana is accessible) ---
 if [[ -n "$GRAFANA_LB" && -n "$GRAFANA_PASSWORD" ]]; then
   log "🔧 Cleaning up Grafana alert rules..."
-  
+
   # Wait briefly for Grafana to be accessible
   for i in {1..5}; do
     if curl -s -o /dev/null -w "%{http_code}" -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/health" | grep -q "200"; then
@@ -69,7 +66,7 @@ if [[ -n "$GRAFANA_LB" && -n "$GRAFANA_PASSWORD" ]]; then
     log "⏳ Waiting for Grafana access... ($i/5)"
     sleep 2
   done
-  
+
   # Delete alert rules
   ALERT_RULES=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/v1/provisioning/alert-rules" 2>/dev/null || echo "[]")
   if [[ "$ALERT_RULES" != "[]" ]]; then
@@ -81,7 +78,7 @@ if [[ -n "$GRAFANA_LB" && -n "$GRAFANA_PASSWORD" ]]; then
       fi
     done
   fi
-  
+
   # Delete contact points
   CONTACT_POINTS=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/v1/provisioning/contact-points" 2>/dev/null || echo "[]")
   if [[ "$CONTACT_POINTS" != "[]" ]]; then
@@ -93,7 +90,7 @@ if [[ -n "$GRAFANA_LB" && -n "$GRAFANA_PASSWORD" ]]; then
       fi
     done
   fi
-  
+
   # Delete folders
   FOLDERS=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/folders" 2>/dev/null || echo "[]")
   if [[ "$FOLDERS" != "[]" ]]; then
@@ -110,21 +107,21 @@ fi
 # --- Clean up Prometheus LoadBalancer Security Group rules ---
 if [[ -n "$PROM_LB_HOSTNAME" ]]; then
   log "🔐 Cleaning up Prometheus LoadBalancer Security Group rules..."
-  
+
   VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=unicornstore-vpc" --query "Vpcs[0].VpcId" --output text 2>/dev/null || true)
   if [[ -n "$VPC_ID" && "$VPC_ID" != "None" ]]; then
     VPC_CIDR=$(aws ec2 describe-vpcs --vpc-ids "$VPC_ID" --query "Vpcs[0].CidrBlock" --output text 2>/dev/null || true)
-    
+
     LB_ARN=$(aws elbv2 describe-load-balancers --output json 2>/dev/null | jq -r \
       --arg dns "$PROM_LB_HOSTNAME" '
         .LoadBalancers[] | select(.DNSName == $dns) | .LoadBalancerArn' || true)
-    
+
     if [[ -n "$LB_ARN" ]]; then
       ILB_SG_ID=$(aws elbv2 describe-load-balancers \
         --load-balancer-arns "$LB_ARN" \
         --query "LoadBalancers[0].SecurityGroups[0]" \
         --output text 2>/dev/null || true)
-      
+
       if [[ -n "$ILB_SG_ID" && "$ILB_SG_ID" != "None" ]]; then
         log "🗑️ Removing security group rule from $ILB_SG_ID"
         aws ec2 revoke-security-group-ingress \
@@ -202,43 +199,6 @@ done
 # --- Clean up AWS resources ---
 log "🗑️ Cleaning up AWS resources..."
 
-# Delete SSM Parameter
-if aws ssm get-parameter --name "$PARAM_NAME" >/dev/null 2>&1; then
-  log "🗑️ Deleting SSM parameter $PARAM_NAME"
-  aws ssm delete-parameter --name "$PARAM_NAME" || log "⚠️ Failed to delete SSM parameter"
-else
-  log "ℹ️ SSM parameter $PARAM_NAME not found"
-fi
-
-# Delete Secrets Manager secret
-if aws secretsmanager describe-secret --secret-id "$SECRET_NAME" >/dev/null 2>&1; then
-  log "🗑️ Deleting Secrets Manager secret $SECRET_NAME"
-  aws secretsmanager delete-secret --secret-id "$SECRET_NAME" --force-delete-without-recovery || log "⚠️ Failed to delete secret"
-else
-  log "ℹ️ Secrets Manager secret $SECRET_NAME not found"
-fi
-
-# --- Clean up Lambda Function URL (optional) ---
-log "🔧 Checking Lambda Function URL..."
-LAMBDA_FUNCTION_NAME="unicornstore-thread-dump-lambda"
-
-if aws lambda get-function --function-name "$LAMBDA_FUNCTION_NAME" >/dev/null 2>&1; then
-  # Check if Function URL exists
-  if aws lambda get-function-url-config --function-name "$LAMBDA_FUNCTION_NAME" >/dev/null 2>&1; then
-    log "🗑️ Removing Lambda Function URL..."
-    aws lambda delete-function-url-config --function-name "$LAMBDA_FUNCTION_NAME" || log "⚠️ Failed to delete Function URL"
-    
-    # Remove the permission
-    aws lambda remove-permission \
-      --function-name "$LAMBDA_FUNCTION_NAME" \
-      --statement-id AllowPublicAccess 2>/dev/null || log "ℹ️ Permission may not exist"
-  else
-    log "ℹ️ Lambda Function URL not found"
-  fi
-else
-  log "ℹ️ Lambda function $LAMBDA_FUNCTION_NAME not found"
-fi
-
 # --- Remove Helm repositories (optional) ---
 log "🗑️ Cleaning up Helm repositories..."
 helm repo remove prometheus-community 2>/dev/null || log "ℹ️ prometheus-community repo not found"
@@ -263,18 +223,7 @@ else
   log "✅ All monitoring Helm releases cleaned up"
 fi
 
-# Check AWS resources
-if aws secretsmanager describe-secret --secret-id "$SECRET_NAME" >/dev/null 2>&1; then
-  log "⚠️ Warning: Secrets Manager secret $SECRET_NAME still exists"
-else
-  log "✅ Secrets Manager secret cleaned up"
-fi
-
-if aws ssm get-parameter --name "$PARAM_NAME" >/dev/null 2>&1; then
-  log "⚠️ Warning: SSM parameter $PARAM_NAME still exists"
-else
-  log "✅ SSM parameter cleaned up"
-fi
+# Check AWS resources - no secrets to check since we use IDE password
 
 log "✅ Monitoring stack cleanup completed!"
 log "ℹ️ Note: Some AWS resources (like Load Balancers) may take additional time to fully terminate"
