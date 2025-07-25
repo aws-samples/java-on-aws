@@ -10,41 +10,18 @@ log() {
 NAMESPACE="monitoring"
 GRAFANA_USER="admin"
 
-# Get IDE password from Secrets Manager for Grafana admin password
-log "📋 Retrieving IDE password for Grafana admin..."
-IDE_SECRET_NAME="unicornstore-ide-password-lambda"
-IDE_SECRET=$(aws secretsmanager get-secret-value \
-    --secret-id "$IDE_SECRET_NAME" \
+# Get password from Secrets Manager
+SECRET_NAME="unicornstore-ide-password-lambda"
+SECRET_VALUE=$(aws secretsmanager get-secret-value \
+    --secret-id "$SECRET_NAME" \
     --query 'SecretString' \
-    --output text 2>/dev/null || echo "")
+    --output text)
 
-if [[ -n "$IDE_SECRET" ]]; then
-    GRAFANA_PASSWORD=$(echo "$IDE_SECRET" | jq -r '.password' 2>/dev/null || echo "")
-    if [[ -n "$GRAFANA_PASSWORD" && "$GRAFANA_PASSWORD" != "null" ]]; then
-        log "✅ Using IDE password from Secrets Manager for Grafana admin"
-    else
-        GRAFANA_PASSWORD=""
-    fi
-fi
+GRAFANA_PASSWORD=$(echo "$SECRET_VALUE" | jq -r '.password')
 
-# Fallback: Try to source IDE_PASSWORD from workshop configuration
-if [[ -z "$GRAFANA_PASSWORD" && -f /etc/profile.d/workshop.sh ]]; then
-    source /etc/profile.d/workshop.sh
-    if [[ -n "${IDE_PASSWORD:-}" ]]; then
-        GRAFANA_PASSWORD="$IDE_PASSWORD"
-        log "✅ Using IDE_PASSWORD from workshop configuration"
-    fi
-fi
-
-# Final fallback: Get from existing Grafana secret
-if [[ -z "$GRAFANA_PASSWORD" ]]; then
-    GRAFANA_PASSWORD=$(kubectl get secret grafana-admin -n "$NAMESPACE" -o jsonpath="{.data.password}" 2>/dev/null | base64 --decode || echo "")
-    if [[ -n "$GRAFANA_PASSWORD" ]]; then
-        log "✅ Using existing Grafana password"
-    else
-        log "❌ Could not retrieve Grafana password. Please run monitoring.sh first."
-        exit 1
-    fi
+if [[ -z "$GRAFANA_PASSWORD" || "$GRAFANA_PASSWORD" == "null" ]]; then
+    log "❌ Failed to retrieve password from $SECRET_NAME"
+    exit 1
 fi
 
 # File variables
@@ -77,11 +54,11 @@ fi
 
 GRAFANA_URL="http://$GRAFANA_LB"
 
-# Update Grafana password if we retrieved IDE password
+# Update Grafana password if we retrieved a different password
 if kubectl get secret grafana-admin -n "$NAMESPACE" >/dev/null 2>&1; then
     CURRENT_PASSWORD=$(kubectl get secret grafana-admin -n "$NAMESPACE" -o jsonpath="{.data.password}" | base64 --decode)
     if [[ "$CURRENT_PASSWORD" != "$GRAFANA_PASSWORD" ]]; then
-        log "🔄 Updating Grafana password to match IDE password..."
+        log "🔄 Updating Grafana password..."
         kubectl create secret generic grafana-admin \
           --from-literal=username="$GRAFANA_USER" \
           --from-literal=password="$GRAFANA_PASSWORD" \
@@ -131,9 +108,9 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 EOF
 
-# -- Set webhook credentials using the same IDE password as Grafana
+# Set webhook credentials
 WEBHOOK_USER="grafana-alerts"
-WEBHOOK_PASSWORD="$GRAFANA_PASSWORD"  # Reuse the IDE password we already retrieved
+WEBHOOK_PASSWORD="$GRAFANA_PASSWORD"
 
 echo "Webhook credentials:"
 echo "Username: $WEBHOOK_USER"

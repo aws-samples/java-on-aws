@@ -11,9 +11,19 @@ NAMESPACE="monitoring"
 GRAFANA_SECRET_NAME="grafana-admin"
 GRAFANA_USER="admin"
 
-# Generate random password for Grafana admin (can be overridden by external scripts)
-GRAFANA_PASSWORD="${GRAFANA_PASSWORD:-$(openssl rand -base64 16 | tr -d '\n')}"
-log "🔑 Using Grafana password: ${GRAFANA_PASSWORD:0:4}****"
+# Get password from Secrets Manager
+SECRET_NAME="unicornstore-ide-password-lambda"
+SECRET_VALUE=$(aws secretsmanager get-secret-value \
+    --secret-id "$SECRET_NAME" \
+    --query 'SecretString' \
+    --output text)
+
+GRAFANA_PASSWORD=$(echo "$SECRET_VALUE" | jq -r '.password')
+
+if [[ -z "$GRAFANA_PASSWORD" || "$GRAFANA_PASSWORD" == "null" ]]; then
+    log "❌ Failed to retrieve password from $SECRET_NAME"
+    exit 1
+fi
 
 VALUES_FILE="prometheus-values.yaml"
 EXTRA_SCRAPE_FILE="extra-scrape-configs.yaml"
