@@ -210,6 +210,11 @@ main() {
     fi
 
     print_success "Script completed successfully!"
+    
+    # Clean up build artifacts
+    print_status "Cleaning up build artifacts"
+    rm -rf "$DIST_DIR"
+    print_success "Build artifacts cleaned up"
 }
 
 # Run main function
