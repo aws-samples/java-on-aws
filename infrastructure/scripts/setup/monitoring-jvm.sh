@@ -263,12 +263,16 @@ NOTIF_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
 if [[ -z "$NOTIF_UID" ]]; then
   log "🔧 Contact point not found, creating..."
 
+  # Use fixed UID for idempotency
+  CONTACT_POINT_UID="lambda-webhook-contact"
   CONTACT_POINT_JSON=$(jq -n \
     --arg name "lambda-webhook" \
+    --arg uid "$CONTACT_POINT_UID" \
     --arg url "$LAMBDA_URL" \
     --arg user "$WEBHOOK_USER" \
     --arg pass "$WEBHOOK_PASSWORD" \
   '{
+    uid: $uid,
     name: $name,
     type: "webhook",
     settings: {
@@ -281,10 +285,11 @@ if [[ -z "$NOTIF_UID" ]]; then
     }
   }')
 
-  curl -s -X POST -H "Content-Type: application/json" \
+  # Use PUT for idempotent creation/update
+  curl -s -X PUT -H "Content-Type: application/json" \
     -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
     -d "$CONTACT_POINT_JSON" \
-    "$GRAFANA_URL/api/v1/provisioning/contact-points"
+    "$GRAFANA_URL/api/v1/provisioning/contact-points/$CONTACT_POINT_UID"
 
   sleep 2
 
@@ -326,16 +331,19 @@ fi
 DASHBOARD_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/search?query=JVM" | jq -r '.[0].uid')
 PANEL_ID=1
 
-# Build alert rule JSON
+# Build alert rule JSON with fixed UID for idempotency
 log "🛠️ Generating alert rule JSON..."
 
+RULE_UID="jvm-thread-dump-alert"
 ALERT_RULE_JSON=$(jq -n \
   --arg url "$LAMBDA_URL" \
   --arg uid "$DASHBOARD_UID" \
   --argjson pid "$PANEL_ID" \
   --arg notifUid "$NOTIF_UID" \
-  --arg folderUid "$FOLDER_UID" '
+  --arg folderUid "$FOLDER_UID" \
+  --arg ruleUid "$RULE_UID" '
 {
+  uid: $ruleUid,
   dashboardUID: $uid,
   panelId: $pid,
   folderUID: $folderUid,
@@ -404,17 +412,18 @@ ALERT_RULE_JSON=$(jq -n \
 
 echo "$ALERT_RULE_JSON" > "$LAMBDA_ALERT_RULE_FILE"
 
-log "📤 Creating alert rule..."
+log "📤 Creating/updating alert rule (idempotent)..."
 
-RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
+RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" \
   -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
   -d "$ALERT_RULE_JSON" \
-  "$GRAFANA_URL/api/v1/provisioning/alert-rules")
+  "$GRAFANA_URL/api/v1/provisioning/alert-rules/$RULE_UID")
 
 if echo "$RESPONSE" | jq -e '.uid' > /dev/null; then
-  log "✅ Lambda alert rule created: RULE_UID $(echo "$RESPONSE" | jq -r '.uid')"
+  RETURNED_UID=$(echo "$RESPONSE" | jq -r '.uid')
+  log "✅ Alert rule created/updated with UID: $RETURNED_UID"
 else
-  log "❌ Failed to create Lambda alert rule"
+  log "❌ Failed to create/update alert rule"
   echo "$RESPONSE"
   exit 1
 fi
@@ -454,8 +463,20 @@ for i in {1..30}; do
   sleep 5
 done
 
-# Create notification policy via API
-POLICY_JSON=$(cat <<EOF
+# Check current notification policy
+log "🔍 Checking current notification policy..."
+CURRENT_POLICY=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+  "http://$GRAFANA_LB/api/v1/provisioning/policies" 2>/dev/null || echo "{}")
+
+CURRENT_RECEIVER=$(echo "$CURRENT_POLICY" | jq -r '.receiver // "default"')
+
+if [[ "$CURRENT_RECEIVER" == "lambda-webhook" ]]; then
+  log "✅ Notification policy already configured for lambda-webhook"
+else
+  log "🔧 Updating notification policy to use lambda-webhook..."
+  
+  # Create notification policy via API
+  POLICY_JSON=$(cat <<EOF
 {
   "receiver": "lambda-webhook",
   "group_by": ["alertname"],
@@ -477,23 +498,23 @@ POLICY_JSON=$(cat <<EOF
   "repeat_interval": "1h"
 }
 EOF
-)
+  )
 
-# Apply the notification policy
-log "📤 Applying notification policy via API..."
-POLICY_RESULT=$(curl -s -X PUT -H "Content-Type: application/json" \
-  -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
-  -d "$POLICY_JSON" \
-  "http://$GRAFANA_LB/api/v1/provisioning/policies")
+  # Apply the notification policy
+  log "📤 Applying notification policy via API..."
+  POLICY_RESULT=$(curl -s -X PUT -H "Content-Type: application/json" \
+    -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+    -d "$POLICY_JSON" \
+    "http://$GRAFANA_LB/api/v1/provisioning/policies")
 
-if echo "$POLICY_RESULT" | grep -q "policies updated"; then
-  log "✅ Notification policy successfully applied"
-else
-  log "⚠️ Warning: Notification policy application returned: $POLICY_RESULT"
+  if echo "$POLICY_RESULT" | grep -q "policies updated"; then
+    log "✅ Notification policy successfully applied"
+  else
+    log "⚠️ Warning: Notification policy application returned: $POLICY_RESULT"
 
-  # Fallback to ConfigMap method if API fails
-  log "🔄 Trying fallback method with ConfigMap..."
-  cat > "$NOTIFICATION_POLICY_CONFIGMAP_FILE" <<EOF
+    # Fallback to ConfigMap method if API fails
+    log "🔄 Trying fallback method with ConfigMap..."
+    cat > "$NOTIFICATION_POLICY_CONFIGMAP_FILE" <<EOF
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -533,10 +554,11 @@ data:
       mute_timings: []
 EOF
 
-  kubectl apply -f "$NOTIFICATION_POLICY_CONFIGMAP_FILE"
-  log "🔄 Restarting Grafana to apply ConfigMap policy..."
-  kubectl rollout restart deployment grafana -n "$NAMESPACE"
-  kubectl rollout status deployment grafana -n "$NAMESPACE" --timeout=60s
+    kubectl apply -f "$NOTIFICATION_POLICY_CONFIGMAP_FILE"
+    log "🔄 Restarting Grafana to apply ConfigMap policy..."
+    kubectl rollout restart deployment grafana -n "$NAMESPACE"
+    kubectl rollout status deployment grafana -n "$NAMESPACE" --timeout=60s
+  fi
 fi
 
 # Verify policy was applied
