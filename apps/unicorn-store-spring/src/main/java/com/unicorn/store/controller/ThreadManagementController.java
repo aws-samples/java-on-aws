@@ -1,4 +1,3 @@
-// src/main/java/com/unicorn/store/controller/ThreadManagementController.java
 package com.unicorn.store.controller;
 
 import com.unicorn.store.service.ThreadGeneratorService;

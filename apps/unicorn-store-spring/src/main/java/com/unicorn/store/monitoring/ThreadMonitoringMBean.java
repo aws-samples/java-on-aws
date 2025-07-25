@@ -1,4 +1,3 @@
-// src/main/java/com/unicorn/store/monitoring/ThreadMonitoringMBean.java
 package com.unicorn.store.monitoring;
 
 import com.unicorn.store.service.ThreadGeneratorService;

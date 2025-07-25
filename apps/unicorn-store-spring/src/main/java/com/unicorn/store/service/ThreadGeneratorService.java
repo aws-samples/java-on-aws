@@ -1,4 +1,3 @@
-// src/main/java/com/unicorn/store/service/ThreadGeneratorService.java
 package com.unicorn.store.service;
 
 import org.slf4j.Logger;

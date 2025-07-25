@@ -144,7 +144,7 @@ aws ec2 authorize-security-group-ingress \
   --group-id $SECURITY_GROUP_ECS_ID \
   --protocol tcp \
   --port 8080 \
-  --source-group $SECURITY_GROUP_ALB_ID
+  --source-group-id $SECURITY_GROUP_ALB_ID
 aws ec2 authorize-security-group-ingress \
   --group-id "$SECURITY_GROUP_ECS_ID" \
   --protocol tcp \
@@ -156,10 +156,10 @@ aws ec2 authorize-security-group-ingress \
   --port 9404 \
   --cidr "$EKS_VPC_CIDR"
 aws ec2 authorize-security-group-ingress \
-  --group-id $ECS_SG_ID \
+  --group-id $SECURITY_GROUP_ECS_ID \
   --protocol tcp \
   --port 8080 \
-  --source-group $LAMBDA_SG_ID
+  --source-group-id $LAMBDA_SG_ID
 
 TASK_DEFINITION_ARN=$(aws ecs describe-task-definition --task-definition unicorn-store-spring \
   --query 'taskDefinition.taskDefinitionArn' --output text) && echo $TASK_DEFINITION_ARN
