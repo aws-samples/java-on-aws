@@ -79,45 +79,57 @@ def verify_basic_auth(event: Dict[str, Any]) -> bool:
         logger.error(f"Authentication error: {str(e)}")
         return False
 
-def extract_pod_info_from_valuestring(value_string: str) -> Dict[str, str]:
-    """Extract pod information from Grafana alert valueString"""
+def extract_all_metrics_from_valuestring(value_string: str) -> list:
+    """Extract all metric information from Grafana alert valueString"""
     try:
-        logger.info(f"Extracting pod info from valueString: {value_string}")
+        logger.info(f"Extracting all metrics from valueString: {value_string}")
 
-        # First, extract the labels section
-        labels_match = re.search(r'labels=\{([^}]+)\}', value_string)
-        if not labels_match:
-            logger.warning("Could not find labels section in valueString")
-            return {}
+        # Find all metric entries in the valueString
+        # Pattern: [ var='...' metric='...' labels={...} value=... ]
+        import re
+        metric_pattern = r'\[\s*var=\'[^\']+\'\s*metric=\'[^\']+\'\s*labels=\{([^}]+)\}\s*value=(\d+)\s*\]'
+        matches = re.findall(metric_pattern, value_string)
 
-        labels_str = labels_match.group(1)
-        logger.info(f"Extracted labels section: {labels_str}")
+        if not matches:
+            logger.warning("Could not find any metric entries in valueString")
+            return []
 
-        # Now extract individual labels from the labels section
-        labels = {}
-        for label_pair in labels_str.split(', '):
-            if '=' in label_pair:
-                key, value = label_pair.split('=', 1)
-                labels[key.strip()] = value.strip()
-                logger.info(f"Parsed label: {key.strip()}={value.strip()}")
+        results = []
+        for i, (labels_str, value) in enumerate(matches):
+            logger.info(f"Processing metric {i+1}: labels={{{labels_str}}} value={value}")
 
-        logger.info(f"All parsed labels: {labels}")
+            # Parse individual labels from the labels section
+            labels = {}
+            for label_pair in labels_str.split(', '):
+                if '=' in label_pair:
+                    key, label_value = label_pair.split('=', 1)
+                    labels[key.strip()] = label_value.strip()
 
-        # Map the labels to our expected keys
-        result = {
-            'cluster': labels.get('cluster'),
-            'cluster_type': labels.get('cluster_type'),
-            'container_name': labels.get('container_name'),
-            'task_pod_id': labels.get('task_pod_id') or labels.get('pod'),  # Use pod if task_pod_id not found
-            'namespace': labels.get('namespace'),
-            'container_ip': labels.get('container_ip') or labels.get('exported_instance')  # Add container_ip extraction
-        }
+            logger.info(f"All parsed labels for metric {i+1}: {labels}")
 
-        logger.info(f"Final extracted values: {result}")
-        return result
+            # Map the labels to our expected keys
+            task_pod_id = labels.get('task_pod_id')
+            # Use pod if task_pod_id is missing, empty, or "unknown"
+            if not task_pod_id or task_pod_id == 'unknown':
+                task_pod_id = labels.get('pod')
+
+            result = {
+                'cluster': labels.get('cluster'),
+                'cluster_type': labels.get('cluster_type'),
+                'container_name': labels.get('container_name'),
+                'task_pod_id': task_pod_id,
+                'namespace': labels.get('namespace'),
+                'container_ip': labels.get('container_ip') or labels.get('exported_instance'),
+                'thread_count': int(value)
+            }
+
+            logger.info(f"Final extracted values for metric {i+1}: {result}")
+            results.append(result)
+
+        return results
     except Exception as e:
-        logger.error(f"Error extracting pod info from valueString: {str(e)}")
-        return {}
+        logger.error(f"Error extracting metrics from valueString: {str(e)}")
+        return []
 
 def analyze_thread_dump(thread_dump: str) -> str:
     region_name = os.environ.get('AWS_REGION', 'us-east-1')
@@ -298,35 +310,41 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
                         logger.info("Some labels are missing or invalid, trying to extract from valueString")
 
-                        # Try to extract from valueString
+                        # Try to extract all metrics from valueString
                         if 'valueString' in alert:
-                            extracted_info = extract_pod_info_from_valuestring(alert['valueString'])
-                            logger.info(f"Raw extracted info: {extracted_info}")
+                            extracted_metrics = extract_all_metrics_from_valuestring(alert['valueString'])
+                            logger.info(f"Extracted {len(extracted_metrics)} metrics from valueString")
 
-                            # Update missing values
-                            if is_invalid(cluster_type) and extracted_info.get('cluster_type'):
-                                cluster_type = extracted_info['cluster_type']
+                            # Process each metric separately
+                            for i, metric_info in enumerate(extracted_metrics):
+                                logger.info(f"Processing metric {i+1}: {metric_info}")
 
-                            if is_invalid(cluster_name) and extracted_info.get('cluster'):
-                                cluster_name = extracted_info['cluster']
+                                # Use extracted values for this metric
+                                metric_cluster_type = metric_info.get('cluster_type')
+                                metric_cluster_name = metric_info.get('cluster')
+                                metric_task_pod_id = metric_info.get('task_pod_id')
+                                metric_container_name = metric_info.get('container_name')
+                                metric_namespace = metric_info.get('namespace', 'default')
+                                metric_container_ip = metric_info.get('container_ip')
 
-                            if is_invalid(task_pod_id) and extracted_info.get('task_pod_id'):
-                                task_pod_id = extracted_info['task_pod_id']
+                                # Validate this metric's inputs
+                                if any(is_invalid(val) for val in [metric_cluster_type, metric_cluster_name, metric_task_pod_id, metric_container_name]):
+                                    logger.warning(f"Skipping metric {i+1} due to missing values: cluster_type={metric_cluster_type}, cluster={metric_cluster_name}, task_pod_id={metric_task_pod_id}, container_name={metric_container_name}")
+                                    continue
 
-                            if is_invalid(container_name) and extracted_info.get('container_name'):
-                                container_name = extracted_info['container_name']
+                                # Process this metric
+                                try:
+                                    result = process_alert(metric_cluster_type, metric_cluster_name, metric_task_pod_id, metric_container_name, metric_namespace, s3_bucket, metric_container_ip)
+                                    results.append(result)
+                                    logger.info(f"Successfully processed metric {i+1}")
+                                except Exception as e:
+                                    logger.error(f"Error processing metric {i+1}: {str(e)}")
+                                    continue
 
-                            if is_invalid(container_ip) and extracted_info.get('container_ip'):
-                                container_ip = extracted_info['container_ip']
-                                logger.info(f"Using container_ip from valueString: {container_ip}")
+                            # Skip the original single-metric processing since we handled all metrics
+                            continue
 
-                            # IMPORTANT: Always override namespace with extracted value if available
-                            if extracted_info.get('namespace'):
-                                namespace = extracted_info['namespace']
-                                logger.info(f"Overriding namespace with extracted value: {namespace}")
-
-                            logger.info(f"Final extracted values: cluster_type={cluster_type}, cluster={cluster_name}, task_pod_id={task_pod_id}, container_name={container_name}, namespace={namespace}")
-
+                    # Original single-metric processing (fallback)
                     # Validate inputs after extraction attempt
                     if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
                         logger.warning(f"Still missing or invalid alert labels after extraction: cluster_type={cluster_type}, cluster={cluster_name}, task_pod_id={task_pod_id}, container_name={container_name}")

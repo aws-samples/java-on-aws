@@ -83,19 +83,22 @@ FOLDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
   -d "{\"title\": \"$FOLDER_NAME\"}" \
   "$GRAFANA_URL/api/folders")
 
+FOLDER_UID=$(echo "$FOLDER_RESPONSE" | jq -r '.uid // empty')
 FOLDER_ID=$(echo "$FOLDER_RESPONSE" | jq -r '.id // empty')
-if [[ -z "$FOLDER_ID" ]]; then
+if [[ -z "$FOLDER_UID" ]]; then
   # Try to get existing folder
-  EXISTING_FOLDER=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/folders" | jq -r ".[] | select(.title == \"$FOLDER_NAME\") | .id // empty")
+  EXISTING_FOLDER=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/folders" | jq -r ".[] | select(.title == \"$FOLDER_NAME\")")
   if [[ -n "$EXISTING_FOLDER" ]]; then
-    FOLDER_ID="$EXISTING_FOLDER"
-    log "📁 Using existing folder: $FOLDER_ID"
+    FOLDER_UID=$(echo "$EXISTING_FOLDER" | jq -r '.uid')
+    FOLDER_ID=$(echo "$EXISTING_FOLDER" | jq -r '.id')
+    log "📁 Using existing folder: $FOLDER_UID"
   else
+    FOLDER_UID=""
     FOLDER_ID=0
-    log "⚠️ Using General folder (ID: 0)"
+    log "⚠️ Using General folder"
   fi
 else
-  log "✅ Folder created: $FOLDER_ID"
+  log "✅ Folder created: $FOLDER_UID"
 fi
 
 log "📊 Creating JVM dashboard..."
@@ -178,104 +181,101 @@ WEBHOOK_USER="grafana-alerts"
 SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --query 'SecretString' --output text)
 WEBHOOK_PASSWORD=$(echo "$SECRET_VALUE" | jq -r '.password')
 
-CONTACT_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
-  -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
-  -d "{
-    \"name\": \"$CONTACT_POINT_NAME\",
-    \"type\": \"webhook\",
-    \"settings\": {
-      \"url\": \"$LAMBDA_URL\",
-      \"httpMethod\": \"POST\",
-      \"username\": \"$WEBHOOK_USER\",
-      \"password\": \"$WEBHOOK_PASSWORD\",
-      \"authorization_scheme\": \"basic\"
-    },
-    \"disableResolveMessage\": false
-  }" \
-  "$GRAFANA_URL/api/v1/provisioning/contact-points")
+# Check if contact point already exists
+EXISTING_CONTACT=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/v1/provisioning/contact-points" | jq -r ".[] | select(.name == \"$CONTACT_POINT_NAME\") | .name // empty")
 
-log "🚨 Creating alert rule with classic conditions..."
+if [[ -z "$EXISTING_CONTACT" ]]; then
+  CONTACT_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
+    -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+    -d "{
+      \"name\": \"$CONTACT_POINT_NAME\",
+      \"type\": \"webhook\",
+      \"settings\": {
+        \"url\": \"$LAMBDA_URL\",
+        \"httpMethod\": \"POST\",
+        \"username\": \"$WEBHOOK_USER\",
+        \"password\": \"$WEBHOOK_PASSWORD\",
+        \"authorization_scheme\": \"basic\"
+      },
+      \"disableResolveMessage\": false
+    }" \
+    "$GRAFANA_URL/api/v1/provisioning/contact-points")
+
+  # Check if contact point creation was successful
+  if echo "$CONTACT_RESPONSE" | jq -e '.name' > /dev/null 2>&1; then
+    log "✅ Contact point created"
+  else
+    log "❌ Contact point creation failed:"
+    echo "$CONTACT_RESPONSE" | jq .
+  fi
+else
+  log "✅ Contact point already exists"
+fi
+
+log "🚨 Creating alert rule with proper label preservation..."
+# Note: Using raw metrics without sum() and by() to preserve all original labels
+# This ensures both 'pod' (for EKS) and 'task_pod_id' (for ECS) labels are available
+# The Lambda function will process ALL metrics in the valueString, handling multiple
+# containers (EKS pods + ECS tasks) in a single alert when they exceed the threshold
+ALERT_PAYLOAD="{
+  \"title\": \"$ALERT_TITLE\",
+  \"condition\": \"B\",
+  \"data\": [
+    {
+      \"refId\": \"A\",
+      \"relativeTimeRange\": {\"from\": 600, \"to\": 0},
+      \"datasourceUid\": \"promds\",
+      \"model\": {
+        \"expr\": \"jvm_threads_live_threads{job=~\\\"kubernetes-pods|ecs-unicorn-store-spring\\\"}\",
+        \"instant\": true,
+        \"refId\": \"A\"
+      }
+    },
+    {
+      \"refId\": \"B\",
+      \"relativeTimeRange\": {\"from\": 0, \"to\": 0},
+      \"datasourceUid\": \"-100\",
+      \"model\": {
+        \"conditions\": [
+          {
+            \"evaluator\": {\"params\": [$THREAD_THRESHOLD], \"type\": \"gt\"},
+            \"operator\": {\"type\": \"and\"},
+            \"query\": {\"params\": [\"A\"]},
+            \"reducer\": {\"params\": [], \"type\": \"last\"},
+            \"type\": \"query\"
+          }
+        ],
+        \"refId\": \"B\",
+        \"type\": \"classic_conditions\"
+      }
+    }
+  ],
+  \"intervalSeconds\": 60,
+  \"noDataState\": \"NoData\",
+  \"execErrState\": \"Alerting\",
+  \"for\": \"1m\",
+  \"annotations\": {
+    \"summary\": \"High JVM Threads\",
+    \"description\": \"High number of JVM threads detected. Triggering Lambda thread dump.\",
+    \"webhookUrl\": \"$LAMBDA_URL\"
+  },
+  \"labels\": {
+    \"severity\": \"critical\",
+    \"alertname\": \"High JVM Threads\",
+    \"cluster\": \"{{ \$labels.cluster }}\",
+    \"cluster_type\": \"{{ \$labels.cluster_type }}\",
+    \"container_name\": \"{{ \$labels.container_name }}\",
+    \"namespace\": \"{{ \$labels.namespace }}\",
+    \"task_pod_id\": \"{{ \$labels.task_pod_id }}\",
+    \"container_ip\": \"{{ \$labels.container_ip }}\"
+  }
+}"
+
+# Add folderUID if we have one
+if [[ -n "$FOLDER_UID" ]]; then
+  ALERT_PAYLOAD=$(echo "$ALERT_PAYLOAD" | jq ". + {\"folderUID\": \"$FOLDER_UID\"}")
+fi
+
 ALERT_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
   -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
-  -d "{
-    \"title\": \"$ALERT_TITLE\",
-    \"condition\": \"B\",
-    \"data\": [
-      {
-        \"refId\": \"A\",
-        \"relativeTimeRange\": {\"from\": 600, \"to\": 0},
-        \"datasourceUid\": \"promds\",
-        \"model\": {
-          \"expr\": \"sum(jvm_threads_live_threads{job=~\\\"kubernetes-pods|ecs-unicorn-store-spring\\\"}) by (task_pod_id, cluster_type, cluster, container_name, namespace, container_ip)\",
-          \"instant\": true,
-          \"refId\": \"A\"
-        }
-      },
-      {
-        \"refId\": \"B\",
-        \"relativeTimeRange\": {\"from\": 0, \"to\": 0},
-        \"datasourceUid\": \"-100\",
-        \"model\": {
-          \"conditions\": [
-            {
-              \"evaluator\": {\"params\": [$THREAD_THRESHOLD], \"type\": \"gt\"},
-              \"operator\": {\"type\": \"and\"},
-              \"query\": {\"params\": [\"A\"]},
-              \"reducer\": {\"params\": [], \"type\": \"last\"},
-              \"type\": \"query\"
-            }
-          ],
-          \"refId\": \"B\",
-          \"type\": \"classic_conditions\"
-        }
-      }
-    ],
-    \"intervalSeconds\": 60,
-    \"noDataState\": \"NoData\",
-    \"execErrState\": \"Alerting\",
-    \"for\": \"1m\",
-    \"annotations\": {
-      \"summary\": \"High JVM Threads\",
-      \"description\": \"High number of JVM threads detected. Triggering Lambda thread dump.\",
-      \"webhookUrl\": \"$LAMBDA_URL\"
-    },
-    \"labels\": {
-      \"severity\": \"critical\",
-      \"alertname\": \"High JVM Threads\",
-      \"cluster\": \"{{ \$labels.cluster }}\",
-      \"cluster_type\": \"{{ \$labels.cluster_type }}\",
-      \"container_name\": \"{{ \$labels.container_name }}\",
-      \"namespace\": \"{{ \$labels.namespace }}\",
-      \"task_pod_id\": \"{{ \$labels.task_pod_id }}\",
-      \"container_ip\": \"{{ \$labels.container_ip }}\"
-    }
-  }" \
-  "$GRAFANA_URL/api/v1/provisioning/alert-rules")
-
-log "🚨 Creating notification policy..."
-POLICY_RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" \
-  -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
-  -d "{
-    \"receiver\": \"$CONTACT_POINT_NAME\",
-    \"group_by\": [\"alertname\"],
-    \"routes\": [
-      {
-        \"receiver\": \"$CONTACT_POINT_NAME\",
-        \"group_by\": [\"alertname\", \"pod\"],
-        \"matchers\": [\"severity = critical\"],
-        \"group_wait\": \"30s\",
-        \"group_interval\": \"5m\",
-        \"repeat_interval\": \"4h\"
-      }
-    ],
-    \"group_wait\": \"30s\",
-    \"group_interval\": \"5m\",
-    \"repeat_interval\": \"1h\"
-  }" \
-  "$GRAFANA_URL/api/v1/provisioning/policies")
-
-log "✅ Alert rule created"
-log "✅ JVM monitoring setup complete"
-log "🌍 Grafana: $GRAFANA_URL"
-log "📊 Dashboard shows jvm_threads_live_threads from both EKS and ECS"
-log "🚨 Alert triggers Lambda thread dump when threads > $THREAD_THRESHOLD, stops when threads < $THREAD_THRESHOLD"
+  -d "$ALERT_PAYLOAD" \
