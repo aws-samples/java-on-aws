@@ -124,10 +124,6 @@ aws elbv2 create-listener --no-cli-pager \
 VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=unicornstore-vpc" \
   --query 'Vpcs[0].VpcId' --output text) && echo $VPC_ID
 
-EKS_VPC_CIDR=$(aws ec2 describe-vpcs \
-  --vpc-ids "$VPC_ID" \
-  --query "Vpcs[0].CidrBlock" --output text)
-
 LAMBDA_SG_ID=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values='$VPC_ID'" \
   --query 'SecurityGroups[?GroupName==`'unicornstore-thread-dump-lambda-sg'`].GroupId' --output text)
 
@@ -144,16 +140,6 @@ aws ec2 authorize-security-group-ingress \
   --protocol tcp \
   --port 8080 \
   --source-group $SECURITY_GROUP_ALB_ID
-aws ec2 authorize-security-group-ingress \
-  --group-id "$SECURITY_GROUP_ECS_ID" \
-  --protocol tcp \
-  --port 9090 \
-  --cidr "$EKS_VPC_CIDR"
-aws ec2 authorize-security-group-ingress \
-  --group-id "$SECURITY_GROUP_ECS_ID" \
-  --protocol tcp \
-  --port 9404 \
-  --cidr "$EKS_VPC_CIDR"
 aws ec2 authorize-security-group-ingress \
   --group-id $SECURITY_GROUP_ECS_ID \
   --protocol tcp \
