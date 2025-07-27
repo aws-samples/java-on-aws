@@ -24,6 +24,22 @@ while ! kubectl get ns; do
     sleep 10
 done
 
+echo "Deploying common manifests ..."
+
+cat <<EOF | kubectl apply -f -
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.eks.amazonaws.com
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  type: gp3
+  encrypted: "true"
+EOF
+
 cat <<EOF | kubectl create -f -
 apiVersion: networking.k8s.io/v1
 kind: IngressClass

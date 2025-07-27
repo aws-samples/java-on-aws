@@ -80,7 +80,7 @@ SUBNET_PUBLIC_2=$(aws ec2 describe-subnets \
   --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Name,Values=*PublicSubnet2" \
   --query 'Subnets[0].SubnetId' --output text) && echo $SUBNET_PUBLIC_2
 SECURITY_GROUP_ALB_ID=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values='$VPC_ID'" \
-  --query 'SecurityGroups[?GroupName==`'unicorn-store-spring-ecs-sg-alb'`].GroupId' --output text) echo $SECURITY_GROUP_ALB_ID
+  --query 'SecurityGroups[?GroupName==`'unicorn-store-spring-ecs-sg-alb'`].GroupId' --output text) && echo $SECURITY_GROUP_ALB_ID
 
 aws elbv2 create-load-balancer --no-cli-pager \
   --name unicorn-store-spring \
@@ -97,6 +97,19 @@ aws elbv2 create-target-group --no-cli-pager \
   --vpc-id $VPC_ID \
   --target-type ip
 
+TARGET_GROUP_ARN=$(aws elbv2 describe-target-groups --name unicorn-store-spring \
+  --query 'TargetGroups[0].TargetGroupArn' --output text)
+
+aws elbv2 modify-target-group \
+  --target-group-arn $TARGET_GROUP_ARN \
+  --health-check-path "/actuator/health" \
+  --health-check-port "traffic-port" \
+  --health-check-protocol HTTP \
+  --health-check-interval-seconds 30 \
+  --health-check-timeout-seconds 5 \
+  --healthy-threshold-count 2 \
+  --unhealthy-threshold-count 3
+
 ALB_ARN=$(aws elbv2 describe-load-balancers --name unicorn-store-spring \
   --query 'LoadBalancers[0].LoadBalancerArn' --output text) && echo $ALB_ARN
 TARGET_GROUP_ARN=$(aws elbv2 describe-target-groups --name unicorn-store-spring \
@@ -111,6 +124,11 @@ aws elbv2 create-listener --no-cli-pager \
 VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=unicornstore-vpc" \
   --query 'Vpcs[0].VpcId' --output text) && echo $VPC_ID
 
+LAMBDA_SG_ID=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values='$VPC_ID'" \
+  --query 'SecurityGroups[?GroupName==`'unicornstore-thread-dump-lambda-sg'`].GroupId' --output text)
+
+sleep 1
+
 aws ec2 create-security-group \
   --group-name unicorn-store-spring-ecs-sg \
   --description "Security group for unicorn-store-spring ECS Service" \
@@ -122,6 +140,11 @@ aws ec2 authorize-security-group-ingress \
   --protocol tcp \
   --port 8080 \
   --source-group $SECURITY_GROUP_ALB_ID
+aws ec2 authorize-security-group-ingress \
+  --group-id $SECURITY_GROUP_ECS_ID \
+  --protocol tcp \
+  --port 8080 \
+  --source-group $LAMBDA_SG_ID
 
 TASK_DEFINITION_ARN=$(aws ecs describe-task-definition --task-definition unicorn-store-spring \
   --query 'taskDefinition.taskDefinitionArn' --output text) && echo $TASK_DEFINITION_ARN
@@ -140,6 +163,7 @@ aws ecs create-service --no-cli-pager \
   --cluster unicorn-store-spring \
   --service-name unicorn-store-spring \
   --task-definition $TASK_DEFINITION_ARN \
+  --enable-execute-command \
   --desired-count 1 \
   --launch-type FARGATE \
   --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_PRIVATE_1,$SUBNET_PRIVATE_2],securityGroups=[$SECURITY_GROUP_ECS_ID],assignPublicIp="DISABLED"}" \

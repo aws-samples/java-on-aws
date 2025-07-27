@@ -447,7 +447,7 @@ Resources:
   VSCodeIdeGiteaIdeLogGroupCD76FEFA:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250718-081437
+      LogGroupName: ide-bootstrap-log-20250727-154145
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -879,8 +879,8 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            default: ""
             description: (Optional) Custom bootstrap script to run.
+            default: ""
             type: String
         mainSteps:
           - inputs:
@@ -1142,16 +1142,38 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - splashUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - VSCodeIdeGiteaIdeRole90308F47
-                          - Arn
-                      readmeUrl: ""
-                      waitConditionHandleUrl:
-                        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
-                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
-                      domain: ""
+                    - passwordName:
+                        Fn::Join:
+                          - "-"
+                          - - Fn::Select:
+                                - 0
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                            - Fn::Select:
+                                - 1
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                            - Fn::Select:
+                                - 2
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                      environmentContentsZip: ""
+                      terminalOnStartup: "true"
                       installGitea: |
                         dnf install -y nerdctl cni-plugins
                         mkdir -p /gitea/config /gitea/data
@@ -1344,38 +1366,19 @@ Resources:
                         EOF
 
                         source /etc/profile.d/gitea.sh
-                      terminalOnStartup: "true"
-                      environmentContentsZip: ""
-                      passwordName:
-                        Fn::Join:
-                          - "-"
-                          - - Fn::Select:
-                                - 0
-                                - Fn::Split:
-                                    - "-"
-                                    - Fn::Select:
-                                        - 6
-                                        - Fn::Split:
-                                            - ":"
-                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
-                            - Fn::Select:
-                                - 1
-                                - Fn::Split:
-                                    - "-"
-                                    - Fn::Select:
-                                        - 6
-                                        - Fn::Split:
-                                            - ":"
-                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
-                            - Fn::Select:
-                                - 2
-                                - Fn::Split:
-                                    - "-"
-                                    - Fn::Select:
-                                        - 6
-                                        - Fn::Split:
-                                            - ":"
-                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                      domain: ""
+                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
+                      waitConditionHandleUrl:
+                        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
+                      readmeUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - VSCodeIdeGiteaIdeRole90308F47
+                          - Arn
+                      splashUrl: ""
+                      instanceIamRoleName:
+                        Ref: VSCodeIdeGiteaIdeRole90308F47
+                      codeServerVersion: 4.101.2
                       customBootstrapScript: |
                         date
 
@@ -1386,9 +1389,6 @@ Resources:
                         echo '=== Setup IDE ==='
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
-                      codeServerVersion: 4.101.2
-                      instanceIamRoleName:
-                        Ref: VSCodeIdeGiteaIdeRole90308F47
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1528,10 +1528,10 @@ Resources:
           - Arn
       InstanceId:
         Ref: VSCodeIdeGiteaIdeEC2Instance51274E6D
-      LogGroupName:
-        Ref: VSCodeIdeGiteaIdeLogGroupCD76FEFA
       SsmDocument:
         Ref: VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
+      LogGroupName:
+        Ref: VSCodeIdeGiteaIdeLogGroupCD76FEFA
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 Outputs:

@@ -1,6 +1,7 @@
 package com.unicorn.constructs;
 
 import software.amazon.awscdk.services.ec2.IVpc;
+import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.eks.CfnCluster;
 import software.amazon.awscdk.services.eks.CfnCluster.LoggingProperty;
 import software.amazon.awscdk.services.eks.CfnCluster.ClusterLoggingProperty;
@@ -189,5 +190,14 @@ public class EksCluster extends Construct {
             .serviceAccount(serviceAccount)
             .build();
         podIdentityAssociation.getNode().addDependency(cluster);
+    }
+
+    // Get the default cluster security group as ISecurityGroup
+    public ISecurityGroup getClusterSecurityGroup() {
+        return SecurityGroup.fromSecurityGroupId(
+                this,
+                "APIClusterSecurityGroup",
+                cluster.getAttrClusterSecurityGroupId()
+        );
     }
 }

@@ -462,7 +462,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250718-081355
+      LogGroupName: unicornstore-ide-bootstrap-log-20250727-154105
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -877,9 +877,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            type: String
             description: (Optional) Custom bootstrap script to run.
             default: ""
+            type: String
         mainSteps:
           - inputs:
               runCommand:
@@ -1140,10 +1140,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleName:
-                        Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      codeServerVersion: 4.101.2
-                      customBootstrapScript: |
+                    - customBootstrapScript: |
                         date
 
                         echo '=== Clone Git repository ==='
@@ -1156,6 +1153,9 @@ Resources:
                         echo '=== Additional Setup ==='
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
+
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring-jvm.sh"
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1208,6 +1208,9 @@ Resources:
                           - UnicornStoreIdeIdeRole81A2CEAA
                           - Arn
                       splashUrl: ""
+                      instanceIamRoleName:
+                        Ref: UnicornStoreIdeIdeRole81A2CEAA
+                      codeServerVersion: 4.101.2
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1345,12 +1348,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
-      LogGroupName:
-        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
       InstanceId:
         Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
       SsmDocument:
         Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
+      LogGroupName:
+        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -1526,9 +1529,17 @@ Resources:
             - :SecretString:password::}}
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  InfrastructureCoreLambdaCodeBucket04513FB8:
+  InfrastructureCoreWorkshopBucketB6510E67:
     Type: AWS::S3::Bucket
     Properties:
+      BucketName:
+        Fn::Join:
+          - ""
+          - - workshop-
+            - Ref: AWS::AccountId
+            - "-"
+            - Ref: AWS::Region
+            - "-20250727154105"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -1536,11 +1547,11 @@ Resources:
         RestrictPublicBuckets: true
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  InfrastructureCoreLambdaCodeBucketPolicyF14A19EA:
+  InfrastructureCoreWorkshopBucketPolicy1FBBC32E:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket:
-        Ref: InfrastructureCoreLambdaCodeBucket04513FB8
+        Ref: InfrastructureCoreWorkshopBucketB6510E67
       PolicyDocument:
         Statement:
           - Action: s3:*
@@ -1552,25 +1563,25 @@ Resources:
               AWS: "*"
             Resource:
               - Fn::GetAtt:
-                  - InfrastructureCoreLambdaCodeBucket04513FB8
+                  - InfrastructureCoreWorkshopBucketB6510E67
                   - Arn
               - Fn::Join:
                   - ""
                   - - Fn::GetAtt:
-                        - InfrastructureCoreLambdaCodeBucket04513FB8
+                        - InfrastructureCoreWorkshopBucketB6510E67
                         - Arn
                     - /*
         Version: "2012-10-17"
-  InfrastructureCoreSsmParameterUnicornStoreBucketNameEAC4AB3E:
+  InfrastructureCoreSsmParameterWorkshopBucketName5A927B1D:
     Type: AWS::SSM::Parameter
     Properties:
       AllowedPattern: .*
-      Description: Lambda code bucket name
+      Description: Workshop bucket name
       Name: unicornstore-lambda-bucket-name
       Tier: Standard
       Type: String
       Value:
-        Ref: InfrastructureCoreLambdaCodeBucket04513FB8
+        Ref: InfrastructureCoreWorkshopBucketB6510E67
   InfrastructureCoreUnicornStoreLambdaBedrockRoleCB0EEA7A:
     Type: AWS::IAM::Role
     Properties:
@@ -2088,7 +2099,7 @@ Resources:
           Enabled: true
       UpgradePolicy:
         SupportType: STANDARD
-      Version: "1.32"
+      Version: "1.33"
   UnicornStoreEksClusterAccessEntryunicornstoreideuser92F16088:
     Type: AWS::EKS::AccessEntry
     Properties:
@@ -2103,6 +2114,357 @@ Resources:
           - Arn
     DependsOn:
       - UnicornStoreEksClusterEKSClusterBF11D771
+  UnicornStoreEksClusterAPIClusterSecurityGroupfromIndirectPeer4433E6EA0D8:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow Lambda access to Kubernetes API
+      FromPort: 443
+      GroupId:
+        Fn::GetAtt:
+          - UnicornStoreEksClusterEKSClusterBF11D771
+          - ClusterSecurityGroupId
+      IpProtocol: tcp
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - InfrastructureMonitoringJVMLambdaSecurityGroup0E1EEAC4
+          - GroupId
+      ToPort: 443
+  UnicornStoreEksClusterAPIClusterSecurityGroupfromIndirectPeer24437DDC9315:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow Lambda access to Kubernetes API
+      FromPort: 443
+      GroupId:
+        Fn::GetAtt:
+          - UnicornStoreEksClusterEKSClusterBF11D771
+          - ClusterSecurityGroupId
+      IpProtocol: tcp
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - InfrastructureMonitoringJVMLambdaSecurityGroup0E1EEAC4
+          - GroupId
+      ToPort: 443
+  UnicornStoreEksClusterAccessEntrylambdaeksaccessrole268C2978:
+    Type: AWS::EKS::AccessEntry
+    Properties:
+      AccessPolicies:
+        - AccessScope:
+            Type: cluster
+          PolicyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+      ClusterName: unicorn-store
+      PrincipalArn:
+        Fn::GetAtt:
+          - InfrastructureMonitoringJVMLambdaBedrockRole39A2FFC2
+          - Arn
+    DependsOn:
+      - UnicornStoreEksClusterEKSClusterBF11D771
+  InfrastructureMonitoringJVMLambdaSecurityGroup0E1EEAC4:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Thread Dump Lambda function
+      GroupName: unicornstore-thread-dump-lambda-sg
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: UnicornStoreVpc647929A5
+  InfrastructureMonitoringJVMBedrockAccessRoleEF906E64:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+        Version: "2012-10-17"
+      Description: Role for Bedrock Claude 3.7 access
+  InfrastructureMonitoringJVMBedrockAccessRoleDefaultPolicy82F2D107:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - bedrock:InvokeModel
+              - bedrock:ListFoundationModels
+            Effect: Allow
+            Resource: arn:aws:bedrock:*:*:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0
+        Version: "2012-10-17"
+      PolicyName: InfrastructureMonitoringJVMBedrockAccessRoleDefaultPolicy82F2D107
+      Roles:
+        - Ref: InfrastructureMonitoringJVMBedrockAccessRoleEF906E64
+  InfrastructureMonitoringJVMLambdaBedrockRole39A2FFC2:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      Description: Role for Lambda to access Bedrock and EKS
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      RoleName: lambda-eks-access-role
+  InfrastructureMonitoringJVMLambdaBedrockRoleDefaultPolicy5CBDC172:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource: arn:aws:logs:*:*:*
+          - Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeModelWithResponseStream
+              - bedrock:ListFoundationModels
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:secretsmanager:"
+                  - Ref: AWS::Region
+                  - :*:secret:unicornstore-ide-password-lambda*
+          - Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:ListBucket
+              - sns:Publish
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:s3:::"
+                    - Ref: InfrastructureCoreWorkshopBucketB6510E67
+                    - /thread-dumps/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:s3:::"
+                    - Ref: InfrastructureCoreWorkshopBucketB6510E67
+              - arn:aws:sns:*:*:*
+          - Action:
+              - eks:DescribeCluster
+              - eks:AccessKubernetesApi
+              - eks:ListClusters
+              - sts:GetCallerIdentity
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - s3:DeleteObject*
+              - s3:PutObject
+              - s3:PutObjectLegalHold
+              - s3:PutObjectRetention
+              - s3:PutObjectTagging
+              - s3:PutObjectVersionTagging
+              - s3:Abort*
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - InfrastructureCoreWorkshopBucketB6510E67
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - InfrastructureCoreWorkshopBucketB6510E67
+                        - Arn
+                    - /*
+          - Action:
+              - s3:GetObject*
+              - s3:GetBucket*
+              - s3:List*
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - InfrastructureCoreWorkshopBucketB6510E67
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - InfrastructureCoreWorkshopBucketB6510E67
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+      PolicyName: InfrastructureMonitoringJVMLambdaBedrockRoleDefaultPolicy5CBDC172
+      Roles:
+        - Ref: InfrastructureMonitoringJVMLambdaBedrockRole39A2FFC2
+  InfrastructureMonitoringJVMunicornstorethreaddumplambdaeks343E91AB:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import json
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              logger.info('Dummy Lambda function invoked')
+              logger.info(f'Event: {json.dumps(event)}')
+              
+              return {
+                  'statusCode': 200,
+                  'headers': {
+                      'Content-Type': 'application/json',
+                      'Access-Control-Allow-Origin': '*'
+                  },
+                  'body': json.dumps({
+                      'message': 'Hello from dummy Lambda function!',
+                      'timestamp': context.aws_request_id,
+                      'function_name': context.function_name
+                  })
+              }
+      Environment:
+        Variables:
+          K8S_NAMESPACE: unicorn-store-spring
+          KUBERNETES_AUTH_TYPE: aws
+          APP_LABEL: unicorn-store-spring
+          S3_THREAD_DUMPS_PREFIX: thread-dumps/
+          EKS_CLUSTER_NAME: unicorn-store
+          S3_BUCKET_NAME:
+            Ref: InfrastructureCoreWorkshopBucketB6510E67
+      FunctionName: unicornstore-thread-dump-lambda
+      Handler: index.lambda_handler
+      MemorySize: 512
+      Role:
+        Fn::GetAtt:
+          - InfrastructureMonitoringJVMLambdaBedrockRole39A2FFC2
+          - Arn
+      Runtime: python3.13
+      Timeout: 300
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::GetAtt:
+              - InfrastructureMonitoringJVMLambdaSecurityGroup0E1EEAC4
+              - GroupId
+        SubnetIds:
+          - Ref: UnicornStoreVpcPrivateSubnet1Subnet1D81DF60
+          - Ref: UnicornStoreVpcPrivateSubnet2Subnet4710EC68
+    DependsOn:
+      - InfrastructureMonitoringJVMLambdaBedrockRoleDefaultPolicy5CBDC172
+      - InfrastructureMonitoringJVMLambdaBedrockRole39A2FFC2
+      - UnicornStoreVpcPrivateSubnet1DefaultRoute18CAE313
+      - UnicornStoreVpcPrivateSubnet1RouteTableAssociationE6E7A751
+      - UnicornStoreVpcPrivateSubnet2DefaultRouteDA0F8992
+      - UnicornStoreVpcPrivateSubnet2RouteTableAssociation0C455BE6
+  InfrastructureMonitoringJVMunicornstorethreaddumplambdaeksinvokefunctionurl0218D345:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunctionUrl
+      FunctionName:
+        Fn::GetAtt:
+          - InfrastructureMonitoringJVMunicornstorethreaddumplambdaeks343E91AB
+          - Arn
+      FunctionUrlAuthType: NONE
+      Principal: "*"
+    DependsOn:
+      - UnicornStoreVpcPrivateSubnet1DefaultRoute18CAE313
+      - UnicornStoreVpcPrivateSubnet1RouteTableAssociationE6E7A751
+      - UnicornStoreVpcPrivateSubnet2DefaultRouteDA0F8992
+      - UnicornStoreVpcPrivateSubnet2RouteTableAssociation0C455BE6
+  InfrastructureMonitoringJVMunicornstorethreaddumplambdaeksAllowPublicInvocation721EB05E:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunctionUrl
+      FunctionName:
+        Fn::GetAtt:
+          - InfrastructureMonitoringJVMunicornstorethreaddumplambdaeks343E91AB
+          - Arn
+      FunctionUrlAuthType: NONE
+      Principal: "*"
+    DependsOn:
+      - UnicornStoreVpcPrivateSubnet1DefaultRoute18CAE313
+      - UnicornStoreVpcPrivateSubnet1RouteTableAssociationE6E7A751
+      - UnicornStoreVpcPrivateSubnet2DefaultRouteDA0F8992
+      - UnicornStoreVpcPrivateSubnet2RouteTableAssociation0C455BE6
+  InfrastructureMonitoringJVMunicornstorethreaddumplambdaeksAllowInvokeunicornstorestackInfrastructureMonitoringJVMAlarmTopicB1115D8A9B8BC991:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - InfrastructureMonitoringJVMunicornstorethreaddumplambdaeks343E91AB
+          - Arn
+      Principal: sns.amazonaws.com
+      SourceArn:
+        Ref: InfrastructureMonitoringJVMAlarmTopic1CA5111E
+    DependsOn:
+      - UnicornStoreVpcPrivateSubnet1DefaultRoute18CAE313
+      - UnicornStoreVpcPrivateSubnet1RouteTableAssociationE6E7A751
+      - UnicornStoreVpcPrivateSubnet2DefaultRouteDA0F8992
+      - UnicornStoreVpcPrivateSubnet2RouteTableAssociation0C455BE6
+  InfrastructureMonitoringJVMunicornstorethreaddumplambdaeksAlarmTopic14488272:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint:
+        Fn::GetAtt:
+          - InfrastructureMonitoringJVMunicornstorethreaddumplambdaeks343E91AB
+          - Arn
+      Protocol: lambda
+      TopicArn:
+        Ref: InfrastructureMonitoringJVMAlarmTopic1CA5111E
+    DependsOn:
+      - UnicornStoreVpcPrivateSubnet1DefaultRoute18CAE313
+      - UnicornStoreVpcPrivateSubnet1RouteTableAssociationE6E7A751
+      - UnicornStoreVpcPrivateSubnet2DefaultRouteDA0F8992
+      - UnicornStoreVpcPrivateSubnet2RouteTableAssociation0C455BE6
+  InfrastructureMonitoringJVMThreadDumpLogGroupEBADFDDE:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/unicornstore-thread-dump-lambda
+      RetentionInDays: 7
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  InfrastructureMonitoringJVMThreadDumpFunctionUrlB811B160:
+    Type: AWS::Lambda::Url
+    Properties:
+      AuthType: NONE
+      TargetFunctionArn:
+        Fn::GetAtt:
+          - InfrastructureMonitoringJVMunicornstorethreaddumplambdaeks343E91AB
+          - Arn
+  InfrastructureMonitoringJVMAlarmTopic1CA5111E:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Unicorn Store Alarms
+      TopicName: UnicornStoreAlarms
+  InfrastructureMonitoringJVMAlarmTopicPolicy9729088A:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: sns:Publish
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+            Effect: Deny
+            Principal:
+              AWS: "*"
+            Resource:
+              Ref: InfrastructureMonitoringJVMAlarmTopic1CA5111E
+            Sid: "0"
+        Version: "2012-10-17"
+      Topics:
+        - Ref: InfrastructureMonitoringJVMAlarmTopic1CA5111E
   UnicornStoreDatabaseSetupDatabaseSetupFunctionServiceRoleBC909D59:
     Type: AWS::IAM::Role
     Properties:
