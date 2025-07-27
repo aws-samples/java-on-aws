@@ -320,6 +320,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonSSMManagedInstanceCore
+        - Ref: UnicornStoreIdeWorkshopIdeUserPolicy4FE3EC67
       RoleName: unicornstore-ide-user
   UnicornStoreIdeIdeRoleDefaultPolicy7083F507:
     Type: AWS::IAM::Policy
@@ -344,16 +345,17 @@ Resources:
       PolicyName: UnicornStoreIdeIdeRoleDefaultPolicy7083F507
       Roles:
         - Ref: UnicornStoreIdeIdeRole81A2CEAA
-  UnicornStoreIdeWorkshopIdeUserPolicy69BE9E43:
+  UnicornStoreIdeWorkshopIdeUserPolicy4FE3EC67:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: WorkshopIdeUserPolicy
+      Description: ""
+      Path: /
       PolicyDocument:
-        Version: "2012-10-17"
         Statement:
-          - Condition:
+          - Action: aws-marketplace:Subscribe
+            Condition:
               "Null":
-                aws-marketplace:ProductId: false
+                aws-marketplace:ProductId: "false"
               ForAllValues:StringEquals:
                 aws-marketplace:ProductId:
                   - prod-4dlfvry4v5hbi
@@ -361,16 +363,14 @@ Resources:
                   - prod-5oba7y7jpji56
                   - b7568428-a1ab-46d8-bab3-37def50f6f6a
                   - 38e55671-c3fe-4a44-9783-3584906e7cad
-            Action:
-              - aws-marketplace:Subscribe
-            Resource: "*"
             Effect: Allow
+            Resource: "*"
           - Action:
               - aws-marketplace:Unsubscribe
               - aws-marketplace:ViewSubscriptions
               - bedrock:*
-            Resource: "*"
             Effect: Allow
+            Resource: "*"
           - Action:
               - cloudwatch:*
               - codewhisperer:*
@@ -383,18 +383,12 @@ Resources:
               - secretsmanager:*
               - ssm:*
               - sts:*
+            Effect: Allow
             Resource: "*"
-            Effect: Allow
             Sid: AllowedServicesEKS
-          - Action:
-              - iam:PassRole
-            Resource:
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/unicorn*
+          - Action: iam:PassRole
             Effect: Allow
+            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
             Sid: PassRoleEKS
           - Action:
               - iam:CreateRole
@@ -409,33 +403,13 @@ Resources:
               - iam:PutRolePolicy
               - iam:DeleteRolePolicy
               - iam:PassRole
-            Resource:
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/*unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :policy/*unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/*Unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :policy/*Unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :policy/*AWSLambdaTracerAccessExecutionRole*
             Effect: Allow
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/*unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/*Unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*Unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*AWSLambdaTracerAccessExecutionRole*
             Sid: IamLimitedAccessForUnicorns
           - Action:
               - cloudformation:*
@@ -448,15 +422,14 @@ Resources:
               - logs:*
               - lambda:*
               - dynamodb:*
-              - route53:*
               - s3:*
-              - servicediscovery:*
               - tag:*
               - application-signals:*
-            Resource: "*"
             Effect: Allow
+            Resource: "*"
             Sid: AllowedServicesOthers
-          - Condition:
+          - Action: ec2:RunInstances
+            Condition:
               StringLike:
                 ec2:InstanceType:
                   - "*4xlarge"
@@ -472,10 +445,8 @@ Resources:
                   - x1*
                   - z1*
                   - "*metal"
-            Action: ec2:RunInstances
-            Resource:
-              - arn:aws:ec2:*:*:instance/*
             Effect: Deny
+            Resource: arn:aws:ec2:*:*:instance/*
             Sid: DenyXXLInstances
           - Action:
               - ec2:ModifyReservedInstances
@@ -484,15 +455,14 @@ Resources:
               - ec2:PurchaseScheduledInstances
               - rds:PurchaseReservedDBInstancesOffering
               - dynamodb:PurchaseReservedCapacityOfferings
-            Resource: "*"
             Effect: Deny
+            Resource: "*"
             Sid: DenyReservations
-      Roles:
-        - Ref: UnicornStoreIdeIdeRole81A2CEAA
+        Version: "2012-10-17"
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250727-150346
+      LogGroupName: unicornstore-ide-bootstrap-log-20250727-154201
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1170,7 +1140,8 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleName:
+                    - splashUrl: ""
+                      instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
                       codeServerVersion: 4.101.2
                       customBootstrapScript: |
@@ -1238,7 +1209,6 @@ Resources:
                         Fn::GetAtt:
                           - UnicornStoreIdeIdeRole81A2CEAA
                           - Arn
-                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1376,12 +1346,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
+      SsmDocument:
+        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
       LogGroupName:
         Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
       InstanceId:
         Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
-      SsmDocument:
-        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -1567,7 +1537,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20250727150346"
+            - "-20250727154201"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

@@ -1,6 +1,7 @@
 package com.unicorn.constructs;
 
-import software.amazon.awscdk.services.ec2.*;
+import software.amazon.awscdk.services.ec2.IVpc;
+import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.eks.CfnCluster;
 import software.amazon.awscdk.services.eks.CfnCluster.LoggingProperty;
 import software.amazon.awscdk.services.eks.CfnCluster.ClusterLoggingProperty;
@@ -17,6 +18,12 @@ import software.amazon.awscdk.services.eks.CfnAccessEntry;
 import software.amazon.awscdk.services.eks.CfnAccessEntry.AccessScopeProperty;
 import software.amazon.awscdk.services.eks.CfnAccessEntry.AccessPolicyProperty;
 import software.amazon.awscdk.services.eks.CfnPodIdentityAssociation;
+// import software.amazon.awscdk.services.eks.OpenIdConnectProvider;
+// import software.amazon.awscdk.ResolutionTypeHint;
+import software.amazon.awscdk.services.ec2.SubnetType;
+import software.amazon.awscdk.services.ec2.SubnetSelection;
+import software.amazon.awscdk.services.ec2.ISubnet;
+import software.amazon.awscdk.services.ec2.ISecurityGroup;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
@@ -183,11 +190,6 @@ public class EksCluster extends Construct {
             .serviceAccount(serviceAccount)
             .build();
         podIdentityAssociation.getNode().addDependency(cluster);
-    }
-
-    // Get the default cluster security group
-    public String getClusterSecurityGroupId() {
-        return cluster.getAttrClusterSecurityGroupId();
     }
 
     // Get the default cluster security group as ISecurityGroup

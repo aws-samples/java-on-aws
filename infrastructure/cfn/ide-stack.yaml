@@ -300,6 +300,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonSSMManagedInstanceCore
+        - Ref: VSCodeIdeWorkshopIdeUserPolicy98DFEC00
         - Fn::Join:
             - ""
             - - "arn:"
@@ -329,16 +330,17 @@ Resources:
       PolicyName: VSCodeIdeIdeRoleDefaultPolicyB89C55CF
       Roles:
         - Ref: VSCodeIdeIdeRole21951A1F
-  VSCodeIdeWorkshopIdeUserPolicy0493440D:
+  VSCodeIdeWorkshopIdeUserPolicy98DFEC00:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: WorkshopIdeUserPolicy
+      Description: ""
+      Path: /
       PolicyDocument:
-        Version: "2012-10-17"
         Statement:
-          - Condition:
+          - Action: aws-marketplace:Subscribe
+            Condition:
               "Null":
-                aws-marketplace:ProductId: false
+                aws-marketplace:ProductId: "false"
               ForAllValues:StringEquals:
                 aws-marketplace:ProductId:
                   - prod-4dlfvry4v5hbi
@@ -346,16 +348,14 @@ Resources:
                   - prod-5oba7y7jpji56
                   - b7568428-a1ab-46d8-bab3-37def50f6f6a
                   - 38e55671-c3fe-4a44-9783-3584906e7cad
-            Action:
-              - aws-marketplace:Subscribe
-            Resource: "*"
             Effect: Allow
+            Resource: "*"
           - Action:
               - aws-marketplace:Unsubscribe
               - aws-marketplace:ViewSubscriptions
               - bedrock:*
-            Resource: "*"
             Effect: Allow
+            Resource: "*"
           - Action:
               - cloudwatch:*
               - codewhisperer:*
@@ -368,18 +368,12 @@ Resources:
               - secretsmanager:*
               - ssm:*
               - sts:*
+            Effect: Allow
             Resource: "*"
-            Effect: Allow
             Sid: AllowedServicesEKS
-          - Action:
-              - iam:PassRole
-            Resource:
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/unicorn*
+          - Action: iam:PassRole
             Effect: Allow
+            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
             Sid: PassRoleEKS
           - Action:
               - iam:CreateRole
@@ -394,33 +388,13 @@ Resources:
               - iam:PutRolePolicy
               - iam:DeleteRolePolicy
               - iam:PassRole
-            Resource:
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/*unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :policy/*unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/*Unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :policy/*Unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :policy/*AWSLambdaTracerAccessExecutionRole*
             Effect: Allow
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/*unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/*Unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*Unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*AWSLambdaTracerAccessExecutionRole*
             Sid: IamLimitedAccessForUnicorns
           - Action:
               - cloudformation:*
@@ -433,15 +407,14 @@ Resources:
               - logs:*
               - lambda:*
               - dynamodb:*
-              - route53:*
               - s3:*
-              - servicediscovery:*
               - tag:*
               - application-signals:*
-            Resource: "*"
             Effect: Allow
+            Resource: "*"
             Sid: AllowedServicesOthers
-          - Condition:
+          - Action: ec2:RunInstances
+            Condition:
               StringLike:
                 ec2:InstanceType:
                   - "*4xlarge"
@@ -457,10 +430,8 @@ Resources:
                   - x1*
                   - z1*
                   - "*metal"
-            Action: ec2:RunInstances
-            Resource:
-              - arn:aws:ec2:*:*:instance/*
             Effect: Deny
+            Resource: arn:aws:ec2:*:*:instance/*
             Sid: DenyXXLInstances
           - Action:
               - ec2:ModifyReservedInstances
@@ -469,15 +440,14 @@ Resources:
               - ec2:PurchaseScheduledInstances
               - rds:PurchaseReservedDBInstancesOffering
               - dynamodb:PurchaseReservedCapacityOfferings
-            Resource: "*"
             Effect: Deny
+            Resource: "*"
             Sid: DenyReservations
-      Roles:
-        - Ref: VSCodeIdeIdeRole21951A1F
+        Version: "2012-10-17"
   VSCodeIdeIdeLogGroup364F2B78:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250727-150308
+      LogGroupName: ide-bootstrap-log-20250727-154125
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -892,9 +862,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            default: ""
-            type: String
             description: (Optional) Custom bootstrap script to run.
+            type: String
+            default: ""
         mainSteps:
           - inputs:
               runCommand:
@@ -1155,29 +1125,11 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - domain: ""
-                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,shardulm94.trailing-spaces,ms-azuretools.vscode-docker
-                      waitConditionHandleUrl:
-                        Ref: VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82
-                      readmeUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - VSCodeIdeIdeRole21951A1F
-                          - Arn
-                      splashUrl: ""
-                      instanceIamRoleName:
-                        Ref: VSCodeIdeIdeRole21951A1F
-                      codeServerVersion: 4.101.2
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='bash
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
+                    - extensions: ms-kubernetes-tools.vscode-kubernetes-tools,shardulm94.trailing-spaces,ms-azuretools.vscode-docker
+                      domain: ""
+                      installGitea: echo bootstrapGitea was not provided
+                      terminalOnStartup: "true"
+                      environmentContentsZip: ""
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1208,9 +1160,27 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: VSCodeIdeIdePasswordSecret39AD78F3
-                      environmentContentsZip: ""
-                      terminalOnStartup: "true"
-                      installGitea: echo bootstrapGitea was not provided
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
+                      codeServerVersion: 4.101.2
+                      instanceIamRoleName:
+                        Ref: VSCodeIdeIdeRole21951A1F
+                      splashUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - VSCodeIdeIdeRole21951A1F
+                          - Arn
+                      readmeUrl: ""
+                      waitConditionHandleUrl:
+                        Ref: VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1348,12 +1318,12 @@ Resources:
         Fn::GetAtt:
           - VSCodeIdeIdeBootstrapFunctionADFBCE22
           - Arn
-      InstanceId:
-        Ref: VSCodeIdeIdeEC2Instance846AE373
-      SsmDocument:
-        Ref: VSCodeIdeIdeBootstrapDocument8DDB05AD
       LogGroupName:
         Ref: VSCodeIdeIdeLogGroup364F2B78
+      SsmDocument:
+        Ref: VSCodeIdeIdeBootstrapDocument8DDB05AD
+      InstanceId:
+        Ref: VSCodeIdeIdeEC2Instance846AE373
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 Outputs:

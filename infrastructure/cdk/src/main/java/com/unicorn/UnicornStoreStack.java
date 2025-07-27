@@ -8,28 +8,37 @@ import com.unicorn.constructs.VSCodeIde.VSCodeIdeProps;
 import com.unicorn.constructs.CodeBuildResource;
 import com.unicorn.constructs.CodeBuildResource.CodeBuildResourceProps;
 import com.unicorn.constructs.EksCluster;
-import com.unicorn.core.*;
+import com.unicorn.core.InfrastructureCore;
+import com.unicorn.core.InfrastructureContainers;
+import com.unicorn.core.InfrastructureEks;
+import com.unicorn.core.InfrastructureMonitoringJVM;
+import com.unicorn.core.DatabaseSetup;
+import com.unicorn.core.UnicornStoreSpringLambda;
 
-import software.amazon.awscdk.*;
+import software.amazon.awscdk.Stack;
+import software.amazon.awscdk.StackProps;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.constructs.Construct;
 
+import software.amazon.awscdk.DefaultStackSynthesizer;
+import software.amazon.awscdk.DefaultStackSynthesizerProps;
+
 public class UnicornStoreStack extends Stack {
 
     private final String bootstrapScript = """
         date
 
-        echo '=== Clone Git repository ===\n'
+        echo '=== Clone Git repository ==='
         sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-        sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout bedrock-tda"
+        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
 
-        echo '=== Setup IDE ===\n'
+        echo '=== Setup IDE ==='
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
 
-        echo '=== Additional Setup ===\n'
+        echo '=== Additional Setup ==='
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
 
@@ -66,7 +75,7 @@ public class UnicornStoreStack extends Stack {
         // Create VPC
         var vpc = new WorkshopVpc(this, "UnicornStoreVpc", "unicornstore-vpc").getVpc();
 
-        // Create VSCode IDE
+        // Create Workshop IDE
         var ideProps = new VSCodeIdeProps();
             ideProps.setBootstrapScript(bootstrapScript);
             ideProps.setVpc(vpc);
@@ -83,11 +92,6 @@ public class UnicornStoreStack extends Stack {
         var ideRole = ideProps.getRole();
         var ideInternalSecurityGroup = ide.getIdeInternalSecurityGroup();
 
-        // Create EKS cluster for the workshop
-        var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.33",
-                vpc, ideInternalSecurityGroup);
-        eksCluster.createAccessEntry(ideRole.getRoleArn(), "unicorn-store", "unicornstore-ide-user");
-
         // Create Core infrastructure
         var infrastructureCore = new InfrastructureCore(this, "InfrastructureCore", vpc);
         // var accountId = Stack.of(this).getAccount();
@@ -95,6 +99,11 @@ public class UnicornStoreStack extends Stack {
         // Create additional infrastructure for Containers modules of Java on AWS Immersion Day
         new InfrastructureContainers(this, "InfrastructureContainers", infrastructureCore);
         new InfrastructureEks(this, "InfrastructureEks", infrastructureCore);
+
+        // Create EKS cluster for the workshop
+        var eksCluster = new EksCluster(this, "UnicornStoreEksCluster", "unicorn-store", "1.33",
+            vpc, ideInternalSecurityGroup);
+        eksCluster.createAccessEntry(ideRole.getRoleArn(), "unicorn-store", "unicornstore-ide-user");
 
         // Create JVM monitoring infrastructure with Lambda thread dump
         new InfrastructureMonitoringJVM(this, "InfrastructureMonitoringJVM", infrastructureCore.getWorkshopBucket(), eksCluster, vpc);
