@@ -33,8 +33,8 @@ public class UnicornStoreStack extends Stack {
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
 
-        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
-        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring-jvm.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring-jvm.sh"
         """;
 
     private final String buildspec = """

@@ -492,7 +492,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250727-104431
+      LogGroupName: unicornstore-ide-bootstrap-log-20250727-150250
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1239,8 +1239,8 @@ Resources:
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
 
-                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
-                        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring-jvm.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring-jvm.sh"
                       codeServerVersion: 4.101.2
                       instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
@@ -1747,7 +1747,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20250727104431"
+            - "-20250727150250"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

@@ -300,7 +300,6 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonSSMManagedInstanceCore
-        - Ref: VSCodeIdeWorkshopIdeUserPolicy98DFEC00
         - Fn::Join:
             - ""
             - - "arn:"
@@ -330,17 +329,16 @@ Resources:
       PolicyName: VSCodeIdeIdeRoleDefaultPolicyB89C55CF
       Roles:
         - Ref: VSCodeIdeIdeRole21951A1F
-  VSCodeIdeWorkshopIdeUserPolicy98DFEC00:
+  VSCodeIdeWorkshopIdeUserPolicy0493440D:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      Description: ""
-      Path: /
+      ManagedPolicyName: WorkshopIdeUserPolicy
       PolicyDocument:
+        Version: "2012-10-17"
         Statement:
-          - Action: aws-marketplace:Subscribe
-            Condition:
+          - Condition:
               "Null":
-                aws-marketplace:ProductId: "false"
+                aws-marketplace:ProductId: false
               ForAllValues:StringEquals:
                 aws-marketplace:ProductId:
                   - prod-4dlfvry4v5hbi
@@ -348,14 +346,16 @@ Resources:
                   - prod-5oba7y7jpji56
                   - b7568428-a1ab-46d8-bab3-37def50f6f6a
                   - 38e55671-c3fe-4a44-9783-3584906e7cad
-            Effect: Allow
+            Action:
+              - aws-marketplace:Subscribe
             Resource: "*"
+            Effect: Allow
           - Action:
               - aws-marketplace:Unsubscribe
               - aws-marketplace:ViewSubscriptions
               - bedrock:*
-            Effect: Allow
             Resource: "*"
+            Effect: Allow
           - Action:
               - cloudwatch:*
               - codewhisperer:*
@@ -368,12 +368,18 @@ Resources:
               - secretsmanager:*
               - ssm:*
               - sts:*
-            Effect: Allow
             Resource: "*"
-            Sid: AllowedServicesEKS
-          - Action: iam:PassRole
             Effect: Allow
-            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+            Sid: AllowedServicesEKS
+          - Action:
+              - iam:PassRole
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/unicorn*
+            Effect: Allow
             Sid: PassRoleEKS
           - Action:
               - iam:CreateRole
@@ -388,13 +394,33 @@ Resources:
               - iam:PutRolePolicy
               - iam:DeleteRolePolicy
               - iam:PassRole
-            Effect: Allow
             Resource:
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/*unicorn*
-              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*unicorn*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/*Unicorn*
-              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*Unicorn*
-              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*AWSLambdaTracerAccessExecutionRole*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/*unicorn*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :policy/*unicorn*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/*Unicorn*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :policy/*Unicorn*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :policy/*AWSLambdaTracerAccessExecutionRole*
+            Effect: Allow
             Sid: IamLimitedAccessForUnicorns
           - Action:
               - cloudformation:*
@@ -407,14 +433,15 @@ Resources:
               - logs:*
               - lambda:*
               - dynamodb:*
+              - route53:*
               - s3:*
+              - servicediscovery:*
               - tag:*
               - application-signals:*
-            Effect: Allow
             Resource: "*"
+            Effect: Allow
             Sid: AllowedServicesOthers
-          - Action: ec2:RunInstances
-            Condition:
+          - Condition:
               StringLike:
                 ec2:InstanceType:
                   - "*4xlarge"
@@ -430,8 +457,10 @@ Resources:
                   - x1*
                   - z1*
                   - "*metal"
+            Action: ec2:RunInstances
+            Resource:
+              - arn:aws:ec2:*:*:instance/*
             Effect: Deny
-            Resource: arn:aws:ec2:*:*:instance/*
             Sid: DenyXXLInstances
           - Action:
               - ec2:ModifyReservedInstances
@@ -440,14 +469,15 @@ Resources:
               - ec2:PurchaseScheduledInstances
               - rds:PurchaseReservedDBInstancesOffering
               - dynamodb:PurchaseReservedCapacityOfferings
-            Effect: Deny
             Resource: "*"
+            Effect: Deny
             Sid: DenyReservations
-        Version: "2012-10-17"
+      Roles:
+        - Ref: VSCodeIdeIdeRole21951A1F
   VSCodeIdeIdeLogGroup364F2B78:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250718-081414
+      LogGroupName: ide-bootstrap-log-20250727-150308
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1141,7 +1171,7 @@ Resources:
                       customBootstrapScript: |
                         date
 
-                        echo '=== Clone Git repository ==='
+                        echo '=== Clone Git repository ==='bash
                         sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
                         # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
 
