@@ -492,7 +492,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250727-102705
+      LogGroupName: unicornstore-ide-bootstrap-log-20250727-104431
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1170,7 +1170,8 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleArn:
+                    - splashUrl: ""
+                      instanceIamRoleArn:
                         Fn::GetAtt:
                           - UnicornStoreIdeIdeRole81A2CEAA
                           - Arn
@@ -1243,7 +1244,6 @@ Resources:
                       codeServerVersion: 4.101.2
                       instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1747,7 +1747,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20250727102705"
+            - "-20250727104431"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2107,17 +2107,6 @@ Resources:
           - Action: xray:PutTraceSegments
             Effect: Allow
             Resource: "*"
-          - Action:
-              - ecs:ListTasks
-              - ecs:DescribeTasks
-              - ecs:ListServices
-              - ecs:DescribeServices
-              - ecs:ListClusters
-              - ecs:DescribeClusters
-              - ecs:ListContainerInstances
-              - ecs:DescribeContainerInstances
-            Effect: Allow
-            Resource: "*"
           - Action: events:PutEvents
             Effect: Allow
             Resource:
@@ -2379,13 +2368,13 @@ Resources:
               }
       Environment:
         Variables:
+          EKS_CLUSTER_NAME: unicorn-store
           S3_THREAD_DUMPS_PREFIX: thread-dumps/
           APP_LABEL: unicorn-store-spring
           KUBERNETES_AUTH_TYPE: aws
           K8S_NAMESPACE: unicorn-store-spring
           S3_BUCKET_NAME:
             Ref: InfrastructureCoreWorkshopBucketB6510E67
-          EKS_CLUSTER_NAME: unicorn-store
       FunctionName: unicornstore-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
