@@ -279,3 +279,32 @@ fi
 ALERT_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
   -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
   -d "$ALERT_PAYLOAD" \
+  "$GRAFANA_URL/api/v1/provisioning/alert-rules")
+
+log "✅ Alert rule created"
+
+# Ensure notification policy routes to our contact point
+log "🔧 Configuring notification policy..."
+POLICY_PAYLOAD="{
+  \"receiver\": \"$CONTACT_POINT_NAME\",
+  \"group_by\": [\"alertname\"],
+  \"group_wait\": \"30s\",
+  \"group_interval\": \"5m\",
+  \"repeat_interval\": \"1h\"
+}"
+
+POLICY_RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" \
+  -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+  -d "$POLICY_PAYLOAD" \
+  "$GRAFANA_URL/api/v1/provisioning/policies")
+
+if echo "$POLICY_RESPONSE" | grep -q "policies updated"; then
+  log "✅ Notification policy configured"
+else
+  log "❌ Notification policy configuration failed:"
+  echo "$POLICY_RESPONSE"
+fi
+log "✅ JVM monitoring setup complete"
+log "🌍 Grafana: $GRAFANA_URL"
+log "📊 Dashboard shows jvm_threads_live_threads from both EKS and ECS"
+log "🚨 Alert triggers Lambda thread dump when threads > $THREAD_THRESHOLD, stops when threads < $THREAD_THRESHOLD"

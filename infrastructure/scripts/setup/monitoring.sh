@@ -61,6 +61,24 @@ helm upgrade --install prometheus prometheus-community/prometheus \
   --namespace "$NAMESPACE" \
   --values "$VALUES_FILE"
 
+# Wait for Prometheus to be ready
+log "⏳ Waiting for Prometheus to be ready..."
+kubectl wait --for=condition=available --timeout=300s deployment/prometheus-server -n "$NAMESPACE"
+
+# Verify Prometheus is responding
+kubectl port-forward -n "$NAMESPACE" svc/prometheus-server 9090:80 &
+PF_PID=$!
+sleep 5
+if curl -s http://localhost:9090/-/healthy > /dev/null 2>&1; then
+    log "✅ Prometheus is healthy"
+else
+    log "❌ Prometheus health check failed"
+    kubectl logs -n "$NAMESPACE" deployment/prometheus-server -c prometheus-server --tail=10
+    kill $PF_PID 2>/dev/null
+    exit 1
+fi
+kill $PF_PID 2>/dev/null
+
 # Grafana values
 cat > "$GRAFANA_VALUES_FILE" <<EOF
 admin:
