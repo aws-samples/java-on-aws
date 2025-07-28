@@ -32,6 +32,7 @@
         <postgresql.version>42.7.7</postgresql.version>
         <jib-maven-plugin.version>3.4.5</jib-maven-plugin.version>
         <testcontainers.version>1.21.1</testcontainers.version>
+        <loki-logback-appender.version>1.5.2</loki-logback-appender.version>
     </properties>
     <dependencies>
         <dependency>
@@ -81,6 +82,36 @@
             <artifactId>liquibase-core</artifactId>
         </dependency>
 
+        <!-- Observability -->
+
+        <!-- Metrics-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Tracing -->
+<!--        <dependency>-->
+<!--            <groupId>io.micrometer</groupId>-->
+<!--            <artifactId>micrometer-tracing-bridge-brave</artifactId>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>io.zipkin.reporter2</groupId>-->
+<!--            <artifactId>zipkin-reporter-brave</artifactId>-->
+<!--        </dependency>-->
+
+        <!-- Logging (Loki) -->
+<!--        <dependency>-->
+<!--            <groupId>com.github.loki4j</groupId>-->
+<!--            <artifactId>loki-logback-appender</artifactId>-->
+<!--            <version>${loki-logback-appender.version}</version>-->
+<!--        </dependency>-->
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.testcontainers</groupId>
@@ -125,9 +156,55 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>download-otel-agent</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>software.amazon.opentelemetry</groupId>
+                                    <artifactId>aws-opentelemetry-agent</artifactId>
+                                    <version>1.32.5</version>
+                                    <type>jar</type>
+                                    <outputDirectory>${project.build.directory}/agents</outputDirectory>
+                                    <destFileName>aws-opentelemetry-agent.jar</destFileName>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>jib-maven-plugin</artifactId>
                 <version>${jib-maven-plugin.version}</version>
+                <configuration>
+                    <container>
+                        <jvmFlags>
+                            <jvmFlag>-javaagent:/app/aws-opentelemetry-agent.jar</jvmFlag>
+                            <jvmFlag>-Dotel.traces.exporter=otlp</jvmFlag>
+                            <jvmFlag>-Dotel.exporter.otlp.endpoint=http://aws-otel-collector:4318</jvmFlag>
+                            <jvmFlag>-Dotel.exporter.otlp.protocol=http/protobuf</jvmFlag>
+                            <jvmFlag>-Dotel.service.name=springboot-ai-agent</jvmFlag>
+                            <jvmFlag>-Dotel.metrics.exporter=none</jvmFlag>
+                            <jvmFlag>-Dotel.logs.exporter=none</jvmFlag>
+                        </jvmFlags>
+                    </container>
+                    <extraDirectories>
+                        <paths>
+                            <path>
+                                <from>${project.build.directory}/agents</from>
+                                <into>/app</into>
+                            </path>
+                        </paths>
+                    </extraDirectories>
+                </configuration>
             </plugin>
         </plugins>
     </build>
