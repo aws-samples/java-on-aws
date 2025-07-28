@@ -142,9 +142,9 @@ curl --proto '=https' --tlsv1.2 -sSf "https://desktop-release.codewhisperer.us-e
 unzip /home/ec2-user/q.zip -d /home/ec2-user/
 chmod +x /home/ec2-user/q/install.sh
 
-echo "Fixing bash-preexec errors in Amazon Q shell integration..."
+# echo "Fixing bash-preexec errors in Amazon Q shell integration..."
 # Run the fix script from the same directory
-bash "$(dirname "$0")/fix-bash-preexec.sh"
+# bash "$(dirname "$0")/fix-bash-preexec.sh"
 
 echo "Installing Spring CLI"
 curl -L https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-cli/3.5.0/spring-boot-cli-3.5.0-bin.zip -o /home/ec2-user/spring-boot-cli-3.5.0-bin.zip && unzip /home/ec2-user/spring-boot-cli-3.5.0-bin.zip -d /home/ec2-user
