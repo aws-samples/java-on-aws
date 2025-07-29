@@ -462,7 +462,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250727-154105
+      LogGroupName: unicornstore-ide-bootstrap-log-20250729-054205
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1140,7 +1140,8 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - customBootstrapScript: |
+                    - codeServerVersion: 4.101.2
+                      customBootstrapScript: |
                         date
 
                         echo '=== Clone Git repository ==='
@@ -1210,7 +1211,6 @@ Resources:
                       splashUrl: ""
                       instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      codeServerVersion: 4.101.2
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1539,7 +1539,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20250727154105"
+            - "-20250729054205"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2335,13 +2335,13 @@ Resources:
               }
       Environment:
         Variables:
+          S3_BUCKET_NAME:
+            Ref: InfrastructureCoreWorkshopBucketB6510E67
           K8S_NAMESPACE: unicorn-store-spring
           KUBERNETES_AUTH_TYPE: aws
           APP_LABEL: unicorn-store-spring
           S3_THREAD_DUMPS_PREFIX: thread-dumps/
           EKS_CLUSTER_NAME: unicorn-store
-          S3_BUCKET_NAME:
-            Ref: InfrastructureCoreWorkshopBucketB6510E67
       FunctionName: unicornstore-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
