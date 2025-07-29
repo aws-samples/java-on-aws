@@ -32,3 +32,35 @@ spring:
 
   liquibase:
     change-log: classpath:db/changelog/changelog-master.yaml
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+
+#  tracing:
+#    sampling:
+#      probability: 1.0
+#
+#  zipkin:
+#    tracing:
+#      endpoint: http://tempo:9411/api/v2/spans
+
+  metrics:
+    distribution:
+      percentiles-histogram:
+        spring:
+          ai:
+            chat:
+              client: true
+        gen_ai:
+          client:
+            operation: true
+        db:
+          vector:
+            client:
+              operation: true
+        http:
+          server:
+            requests: true
