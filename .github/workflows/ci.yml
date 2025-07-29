@@ -32,9 +32,9 @@ jobs:
     - name: Build unicorn-store-spring with Maven
       run: mvn -B clean package --file pom.xml --no-transfer-progress
       working-directory: ./apps/unicorn-store-spring/
-    # - name: Build unicorn-spring-ai-agent with Maven
-    #   run: mvn -B clean package --file pom.xml --no-transfer-progress
-    #   working-directory: ./apps/unicorn-spring-ai-agent/
+    - name: Build unicorn-spring-ai-agent with Maven
+      run: mvn -B clean package --file pom.xml --no-transfer-progress
+      working-directory: ./apps/unicorn-spring-ai-agent/
     - name: Install AWS CDK
       run: npm install -g aws-cdk
       working-directory: ./infrastructure/cdk/

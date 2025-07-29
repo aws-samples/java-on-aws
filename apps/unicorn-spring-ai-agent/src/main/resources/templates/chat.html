@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicorn Store AI Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dev-dark': '#1a1a1a',
+                        'dev-darker': '#121212',
+                        'dev-accent': '#6366f1',
+                        'dev-accent-hover': '#4f46e5',
+                        'dev-secondary': '#3b82f6',
+                        'dev-text': '#e2e8f0',
+                        'dev-text-muted': '#94a3b8',
+                        'dev-border': '#2d3748',
+                        'dev-message-user': '#1e293b',
+                        'dev-message-ai': '#1e1e2d'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .chat-container {
+            height: calc(100vh - 180px);
+        }
+        .message-container {
+            height: calc(100vh - 280px);
+            overflow-y: auto;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background-color: #6366f1;
+            margin-left: 2px;
+            animation: blink 1s infinite;
+        }
+        /* Custom scrollbar for dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b3b3b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b4b4b;
+        }
+    </style>
+</head>
+<body class="bg-dev-darker min-h-screen text-dev-text">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <h1 class="text-3xl font-bold text-dev-accent">🦄 Unicorn Store</h1>
+                </div>
+            </div>
+            <p class="text-dev-text-muted mt-2">Experience real-time streaming responses from our magical assistant!</p>
+        </header>
+
+        <!-- Chat Interface -->
+        <div class="bg-dev-dark rounded-xl shadow-lg p-6 chat-container border border-dev-border flex flex-col">
+            <div class="message-container flex-grow mb-4" id="messageContainer">
+                <div class="flex mb-4">
+                    <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
+                        <span class="text-lg">🦄</span>
+                    </div>
+                    <div class="bg-dev-message-ai rounded-lg p-3 max-w-3xl border border-dev-border">
+                        <p class="text-dev-text">Welcome to the Unicorn Store streaming chat! Watch as responses appear in real-time. How can I help you find your magical companion today?</p>
+                    </div>
+                </div>
+                <!-- Messages will be added here dynamically -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="border-t border-dev-border pt-4 mt-auto">
+                <form id="chatForm" class="flex w-full">
+                    <input type="text" id="userInput" class="flex-grow bg-dev-darker border border-dev-border rounded-l-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-dev-accent text-dev-text" placeholder="Ask about our unicorns...">
+                    <button type="submit" class="bg-dev-accent text-white px-6 py-3 rounded-r-lg hover:bg-dev-accent-hover transition">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const messageContainer = document.getElementById('messageContainer');
+            const chatForm = document.getElementById('chatForm');
+            const userInput = document.getElementById('userInput');
+            let isStreaming = false;
+            let currentResponseElement = null;
+            let currentResponseText = '';
+
+            chatForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const message = userInput.value.trim();
+                if (!message || isStreaming) return;
+
+                // Add user message to chat
+                addMessage(message, 'user');
+                userInput.value = '';
+
+                try {
+                    // Create AI response container
+                    currentResponseElement = createResponseContainer();
+                    isStreaming = true;
+                    currentResponseText = '';
+
+                    // Send request to backend
+                    const response = await fetch('api/chat/stream', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/octet-stream' // Use a direct streaming content type
+                        },
+                        body: JSON.stringify({ prompt: message })
+                    });
+
+                    if (!response.ok || !response.body) {
+                        throw new Error('Failed to get response');
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    // Process the stream directly without SSE parsing
+                    while (true) {
+                        const { done, value } = await reader.read();
+
+                        if (done) {
+                            // Remove cursor when stream ends
+                            const cursor = currentResponseElement.querySelector('.cursor');
+                            if (cursor) cursor.remove();
+                            break;
+                        }
+
+                        // Decode and append the chunk directly
+                        const chunk = decoder.decode(value, {stream: true});
+                        appendToResponse(chunk);
+
+                        // Force browser to render the update immediately
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    appendToResponse('Sorry, I encountered an error. Please try again.');
+                } finally {
+                    isStreaming = false;
+                    currentResponseElement = null;
+                }
+            });
+
+            function addMessage(content, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'flex mb-4';
+
+                if (sender === 'user') {
+                    messageDiv.innerHTML = `
+                        <div class="ml-auto flex">
+                            <div class="bg-dev-message-user rounded-lg p-3 max-w-3xl border border-dev-border">
+                                <p class="text-dev-text">${escapeHtml(content)}</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-dev-secondary bg-opacity-20 flex items-center justify-center ml-3">
+                                <span class="text-lg">👤</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                messageContainer.appendChild(messageDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+            }
+
+            function createResponseContainer() {
+                const responseDiv = document.createElement('div');
+                responseDiv.className = 'flex mb-4';
+                responseDiv.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
+                        <span class="text-lg">🦄</span>
+                    </div>
+                    <div class="bg-dev-message-ai rounded-lg p-3 max-w-3xl border border-dev-border">
+                        <p class="text-dev-text response-text"></p>
+                        <span class="cursor"></span>
+                    </div>
+                `;
+
+                messageContainer.appendChild(responseDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+
+                return responseDiv;
+            }
+
+            function appendToResponse(text) {
+                if (!currentResponseElement) return;
+
+                currentResponseText += text;
+                const responseTextElement = currentResponseElement.querySelector('.response-text');
+
+                // Replace newlines with <br> tags for proper line breaks
+                const formattedText = currentResponseText.replace(/\n/g, '<br>');
+                responseTextElement.innerHTML = formattedText;
+
+                // Ensure scroll happens after content is updated
+                requestAnimationFrame(() => {
+                    messageContainer.scrollTop = messageContainer.scrollHeight;
+                });
+            }
+
+            function escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+        });
+    </script>
+</body>
+</html>
