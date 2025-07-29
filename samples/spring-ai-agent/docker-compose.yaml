@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: postgres-db
+    environment:
+      POSTGRES_DB: ai-agent-db
+      POSTGRES_USER: chatuser
+      POSTGRES_PASSWORD: chatpass
+    ports:
+      - "5432:5432"
+    networks:
+      - spring-ai-network
+
+  spring-ai-agent:
+    image: spring-ai-agent:0.0.1-SNAPSHOT
+    container_name: spring-ai-app
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+    environment:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ai-agent-db
+      SPRING_DATASOURCE_USERNAME: chatuser
+      SPRING_DATASOURCE_PASSWORD: chatpass
+    networks:
+      - spring-ai-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - --enable-feature=exemplar-storage
+      - --web.enable-remote-write-receiver
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus:/prometheus
+      - ./thirdparty-configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - spring-ai-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_LOG_LEVEL=error
+    volumes:
+      - ./thirdparty-configs/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./thirdparty-configs/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./thirdparty-configs/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./thirdparty-configs/grafana/provisioning/alerting:/etc/grafana/provisioning/alerting:ro
+    depends_on:
+      - prometheus
+    networks:
+      - spring-ai-network
+
+  aws-otel-collector:
+    image: public.ecr.aws/aws-observability/aws-otel-collector:latest
+    container_name: aws-otel-collector
+    ports:
+      - "2000:2000/udp"
+      - "4318:4318"
+    environment:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    networks:
+      - spring-ai-network
+
+volumes:
+  prometheus:
+    driver: local
+
+networks:
+  spring-ai-network:
