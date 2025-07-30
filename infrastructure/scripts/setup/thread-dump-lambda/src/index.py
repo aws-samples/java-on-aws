@@ -136,14 +136,76 @@ def analyze_thread_dump(thread_dump: str) -> str:
     bedrock = boto3.client("bedrock-runtime", region_name=region_name)
 
     logger.info(f"Using Bedrock in region: {bedrock.meta.region_name}")
-    prompt = f"""Please analyze the following Java thread dump. Your task is to identify performance issues and provide actionable insights. Structure the output into the following four sections:
+    prompt = f"""You are an expert in Java performance analysis with extensive experience diagnosing production issues.
 
-1. **Summary of Thread States**: Count and categorize all thread states (e.g., RUNNABLE, WAITING).
-2. **Key Issues Identified**: Describe any threads that appear stuck, blocked, or problematic (e.g., deadlocks, high CPU).
-3. **Optimization Recommendations**: Suggest practical improvements based on your findings (e.g., code, configuration, GC tuning).
-4. **Detailed Analysis**: Provide a technical breakdown of the most interesting or problematic threads.
+Analyze the following Java thread dump and return your findings as a comprehensive Markdown document with these sections:
 
-Thread Dump:
+1. **Executive Summary**
+   - Provide a concise 2-3 sentence overview of the thread dump health
+   - Highlight the most critical issue identified
+   - Include an overall system health assessment (Healthy/Degraded/Critical)
+
+2. **Summary of Thread States**  
+   - Count and list all thread states (RUNNABLE, WAITING, BLOCKED, etc.)
+   - Include totals and percentages for each state
+   - Present a simple ASCII chart or table showing the distribution
+   - Note any unusual state distributions that might indicate problems
+
+3. **Key Issues Identified**  
+   For each issue, include:
+   - Issue description with severity rating (Critical/High/Medium/Low)
+   - Confidence level in the diagnosis (High/Medium/Low)
+   - Affected threads (count and examples)
+   - Potential business impact
+
+   Look specifically for:
+   - Deadlocks or potential deadlocks
+   - Resource contention patterns
+   - Threads blocked on synchronization
+   - Excessive CPU usage patterns
+   - Thread pool saturation
+   - Database connection issues
+   - I/O bottlenecks
+   - Common framework-specific issues (Spring, Hibernate, etc.)
+
+4. **Optimization Recommendations**  
+   Provide actionable recommendations organized by:
+   - Immediate actions (can be implemented quickly with low risk)
+   - Short-term improvements (days to implement)
+   - Long-term architectural changes (if applicable)
+
+   Include for each recommendation:
+   - Specific code, configuration, or architectural changes
+   - Expected impact level (High/Medium/Low)
+   - Implementation complexity (High/Medium/Low)
+   
+   Consider these areas:
+   - Thread pool sizing and configuration
+   - Synchronization and locking strategies
+   - Database query and connection handling
+   - Garbage collection tuning
+   - Resource allocation
+   - Caching strategies
+   - Asynchronous processing opportunities
+
+5. **Detailed Analysis of Critical Threads**  
+   For the 3-5 most problematic threads:
+   - Thread name, ID, and state
+   - Relevant stack trace snippet (focus on most important frames)
+   - Explanation of why this thread is significant
+   - What normal behavior would look like
+   - Other threads with similar patterns or related issues
+   - Specific code areas that should be investigated
+
+6. **System Context Analysis**
+   - Identify patterns across multiple threads suggesting systemic issues
+   - Note any evidence of recent garbage collection activity
+   - Identify potential memory issues (if detectable from thread patterns)
+   - Comment on thread creation patterns and lifecycle management
+
+If the thread dump appears incomplete or insufficient for complete analysis, clearly state this limitation and what additional information would be helpful.
+
+**Thread Dump Input**:
 {thread_dump}
 """
 
@@ -185,7 +247,6 @@ Thread Dump:
             return f"Unexpected error during analysis: {str(e)}"
 
     return "Failed to analyze thread dump after multiple retries due to throttling."
-
 
 class ECSClient:
     def __init__(self, cluster_name: str):
