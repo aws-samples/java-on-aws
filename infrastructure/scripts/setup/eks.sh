@@ -87,7 +87,11 @@ aws eks create-pod-identity-association --cluster-name $CLUSTER_NAME \
 sleep 10
 
 helm repo add external-secrets https://charts.external-secrets.io
+helm repo add aws-mountpoint-s3-csi-driver https://awslabs.github.io/mountpoint-s3-csi-driver
+helm repo update
+
 helm install external-secrets external-secrets/external-secrets --version 0.16.0 -n external-secrets --create-namespace --wait
+helm upgrade --install aws-mountpoint-s3-csi-driver --namespace kube-system aws-mountpoint-s3-csi-driver/aws-mountpoint-s3-csi-driver
 
 cat <<EOF | envsubst | kubectl create -f -
 apiVersion: external-secrets.io/v1beta1
