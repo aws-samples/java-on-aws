@@ -42,7 +42,6 @@ public class InfrastructureMonitoringJVM extends Construct {
         ISecurityGroup clusterSG = eksCluster.getClusterSecurityGroup();
 
         // Allow Lambda to communicate with EKS API server
-        // The Kubernetes API typically runs on port 443 (HTTPS)
         clusterSG.addIngressRule(
                 Peer.securityGroupId(lambdaSg.getSecurityGroupId()),
                 Port.tcp(443),
@@ -82,33 +81,36 @@ public class InfrastructureMonitoringJVM extends Construct {
                 .description("Role for Lambda to access Bedrock and EKS")
                 .managedPolicies(List.of(
                         ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"),
-                        // Add VPC access policy
                         ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaVPCAccessExecutionRole")
                 ))
                 .build();
 
         // Add permissions for Bedrock, S3, and SNS
-        // Add permissions for logs
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
-                .effect(Effect.ALLOW)
-                .actions(List.of(
-                        "logs:CreateLogGroup",
-                        "logs:CreateLogStream",
-                        "logs:PutLogEvents"
-                ))
-                .resources(List.of("arn:aws:logs:*:*:*"))
-                .build());
+            .effect(Effect.ALLOW)
+            .actions(List.of(
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream", 
+                "logs:PutLogEvents"
+            ))
+            .resources(List.of(
+                String.format("arn:aws:logs:%s:%s:log-group:/aws/lambda/unicornstore-thread-dump-lambda*", 
+                    Stack.of(this).getRegion(), 
+                    Stack.of(this).getAccount())
+            ))
+            .build());
 
         // Add broader permissions for Bedrock
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
-                .effect(Effect.ALLOW)
-                .actions(List.of(
-                        "bedrock:InvokeModel",
-                        "bedrock:InvokeModelWithResponseStream",
-                        "bedrock:ListFoundationModels"
-                ))
-                .resources(List.of("*"))  // Grant access to all Bedrock resources
-                .build());
+            .effect(Effect.ALLOW)
+            .actions(List.of(
+                "bedrock:InvokeModel",
+                "bedrock:InvokeModelWithResponseStream"
+            ))
+            .resources(List.of(
+                "arn:aws:bedrock:*:*:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+            ))
+            .build());
 
         // Add permissions for AWS Secrets Manager access (IDE password)
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
@@ -118,24 +120,19 @@ public class InfrastructureMonitoringJVM extends Construct {
                     "secretsmanager:DescribeSecret"
             ))
             .resources(List.of(
-                    // Allow access to the IDE password secret for webhook authentication
                     String.format("arn:aws:secretsmanager:%s:*:secret:unicornstore-ide-password-lambda*", Stack.of(this).getRegion())
             ))
             .build());
 
-        // Add separate policy for S3 and SNS
-        // Thread dumps will be stored in s3://bucket-name/thread-dumps/{task_pod_id}/{timestamp}.txt
-        // Analysis will be stored in s3://bucket-name/thread-dumps/{task_pod_id}/{timestamp}_analysis.md
+        // Thread dumps S3 permissions
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
                 .effect(Effect.ALLOW)
                 .actions(List.of(
-                        "s3:PutObject", "s3:GetObject", "s3:ListBucket",
-                        "sns:Publish"
+                        "s3:PutObject", "s3:GetObject", "s3:ListBucket"
                 ))
                 .resources(List.of(
                         String.format("arn:aws:s3:::%s/thread-dumps/*", s3Bucket.getBucketName()),
-                        String.format("arn:aws:s3:::%s", s3Bucket.getBucketName()),
-                        "arn:aws:sns:*:*:*"
+                        String.format("arn:aws:s3:::%s", s3Bucket.getBucketName())
                 ))
                 .build());
 
@@ -151,7 +148,7 @@ public class InfrastructureMonitoringJVM extends Construct {
                 .resources(List.of("*"))
                 .build());
 
-        // Lambda function definition with inline dummy code
+        // Lambda function definition
         Function threadDumpFunction = Function.Builder.create(this, "unicornstore-thread-dump-lambda-eks")
                 .functionName("unicornstore-thread-dump-lambda")
                 .runtime(software.amazon.awscdk.services.lambda.Runtime.PYTHON_3_13)
@@ -183,43 +180,35 @@ public class InfrastructureMonitoringJVM extends Construct {
                 .role(lambdaRole)
                 .timeout(Duration.minutes(5))
                 .memorySize(512)
-                // Add VPC configuration - use private subnets with NAT
                 .vpc(vpc)
                 .vpcSubnets(SubnetSelection.builder()
                         .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
                         .build())
                 .securityGroups(List.of(lambdaSg))
-                // Environment variables for Lambda function
-                // S3_THREAD_DUMPS_PREFIX specifies the base folder where thread dumps are organized
-                // Structure: s3://bucket-name/thread-dumps/{task_pod_id}/{timestamp}.txt
-                //           s3://bucket-name/thread-dumps/{task_pod_id}/{timestamp}_analysis.md
                 .environment(Map.of(
                         "APP_LABEL", "unicorn-store-spring",
                         "EKS_CLUSTER_NAME", Objects.requireNonNull(eksCluster.getCluster().getName()),
                         "K8S_NAMESPACE", "unicorn-store-spring",
                         "S3_BUCKET_NAME", s3Bucket.getBucketName(),
                         "S3_THREAD_DUMPS_PREFIX", "thread-dumps/",
-                        "KUBERNETES_AUTH_TYPE", "aws"  // Use AWS IAM authentication for EKS
+                        "KUBERNETES_AUTH_TYPE", "aws"
                 ))
                 .build();
 
         s3Bucket.grantWrite(threadDumpFunction);
         s3Bucket.grantRead(threadDumpFunction);
 
-        // Create Log Group with retention
         LogGroup.Builder.create(this, "ThreadDumpLogGroup")
                 .logGroupName("/aws/lambda/unicornstore-thread-dump-lambda")
                 .retention(RetentionDays.ONE_WEEK)
                 .removalPolicy(RemovalPolicy.DESTROY)
                 .build();
 
-        // Create Function URL for Grafana webhook integration
         FunctionUrl.Builder.create(this, "ThreadDumpFunctionUrl")
                 .function(threadDumpFunction)
                 .authType(FunctionUrlAuthType.NONE)
                 .build();
 
-        // Add resource-based policy to allow public access to Function URL
         threadDumpFunction.addPermission("AllowPublicInvocation",
                 software.amazon.awscdk.services.lambda.Permission.builder()
                         .principal(new AnyPrincipal())
@@ -227,9 +216,7 @@ public class InfrastructureMonitoringJVM extends Construct {
                         .functionUrlAuthType(FunctionUrlAuthType.NONE)
                         .build());
 
-        // Use EKS Access Entries API instead of aws-auth ConfigMap
         if (eksCluster != null) {
-            // Create an access entry for the Lambda role
             eksCluster.createAccessEntry(lambdaRole.getRoleArn(), eksCluster.getCluster().getName(), "lambda-eks-access-role");
         }
 
