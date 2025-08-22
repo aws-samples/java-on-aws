@@ -18,6 +18,7 @@ sudo ln -s /opt/kubectx/kubectx /usr/local/bin/kubectx
 sudo ln -s /opt/kubectx/kubens /usr/local/bin/kubens
 
 echo Installing zsh
+export HOMEBREW_CURL_RETRIES=5
 rm -rf /home/ec2-user/.oh-my-zsh
 mkdir -p ~/tmp
 cd ~/tmp
