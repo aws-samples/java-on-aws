@@ -75,7 +75,7 @@ for i in {1..20}; do
   sleep 5
 done
 
-API_ID=$(aws apigateway get-rest-apis --query "items[?name=='unicornstore-thread-dump-api-manual'].id" --output text)
+API_ID=$(aws apigateway get-rest-apis --query "items[?name=='unicornstore-thread-dump-api'].id" --output text)
 VPCE_ID=$(aws ec2 describe-vpc-endpoints --filters "Name=service-name,Values=com.amazonaws.${AWS_REGION}.execute-api" --query "VpcEndpoints[0].VpcEndpointId" --output text)
 LAMBDA_URL="https://${API_ID}-${VPCE_ID}.execute-api.${AWS_REGION}.vpce.amazonaws.com/prod"
 
