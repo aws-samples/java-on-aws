@@ -462,7 +462,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250729-054307
+      LogGroupName: unicornstore-ide-bootstrap-log-20250825-200806
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -877,9 +877,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
+            default: ""
             type: String
             description: (Optional) Custom bootstrap script to run.
-            default: ""
         mainSteps:
           - inputs:
               runCommand:
@@ -1140,9 +1140,22 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleName:
+                    - environmentContentsZip: ""
+                      terminalOnStartup: "true"
+                      installGitea: echo bootstrapGitea was not provided
+                      domain: ""
+                      extensions: vscjava.vscode-java-pack,ms-azuretools.vscode-docker
+                      waitConditionHandleUrl:
+                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
+                      readmeUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - UnicornStoreIdeIdeRole81A2CEAA
+                          - Arn
+                      splashUrl: ""
+                      instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      codeServerVersion: 4.101.2
+                      codeServerVersion: 4.103.1
                       customBootstrapScript: |
                         date
 
@@ -1198,19 +1211,6 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: UnicornStoreIdeIdePasswordSecret514252E2
-                      environmentContentsZip: ""
-                      terminalOnStartup: "true"
-                      installGitea: echo bootstrapGitea was not provided
-                      domain: ""
-                      extensions: vscjava.vscode-java-pack,ms-azuretools.vscode-docker
-                      waitConditionHandleUrl:
-                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
-                      readmeUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - UnicornStoreIdeIdeRole81A2CEAA
-                          - Arn
-                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1348,12 +1348,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
-      LogGroupName:
-        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
       InstanceId:
         Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
       SsmDocument:
         Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
+      LogGroupName:
+        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -1539,7 +1539,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20250729054307"
+            - "-20250825200806"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -1862,9 +1862,6 @@ Resources:
               HostPort: 8080
               Protocol: tcp
           Secrets:
-            - Name: SPRING_DATASOURCE_PASSWORD
-              ValueFrom:
-                Ref: InfrastructureCoredbSecretPassword1EC1CF00
             - Name: SPRING_DATASOURCE_URL
               ValueFrom:
                 Fn::Join:
@@ -1877,6 +1874,9 @@ Resources:
                     - Ref: AWS::AccountId
                     - :parameter/
                     - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
+            - Name: SPRING_DATASOURCE_PASSWORD
+              ValueFrom:
+                Ref: InfrastructureCoredbSecretPassword1EC1CF00
       Cpu: "1024"
       ExecutionRoleArn:
         Fn::GetAtt:
@@ -2190,9 +2190,6 @@ Resources:
               HostPort: 8080
               Protocol: tcp
           Secrets:
-            - Name: SPRING_DATASOURCE_PASSWORD
-              ValueFrom:
-                Ref: InfrastructureCoredbSecretPassword1EC1CF00
             - Name: SPRING_DATASOURCE_URL
               ValueFrom:
                 Fn::Join:
@@ -2205,6 +2202,9 @@ Resources:
                     - Ref: AWS::AccountId
                     - :parameter/
                     - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
+            - Name: SPRING_DATASOURCE_PASSWORD
+              ValueFrom:
+                Ref: InfrastructureCoredbSecretPassword1EC1CF00
       Cpu: "1024"
       ExecutionRoleArn:
         Fn::GetAtt:
@@ -3339,13 +3339,13 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreCodeBuildStartBuildFunctionB2FE9156
           - Arn
-      ContentHash: fd70d4491df3a6a44292446f6b364c8a
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
       ProjectName:
         Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
+      ContentHash: fd70d4491df3a6a44292446f6b364c8a
     DependsOn:
       - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRulespringaistackUnicornStoreCodeBuildReportBuildFunctionA3347B9EB9A35FA4
       - UnicornStoreCodeBuildBuildCompleteRule7E287561

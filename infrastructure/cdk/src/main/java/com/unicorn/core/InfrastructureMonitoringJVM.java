@@ -2,16 +2,13 @@ package com.unicorn.core;
 
 import com.unicorn.constructs.EksCluster;
 import software.amazon.awscdk.*;
+import software.amazon.awscdk.services.apigateway.*;
 import software.amazon.awscdk.services.ec2.*;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.*;
 import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.s3.Bucket;
-import software.amazon.awscdk.services.sns.Topic;
-import software.amazon.awscdk.services.sns.TopicPolicy;
-import software.amazon.awscdk.services.sns.subscriptions.LambdaSubscription;
-import software.amazon.awscdk.services.eks.CfnCluster;
 import software.constructs.Construct;
 
 import java.util.List;
@@ -23,11 +20,8 @@ public class InfrastructureMonitoringJVM extends Construct {
     public InfrastructureMonitoringJVM(Construct scope, String id, Bucket s3Bucket, EksCluster eksCluster, IVpc vpc) {
         super(scope, id);
 
-        // Create Lambda function first (from InfrastructureLambdaBedrock)
-        Function threadDumpFunction = createThreadDumpLambda(s3Bucket, eksCluster, vpc);
-
-        // Create monitoring infrastructure (from MonitoringConstruct)
-        createMonitoringInfrastructure(vpc, eksCluster.getCluster(), threadDumpFunction);
+        // Create Lambda function
+        createThreadDumpLambda(s3Bucket, eksCluster, vpc);
     }
 
     private Function createThreadDumpLambda(Bucket s3Bucket, EksCluster eksCluster, IVpc vpc) {
@@ -62,17 +56,20 @@ public class InfrastructureMonitoringJVM extends Construct {
                 "Allow Lambda access to Kubernetes API"
         );
 
-        // IAM Role for Bedrock
-        Role bedrockRole = Role.Builder.create(this, "BedrockAccessRole")
-                .assumedBy(new ServicePrincipal("bedrock.amazonaws.com"))
-                .description("Role for Bedrock Claude 3.7 access")
+        // Create separate security group for VPC endpoint
+        SecurityGroup vpcEndpointSg = SecurityGroup.Builder.create(this, "VpcEndpointSecurityGroup")
+                .vpc(vpc)
+                .securityGroupName("unicornstore-apigw-vpce-sg")
+                .description("Security group for API Gateway VPC endpoint")
+                .allowAllOutbound(true)
                 .build();
 
-        bedrockRole.addToPolicy(PolicyStatement.Builder.create()
-                .effect(Effect.ALLOW)
-                .actions(List.of("bedrock:InvokeModel", "bedrock:ListFoundationModels"))
-                .resources(List.of("arn:aws:bedrock:*:*:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0"))
-                .build());
+        // Allow VPC traffic to access API Gateway via VPC endpoint
+        vpcEndpointSg.addIngressRule(
+                Peer.ipv4(vpc.getVpcCidrBlock()),
+                Port.tcp(443),
+                "Allow VPC traffic to API Gateway VPC endpoint"
+        );
 
         // IAM Role for Lambda
         Role lambdaRole = Role.Builder.create(this, "LambdaBedrockRole")
@@ -90,12 +87,12 @@ public class InfrastructureMonitoringJVM extends Construct {
             .effect(Effect.ALLOW)
             .actions(List.of(
                 "logs:CreateLogGroup",
-                "logs:CreateLogStream", 
+                "logs:CreateLogStream",
                 "logs:PutLogEvents"
             ))
             .resources(List.of(
-                String.format("arn:aws:logs:%s:%s:log-group:/aws/lambda/unicornstore-thread-dump-lambda*", 
-                    Stack.of(this).getRegion(), 
+                String.format("arn:aws:logs:%s:%s:log-group:/aws/lambda/unicornstore-thread-dump-lambda*",
+                    Stack.of(this).getRegion(),
                     Stack.of(this).getAccount())
             ))
             .build());
@@ -108,7 +105,9 @@ public class InfrastructureMonitoringJVM extends Construct {
                 "bedrock:InvokeModelWithResponseStream"
             ))
             .resources(List.of(
-                "arn:aws:bedrock:*:*:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+                "arn:aws:bedrock:*:*:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+		"arn:aws:bedrock:*:*:foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0",
+		"arn:aws:bedrock:*:*:foundation-model/openai.gpt-oss-120b-1:0"
             ))
             .build());
 
@@ -204,17 +203,45 @@ public class InfrastructureMonitoringJVM extends Construct {
                 .removalPolicy(RemovalPolicy.DESTROY)
                 .build();
 
-        FunctionUrl.Builder.create(this, "ThreadDumpFunctionUrl")
-                .function(threadDumpFunction)
-                .authType(FunctionUrlAuthType.NONE)
+        // Create VPC endpoint for API Gateway
+        InterfaceVpcEndpoint apiGatewayVpcEndpoint = InterfaceVpcEndpoint.Builder.create(this, "ApiGatewayVpcEndpoint")
+                .vpc(vpc)
+                .service(InterfaceVpcEndpointAwsService.APIGATEWAY)
+                .subnets(SubnetSelection.builder()
+                        .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
+                        .build())
+                .privateDnsEnabled(true)
+                .securityGroups(List.of(lambdaSg))
                 .build();
 
-        threadDumpFunction.addPermission("AllowPublicInvocation",
-                software.amazon.awscdk.services.lambda.Permission.builder()
-                        .principal(new AnyPrincipal())
-                        .action("lambda:InvokeFunctionUrl")
-                        .functionUrlAuthType(FunctionUrlAuthType.NONE)
-                        .build());
+        // Create private API Gateway
+        RestApi api = RestApi.Builder.create(this, "ThreadDumpApi")
+                .restApiName("unicornstore-thread-dump-api")
+                .endpointConfiguration(EndpointConfiguration.builder()
+                        .types(List.of(EndpointType.PRIVATE))
+                        .vpcEndpoints(List.of(apiGatewayVpcEndpoint))
+                        .build())
+                .policy(PolicyDocument.Builder.create()
+                        .statements(List.of(
+                                PolicyStatement.Builder.create()
+                                        .effect(Effect.ALLOW)
+                                        .principals(List.of(new AnyPrincipal()))
+                                        .actions(List.of("execute-api:Invoke"))
+                                        .resources(List.of("*"))
+                                        .conditions(Map.of(
+                                                "StringEquals", Map.of(
+                                                        "aws:SourceVpce", apiGatewayVpcEndpoint.getVpcEndpointId()
+                                                )
+                                        ))
+                                        .build()
+                        ))
+                        .build())
+                .build();
+
+        // Add Lambda integration
+        LambdaIntegration integration = new LambdaIntegration(threadDumpFunction);
+        api.getRoot().addMethod("POST", integration);
+        api.getRoot().addProxy();
 
         if (eksCluster != null) {
             eksCluster.createAccessEntry(lambdaRole.getRoleArn(), eksCluster.getCluster().getName(), "lambda-eks-access-role");
@@ -222,26 +249,4 @@ public class InfrastructureMonitoringJVM extends Construct {
 
         return threadDumpFunction;
     }
-
-    private void createMonitoringInfrastructure(IVpc vpc, CfnCluster eksCluster, Function alertHandlerLambda) {
-        Topic alarmTopic = Topic.Builder.create(this, "AlarmTopic")
-                .topicName("UnicornStoreAlarms")
-                .displayName("Unicorn Store Alarms")
-                .build();
-
-        TopicPolicy.Builder.create(this, "AlarmTopicPolicy")
-                .topics(List.of(alarmTopic))
-                .build()
-                .getDocument()
-                .addStatements(PolicyStatement.Builder.create()
-                        .effect(Effect.DENY)
-                        .actions(List.of("sns:Publish"))
-                        .principals(List.of(new AnyPrincipal()))
-                        .resources(List.of(alarmTopic.getTopicArn()))
-                        .conditions(Map.of("Bool", Map.of("aws:SecureTransport", "false")))
-                        .build());
-
-        alarmTopic.addSubscription(new LambdaSubscription(alertHandlerLambda));
-    }
-
 }

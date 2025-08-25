@@ -75,7 +75,9 @@ for i in {1..20}; do
   sleep 5
 done
 
-LAMBDA_URL=$(aws lambda get-function-url-config --function-name "$LAMBDA_FUNCTION_NAME" --query 'FunctionUrl' --output text)
+API_ID=$(aws apigateway get-rest-apis --query "items[?name=='unicornstore-thread-dump-api-manual'].id" --output text)
+VPCE_ID=$(aws ec2 describe-vpc-endpoints --filters "Name=service-name,Values=com.amazonaws.${AWS_REGION}.execute-api" --query "VpcEndpoints[0].VpcEndpointId" --output text)
+LAMBDA_URL="https://${API_ID}-${VPCE_ID}.execute-api.${AWS_REGION}.vpce.amazonaws.com/prod"
 
 log "📁 Creating folder '$FOLDER_NAME'..."
 FOLDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
