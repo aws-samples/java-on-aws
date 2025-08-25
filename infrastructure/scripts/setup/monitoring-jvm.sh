@@ -75,9 +75,8 @@ for i in {1..20}; do
   sleep 5
 done
 
-API_ID=$(aws apigateway get-rest-apis --query "items[?name=='unicornstore-thread-dump-api'].id" --output text)
-VPCE_ID=$(aws ec2 describe-vpc-endpoints --filters "Name=service-name,Values=com.amazonaws.${AWS_REGION}.execute-api" --query "VpcEndpoints[0].VpcEndpointId" --output text)
-LAMBDA_URL="https://${API_ID}-${VPCE_ID}.execute-api.${AWS_REGION}.vpce.amazonaws.com/prod"
+VPCE_DNS=$(aws ec2 describe-vpc-endpoints --filters "Name=service-name,Values=com.amazonaws.${AWS_REGION}.execute-api" --query "VpcEndpoints[0].DnsEntries[0].DnsName" --output text)
+APIGW_URL="https://${VPCE_DNS}/prod"
 
 log "📁 Creating folder '$FOLDER_NAME'..."
 FOLDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
@@ -193,7 +192,7 @@ if [[ -z "$EXISTING_CONTACT" ]]; then
       \"name\": \"$CONTACT_POINT_NAME\",
       \"type\": \"webhook\",
       \"settings\": {
-        \"url\": \"$LAMBDA_URL\",
+        \"url\": \"$APIGW_URL\",
         \"httpMethod\": \"POST\",
         \"username\": \"$WEBHOOK_USER\",
         \"password\": \"$WEBHOOK_PASSWORD\",
@@ -259,7 +258,7 @@ ALERT_PAYLOAD="{
   \"annotations\": {
     \"summary\": \"High JVM Threads\",
     \"description\": \"High number of JVM threads detected. Triggering Lambda thread dump.\",
-    \"webhookUrl\": \"$LAMBDA_URL\"
+    \"webhookUrl\": \"$APIGW_URL\"
   },
   \"labels\": {
     \"severity\": \"critical\",
