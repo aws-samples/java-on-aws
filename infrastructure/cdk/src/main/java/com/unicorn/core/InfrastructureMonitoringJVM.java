@@ -225,7 +225,7 @@ public class InfrastructureMonitoringJVM extends Construct {
                         .statements(List.of(
                                 PolicyStatement.Builder.create()
                                         .effect(Effect.ALLOW)
-                                        .principals(List.of(new AnyPrincipal()))
+                                        .principals(List.of(new AccountRootPrincipal()))
                                         .actions(List.of("execute-api:Invoke"))
                                         .resources(List.of("*"))
                                         .conditions(Map.of(

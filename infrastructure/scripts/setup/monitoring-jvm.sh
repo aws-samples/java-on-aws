@@ -75,8 +75,8 @@ for i in {1..20}; do
   sleep 5
 done
 
-VPCE_DNS=$(aws ec2 describe-vpc-endpoints --filters "Name=service-name,Values=com.amazonaws.${AWS_REGION}.execute-api" --query "VpcEndpoints[0].DnsEntries[0].DnsName" --output text)
-APIGW_URL="https://${VPCE_DNS}/prod"
+API_ID=$(aws apigateway get-rest-apis --query "items[?name=='unicornstore-thread-dump-api'].id" --output text)
+APIGW_URL="https://${API_ID}.execute-api.${AWS_REGION}.amazonaws.com/prod"
 
 log "📁 Creating folder '$FOLDER_NAME'..."
 FOLDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
