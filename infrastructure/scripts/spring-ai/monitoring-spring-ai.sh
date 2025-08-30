@@ -11,6 +11,7 @@ GRAFANA_USER="admin"
 FOLDER_NAME="AI Agent Dashboards"
 DASHBOARD_TITLE="Spring AI Metrics"
 SECRET_NAME="unicornstore-ide-password-lambda"
+application="unicorn-spring-ai-agent"
 
 AWS_REGION=${AWS_REGION:-$(aws configure get region)}
 if [[ -z "$AWS_REGION" ]]; then
