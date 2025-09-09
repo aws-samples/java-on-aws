@@ -13,6 +13,7 @@ public class UnicornStoreApp {
         App app = new App();
 
         var unicornStoreStack = new UnicornStoreStack(app, "unicornstore-stack");
+        var javaOnEksStack = new JavaOnEksStack(app, "java-on-eks-stack");
         var ideStack = new IdeStack(app, "ide-stack");
         var ideGiteaStack = new IdeGiteaStack(app, "ide-gitea-stack");
         var springAIStack = new SpringAIStack(app, "spring-ai-stack");
@@ -56,6 +57,7 @@ public class UnicornStoreApp {
         );
 
         NagSuppressions.addStackSuppressions(unicornStoreStack, suppression);
+        NagSuppressions.addStackSuppressions(javaOnEksStack, suppression);
         NagSuppressions.addStackSuppressions(ideStack, suppression);
         NagSuppressions.addStackSuppressions(ideGiteaStack, suppression);
         NagSuppressions.addStackSuppressions(springAIStack, suppression);
