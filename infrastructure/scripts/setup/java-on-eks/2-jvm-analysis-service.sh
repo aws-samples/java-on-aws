@@ -460,6 +460,13 @@ spec:
       serviceAccountName: jvm-analysis-service
       containers:
       - name: jvm-analysis-service
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
         image: ${ECR_URI}:latest
         ports:
         - containerPort: 8080
@@ -476,13 +483,6 @@ spec:
           value: "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
         - name: SPRING_AI_BEDROCK_CONVERSE_CHAT_OPTIONS_MAX_TOKENS
           value: "10000"
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "100m"
         readinessProbe:
           httpGet:
             path: /health
