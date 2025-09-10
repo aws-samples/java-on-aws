@@ -444,6 +444,7 @@ if ! aws eks list-pod-identity-associations --cluster-name $CLUSTER_NAME --query
         --service-account jvm-analysis-service \
         --role-arn $(aws iam get-role --role-name jvm-analysis-service-eks-pod-role --query 'Role.Arn' --output text)
 fi
+sleep 15
 
 echo "Deploying to EKS ..."
 mkdir -p "$BASE_DIR/k8s"

@@ -95,9 +95,9 @@ yq eval '.spec.template.spec.containers[0].volumeMounts = [{"name": "persistent-
 yq eval '.spec.template.spec.volumes = [{"name": "persistent-storage", "persistentVolumeClaim": {"claimName": "s3-profiling-pvc"}}]' -i "$BASE_DIR/k8s/deployment.yaml"
 
 kubectl apply -f "$BASE_DIR/k8s/deployment.yaml"
-sleep 15
-kubectl wait deployment unicorn-store-spring -n unicorn-store-spring --for condition=Available=True --timeout=120s
-kubectl get deployment unicorn-store-spring -n unicorn-store-spring
+
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring
+sleep 10
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 while [[ $(curl -s -o /dev/null -w "%{http_code}" $SVC_URL/) != "200" ]]; do echo "Service not yet available ..." &&  sleep 5; done
 echo $SVC_URL
