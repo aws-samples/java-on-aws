@@ -221,5 +221,7 @@ else
 fi
 
 log "✅ Analysis JVM monitoring setup complete"
-log "🌍 Grafana: $GRAFANA_URL"
-log "🚨 Alert fires when POST rate > $REQUESTS_THRESHOLD req/s for 20s, evaluates every 20s, uses 30s rate window"
+log "🚨 Alert fires when POST rate > $REQUESTS_THRESHOLD req/s for 30s, evaluates every 20s, uses 30s rate window"
+log "🌍 Grafana: http://$GRAFANA_LB"
+log "👤 Username: $GRAFANA_USER"
+log "🔑 Password: $GRAFANA_PASSWORD"

@@ -531,3 +531,10 @@ metadata:
 EOF
 
 kubectl apply -f "$BASE_DIR/k8s/deployment.yaml"
+
+kubectl wait deployment jvm-analysis-service -n monitoring --for condition=Available=True --timeout=120s
+kubectl get deployment jvm-analysis-service -n monitoring
+
+kubectl logs $(kubectl get pods -n monitoring -l app=jvm-analysis-service --field-selector=status.phase=Running -o json | jq -r '.items[0].metadata.name') -n monitoring
+
+echo "jvm-analysis-service deployment to EKS cluster is complete."
