@@ -229,4 +229,4 @@ echo "Commiting changes ..."
 git add .
 git commit -m "Initial deployment"
 
-echo "{ \"query\": { \"folder\": \"/home/ec2-user/environment" } }" > /home/ec2-user/.local/share/code-server/coder.json
+echo "{ \"query\": { \"folder\": \"/home/ec2-user/environment\" } }" > /home/ec2-user/.local/share/code-server/coder.json
