@@ -81,7 +81,7 @@ public final class UnicornPublisher implements Resource {
 
         eventBridgeClient = EventBridgeAsyncClient
                 .builder()
-                .credentialsProvider(DefaultCredentialsProvider.create())
+                .credentialsProvider(DefaultCredentialsProvider.builder().build())
                 .build();
     }
 

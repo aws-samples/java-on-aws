@@ -373,7 +373,9 @@ Resources:
             Sid: AllowedServicesEKS
           - Action: iam:PassRole
             Effect: Allow
-            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
             Sid: PassRoleEKS
           - Action:
               - iam:CreateRole
@@ -395,6 +397,7 @@ Resources:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/*Unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:policy/*Unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:policy/*AWSLambdaTracerAccessExecutionRole*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
             Sid: IamLimitedAccessForUnicorns
           - Action:
               - cloudformation:*
@@ -447,7 +450,7 @@ Resources:
   VSCodeIdeGiteaIdeLogGroupCD76FEFA:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250909-104400
+      LogGroupName: ide-bootstrap-log-20250910-065608
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -879,9 +882,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
+            default: ""
             description: (Optional) Custom bootstrap script to run.
             type: String
-            default: ""
         mainSteps:
           - inputs:
               runCommand:
@@ -1142,7 +1145,13 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - waitConditionHandleUrl:
+                    - splashUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - VSCodeIdeGiteaIdeRole90308F47
+                          - Arn
+                      readmeUrl: ""
+                      waitConditionHandleUrl:
                         Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
                       extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
                       domain: ""
@@ -1383,12 +1392,6 @@ Resources:
                       codeServerVersion: 4.103.1
                       instanceIamRoleName:
                         Ref: VSCodeIdeGiteaIdeRole90308F47
-                      splashUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - VSCodeIdeGiteaIdeRole90308F47
-                          - Arn
-                      readmeUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1526,12 +1529,12 @@ Resources:
         Fn::GetAtt:
           - VSCodeIdeGiteaIdeBootstrapFunction34BA645E
           - Arn
+      InstanceId:
+        Ref: VSCodeIdeGiteaIdeEC2Instance51274E6D
       LogGroupName:
         Ref: VSCodeIdeGiteaIdeLogGroupCD76FEFA
       SsmDocument:
         Ref: VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
-      InstanceId:
-        Ref: VSCodeIdeGiteaIdeEC2Instance51274E6D
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 Outputs:

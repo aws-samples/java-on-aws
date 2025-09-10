@@ -388,7 +388,9 @@ Resources:
             Sid: AllowedServicesEKS
           - Action: iam:PassRole
             Effect: Allow
-            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
             Sid: PassRoleEKS
           - Action:
               - iam:CreateRole
@@ -410,6 +412,7 @@ Resources:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/*Unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:policy/*Unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:policy/*AWSLambdaTracerAccessExecutionRole*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
             Sid: IamLimitedAccessForUnicorns
           - Action:
               - cloudformation:*
@@ -462,7 +465,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250909-104317
+      LogGroupName: unicornstore-ide-bootstrap-log-20250910-065530
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -877,9 +880,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
+            default: ""
             type: String
             description: (Optional) Custom bootstrap script to run.
-            default: ""
         mainSteps:
           - inputs:
               runCommand:
@@ -1140,7 +1143,17 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleName:
+                    - domain: ""
+                      extensions: shardulm94.trailing-spaces,vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
+                      waitConditionHandleUrl:
+                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
+                      readmeUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - UnicornStoreIdeIdeRole81A2CEAA
+                          - Arn
+                      splashUrl: ""
+                      instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
                       codeServerVersion: 4.103.1
                       customBootstrapScript: |
@@ -1201,16 +1214,6 @@ Resources:
                       environmentContentsZip: ""
                       terminalOnStartup: "true"
                       installGitea: echo bootstrapGitea was not provided
-                      domain: ""
-                      extensions: shardulm94.trailing-spaces,vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
-                      waitConditionHandleUrl:
-                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
-                      readmeUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - UnicornStoreIdeIdeRole81A2CEAA
-                          - Arn
-                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1348,12 +1351,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
-      LogGroupName:
-        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
       InstanceId:
         Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
       SsmDocument:
         Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
+      LogGroupName:
+        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -1539,7 +1542,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20250909104318"
+            - "-20250910065530"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -1899,6 +1902,21 @@ Resources:
           - Action: xray:PutTraceSegments
             Effect: Allow
             Resource: "*"
+          - Action:
+              - s3:ListBucket
+              - s3:GetObject
+              - s3:PutObject
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - InfrastructureCoreWorkshopBucketB6510E67
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - InfrastructureCoreWorkshopBucketB6510E67
+                        - Arn
+                    - /*
           - Action: events:PutEvents
             Effect: Allow
             Resource:
@@ -2885,12 +2903,12 @@ Resources:
       Description: Build complete
       EventPattern:
         detail:
+          project-name:
+            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
-          project-name:
-            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -2922,13 +2940,13 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreCodeBuildStartBuildFunctionB2FE9156
           - Arn
-      ContentHash: fd70d4491df3a6a44292446f6b364c8a
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
       ProjectName:
         Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
+      ContentHash: fd70d4491df3a6a44292446f6b364c8a
     DependsOn:
       - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRulejavaoneksstackUnicornStoreCodeBuildReportBuildFunctionFF577E403F79BB3E
       - UnicornStoreCodeBuildBuildCompleteRule7E287561

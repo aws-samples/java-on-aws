@@ -54,6 +54,8 @@ server:
   service:
     type: ClusterIP
   retention: 24h
+  global:
+    scrape_interval: 15s
 EOF
 
 log "🚀 Deploying Prometheus..."
@@ -106,6 +108,11 @@ sidecar:
     enabled: true
     label: grafana_datasource
     searchNamespace: ALL
+
+grafana.ini:
+  unified_alerting:
+    min_interval: 20s
+    evaluation_timeout: 10s
 EOF
 
 log "🚀 Deploying Grafana..."

@@ -119,6 +119,6 @@ public class JavaOnEksStack extends Stack {
         new CodeBuildResource(this, "UnicornStoreCodeBuild", codeBuildProps);
 
         // Create JVM monitoring infrastructure with Lambda thread dump
-        new InfrastructureJvmAnalysis(this, "InfrastructureJvmAnalysis", infrastructureCore.getWorkshopBucket());
+        new InfrastructureJvmAnalysis(this, "InfrastructureJvmAnalysis", infrastructureCore);
     }
 }

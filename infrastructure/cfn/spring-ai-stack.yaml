@@ -388,7 +388,9 @@ Resources:
             Sid: AllowedServicesEKS
           - Action: iam:PassRole
             Effect: Allow
-            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
             Sid: PassRoleEKS
           - Action:
               - iam:CreateRole
@@ -410,6 +412,7 @@ Resources:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/*Unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:policy/*Unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:policy/*AWSLambdaTracerAccessExecutionRole*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
             Sid: IamLimitedAccessForUnicorns
           - Action:
               - cloudformation:*
@@ -462,7 +465,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250909-104419
+      LogGroupName: unicornstore-ide-bootstrap-log-20250910-065624
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -877,9 +880,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            description: (Optional) Custom bootstrap script to run.
-            type: String
             default: ""
+            type: String
+            description: (Optional) Custom bootstrap script to run.
         mainSteps:
           - inputs:
               runCommand:
@@ -1140,11 +1143,33 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - extensions: vscjava.vscode-java-pack,ms-azuretools.vscode-docker
-                      domain: ""
-                      installGitea: echo bootstrapGitea was not provided
-                      terminalOnStartup: "true"
-                      environmentContentsZip: ""
+                    - waitConditionHandleUrl:
+                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
+                      readmeUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - UnicornStoreIdeIdeRole81A2CEAA
+                          - Arn
+                      splashUrl: ""
+                      instanceIamRoleName:
+                        Ref: UnicornStoreIdeIdeRole81A2CEAA
+                      codeServerVersion: 4.103.1
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+
+                        echo '=== Additional Setup ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh unicorn-spring-ai-agent"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh unicorn-store-spring"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/monitoring-spring-ai.sh"
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1184,33 +1209,11 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: UnicornStoreIdeIdePasswordSecret514252E2
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
-
-                        echo '=== Additional Setup ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh unicorn-spring-ai-agent"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh unicorn-store-spring"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/monitoring-spring-ai.sh"
-                      codeServerVersion: 4.103.1
-                      instanceIamRoleName:
-                        Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      splashUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - UnicornStoreIdeIdeRole81A2CEAA
-                          - Arn
-                      readmeUrl: ""
-                      waitConditionHandleUrl:
-                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
+                      environmentContentsZip: ""
+                      terminalOnStartup: "true"
+                      installGitea: echo bootstrapGitea was not provided
+                      domain: ""
+                      extensions: vscjava.vscode-java-pack,ms-azuretools.vscode-docker
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1348,12 +1351,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
-      LogGroupName:
-        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
-      SsmDocument:
-        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
       InstanceId:
         Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
+      SsmDocument:
+        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
+      LogGroupName:
+        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -1539,7 +1542,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20250909104419"
+            - "-20250910065624"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -1862,9 +1865,6 @@ Resources:
               HostPort: 8080
               Protocol: tcp
           Secrets:
-            - Name: SPRING_DATASOURCE_PASSWORD
-              ValueFrom:
-                Ref: InfrastructureCoredbSecretPassword1EC1CF00
             - Name: SPRING_DATASOURCE_URL
               ValueFrom:
                 Fn::Join:
@@ -1877,6 +1877,9 @@ Resources:
                     - Ref: AWS::AccountId
                     - :parameter/
                     - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
+            - Name: SPRING_DATASOURCE_PASSWORD
+              ValueFrom:
+                Ref: InfrastructureCoredbSecretPassword1EC1CF00
       Cpu: "1024"
       ExecutionRoleArn:
         Fn::GetAtt:
@@ -2190,9 +2193,6 @@ Resources:
               HostPort: 8080
               Protocol: tcp
           Secrets:
-            - Name: SPRING_DATASOURCE_PASSWORD
-              ValueFrom:
-                Ref: InfrastructureCoredbSecretPassword1EC1CF00
             - Name: SPRING_DATASOURCE_URL
               ValueFrom:
                 Fn::Join:
@@ -2205,6 +2205,9 @@ Resources:
                     - Ref: AWS::AccountId
                     - :parameter/
                     - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
+            - Name: SPRING_DATASOURCE_PASSWORD
+              ValueFrom:
+                Ref: InfrastructureCoredbSecretPassword1EC1CF00
       Cpu: "1024"
       ExecutionRoleArn:
         Fn::GetAtt:
@@ -2316,6 +2319,21 @@ Resources:
           - Action: xray:PutTraceSegments
             Effect: Allow
             Resource: "*"
+          - Action:
+              - s3:ListBucket
+              - s3:GetObject
+              - s3:PutObject
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - InfrastructureCoreWorkshopBucketB6510E67
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - InfrastructureCoreWorkshopBucketB6510E67
+                        - Arn
+                    - /*
           - Action: events:PutEvents
             Effect: Allow
             Resource:
@@ -2797,6 +2815,9 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreDatabaseSetupDatabaseSetupFunction83636DD9
           - Arn
+      SqlStatements: |-
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -2827,9 +2848,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: InfrastructureCorepostgresB0D0C6BB
-      SqlStatements: |-
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - InfrastructureCoreUnicornStoreDatabaseF56884BA
       - InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8
@@ -3339,13 +3357,13 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreCodeBuildStartBuildFunctionB2FE9156
           - Arn
-      ContentHash: fd70d4491df3a6a44292446f6b364c8a
-      ProjectName:
-        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
+      ProjectName:
+        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
+      ContentHash: fd70d4491df3a6a44292446f6b364c8a
     DependsOn:
       - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRulespringaistackUnicornStoreCodeBuildReportBuildFunctionA3347B9EB9A35FA4
       - UnicornStoreCodeBuildBuildCompleteRule7E287561

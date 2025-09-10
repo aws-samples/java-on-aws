@@ -77,7 +77,7 @@ public final class UnicornPublisher {
 
         eventBridgeClient = EventBridgeAsyncClient
                 .builder()
-                .credentialsProvider(DefaultCredentialsProvider.create())
+                .credentialsProvider(DefaultCredentialsProvider.builder().build())
                 .build();
     }
 
