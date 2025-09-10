@@ -36,6 +36,7 @@ management.endpoint.prometheus.access=unrestricted
 management.endpoint.health.group.liveness.include=livenessState
 management.endpoint.health.group.readiness.include=readinessState
 management.metrics.enable.all=true
+management.metrics.binders.disk.enabled=false
 EOF
 
 echo "Updating Dockerfile ..."
@@ -65,10 +66,10 @@ aws ecr get-login-password --region us-east-1 | docker login --username AWS --pa
 
 docker build -t unicorn-store-spring:latest .
 
-docker tag unicorn-store-spring:latest $ECR_URI:baseline
-docker push $ECR_URI:baseline
 docker tag unicorn-store-spring:latest $ECR_URI:latest
 docker push $ECR_URI:latest
+docker tag unicorn-store-spring:latest $ECR_URI:baseline
+docker push $ECR_URI:baseline
 
 echo "Deploying to EKS ..."
 mkdir -p "$BASE_DIR/k8s"

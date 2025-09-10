@@ -450,7 +450,7 @@ Resources:
   VSCodeIdeGiteaIdeLogGroupCD76FEFA:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: ide-bootstrap-log-20250910-092746
+      LogGroupName: ide-bootstrap-log-20250910-135831
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -882,8 +882,8 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            description: (Optional) Custom bootstrap script to run.
             type: String
+            description: (Optional) Custom bootstrap script to run.
             default: ""
         mainSteps:
           - inputs:
@@ -1145,10 +1145,51 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - waitConditionHandleUrl:
-                        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
-                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
-                      domain: ""
+                    - instanceIamRoleName:
+                        Ref: VSCodeIdeGiteaIdeRole90308F47
+                      codeServerVersion: 4.103.2
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
+                      passwordName:
+                        Fn::Join:
+                          - "-"
+                          - - Fn::Select:
+                                - 0
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                            - Fn::Select:
+                                - 1
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                            - Fn::Select:
+                                - 2
+                                - Fn::Split:
+                                    - "-"
+                                    - Fn::Select:
+                                        - 6
+                                        - Fn::Split:
+                                            - ":"
+                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
+                      environmentContentsZip: ""
+                      terminalOnStartup: "true"
                       installGitea: |
                         dnf install -y nerdctl cni-plugins
                         mkdir -p /gitea/config /gitea/data
@@ -1341,57 +1382,16 @@ Resources:
                         EOF
 
                         source /etc/profile.d/gitea.sh
-                      terminalOnStartup: "true"
-                      environmentContentsZip: ""
-                      passwordName:
-                        Fn::Join:
-                          - "-"
-                          - - Fn::Select:
-                                - 0
-                                - Fn::Split:
-                                    - "-"
-                                    - Fn::Select:
-                                        - 6
-                                        - Fn::Split:
-                                            - ":"
-                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
-                            - Fn::Select:
-                                - 1
-                                - Fn::Split:
-                                    - "-"
-                                    - Fn::Select:
-                                        - 6
-                                        - Fn::Split:
-                                            - ":"
-                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
-                            - Fn::Select:
-                                - 2
-                                - Fn::Split:
-                                    - "-"
-                                    - Fn::Select:
-                                        - 6
-                                        - Fn::Split:
-                                            - ":"
-                                            - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
-                      codeServerVersion: 4.103.2
-                      instanceIamRoleName:
-                        Ref: VSCodeIdeGiteaIdeRole90308F47
-                      splashUrl: ""
+                      domain: ""
+                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
+                      waitConditionHandleUrl:
+                        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
+                      readmeUrl: ""
                       instanceIamRoleArn:
                         Fn::GetAtt:
                           - VSCodeIdeGiteaIdeRole90308F47
                           - Arn
-                      readmeUrl: ""
+                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1531,10 +1531,10 @@ Resources:
           - Arn
       LogGroupName:
         Ref: VSCodeIdeGiteaIdeLogGroupCD76FEFA
-      SsmDocument:
-        Ref: VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
       InstanceId:
         Ref: VSCodeIdeGiteaIdeEC2Instance51274E6D
+      SsmDocument:
+        Ref: VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 Outputs:

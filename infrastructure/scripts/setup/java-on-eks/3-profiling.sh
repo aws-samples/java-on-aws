@@ -36,10 +36,10 @@ aws ecr get-login-password --region us-east-1 | docker login --username AWS --pa
 
 docker build -t unicorn-store-spring:latest .
 
-docker tag unicorn-store-spring:latest $ECR_URI:profiling
-docker push $ECR_URI:profiling
 docker tag unicorn-store-spring:latest $ECR_URI:latest
 docker push $ECR_URI:latest
+docker tag unicorn-store-spring:latest $ECR_URI:profiling
+docker push $ECR_URI:profiling
 
 echo "Creating persistence ..."
 mkdir -p "$BASE_DIR/k8s"
@@ -95,7 +95,7 @@ yq eval '.spec.template.spec.containers[0].volumeMounts = [{"name": "persistent-
 yq eval '.spec.template.spec.volumes = [{"name": "persistent-storage", "persistentVolumeClaim": {"claimName": "s3-profiling-pvc"}}]' -i "$BASE_DIR/k8s/deployment.yaml"
 
 kubectl apply -f "$BASE_DIR/k8s/deployment.yaml"
-
+sleep 15
 kubectl wait deployment unicorn-store-spring -n unicorn-store-spring --for condition=Available=True --timeout=120s
 kubectl get deployment unicorn-store-spring -n unicorn-store-spring
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')

@@ -164,7 +164,7 @@ public class JvmAnalysisService {
                 }
 
                 String podName = podNode.asText();
-                String podIp = instanceNode.asText();
+                String podIp = instanceNode.asText().split(":")[0];
 
                 if (podName.isEmpty() || podIp.isEmpty()) {
                     logger.warn("Skipping alert - empty pod name or IP. Pod: {}, IP: {}", podName, podIp);
@@ -534,6 +534,10 @@ kubectl apply -f "$BASE_DIR/k8s/deployment.yaml"
 
 kubectl wait deployment jvm-analysis-service -n monitoring --for condition=Available=True --timeout=120s
 kubectl get deployment jvm-analysis-service -n monitoring
+
+# sleep 15
+# kubectl rollout restart deployment jvm-analysis-service -n monitoring
+# kubectl rollout status deployment jvm-analysis-service -n monitoring
 
 kubectl logs $(kubectl get pods -n monitoring -l app=jvm-analysis-service --field-selector=status.phase=Running -o json | jq -r '.items[0].metadata.name') -n monitoring
 
