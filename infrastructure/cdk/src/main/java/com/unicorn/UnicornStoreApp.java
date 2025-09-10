@@ -17,6 +17,7 @@ public class UnicornStoreApp {
         var ideStack = new IdeStack(app, "ide-stack");
         var ideGiteaStack = new IdeGiteaStack(app, "ide-gitea-stack");
         var springAIStack = new SpringAIStack(app, "spring-ai-stack");
+        var javaAiAgentsStack = new JavaAiAgentsStack(app, "java-ai-agents-stack");
 
         //Add CDK-NAG checks: https://github.com/cdklabs/cdk-nag
         //Add suppression to exclude certain findings that are not needed for Workshop environment
@@ -61,6 +62,7 @@ public class UnicornStoreApp {
         NagSuppressions.addStackSuppressions(ideStack, suppression);
         NagSuppressions.addStackSuppressions(ideGiteaStack, suppression);
         NagSuppressions.addStackSuppressions(springAIStack, suppression);
+        NagSuppressions.addStackSuppressions(javaAiAgentsStack, suppression);
 
         app.synth();
     }

@@ -90,20 +90,16 @@ Resources:
           Value: Public
         - Key: aws-cdk:subnet-type
           Value: Public
-        - Key: kubernetes.io/role/elb
-          Value: "1"
         - Key: Name
-          Value: java-on-eks-stack/UnicornStoreVpc/Vpc/PublicSubnet1
+          Value: java-ai-agents-stack/UnicornStoreVpc/Vpc/PublicSubnet1
       VpcId:
         Ref: UnicornStoreVpc647929A5
   UnicornStoreVpcPublicSubnet1RouteTableA6A1DD76:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
-        - Key: kubernetes.io/role/elb
-          Value: "1"
         - Key: Name
-          Value: java-on-eks-stack/UnicornStoreVpc/Vpc/PublicSubnet1
+          Value: java-ai-agents-stack/UnicornStoreVpc/Vpc/PublicSubnet1
       VpcId:
         Ref: UnicornStoreVpc647929A5
   UnicornStoreVpcPublicSubnet1RouteTableAssociation3D94AF82:
@@ -128,10 +124,8 @@ Resources:
     Properties:
       Domain: vpc
       Tags:
-        - Key: kubernetes.io/role/elb
-          Value: "1"
         - Key: Name
-          Value: java-on-eks-stack/UnicornStoreVpc/Vpc/PublicSubnet1
+          Value: java-ai-agents-stack/UnicornStoreVpc/Vpc/PublicSubnet1
   UnicornStoreVpcPublicSubnet1NATGateway1B70C1D9:
     Type: AWS::EC2::NatGateway
     Properties:
@@ -142,10 +136,8 @@ Resources:
       SubnetId:
         Ref: UnicornStoreVpcPublicSubnet1Subnet5A587A94
       Tags:
-        - Key: kubernetes.io/role/elb
-          Value: "1"
         - Key: Name
-          Value: java-on-eks-stack/UnicornStoreVpc/Vpc/PublicSubnet1
+          Value: java-ai-agents-stack/UnicornStoreVpc/Vpc/PublicSubnet1
     DependsOn:
       - UnicornStoreVpcPublicSubnet1DefaultRoute72D8F029
       - UnicornStoreVpcPublicSubnet1RouteTableAssociation3D94AF82
@@ -163,20 +155,16 @@ Resources:
           Value: Public
         - Key: aws-cdk:subnet-type
           Value: Public
-        - Key: kubernetes.io/role/elb
-          Value: "1"
         - Key: Name
-          Value: java-on-eks-stack/UnicornStoreVpc/Vpc/PublicSubnet2
+          Value: java-ai-agents-stack/UnicornStoreVpc/Vpc/PublicSubnet2
       VpcId:
         Ref: UnicornStoreVpc647929A5
   UnicornStoreVpcPublicSubnet2RouteTable9C89D84E:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
-        - Key: kubernetes.io/role/elb
-          Value: "1"
         - Key: Name
-          Value: java-on-eks-stack/UnicornStoreVpc/Vpc/PublicSubnet2
+          Value: java-ai-agents-stack/UnicornStoreVpc/Vpc/PublicSubnet2
       VpcId:
         Ref: UnicornStoreVpc647929A5
   UnicornStoreVpcPublicSubnet2RouteTableAssociationEF6ADCD0:
@@ -210,20 +198,16 @@ Resources:
           Value: Private
         - Key: aws-cdk:subnet-type
           Value: Private
-        - Key: kubernetes.io/role/internal-elb
-          Value: "1"
         - Key: Name
-          Value: java-on-eks-stack/UnicornStoreVpc/Vpc/PrivateSubnet1
+          Value: java-ai-agents-stack/UnicornStoreVpc/Vpc/PrivateSubnet1
       VpcId:
         Ref: UnicornStoreVpc647929A5
   UnicornStoreVpcPrivateSubnet1RouteTable3F4F42C3:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
-        - Key: kubernetes.io/role/internal-elb
-          Value: "1"
         - Key: Name
-          Value: java-on-eks-stack/UnicornStoreVpc/Vpc/PrivateSubnet1
+          Value: java-ai-agents-stack/UnicornStoreVpc/Vpc/PrivateSubnet1
       VpcId:
         Ref: UnicornStoreVpc647929A5
   UnicornStoreVpcPrivateSubnet1RouteTableAssociationE6E7A751:
@@ -255,20 +239,16 @@ Resources:
           Value: Private
         - Key: aws-cdk:subnet-type
           Value: Private
-        - Key: kubernetes.io/role/internal-elb
-          Value: "1"
         - Key: Name
-          Value: java-on-eks-stack/UnicornStoreVpc/Vpc/PrivateSubnet2
+          Value: java-ai-agents-stack/UnicornStoreVpc/Vpc/PrivateSubnet2
       VpcId:
         Ref: UnicornStoreVpc647929A5
   UnicornStoreVpcPrivateSubnet2RouteTableC066B309:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
-        - Key: kubernetes.io/role/internal-elb
-          Value: "1"
         - Key: Name
-          Value: java-on-eks-stack/UnicornStoreVpc/Vpc/PrivateSubnet2
+          Value: java-ai-agents-stack/UnicornStoreVpc/Vpc/PrivateSubnet2
       VpcId:
         Ref: UnicornStoreVpc647929A5
   UnicornStoreVpcPrivateSubnet2RouteTableAssociation0C455BE6:
@@ -465,7 +445,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250910-092644
+      LogGroupName: unicornstore-ide-bootstrap-log-20250910-092707
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -658,7 +638,7 @@ Resources:
       GroupName: unicornstore-ide-internal-sg
       VpcId:
         Ref: UnicornStoreVpc647929A5
-  UnicornStoreIdeIdeInternalSecurityGroupfromjavaoneksstackUnicornStoreIdeIdeInternalSecurityGroup75E195F1ALLTRAFFICADD49A5D:
+  UnicornStoreIdeIdeInternalSecurityGroupfromjavaaiagentsstackUnicornStoreIdeIdeInternalSecurityGroup157C0B9BALLTRAFFICD3C686FD:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: Allow all internal traffic
@@ -671,7 +651,7 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeInternalSecurityGroup29539F21
           - GroupId
-  UnicornStoreIdeIdeInternalSecurityGrouptojavaoneksstackUnicornStoreIdeIdeInternalSecurityGroup75E195F1ALLTRAFFIC96195707:
+  UnicornStoreIdeIdeInternalSecurityGrouptojavaaiagentsstackUnicornStoreIdeIdeInternalSecurityGroup157C0B9BALLTRAFFICAFF056B1:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
       Description: Allow all internal traffic
@@ -712,7 +692,7 @@ Resources:
           CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
           Compress: true
           OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
-          TargetOriginId: javaoneksstackUnicornStoreIdeIdeDistributionOrigin186A32DD2
+          TargetOriginId: javaaiagentsstackUnicornStoreIdeIdeDistributionOrigin195C0C221
           ViewerProtocolPolicy: allow-all
         Enabled: true
         HttpVersion: http2
@@ -727,7 +707,7 @@ Resources:
               Fn::GetAtt:
                 - UnicornStoreIdeIdeEC2Instance5F393FC5
                 - PublicDnsName
-            Id: javaoneksstackUnicornStoreIdeIdeDistributionOrigin186A32DD2
+            Id: javaaiagentsstackUnicornStoreIdeIdeDistributionOrigin195C0C221
     DependsOn:
       - UnicornStoreIdeIdeEipAssociation14729AD1
     UpdateReplacePolicy: Delete
@@ -880,8 +860,8 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            description: (Optional) Custom bootstrap script to run.
             type: String
+            description: (Optional) Custom bootstrap script to run.
             default: ""
         mainSteps:
           - inputs:
@@ -1143,13 +1123,21 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - waitConditionHandleUrl:
-                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
-                      extensions: vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
-                      domain: ""
-                      installGitea: echo bootstrapGitea was not provided
-                      terminalOnStartup: "true"
-                      environmentContentsZip: ""
+                    - instanceIamRoleName:
+                        Ref: UnicornStoreIdeIdeRole81A2CEAA
+                      codeServerVersion: 4.103.2
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+
+                        echo '=== Additional Setup ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/spring-ai/build-and-push.sh unicorn-store-spring"
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1189,31 +1177,19 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: UnicornStoreIdeIdePasswordSecret514252E2
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout riv25-eks"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
-
-                        echo '=== Additional Setup ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
-
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/java-on-eks/0-app.sh"
-                      codeServerVersion: 4.103.2
-                      instanceIamRoleName:
-                        Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      splashUrl: ""
+                      environmentContentsZip: ""
+                      terminalOnStartup: "true"
+                      installGitea: echo bootstrapGitea was not provided
+                      domain: ""
+                      extensions: vscjava.vscode-java-pack,ms-azuretools.vscode-docker
+                      waitConditionHandleUrl:
+                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
+                      readmeUrl: ""
                       instanceIamRoleArn:
                         Fn::GetAtt:
                           - UnicornStoreIdeIdeRole81A2CEAA
                           - Arn
-                      readmeUrl: ""
+                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1353,10 +1329,10 @@ Resources:
           - Arn
       LogGroupName:
         Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
-      SsmDocument:
-        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
       InstanceId:
         Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
+      SsmDocument:
+        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -1386,7 +1362,7 @@ Resources:
   InfrastructureCoreDatabaseSG7319389B:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: java-on-eks-stack/InfrastructureCore/DatabaseSG
+      GroupDescription: java-ai-agents-stack/InfrastructureCore/DatabaseSG
       GroupName: unicornstore-db-sg
       SecurityGroupEgress:
         - CidrIp: 255.255.255.255/32
@@ -1468,7 +1444,7 @@ Resources:
   InfrastructureCoreApplicationSecurityGroup914702B5:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: java-on-eks-stack/InfrastructureCore/ApplicationSecurityGroup
+      GroupDescription: java-ai-agents-stack/InfrastructureCore/ApplicationSecurityGroup
       GroupName: unicornstore-application-sg
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
@@ -1542,7 +1518,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20250910092644"
+            - "-20250910092707"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -1639,7 +1615,7 @@ Resources:
       PolicyName: InfrastructureCoreUnicornStoreLambdaBedrockRoleDefaultPolicyF74ACC64
       Roles:
         - Ref: InfrastructureCoreUnicornStoreLambdaBedrockRoleCB0EEA7A
-  InfrastructureContainersUnicornStoreSpringEcr6CA30876:
+  UnicornStoreMcpServerEcsClusterunicornstorespringEcrRepositoryB8681BCE:
     Type: AWS::ECR::Repository
     Properties:
       EmptyOnDelete: true
@@ -1648,176 +1624,77 @@ Resources:
       RepositoryName: unicorn-store-spring
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  InfrastructureContainersUnicornStoreVpcConnectorSecurityGroupAF03571F:
+  UnicornStoreMcpServerEcsClusterunicornstorespringEcsCluster38889F64:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: unicorn-store-spring
+  UnicornStoreMcpServerEcsClusterunicornstorespringAlbSecurityGroup05182ACD:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: java-on-eks-stack/InfrastructureContainers/UnicornStoreVpcConnector/SecurityGroup
+      GroupDescription: Security group for unicorn-store-spring ALB
+      GroupName: unicorn-store-spring-ecs-sg-alb
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow HTTP traffic from anywhere
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+      VpcId:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreMcpServerEcsClusterunicornstorespringEcsSecurityGroup44208C7A:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for unicorn-store-spring ECS Service
+      GroupName: unicorn-store-spring-ecs-sg
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
       VpcId:
         Ref: UnicornStoreVpc647929A5
-  InfrastructureContainersUnicornStoreVpcConnector2AD42C47:
-    Type: AWS::AppRunner::VpcConnector
+  UnicornStoreMcpServerEcsClusterunicornstorespringEcsSecurityGroupfromjavaaiagentsstackUnicornStoreMcpServerEcsClusterunicornstorespringAlbSecurityGroup178D7EC080807FA9DD62:
+    Type: AWS::EC2::SecurityGroupIngress
     Properties:
+      Description: Allow traffic from ALB on port 8080
+      FromPort: 8080
+      GroupId:
+        Fn::GetAtt:
+          - UnicornStoreMcpServerEcsClusterunicornstorespringEcsSecurityGroup44208C7A
+          - GroupId
+      IpProtocol: tcp
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - UnicornStoreMcpServerEcsClusterunicornstorespringAlbSecurityGroup05182ACD
+          - GroupId
+      ToPort: 8080
+  UnicornStoreMcpServerEcsClusterunicornstorespringAlb0F782592:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      LoadBalancerAttributes:
+        - Key: deletion_protection.enabled
+          Value: "false"
+        - Key: idle_timeout.timeout_seconds
+          Value: "3600"
+      Name: unicorn-store-spring
+      Scheme: internet-facing
       SecurityGroups:
         - Fn::GetAtt:
-            - InfrastructureContainersUnicornStoreVpcConnectorSecurityGroupAF03571F
+            - UnicornStoreMcpServerEcsClusterunicornstorespringAlbSecurityGroup05182ACD
             - GroupId
       Subnets:
-        - Ref: UnicornStoreVpcPrivateSubnet1Subnet1D81DF60
-        - Ref: UnicornStoreVpcPrivateSubnet2Subnet4710EC68
-      VpcConnectorName: unicornstore-vpc-connector
-  InfrastructureContainersUnicornStoreApprunnerRole04B36547:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: tasks.apprunner.amazonaws.com
-        Version: "2012-10-17"
-      RoleName: unicornstore-apprunner-role
-  InfrastructureContainersUnicornStoreApprunnerRoleDefaultPolicyD4268698:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyDocument:
-        Statement:
-          - Action: xray:PutTraceSegments
-            Effect: Allow
-            Resource: "*"
-          - Action: events:PutEvents
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - InfrastructureCoreUnicornEventBusBBADDC7E
-                - Arn
-          - Action:
-              - secretsmanager:GetSecretValue
-              - secretsmanager:DescribeSecret
-            Effect: Allow
-            Resource:
-              Ref: InfrastructureCorepostgresB0D0C6BB
-          - Action:
-              - secretsmanager:GetSecretValue
-              - secretsmanager:DescribeSecret
-            Effect: Allow
-            Resource:
-              Ref: InfrastructureCoredbSecretPassword1EC1CF00
-          - Action:
-              - ssm:DescribeParameters
-              - ssm:GetParameters
-              - ssm:GetParameter
-              - ssm:GetParameterHistory
-            Effect: Allow
-            Resource:
-              Fn::Join:
-                - ""
-                - - "arn:"
-                  - Ref: AWS::Partition
-                  - ":ssm:"
-                  - Ref: AWS::Region
-                  - ":"
-                  - Ref: AWS::AccountId
-                  - :parameter/
-                  - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
-        Version: "2012-10-17"
-      PolicyName: InfrastructureContainersUnicornStoreApprunnerRoleDefaultPolicyD4268698
-      Roles:
-        - Ref: InfrastructureContainersUnicornStoreApprunnerRole04B36547
-  InfrastructureContainersUnicornStoreApprunnerEcrAccessRoleAFA857D0:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: build.apprunner.amazonaws.com
-        Version: "2012-10-17"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
-      RoleName: unicornstore-apprunner-ecr-access-role
-  InfrastructureContainersUnicornStoreEcsTaskRoleBB134133:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-        Version: "2012-10-17"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
-        - arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess
-      RoleName: unicornstore-ecs-task-role
-  InfrastructureContainersUnicornStoreEcsTaskRoleDefaultPolicy1931FDDE:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyDocument:
-        Statement:
-          - Action: xray:PutTraceSegments
-            Effect: Allow
-            Resource: "*"
-          - Action:
-              - logs:PutLogEvents
-              - logs:CreateLogGroup
-              - logs:CreateLogStream
-              - logs:DescribeLogStreams
-              - logs:DescribeLogGroups
-              - logs:PutRetentionPolicy
-              - xray:PutTraceSegments
-              - xray:PutTelemetryRecords
-              - xray:GetSamplingRules
-              - xray:GetSamplingTargets
-              - xray:GetSamplingStatisticSummaries
-              - cloudwatch:PutMetricData
-              - ssm:GetParameters
-            Effect: Allow
-            Resource: "*"
-          - Action: events:PutEvents
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - InfrastructureCoreUnicornEventBusBBADDC7E
-                - Arn
-          - Action:
-              - secretsmanager:GetSecretValue
-              - secretsmanager:DescribeSecret
-            Effect: Allow
-            Resource:
-              Ref: InfrastructureCorepostgresB0D0C6BB
-          - Action:
-              - secretsmanager:GetSecretValue
-              - secretsmanager:DescribeSecret
-            Effect: Allow
-            Resource:
-              Ref: InfrastructureCoredbSecretPassword1EC1CF00
-          - Action:
-              - ssm:DescribeParameters
-              - ssm:GetParameters
-              - ssm:GetParameter
-              - ssm:GetParameterHistory
-            Effect: Allow
-            Resource:
-              Fn::Join:
-                - ""
-                - - "arn:"
-                  - Ref: AWS::Partition
-                  - ":ssm:"
-                  - Ref: AWS::Region
-                  - ":"
-                  - Ref: AWS::AccountId
-                  - :parameter/
-                  - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
-        Version: "2012-10-17"
-      PolicyName: InfrastructureContainersUnicornStoreEcsTaskRoleDefaultPolicy1931FDDE
-      Roles:
-        - Ref: InfrastructureContainersUnicornStoreEcsTaskRoleBB134133
-  InfrastructureContainersUnicornStoreEcsTaskExecutionRoleFD9A4DF3:
+        - Ref: UnicornStoreVpcPublicSubnet1Subnet5A587A94
+        - Ref: UnicornStoreVpcPublicSubnet2Subnet6C10127F
+      Type: application
+    DependsOn:
+      - UnicornStoreVpcPublicSubnet1DefaultRoute72D8F029
+      - UnicornStoreVpcPublicSubnet1RouteTableAssociation3D94AF82
+      - UnicornStoreVpcPublicSubnet2DefaultRoute6F034F39
+      - UnicornStoreVpcPublicSubnet2RouteTableAssociationEF6ADCD0
+  UnicornStoreMcpServerEcsClusterunicornstorespringEcsTaskExecutionRoleAE50E921:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1829,39 +1706,12 @@ Resources:
         Version: "2012-10-17"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
-        - arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess
-      RoleName: unicornstore-ecs-task-execution-role
-  InfrastructureContainersUnicornStoreEcsTaskExecutionRoleDefaultPolicyF404CE8F:
+      RoleName: unicorn-store-spring-ecs-task-execution-role
+  UnicornStoreMcpServerEcsClusterunicornstorespringEcsTaskExecutionRoleDefaultPolicyFC36F8A9:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
         Statement:
-          - Action: logs:CreateLogGroup
-            Effect: Allow
-            Resource: "*"
-          - Action:
-              - logs:PutLogEvents
-              - logs:CreateLogGroup
-              - logs:CreateLogStream
-              - logs:DescribeLogStreams
-              - logs:DescribeLogGroups
-              - logs:PutRetentionPolicy
-              - xray:PutTraceSegments
-              - xray:PutTelemetryRecords
-              - xray:GetSamplingRules
-              - xray:GetSamplingTargets
-              - xray:GetSamplingStatisticSummaries
-              - cloudwatch:PutMetricData
-              - ssm:GetParameters
-            Effect: Allow
-            Resource: "*"
-          - Action: events:PutEvents
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - InfrastructureCoreUnicornEventBusBBADDC7E
-                - Arn
           - Action:
               - secretsmanager:GetSecretValue
               - secretsmanager:DescribeSecret
@@ -1874,61 +1724,6 @@ Resources:
             Effect: Allow
             Resource:
               Ref: InfrastructureCoredbSecretPassword1EC1CF00
-        Version: "2012-10-17"
-      PolicyName: InfrastructureContainersUnicornStoreEcsTaskExecutionRoleDefaultPolicyF404CE8F
-      Roles:
-        - Ref: InfrastructureContainersUnicornStoreEcsTaskExecutionRoleFD9A4DF3
-  InfrastructureEksUnicornStoreEksPodRoleA3EE8DDD:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action:
-              - sts:AssumeRole
-              - sts:TagSession
-            Effect: Allow
-            Principal:
-              Service: pods.eks.amazonaws.com
-        Version: "2012-10-17"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
-        - arn:aws:iam::aws:policy/AmazonBedrockLimitedAccess
-      RoleName: unicornstore-eks-pod-role
-  InfrastructureEksUnicornStoreEksPodRoleDefaultPolicy79DB9DD5:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyDocument:
-        Statement:
-          - Action: xray:PutTraceSegments
-            Effect: Allow
-            Resource: "*"
-          - Action:
-              - s3:ListBucket
-              - s3:GetObject
-              - s3:PutObject
-            Effect: Allow
-            Resource:
-              - Fn::GetAtt:
-                  - InfrastructureCoreWorkshopBucketB6510E67
-                  - Arn
-              - Fn::Join:
-                  - ""
-                  - - Fn::GetAtt:
-                        - InfrastructureCoreWorkshopBucketB6510E67
-                        - Arn
-                    - /*
-          - Action: events:PutEvents
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - InfrastructureCoreUnicornEventBusBBADDC7E
-                - Arn
-          - Action:
-              - secretsmanager:GetSecretValue
-              - secretsmanager:DescribeSecret
-            Effect: Allow
-            Resource:
-              Ref: InfrastructureCorepostgresB0D0C6BB
           - Action:
               - ssm:DescribeParameters
               - ssm:GetParameters
@@ -1946,62 +1741,31 @@ Resources:
                   - Ref: AWS::AccountId
                   - :parameter/
                   - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
-        Version: "2012-10-17"
-      PolicyName: InfrastructureEksUnicornStoreEksPodRoleDefaultPolicy79DB9DD5
-      Roles:
-        - Ref: InfrastructureEksUnicornStoreEksPodRoleA3EE8DDD
-  InfrastructureEksUnicornStoreDbSecretsManagerPolicyCE68F97A:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: ""
-      ManagedPolicyName: unicornstore-db-secret-policy
-      Path: /
-      PolicyDocument:
-        Statement:
-          - Action: secretsmanager:ListSecrets
+          - Action:
+              - ecr:BatchCheckLayerAvailability
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - UnicornStoreMcpServerEcsClusterunicornstorespringEcrRepositoryB8681BCE
+                - Arn
+          - Action: ecr:GetAuthorizationToken
             Effect: Allow
             Resource: "*"
           - Action:
-              - secretsmanager:GetResourcePolicy
-              - secretsmanager:DescribeSecret
-              - secretsmanager:GetSecretValue
-              - secretsmanager:ListSecretVersionIds
+              - logs:CreateLogStream
+              - logs:PutLogEvents
             Effect: Allow
             Resource:
-              Ref: InfrastructureCorepostgresB0D0C6BB
+              Fn::GetAtt:
+                - UnicornStoreMcpServerEcsClusterunicornstorespringLogGroupD20281E8
+                - Arn
         Version: "2012-10-17"
-  InfrastructureEksUnicornStoreEksEsoRole4D6C8705:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action:
-              - sts:AssumeRole
-              - sts:TagSession
-            Effect: Allow
-            Principal:
-              Service: pods.eks.amazonaws.com
-        Version: "2012-10-17"
-      RoleName: unicornstore-eks-eso-role
-  InfrastructureEksUnicornStoreEksEsoSmRole6651573A:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action:
-              - sts:AssumeRole
-              - sts:TagSession
-            Effect: Allow
-            Principal:
-              AWS:
-                Fn::GetAtt:
-                  - InfrastructureEksUnicornStoreEksEsoRole4D6C8705
-                  - Arn
-        Version: "2012-10-17"
-      ManagedPolicyArns:
-        - Ref: InfrastructureEksUnicornStoreDbSecretsManagerPolicyCE68F97A
-      RoleName: unicornstore-eks-eso-sm-role
-  UnicornStoreEksClusterEKSClusterRole0A87A100:
+      PolicyName: UnicornStoreMcpServerEcsClusterunicornstorespringEcsTaskExecutionRoleDefaultPolicyFC36F8A9
+      Roles:
+        - Ref: UnicornStoreMcpServerEcsClusterunicornstorespringEcsTaskExecutionRoleAE50E921
+  UnicornStoreMcpServerEcsClusterunicornstorespringEcsTaskRoleA50ABA4D:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -2009,129 +1773,176 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: eks.amazonaws.com
-          - Action:
-              - sts:AssumeRole
-              - sts:TagSession
-            Effect: Allow
-            Principal:
-              Service: eks.amazonaws.com
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
+              Service: ecs-tasks.amazonaws.com
         Version: "2012-10-17"
       ManagedPolicyArns:
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonEKSClusterPolicy
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonEKSComputePolicy
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonEKSBlockStoragePolicy
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonEKSLoadBalancingPolicy
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonEKSNetworkingPolicy
-      RoleName: unicorn-store-eks-cluster-role
-  UnicornStoreEksClusterEKSClusterNodeRole072C47D2:
-    Type: AWS::IAM::Role
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      RoleName: unicorn-store-spring-ecs-task-role
+  UnicornStoreMcpServerEcsClusterunicornstorespringEcsTaskRoleDefaultPolicy94274D36:
+    Type: AWS::IAM::Policy
     Properties:
-      AssumeRolePolicyDocument:
+      PolicyDocument:
         Statement:
-          - Action: sts:AssumeRole
+          - Action: xray:PutTraceSegments
             Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
+            Resource: "*"
+          - Action: events:PutEvents
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - InfrastructureCoreUnicornEventBusBBADDC7E
+                - Arn
         Version: "2012-10-17"
-      ManagedPolicyArns:
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonEKSWorkerNodeMinimalPolicy
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonEC2ContainerRegistryPullOnly
-      RoleName: unicorn-store-eks-cluster-node-role
-  UnicornStoreEksClusterEKSClusterBF11D771:
-    Type: AWS::EKS::Cluster
+      PolicyName: UnicornStoreMcpServerEcsClusterunicornstorespringEcsTaskRoleDefaultPolicy94274D36
+      Roles:
+        - Ref: UnicornStoreMcpServerEcsClusterunicornstorespringEcsTaskRoleA50ABA4D
+  UnicornStoreMcpServerEcsClusterunicornstorespringTaskDefD1B22DBF:
+    Type: AWS::ECS::TaskDefinition
     Properties:
-      AccessConfig:
-        AuthenticationMode: API
-        BootstrapClusterCreatorAdminPermissions: true
-      ComputeConfig:
-        Enabled: true
-        NodePools:
-          - system
-          - general-purpose
-        NodeRoleArn:
-          Fn::GetAtt:
-            - UnicornStoreEksClusterEKSClusterNodeRole072C47D2
-            - Arn
-      KubernetesNetworkConfig:
-        ElasticLoadBalancing:
-          Enabled: true
-        IpFamily: ipv4
-      Logging:
-        ClusterLogging:
-          EnabledTypes:
-            - Type: api
-            - Type: audit
-            - Type: authenticator
-            - Type: controllerManager
-            - Type: scheduler
-      Name: unicorn-store
-      ResourcesVpcConfig:
-        EndpointPrivateAccess: true
-        EndpointPublicAccess: true
-        SecurityGroupIds:
-          - Fn::GetAtt:
-              - UnicornStoreIdeIdeInternalSecurityGroup29539F21
-              - GroupId
-        SubnetIds:
-          - Ref: UnicornStoreVpcPrivateSubnet1Subnet1D81DF60
-          - Ref: UnicornStoreVpcPrivateSubnet2Subnet4710EC68
-      RoleArn:
+      ContainerDefinitions:
+        - Environment:
+            - Name: NGINX_PORT
+              Value: "8080"
+          Essential: true
+          Image:
+            Fn::Join:
+              - ""
+              - - Fn::Select:
+                    - 4
+                    - Fn::Split:
+                        - ":"
+                        - Fn::GetAtt:
+                            - UnicornStoreMcpServerEcsClusterunicornstorespringEcrRepositoryB8681BCE
+                            - Arn
+                - .dkr.ecr.
+                - Fn::Select:
+                    - 3
+                    - Fn::Split:
+                        - ":"
+                        - Fn::GetAtt:
+                            - UnicornStoreMcpServerEcsClusterunicornstorespringEcrRepositoryB8681BCE
+                            - Arn
+                - "."
+                - Ref: AWS::URLSuffix
+                - /
+                - Ref: UnicornStoreMcpServerEcsClusterunicornstorespringEcrRepositoryB8681BCE
+                - :latest
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group:
+                Ref: UnicornStoreMcpServerEcsClusterunicornstorespringLogGroupD20281E8
+              awslogs-stream-prefix: ecs
+              awslogs-region:
+                Ref: AWS::Region
+          Name: unicorn-store-spring
+          PortMappings:
+            - ContainerPort: 8080
+              HostPort: 8080
+              Protocol: tcp
+          Secrets:
+            - Name: SPRING_DATASOURCE_PASSWORD
+              ValueFrom:
+                Ref: InfrastructureCoredbSecretPassword1EC1CF00
+            - Name: SPRING_DATASOURCE_URL
+              ValueFrom:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":ssm:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :parameter/
+                    - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
+      Cpu: "1024"
+      ExecutionRoleArn:
         Fn::GetAtt:
-          - UnicornStoreEksClusterEKSClusterRole0A87A100
+          - UnicornStoreMcpServerEcsClusterunicornstorespringEcsTaskExecutionRoleAE50E921
           - Arn
-      StorageConfig:
-        BlockStorage:
-          Enabled: true
-      UpgradePolicy:
-        SupportType: STANDARD
-      Version: "1.33"
-  UnicornStoreEksClusterAccessEntryunicornstoreideuser92F16088:
-    Type: AWS::EKS::AccessEntry
-    Properties:
-      AccessPolicies:
-        - AccessScope:
-            Type: cluster
-          PolicyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
-      ClusterName: unicorn-store
-      PrincipalArn:
+      Family: unicorn-store-spring
+      Memory: "2048"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      TaskRoleArn:
         Fn::GetAtt:
-          - UnicornStoreIdeIdeRole81A2CEAA
+          - UnicornStoreMcpServerEcsClusterunicornstorespringEcsTaskRoleA50ABA4D
           - Arn
+  UnicornStoreMcpServerEcsClusterunicornstorespringLogGroupD20281E8:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/unicorn-store-spring
+      RetentionInDays: 731
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  UnicornStoreMcpServerEcsClusterunicornstorespringTargetGroupECD1C5A3:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /
+      HealthCheckTimeoutSeconds: 5
+      Matcher:
+        HttpCode: "200"
+      Name: unicorn-store-spring
+      Port: 8080
+      Protocol: HTTP
+      TargetGroupAttributes:
+        - Key: stickiness.enabled
+          Value: "false"
+      TargetType: ip
+      VpcId:
+        Ref: UnicornStoreVpc647929A5
+  UnicornStoreMcpServerEcsClusterunicornstorespringListener0810EC64:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn:
+            Ref: UnicornStoreMcpServerEcsClusterunicornstorespringTargetGroupECD1C5A3
+          Type: forward
+      LoadBalancerArn:
+        Ref: UnicornStoreMcpServerEcsClusterunicornstorespringAlb0F782592
+      Port: 80
+      Protocol: HTTP
+  UnicornStoreMcpServerEcsClusterunicornstorespringService5E8496C6:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster:
+        Ref: UnicornStoreMcpServerEcsClusterunicornstorespringEcsCluster38889F64
+      DeploymentConfiguration:
+        Alarms:
+          AlarmNames: []
+          Enable: false
+          Rollback: false
+        MaximumPercent: 200
+        MinimumHealthyPercent: 0
+      DesiredCount: 1
+      EnableECSManagedTags: false
+      HealthCheckGracePeriodSeconds: 60
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: unicorn-store-spring
+          ContainerPort: 8080
+          TargetGroupArn:
+            Ref: UnicornStoreMcpServerEcsClusterunicornstorespringTargetGroupECD1C5A3
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::GetAtt:
+                - UnicornStoreMcpServerEcsClusterunicornstorespringEcsSecurityGroup44208C7A
+                - GroupId
+          Subnets:
+            - Ref: UnicornStoreVpcPrivateSubnet1Subnet1D81DF60
+            - Ref: UnicornStoreVpcPrivateSubnet2Subnet4710EC68
+      ServiceName: unicorn-store-spring
+      TaskDefinition:
+        Ref: UnicornStoreMcpServerEcsClusterunicornstorespringTaskDefD1B22DBF
     DependsOn:
-      - UnicornStoreEksClusterEKSClusterBF11D771
+      - UnicornStoreMcpServerEcsClusterunicornstorespringEcsTaskRoleDefaultPolicy94274D36
+      - UnicornStoreMcpServerEcsClusterunicornstorespringEcsTaskRoleA50ABA4D
+      - UnicornStoreMcpServerEcsClusterunicornstorespringListener0810EC64
   UnicornStoreDatabaseSetupDatabaseSetupFunctionServiceRoleBC909D59:
     Type: AWS::IAM::Role
     Properties:
@@ -2398,6 +2209,9 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreDatabaseSetupDatabaseSetupFunction83636DD9
           - Arn
+      SqlStatements: |-
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -2428,9 +2242,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: InfrastructureCorepostgresB0D0C6BB
-      SqlStatements: |-
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - InfrastructureCoreUnicornStoreDatabaseF56884BA
       - InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8
@@ -2548,7 +2359,7 @@ Resources:
   UnicornStoreCodeBuildCodeBuildProjectSecurityGroup500408F7:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Automatic generated security group for CodeBuild javaoneksstackUnicornStoreCodeBuildCodeBuildProject16B095BC
+      GroupDescription: Automatic generated security group for CodeBuild javaaiagentsstackUnicornStoreCodeBuildCodeBuildProject6300593D
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
@@ -2920,7 +2731,7 @@ Resources:
               - UnicornStoreCodeBuildReportBuildFunction48D98BC9
               - Arn
           Id: Target0
-  UnicornStoreCodeBuildBuildCompleteRuleAllowEventRulejavaoneksstackUnicornStoreCodeBuildReportBuildFunctionFF577E403F79BB3E:
+  UnicornStoreCodeBuildBuildCompleteRuleAllowEventRulejavaaiagentsstackUnicornStoreCodeBuildReportBuildFunctionA1A3C1FAB6BD1FB7:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
@@ -2941,68 +2752,20 @@ Resources:
           - UnicornStoreCodeBuildStartBuildFunctionB2FE9156
           - Arn
       ContentHash: fd70d4491df3a6a44292446f6b364c8a
-      ProjectName:
-        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
+      ProjectName:
+        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
     DependsOn:
-      - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRulejavaoneksstackUnicornStoreCodeBuildReportBuildFunctionFF577E403F79BB3E
+      - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRulejavaaiagentsstackUnicornStoreCodeBuildReportBuildFunctionA1A3C1FAB6BD1FB7
       - UnicornStoreCodeBuildBuildCompleteRule7E287561
       - UnicornStoreCodeBuildReportBuildFunction48D98BC9
       - UnicornStoreCodeBuildReportBuildFunctionServiceRoleDefaultPolicy4D034F3B
       - UnicornStoreCodeBuildReportBuildFunctionServiceRole80B905C6
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  InfrastructureJvmAnalysisJvmAnalysisServiceEcr5BBB7270:
-    Type: AWS::ECR::Repository
-    Properties:
-      EmptyOnDelete: true
-      ImageScanningConfiguration:
-        ScanOnPush: false
-      RepositoryName: jvm-analysis-service
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-  InfrastructureJvmAnalysisJvmAnalysisServiceEksPodRoleC71FAB03:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action:
-              - sts:AssumeRole
-              - sts:TagSession
-            Effect: Allow
-            Principal:
-              Service: pods.eks.amazonaws.com
-        Version: "2012-10-17"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonBedrockLimitedAccess
-      RoleName: jvm-analysis-service-eks-pod-role
-  InfrastructureJvmAnalysisJvmAnalysisServiceEksPodRoleDefaultPolicy4C8A00D5:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyDocument:
-        Statement:
-          - Action:
-              - s3:ListBucket
-              - s3:GetObject
-              - s3:PutObject
-            Effect: Allow
-            Resource:
-              - Fn::GetAtt:
-                  - InfrastructureCoreWorkshopBucketB6510E67
-                  - Arn
-              - Fn::Join:
-                  - ""
-                  - - Fn::GetAtt:
-                        - InfrastructureCoreWorkshopBucketB6510E67
-                        - Arn
-                    - /*
-        Version: "2012-10-17"
-      PolicyName: InfrastructureJvmAnalysisJvmAnalysisServiceEksPodRoleDefaultPolicy4C8A00D5
-      Roles:
-        - Ref: InfrastructureJvmAnalysisJvmAnalysisServiceEksPodRoleC71FAB03
 Outputs:
   IdeUrl:
     Description: Workshop IDE Url

@@ -94,7 +94,7 @@ CONTACT_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
       \"url\": \"http://jvm-analysis-service.monitoring.svc.cluster.local/webhook\",
       \"httpMethod\": \"POST\"
     },
-    \"disableResolveMessage\": false
+    \"disableResolveMessage\": true
   }" \
   "$GRAFANA_URL/api/v1/provisioning/contact-points")
 
@@ -129,9 +129,9 @@ ALERT_PAYLOAD="{
     }
   ],
   \"intervalSeconds\": 20,
-  \"noDataState\": \"NoData\",
+  \"noDataState\": \"OK\",
   \"execErrState\": \"Alerting\",
-  \"for\": \"20s\",
+  \"for\": \"30s\",
   \"ruleGroup\": \"jvm-analysis-group\",
   \"annotations\": {
     \"summary\": \"High HTTP POST Request Rate\",
@@ -151,7 +151,7 @@ ALERT_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
 
 if echo "$ALERT_RESPONSE" | jq -e '.uid' > /dev/null 2>&1; then
   log "✅ Alert rule created"
-  
+
   # Update rule group interval to 20 seconds
   log "⏱️ Setting evaluation interval to 20s..."
   RULE_UID=$(echo "$ALERT_RESPONSE" | jq -r '.uid')
@@ -173,9 +173,9 @@ if echo "$ALERT_RESPONSE" | jq -e '.uid' > /dev/null 2>&1; then
           \"refId\": \"A\"
         }
       }],
-      \"noDataState\": \"NoData\",
+      \"noDataState\": \"OK\",
       \"execErrState\": \"Alerting\",
-      \"for\": \"20s\",
+      \"for\": \"30s\",
       \"annotations\": {
         \"summary\": \"High HTTP POST Request Rate\",
         \"description\": \"POST rate: {{ \$value }} req/s for pod {{ \$labels.pod }}\"
@@ -186,12 +186,12 @@ if echo "$ALERT_RESPONSE" | jq -e '.uid' > /dev/null 2>&1; then
       }
     }]
   }"
-  
+
   curl -s -X PUT -H "Content-Type: application/json" \
     -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
     -d "$GROUP_UPDATE_PAYLOAD" \
     "$GRAFANA_URL/api/v1/provisioning/folder/$FOLDER_UID/rule-groups/jvm-analysis-group" > /dev/null
-  
+
   log "✅ Evaluation interval set to 20s"
 else
   log "❌ Alert rule creation failed: $ALERT_RESPONSE"
@@ -202,10 +202,10 @@ fi
 log "🔧 Configuring notification policy..."
 POLICY_PAYLOAD="{
   \"receiver\": \"$CONTACT_POINT_NAME\",
-  \"group_by\": [\"alertname\"],
-  \"group_wait\": \"1s\",
-  \"group_interval\": \"24h\",
-  \"repeat_interval\": \"24h\"
+  \"group_by\": [\"alertname\", \"pod\"],
+  \"group_wait\": \"10s\",
+  \"group_interval\": \"30s\",
+  \"repeat_interval\": \"2m\"
 }"
 
 POLICY_RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" \

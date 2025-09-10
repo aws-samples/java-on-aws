@@ -41,8 +41,8 @@ public class JavaOnEksStack extends Stack {
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/app.sh"
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
 
-        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
-        # sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring-jvm.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/java-on-eks/0-app.sh"
         """;
 
     private final String buildspec = """
@@ -83,8 +83,8 @@ public class JavaOnEksStack extends Stack {
             ideProps.setExtensions(Arrays.asList(
                 // "amazonwebservices.aws-toolkit-vscode",
                 // "amazonwebservices.amazon-q-vscode",
-                "shardulm94.trailing-spaces",
                 "vscjava.vscode-java-pack",
+                // "shardulm94.trailing-spaces",
                 "ms-kubernetes-tools.vscode-kubernetes-tools",
                 "ms-azuretools.vscode-docker"
             ));

@@ -6,7 +6,7 @@ echo "Removing unnecessary files ..."
 rm -rf "$BASE_DIR/src/assembly" 2>/dev/null
 rm -rf "$BASE_DIR/src/main/java/com/unicorn/store/config" 2>/dev/null
 rm -rf "$BASE_DIR/src/main/java/com/unicorn/store/otel" 2>/dev/null
-rm -f "$BASE_DIR/src/main/java/com/unicorn/store/monitoring" 2>/dev/null
+rm -rf "$BASE_DIR/src/main/java/com/unicorn/store/monitoring" 2>/dev/null
 rm -f "$BASE_DIR/src/main/java/com/unicorn/store/controller/ThreadManagementController.java" 2>/dev/null
 rm -f "$BASE_DIR/src/main/java/com/unicorn/store/service/ThreadGeneratorService.java" 2>/dev/null
 
@@ -228,3 +228,5 @@ echo "App deployment to EKS cluster is complete."
 echo "Commiting changes ..."
 git add .
 git commit -m "Initial deployment"
+
+echo "{ \"query\": { \"folder\": \"/home/ec2-user/environment" } }" > /home/ec2-user/.local/share/code-server/coder.json

@@ -52,12 +52,13 @@ public class IdeGiteaStack extends Stack {
                 // "amazonwebservices.aws-toolkit-vscode",
                 // "amazonwebservices.amazon-q-vscode",
                 // "vscjava.vscode-java-pack",
+                // "shardulm94.trailing-spaces",
                 "ms-kubernetes-tools.vscode-kubernetes-tools",
                 "ms-azuretools.vscode-docker"
             ));
             ideProps.setAppPort(8080);
             ideProps.setEnableGitea(true);
-        var ide = new VSCodeIde(this, "VSCodeIdeGitea", ideProps);
+        new VSCodeIde(this, "VSCodeIdeGitea", ideProps);
         var ideRole = ideProps.getRole();
         ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
     }
