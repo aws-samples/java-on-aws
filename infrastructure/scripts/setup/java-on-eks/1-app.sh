@@ -28,15 +28,6 @@ spring.datasource.hikari.data-source-properties.preparedStatementCacheQueries=0
 
 # Virtual Threads
 spring.threads.virtual.enabled=true
-
-# Actuator config
-management.endpoints.web.exposure.include=threaddump,prometheus,health,info
-management.endpoint.health.probes.enabled=true
-management.endpoint.prometheus.access=unrestricted
-management.endpoint.health.group.liveness.include=livenessState
-management.endpoint.health.group.readiness.include=readinessState
-management.metrics.enable.all=true
-management.metrics.binders.disk.enabled=false
 EOF
 
 echo "Updating Dockerfile ..."
