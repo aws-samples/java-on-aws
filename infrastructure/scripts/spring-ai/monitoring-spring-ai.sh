@@ -80,7 +80,7 @@ cat > /tmp/dashboard.json <<EOF
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "Prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -160,7 +160,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -180,7 +180,7 @@ cat > /tmp/dashboard.json <<EOF
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "Prometheus"
       },
       "description": "Error counts/rate for the AI model requests",
       "fieldConfig": {
@@ -235,7 +235,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -252,7 +252,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -273,7 +273,7 @@ cat > /tmp/dashboard.json <<EOF
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "Prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -328,7 +328,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -349,7 +349,7 @@ cat > /tmp/dashboard.json <<EOF
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "Prometheus"
       },
       "description": "Error counts/rate for the AI model requests",
       "fieldConfig": {
@@ -406,7 +406,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -426,7 +426,7 @@ cat > /tmp/dashboard.json <<EOF
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "Prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -481,7 +481,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -502,7 +502,7 @@ cat > /tmp/dashboard.json <<EOF
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "Prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -584,7 +584,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -600,7 +600,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -621,7 +621,7 @@ cat > /tmp/dashboard.json <<EOF
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "Prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -702,7 +702,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -722,7 +722,7 @@ cat > /tmp/dashboard.json <<EOF
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "Prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -802,7 +802,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -822,7 +822,7 @@ cat > /tmp/dashboard.json <<EOF
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "Prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -904,7 +904,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -920,7 +920,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -941,7 +941,7 @@ cat > /tmp/dashboard.json <<EOF
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "Prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -1021,7 +1021,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1041,7 +1041,7 @@ cat > /tmp/dashboard.json <<EOF
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "Prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -1123,7 +1123,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1139,7 +1139,7 @@ cat > /tmp/dashboard.json <<EOF
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "Prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1171,7 +1171,7 @@ cat > /tmp/dashboard.json <<EOF
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "prometheus"
+          "uid": "Prometheus"
         },
         "definition": "label_values(application)",
         "hide": 0,
