@@ -38,28 +38,26 @@ for i in {1..20}; do
   sleep 5
 done
 
-log "📁 Creating folder '$FOLDER_NAME'..."
-FOLDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
-  -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
-  -d "{\"title\": \"$FOLDER_NAME\"}" \
-  "$GRAFANA_URL/api/folders")
-
-FOLDER_UID=$(echo "$FOLDER_RESPONSE" | jq -r '.uid // empty')
-FOLDER_ID=$(echo "$FOLDER_RESPONSE" | jq -r '.id // empty')
-if [[ -z "$FOLDER_UID" ]]; then
-  # Try to get existing folder
-  EXISTING_FOLDER=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/folders" | jq -r ".[] | select(.title == \"$FOLDER_NAME\")")
-  if [[ -n "$EXISTING_FOLDER" ]]; then
-    FOLDER_UID=$(echo "$EXISTING_FOLDER" | jq -r '.uid')
-    FOLDER_ID=$(echo "$EXISTING_FOLDER" | jq -r '.id')
-    log "📁 Using existing folder: $FOLDER_UID"
-  else
-    FOLDER_UID=""
-    FOLDER_ID=0
-    log "⚠️ Using General folder"
-  fi
+EXISTING_FOLDER=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/folders" | jq -r ".[] | select(.title == \"$FOLDER_NAME\")")
+if [[ -n "$EXISTING_FOLDER" ]]; then
+  FOLDER_UID=$(echo "$EXISTING_FOLDER" | jq -r '.uid')
+  FOLDER_ID=$(echo "$EXISTING_FOLDER" | jq -r '.id')
+  log "📁 Using existing folder: $FOLDER_UID"
 else
-  log "✅ Folder created: $FOLDER_UID"
+  log "📁 Creating folder '$FOLDER_NAME'..."
+  FOLDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
+    -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+    -d "{\"title\": \"$FOLDER_NAME\"}" \
+    "$GRAFANA_URL/api/folders")
+  FOLDER_UID=$(echo "$FOLDER_RESPONSE" | jq -r '.uid // empty')
+  FOLDER_ID=$(echo "$FOLDER_RESPONSE" | jq -r '.id // empty')
+  if [[ -z "$FOLDER_UID" ]]; then
+     FOLDER_UID=""
+     FOLDER_ID=0
+     log "⚠️ Using General folder"
+  else
+    log "✅ Folder created: $FOLDER_UID"
+  fi
 fi
 
 log "📊 Creating HTTP metrics dashboard..."
