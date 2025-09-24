@@ -9,7 +9,7 @@ log() {
 NAMESPACE="monitoring"
 GRAFANA_USER="admin"
 SECRET_NAME="unicornstore-ide-password-lambda"
-FOLDER_NAME="JVM Metrics"
+FOLDER_NAME="JVM Analysis"
 DASHBOARD_TITLE="HTTP Metrics"
 
 AWS_REGION=${AWS_REGION:-$(aws configure get region)}
