@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jvm-analysis-service
+  namespace: monitoring
+  labels:
+    app: jvm-analysis-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jvm-analysis-service
+  template:
+    metadata:
+      labels:
+        app: jvm-analysis-service
+    spec:
+      serviceAccountName: jvm-analysis-service
+      containers:
+        - name: jvm-analysis-service
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+          image: ${ECR_URI}:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: AWS_REGION
+              value: "${AWS_REGION:-us-east-1}"
+            - name: AWS_S3_BUCKET
+              value: "${S3_BUCKET}"
+            - name: AWS_S3_PREFIX_ANALYSIS
+              value: "analysis/"
+            - name: AWS_S3_PREFIX_PROFILING
+              value: "profiling/"
+            - name: SPRING_AI_BEDROCK_CONVERSE_CHAT_OPTIONS_MODEL
+              value: "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+            - name: SPRING_AI_BEDROCK_CONVERSE_CHAT_OPTIONS_MAX_TOKENS
+              value: "10000"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jvm-analysis-service
+  namespace: monitoring
+  labels:
+    app: jvm-analysis-service
+spec:
+  selector:
+    app: jvm-analysis-service
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jvm-analysis-service
+  namespace: monitoring
