@@ -465,7 +465,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250910-135726
+      LogGroupName: unicornstore-ide-bootstrap-log-20251006-200014
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -880,9 +880,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
+            type: String
             default: ""
             description: (Optional) Custom bootstrap script to run.
-            type: String
         mainSteps:
           - inputs:
               runCommand:
@@ -1143,17 +1143,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - splashUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - UnicornStoreIdeIdeRole81A2CEAA
-                          - Arn
-                      readmeUrl: ""
-                      waitConditionHandleUrl:
-                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
-                      extensions: vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
-                      domain: ""
-                      installGitea: echo bootstrapGitea was not provided
+                    - installGitea: echo bootstrapGitea was not provided
                       terminalOnStartup: "true"
                       environmentContentsZip: ""
                       passwordName:
@@ -1211,9 +1201,21 @@ Resources:
 
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/java-on-eks/1-app.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/java-on-eks/grafana-alerting.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/java-on-eks/grafana-dashboard-http.sh"
                       codeServerVersion: 4.103.2
                       instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
+                      splashUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - UnicornStoreIdeIdeRole81A2CEAA
+                          - Arn
+                      readmeUrl: ""
+                      waitConditionHandleUrl:
+                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
+                      extensions: vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
+                      domain: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1351,12 +1353,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
+      LogGroupName:
+        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
       SsmDocument:
         Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
       InstanceId:
         Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
-      LogGroupName:
-        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -1542,7 +1544,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20250910135726"
+            - "-20251006200014"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

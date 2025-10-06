@@ -16,15 +16,13 @@ public class JvmAnalysisService {
     private static final Logger logger = LoggerFactory.getLogger(JvmAnalysisService.class);
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private final FlameGraphConverter flameGraphConverter;
     private final S3Connector s3Connector;
     private final AIRecommendation aiRecommendation;
 
     @Value("${threaddump.url.template:http://{podIp}:8080/actuator/threaddump}")
     private String threadDumpUrlTemplate;
 
-    public JvmAnalysisService(FlameGraphConverter flameGraphConverter, S3Connector s3Connector, AIRecommendation aiRecommendation) {
-        this.flameGraphConverter = flameGraphConverter;
+    public JvmAnalysisService(S3Connector s3Connector, AIRecommendation aiRecommendation) {
         this.s3Connector = s3Connector;
         this.aiRecommendation = aiRecommendation;
     }
@@ -100,12 +98,9 @@ public class JvmAnalysisService {
             }
 
             String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
-            s3Connector.storeProfilingData(taskPodId, content, timestamp);
+            s3Connector.storeFlameGraph(taskPodId, content, timestamp);
 
-            String flamegraph = flameGraphConverter.convertToFlameGraph(content);
-            s3Connector.storeFlameGraph(taskPodId, flamegraph, timestamp);
-
-            return String.format("Flamegraph (Top Performance Hotspots):\n%s", flamegraph);
+            return String.format("Flamegraph (Top Performance Hotspots):\n%s", content);
         } catch (Exception e) {
             logger.error("Failed to process profiling data for taskPodId: {}", taskPodId, e);
             return "Failed to read profiling data: " + e.getMessage();

@@ -43,6 +43,8 @@ public class JavaOnEksStack extends Stack {
 
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/java-on-eks/1-app.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/java-on-eks/grafana-alerting.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/java-on-eks/grafana-dashboard-http.sh"
         """;
 
     private final String buildspec = """

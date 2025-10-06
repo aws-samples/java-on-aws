@@ -34,7 +34,7 @@ public class S3Connector {
     public String getLatestProfilingData(String taskPodId) {
         try {
             String currentDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-            String prefix = s3PrefixProfiling + taskPodId + "/" + currentDate;
+            String prefix = s3PrefixProfiling + taskPodId + "/profile-" + currentDate;
             logger.info("Listing S3 objects with prefix: {}", prefix);
 
             ListObjectsV2Response listResponse = s3Client.listObjectsV2(
@@ -45,7 +45,7 @@ public class S3Connector {
             );
 
             Optional<S3Object> latestFile = listResponse.contents().stream()
-                    .filter(obj -> obj.key().endsWith(".txt"))
+                    .filter(obj -> obj.key().endsWith(".html"))
                     .max(Comparator.comparing(S3Object::lastModified));
 
             if (latestFile.isEmpty()) return null;

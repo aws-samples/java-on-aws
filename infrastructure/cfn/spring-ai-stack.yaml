@@ -465,7 +465,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250910-135853
+      LogGroupName: unicornstore-ide-bootstrap-log-20251006-200133
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -1143,8 +1143,7 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - splashUrl: ""
-                      instanceIamRoleArn:
+                    - instanceIamRoleArn:
                         Fn::GetAtt:
                           - UnicornStoreIdeIdeRole81A2CEAA
                           - Arn
@@ -1214,6 +1213,7 @@ Resources:
                       codeServerVersion: 4.103.2
                       instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
+                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1542,7 +1542,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20250910135853"
+            - "-20251006200133"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
