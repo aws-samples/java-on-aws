@@ -141,6 +141,7 @@ echo "Installing Q Cli ..."
 curl --proto '=https' --tlsv1.2 -sSf "https://desktop-release.codewhisperer.us-east-1.amazonaws.com/latest/q-x86_64-linux.zip" -o /home/ec2-user/q.zip
 unzip /home/ec2-user/q.zip -d /home/ec2-user/
 chmod +x /home/ec2-user/q/install.sh
+sudo Q_INSTALL_GLOBAL=1 /home/ec2-user/q/install.sh
 
 echo "Fixing bash-preexec errors in Amazon Q shell integration..."
 # Run the fix script from the same directory
