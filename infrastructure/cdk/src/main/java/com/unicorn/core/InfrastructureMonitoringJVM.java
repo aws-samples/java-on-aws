@@ -42,12 +42,12 @@ public class InfrastructureMonitoringJVM extends Construct {
                 "Allow Lambda access to Kubernetes API"
         );
 
-        // Allow Lambda to reach EKS cluster
-        lambdaSg.addEgressRule(
-                Peer.securityGroupId(clusterSG.getSecurityGroupId()),
-                Port.tcp(443),
-                "Allow Lambda to reach Kubernetes API"
-        );
+        // // Allow Lambda to reach EKS cluster
+        // lambdaSg.addEgressRule(
+        //         Peer.securityGroupId(clusterSG.getSecurityGroupId()),
+        //         Port.tcp(443),
+        //         "Allow Lambda to reach Kubernetes API"
+        // );
 
         // Allow EKS cluster to respond back to Lambda
         clusterSG.addIngressRule(

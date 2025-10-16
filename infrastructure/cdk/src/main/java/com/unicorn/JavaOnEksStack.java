@@ -11,9 +11,8 @@ import com.unicorn.constructs.EksCluster;
 import com.unicorn.core.InfrastructureCore;
 import com.unicorn.core.InfrastructureContainers;
 import com.unicorn.core.InfrastructureEks;
-import com.unicorn.core.InfrastructureMonitoringJVM;
+import com.unicorn.core.InfrastructureJvmAnalysis;
 import com.unicorn.core.DatabaseSetup;
-import com.unicorn.core.UnicornStoreSpringLambda;
 
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -26,14 +25,14 @@ import software.constructs.Construct;
 import software.amazon.awscdk.DefaultStackSynthesizer;
 import software.amazon.awscdk.DefaultStackSynthesizerProps;
 
-public class UnicornStoreStack extends Stack {
+public class JavaOnEksStack extends Stack {
 
     private final String bootstrapScript = """
         date
 
         echo '=== Clone Git repository ==='
         sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout riv25-eks"
 
         echo '=== Setup IDE ==='
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
@@ -43,7 +42,9 @@ public class UnicornStoreStack extends Stack {
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/eks.sh"
 
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
-        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring-jvm.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/java-on-eks/1-app.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/java-on-eks/grafana-alerting.sh"
+        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/java-on-eks/grafana-dashboard-http.sh"
         """;
 
     private final String buildspec = """
@@ -64,7 +65,7 @@ public class UnicornStoreStack extends Stack {
                         aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
         """;
 
-    public UnicornStoreStack(final Construct scope, final String id) {
+    public JavaOnEksStack(final Construct scope, final String id) {
         // super(scope, id, props);
         super(scope, id, StackProps.builder()
         .synthesizer(new DefaultStackSynthesizer(DefaultStackSynthesizerProps.builder()
@@ -106,15 +107,9 @@ public class UnicornStoreStack extends Stack {
             vpc, ideInternalSecurityGroup);
         eksCluster.createAccessEntry(ideRole.getRoleArn(), "unicorn-store", "unicornstore-ide-user");
 
-        // Create JVM monitoring infrastructure with Lambda thread dump
-        new InfrastructureMonitoringJVM(this, "InfrastructureMonitoringJVM", infrastructureCore.getWorkshopBucket(), eksCluster, vpc);
-
         // Execute Database setup
         var databaseSetup = new DatabaseSetup(this, "UnicornStoreDatabaseSetup", infrastructureCore);
         databaseSetup.getNode().addDependency(infrastructureCore.getDatabase());
-
-        // Create UnicornStoreSpringLambda
-        new UnicornStoreSpringLambda(this, "UnicornStoreSpringLambda", infrastructureCore);
 
         // Create Workshop CodeBuild
         var codeBuildProps = new CodeBuildResourceProps();
@@ -124,5 +119,8 @@ public class UnicornStoreStack extends Stack {
         codeBuildProps.setAdditionalIamPolicies(Arrays.asList(
             ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess")));
         new CodeBuildResource(this, "UnicornStoreCodeBuild", codeBuildProps);
+
+        // Create JVM monitoring infrastructure with Lambda thread dump
+        new InfrastructureJvmAnalysis(this, "InfrastructureJvmAnalysis", infrastructureCore);
     }
 }

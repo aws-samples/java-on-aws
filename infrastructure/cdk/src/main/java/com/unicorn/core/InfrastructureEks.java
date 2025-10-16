@@ -43,6 +43,12 @@ public class InfrastructureEks extends Construct {
         unicornStoreEksPodRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this,
             "UnicornStoreEksPodRole-" + "AmazonBedrockLimitedAccess",
             "arn:aws:iam::aws:policy/AmazonBedrockLimitedAccess"));
+        unicornStoreEksPodRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("s3:ListBucket", "s3:GetObject", "s3:PutObject"))
+            .resources(List.of(infrastructureCore.getWorkshopBucket().getBucketArn(),
+                            infrastructureCore.getWorkshopBucket().getBucketArn() + "/*"))
+            .build());
 
         infrastructureCore.getEventBridge().grantPutEventsTo(unicornStoreEksPodRole);
         infrastructureCore.getDatabaseSecret().grantRead(unicornStoreEksPodRole);

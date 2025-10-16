@@ -55,7 +55,8 @@
 				"iam:PassRole"
 			],
 			"Resource": [
-				"arn:aws:iam::{{.AccountId}}:role/unicorn*"
+				"arn:aws:iam::{{.AccountId}}:role/unicorn*",
+				"arn:aws:iam::{{.AccountId}}:role/jvm-analysis-service*"
 			],
 			"Effect": "Allow"
 		},
@@ -81,7 +82,8 @@
 				"arn:aws:iam::{{.AccountId}}:policy/*unicorn*",
 				"arn:aws:iam::{{.AccountId}}:role/*Unicorn*",
 				"arn:aws:iam::{{.AccountId}}:policy/*Unicorn*",
-				"arn:aws:iam::{{.AccountId}}:policy/*AWSLambdaTracerAccessExecutionRole*"
+				"arn:aws:iam::{{.AccountId}}:policy/*AWSLambdaTracerAccessExecutionRole*",
+				"arn:aws:iam::{{.AccountId}}:role/jvm-analysis-service*"
 			]
 		},
 		{

@@ -70,7 +70,7 @@ spec:
           values: ["on-demand"]
         - key: node.kubernetes.io/instance-type
           operator: In
-          values: ["c5.xlarge"]
+          values: ["c5.2xlarge"]
   limits:
     cpu: 20
   disruption:
