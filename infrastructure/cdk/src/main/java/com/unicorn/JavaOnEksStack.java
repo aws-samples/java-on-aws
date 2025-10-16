@@ -32,7 +32,7 @@ public class JavaOnEksStack extends Stack {
 
         echo '=== Clone Git repository ==='
         sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-        sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout riv25-eks"
+        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout riv25-eks"
 
         echo '=== Setup IDE ==='
         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
