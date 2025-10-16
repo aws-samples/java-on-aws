@@ -388,9 +388,7 @@ Resources:
             Sid: AllowedServicesEKS
           - Action: iam:PassRole
             Effect: Allow
-            Resource:
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
+            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
             Sid: PassRoleEKS
           - Action:
               - iam:CreateRole
@@ -412,7 +410,6 @@ Resources:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/*Unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:policy/*Unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:policy/*AWSLambdaTracerAccessExecutionRole*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
             Sid: IamLimitedAccessForUnicorns
           - Action:
               - cloudformation:*
@@ -465,7 +462,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20251016-101122
+      LogGroupName: unicornstore-ide-bootstrap-log-20250826-095306
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -880,9 +877,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            type: String
             description: (Optional) Custom bootstrap script to run.
             default: ""
+            type: String
         mainSteps:
           - inputs:
               runCommand:
@@ -1145,7 +1142,7 @@ Resources:
                       exit $exit_code
                     - instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      codeServerVersion: 4.104.3
+                      codeServerVersion: 4.103.1
                       customBootstrapScript: |
                         date
 
@@ -1351,12 +1348,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
-      LogGroupName:
-        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
       InstanceId:
         Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
       SsmDocument:
         Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
+      LogGroupName:
+        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -1542,7 +1539,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251016101122"
+            - "-20250826095307"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -1902,21 +1899,6 @@ Resources:
           - Action: xray:PutTraceSegments
             Effect: Allow
             Resource: "*"
-          - Action:
-              - s3:ListBucket
-              - s3:GetObject
-              - s3:PutObject
-            Effect: Allow
-            Resource:
-              - Fn::GetAtt:
-                  - InfrastructureCoreWorkshopBucketB6510E67
-                  - Arn
-              - Fn::Join:
-                  - ""
-                  - - Fn::GetAtt:
-                        - InfrastructureCoreWorkshopBucketB6510E67
-                        - Arn
-                    - /*
           - Action: events:PutEvents
             Effect: Allow
             Resource:
