@@ -358,6 +358,7 @@ Resources:
                 aws-marketplace:ProductId: "false"
               ForAllValues:StringEquals:
                 aws-marketplace:ProductId:
+                  - prod-4pmewlybdftbs
                   - prod-4dlfvry4v5hbi
                   - prod-cx7ovbu5wex7g
                   - prod-5oba7y7jpji56
@@ -388,7 +389,9 @@ Resources:
             Sid: AllowedServicesEKS
           - Action: iam:PassRole
             Effect: Allow
-            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
             Sid: PassRoleEKS
           - Action:
               - iam:CreateRole
@@ -410,6 +413,7 @@ Resources:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/*Unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:policy/*Unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:policy/*AWSLambdaTracerAccessExecutionRole*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
             Sid: IamLimitedAccessForUnicorns
           - Action:
               - cloudformation:*
@@ -462,7 +466,7 @@ Resources:
   UnicornStoreIdeIdeLogGroup7A5EFA50:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20250826-095403
+      LogGroupName: unicornstore-ide-bootstrap-log-20251021-111836
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -877,9 +881,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            type: String
             description: (Optional) Custom bootstrap script to run.
             default: ""
+            type: String
         mainSteps:
           - inputs:
               runCommand:
@@ -1142,7 +1146,7 @@ Resources:
                       exit $exit_code
                     - instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      codeServerVersion: 4.103.1
+                      codeServerVersion: 4.104.3
                       customBootstrapScript: |
                         date
 
@@ -1202,7 +1206,7 @@ Resources:
                       terminalOnStartup: "true"
                       installGitea: echo bootstrapGitea was not provided
                       domain: ""
-                      extensions: vscjava.vscode-java-pack,ms-azuretools.vscode-docker
+                      extensions: vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
                       waitConditionHandleUrl:
                         Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
                       readmeUrl: ""
@@ -1348,12 +1352,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
-      LogGroupName:
-        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
       InstanceId:
         Ref: UnicornStoreIdeIdeEC2Instance5F393FC5
       SsmDocument:
         Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
+      LogGroupName:
+        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -1539,7 +1543,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20250826095403"
+            - "-20251021111836"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -1862,9 +1866,6 @@ Resources:
               HostPort: 8080
               Protocol: tcp
           Secrets:
-            - Name: SPRING_DATASOURCE_PASSWORD
-              ValueFrom:
-                Ref: InfrastructureCoredbSecretPassword1EC1CF00
             - Name: SPRING_DATASOURCE_URL
               ValueFrom:
                 Fn::Join:
@@ -1877,6 +1878,9 @@ Resources:
                     - Ref: AWS::AccountId
                     - :parameter/
                     - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
+            - Name: SPRING_DATASOURCE_PASSWORD
+              ValueFrom:
+                Ref: InfrastructureCoredbSecretPassword1EC1CF00
       Cpu: "1024"
       ExecutionRoleArn:
         Fn::GetAtt:
@@ -2190,9 +2194,6 @@ Resources:
               HostPort: 8080
               Protocol: tcp
           Secrets:
-            - Name: SPRING_DATASOURCE_PASSWORD
-              ValueFrom:
-                Ref: InfrastructureCoredbSecretPassword1EC1CF00
             - Name: SPRING_DATASOURCE_URL
               ValueFrom:
                 Fn::Join:
@@ -2205,6 +2206,9 @@ Resources:
                     - Ref: AWS::AccountId
                     - :parameter/
                     - Ref: InfrastructureCoreSsmParameterDBConnectionString2EE427D4
+            - Name: SPRING_DATASOURCE_PASSWORD
+              ValueFrom:
+                Ref: InfrastructureCoredbSecretPassword1EC1CF00
       Cpu: "1024"
       ExecutionRoleArn:
         Fn::GetAtt:
@@ -2316,6 +2320,21 @@ Resources:
           - Action: xray:PutTraceSegments
             Effect: Allow
             Resource: "*"
+          - Action:
+              - s3:ListBucket
+              - s3:GetObject
+              - s3:PutObject
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - InfrastructureCoreWorkshopBucketB6510E67
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - InfrastructureCoreWorkshopBucketB6510E67
+                        - Arn
+                    - /*
           - Action: events:PutEvents
             Effect: Allow
             Resource:

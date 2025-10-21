@@ -13,6 +13,7 @@
                 },
                 "ForAllValues:StringEquals": {
                     "aws-marketplace:ProductId": [
+						"prod-4pmewlybdftbs",
                         "prod-4dlfvry4v5hbi",
                         "prod-cx7ovbu5wex7g",
                         "prod-5oba7y7jpji56",
