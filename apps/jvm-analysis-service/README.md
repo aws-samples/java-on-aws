@@ -5,7 +5,7 @@ A Spring Boot microservice that provides automated JVM performance analysis usin
 ## Features
 
 - **Automated JVM Analysis**: Processes performance alerts and generates comprehensive analysis reports
-- **AI-Powered Recommendations**: Uses AWS Bedrock (Claude 3.7 Sonnet) for intelligent performance insights
+- **AI-Powered Recommendations**: Uses AWS Bedrock (Claude 4 Sonnet) for intelligent performance insights
 - **Flame Graph Generation**: Converts profiling data to interactive HTML flame graphs
 - **S3 Integration**: Stores and retrieves profiling data, thread dumps, and analysis results
 - **Resilient Design**: Built-in retry mechanisms for external service calls
@@ -77,7 +77,7 @@ Processes performance alert webhooks and triggers JVM analysis.
 | `AWS_S3_BUCKET` | S3 bucket for data storage | `default_bucket_name` |
 | `AWS_S3_PREFIX_ANALYSIS` | S3 prefix for analysis results | `analysis/` |
 | `AWS_S3_PREFIX_PROFILING` | S3 prefix for profiling data | `profiling/` |
-| `AWS_BEDROCK_MODEL_ID` | Bedrock model identifier | `us.anthropic.claude-3-7-sonnet-20250219-v1:0` |
+| `AWS_BEDROCK_MODEL_ID` | Bedrock model identifier | `global.anthropic.claude-sonnet-4-20250514-v1:0` |
 | `AWS_BEDROCK_MAX_TOKENS` | Maximum tokens for AI analysis | `10000` |
 | `THREADDUMP_URL_TEMPLATE` | Thread dump endpoint template | `http://{podIp}:8080/actuator/threaddump` |
 
@@ -96,7 +96,7 @@ resilience4j.retry.instances.threadDump.exponential-backoff-multiplier=2
 - Maven 3.6+
 - AWS Account with appropriate permissions
 - S3 bucket for data storage
-- AWS Bedrock access (Claude 3.7 Sonnet model)
+- AWS Bedrock access (Claude 4 Sonnet model)
 
 ### Required AWS Permissions
 

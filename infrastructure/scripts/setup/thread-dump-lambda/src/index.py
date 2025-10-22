@@ -145,13 +145,13 @@ Analyze the following Java thread dump and return your findings as a comprehensi
    - Highlight the most critical issue identified
    - Include an overall system health assessment (Healthy/Degraded/Critical)
 
-2. **Summary of Thread States**  
+2. **Summary of Thread States**
    - Count and list all thread states (RUNNABLE, WAITING, BLOCKED, etc.)
    - Include totals and percentages for each state
    - Present a simple ASCII chart or table showing the distribution
    - Note any unusual state distributions that might indicate problems
 
-3. **Key Issues Identified**  
+3. **Key Issues Identified**
    For each issue, include:
    - Issue description with severity rating (Critical/High/Medium/Low)
    - Confidence level in the diagnosis (High/Medium/Low)
@@ -168,7 +168,7 @@ Analyze the following Java thread dump and return your findings as a comprehensi
    - I/O bottlenecks
    - Common framework-specific issues (Spring, Hibernate, etc.)
 
-4. **Optimization Recommendations**  
+4. **Optimization Recommendations**
    Provide actionable recommendations organized by:
    - Immediate actions (can be implemented quickly with low risk)
    - Short-term improvements (days to implement)
@@ -178,7 +178,7 @@ Analyze the following Java thread dump and return your findings as a comprehensi
    - Specific code, configuration, or architectural changes
    - Expected impact level (High/Medium/Low)
    - Implementation complexity (High/Medium/Low)
-   
+
    Consider these areas:
    - Thread pool sizing and configuration
    - Synchronization and locking strategies
@@ -188,7 +188,7 @@ Analyze the following Java thread dump and return your findings as a comprehensi
    - Caching strategies
    - Asynchronous processing opportunities
 
-5. **Detailed Analysis of Critical Threads**  
+5. **Detailed Analysis of Critical Threads**
    For the 3-5 most problematic threads:
    - Thread name, ID, and state
    - Relevant stack trace snippet (focus on most important frames)
@@ -226,7 +226,7 @@ If the thread dump appears incomplete or insufficient for complete analysis, cle
         logger.info(f"Invoking Bedrock with payload ... ")
         try:
             response = bedrock.invoke_model(
-                modelId="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                modelId="global.anthropic.claude-sonnet-4-20250514-v1:0",
                 body=payload
             )
             body = json.loads(response.get("body").read())
