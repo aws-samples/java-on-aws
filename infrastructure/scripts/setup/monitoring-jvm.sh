@@ -309,3 +309,18 @@ log "✅ JVM monitoring setup complete"
 log "🌍 Grafana: $GRAFANA_URL"
 log "📊 Dashboard shows jvm_threads_live_threads from both EKS and ECS"
 log "🚨 Alert triggers Lambda thread dump when threads > $THREAD_THRESHOLD, stops when threads < $THREAD_THRESHOLD"
+
+# Test Bedrock model access
+log "🧪 Testing Bedrock model access..."
+if aws bedrock-runtime invoke-model \
+  --model-id "global.anthropic.claude-sonnet-4-20250514-v1:0" \
+  --body "$(echo '{"anthropic_version": "bedrock-2023-05-31", "max_tokens": 10, "messages": [{"role": "user", "content": "Test"}]}' | base64)" \
+  --region us-east-1 \
+  /tmp/bedrock-test.json; then
+  log "✅ Bedrock model access verified"
+  log "📄 Response: $(cat /tmp/bedrock-test.json)"
+  rm -f /tmp/bedrock-test.json
+else
+  log "⚠️  Bedrock model access test failed - Lambda may encounter issues"
+  log "📄 Error details: $(cat /tmp/bedrock-test.json 2>/dev/null || echo 'No response file created')"
+fi

@@ -89,7 +89,7 @@ spring.thymeleaf.suffix=.html
 # Amazon Bedrock Configuration
 spring.ai.bedrock.aws.region=us-east-1
 spring.ai.bedrock.converse.chat.options.max-tokens=10000
-spring.ai.bedrock.converse.chat.options.model=us.anthropic.claude-3-7-sonnet-20250219-v1:0
+spring.ai.bedrock.converse.chat.options.model=global.anthropic.claude-sonnet-4-20250514-v1:0
 EOL
 
 echo "Creating necessary directories and files..."

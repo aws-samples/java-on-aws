@@ -97,7 +97,7 @@ public class InfrastructureMonitoringJVM extends Construct {
             ))
             .build());
 
-        // Add broader permissions for Bedrock
+        // Add permissions for Bedrock Models
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
             .actions(List.of(
@@ -105,9 +105,19 @@ public class InfrastructureMonitoringJVM extends Construct {
                 "bedrock:InvokeModelWithResponseStream"
             ))
             .resources(List.of(
-                "arn:aws:bedrock:*:*:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-		"arn:aws:bedrock:*:*:foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0",
-		"arn:aws:bedrock:*:*:foundation-model/openai.gpt-oss-120b-1:0"
+                "arn:aws:bedrock:*:*:inference-profile/global.anthropic.claude-sonnet-4-20250514-v1:0",
+		"arn:aws:bedrock:*:*:foundation-model/anthropic.claude-sonnet-4-20250514-v1:0"
+            ))
+            .build());
+
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of(
+                "aws-marketplace:Subscribe",
+                "aws-marketplace:ViewSubscriptions"
+            ))
+            .resources(List.of(
+                "*"
             ))
             .build());
 
