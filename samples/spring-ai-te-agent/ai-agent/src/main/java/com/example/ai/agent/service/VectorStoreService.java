@@ -1,4 +1,4 @@
-package com.example.ai.agent;
+package com.example.ai.agent.service;
 
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;

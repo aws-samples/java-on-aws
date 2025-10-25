@@ -1,4 +1,6 @@
-package com.example.ai.agent;
+package com.example.ai.agent.controller;
+
+import com.example.ai.agent.service.VectorStoreService;
 
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

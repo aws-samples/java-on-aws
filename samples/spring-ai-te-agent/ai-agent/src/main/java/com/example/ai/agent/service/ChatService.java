@@ -1,5 +1,9 @@
-package com.example.ai.agent;
+package com.example.ai.agent.service;
 
+import com.example.ai.agent.config.ChatRetryConfig;
+import com.example.ai.agent.config.PromptConfig;
+import com.example.ai.agent.model.ChatRequest;
+import com.example.ai.agent.tool.DateTimeService;
 import io.github.resilience4j.retry.Retry;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -13,7 +17,7 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.bedrockruntime.model.ValidationException;
 
 @Service
-public class ChatService {
+public class ChatService implements ChatServiceInterface {
     private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
 
     private final ChatClient chatClient;
@@ -70,7 +74,7 @@ public class ChatService {
     @Nullable
     private String sendFilePrompt(ChatRequest request) {
         ChatRequest.FileResource fileResource = request.buildFileResource();
-        String actualPrompt = request.getEffectivePrompt();
+        String actualPrompt = request.getEffectivePrompt(PromptConfig.DOCUMENT_ANALYSIS_PROMPT);
 
         logger.info("Using prompt for file {}: '{}'", request.fileName(), actualPrompt);
 

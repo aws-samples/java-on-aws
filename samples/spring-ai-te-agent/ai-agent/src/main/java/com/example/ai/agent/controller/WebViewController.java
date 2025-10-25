@@ -1,4 +1,4 @@
-package com.example.ai.agent;
+package com.example.ai.agent.controller;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;

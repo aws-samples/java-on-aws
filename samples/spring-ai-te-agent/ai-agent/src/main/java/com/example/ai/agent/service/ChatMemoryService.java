@@ -1,4 +1,4 @@
-package com.example.ai.agent;
+package com.example.ai.agent.service;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;

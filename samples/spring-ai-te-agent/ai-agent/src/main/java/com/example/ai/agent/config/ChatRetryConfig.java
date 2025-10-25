@@ -1,4 +1,4 @@
-package com.example.ai.agent;
+package com.example.ai.agent.config;
 
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;

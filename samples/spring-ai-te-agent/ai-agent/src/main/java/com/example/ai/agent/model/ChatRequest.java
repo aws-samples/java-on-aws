@@ -1,4 +1,4 @@
-package com.example.ai.agent;
+package com.example.ai.agent.model;
 
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
@@ -28,8 +28,8 @@ public record ChatRequest(String prompt, String fileBase64, String fileName) {
         return new FileResource(mimeType, resource);
     }
 
-    public String getEffectivePrompt() {
-        return hasPrompt() ? prompt : PromptConfig.DOCUMENT_ANALYSIS_PROMPT;
+    public String getEffectivePrompt(String defaultPrompt) {
+        return hasPrompt() ? prompt : defaultPrompt;
     }
 
     private MimeType determineMimeType() {

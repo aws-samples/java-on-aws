@@ -1,4 +1,4 @@
-package com.example.ai.agent;
+package com.example.ai.agent.tool;
 
 import java.time.format.DateTimeFormatter;
 import org.springframework.ai.tool.annotation.Tool;
@@ -18,4 +18,5 @@ public class DateTimeService {
         return java.time.ZonedDateTime.now(java.time.ZoneId.of(timeZone))
                 .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
+
 }
