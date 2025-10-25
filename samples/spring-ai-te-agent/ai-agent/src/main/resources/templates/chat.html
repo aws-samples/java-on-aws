@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Agent</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -46,6 +47,44 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #4b4b4b;
+        }
+        
+        /* Markdown table styling */
+        .ai-response table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            background: #1e1e2d;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .ai-response th {
+            background: #6366f1;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        .ai-response td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #2d3748;
+        }
+        .ai-response tr:last-child td {
+            border-bottom: none;
+        }
+        .ai-response tr:nth-child(even) {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        .ai-response h1, .ai-response h2, .ai-response h3 {
+            color: #6366f1;
+            margin: 1rem 0 0.5rem 0;
+        }
+        .ai-response strong {
+            color: #e2e8f0;
+            font-weight: 600;
+        }
+        .ai-response em {
+            color: #94a3b8;
         }
     </style>
 </head>
@@ -91,6 +130,13 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Configure marked.js for tables
+            marked.setOptions({
+                gfm: true,
+                tables: true,
+                breaks: true
+            });
+
             const messageContainer = document.getElementById('messageContainer');
             const chatForm = document.getElementById('chatForm');
             const userInput = document.getElementById('userInput');
@@ -231,12 +277,17 @@
                         </div>
                     `;
                 } else {
+                    // Always parse AI responses as markdown
+                    console.log('Parsing AI response as markdown:', content.substring(0, 200));
+                    const renderedContent = marked.parse(content);
+                    console.log('Rendered HTML:', renderedContent.substring(0, 200));
+                    
                     messageDiv.innerHTML = `
                         <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
                             <span class="text-lg">🤖</span>
                         </div>
-                        <div class="bg-dev-message-ai rounded-lg p-3 max-w-3xl border border-dev-border">
-                            <p class="text-dev-text whitespace-pre-line">${escapeHtml(content)}</p>
+                        <div class="bg-dev-message-ai rounded-lg p-3 max-w-4xl border border-dev-border ai-response">
+                            ${renderedContent}
                         </div>
                     `;
                 }
