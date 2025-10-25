@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dev-dark': '#1a1a1a',
+                        'dev-darker': '#121212',
+                        'dev-accent': '#6366f1',
+                        'dev-accent-hover': '#4f46e5',
+                        'dev-secondary': '#3b82f6',
+                        'dev-text': '#e2e8f0',
+                        'dev-text-muted': '#94a3b8',
+                        'dev-border': '#2d3748',
+                        'dev-message-user': '#1e293b',
+                        'dev-message-ai': '#1e1e2d'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .chat-container {
+            height: calc(100vh - 180px);
+        }
+        .message-container {
+            height: calc(100vh - 280px);
+            overflow-y: auto;
+        }
+        /* Custom scrollbar for dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b3b3b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b4b4b;
+        }
+    </style>
+</head>
+<body class="bg-dev-darker min-h-screen text-dev-text">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <h1 class="text-3xl font-bold text-dev-accent">🤖 AI Agent</h1>
+                </div>
+            </div>
+            <p class="text-dev-text-muted mt-2">Chat with our AI Agent to help you with your questions!</p>
+        </header>
+
+        <!-- Chat Interface -->
+        <div class="bg-dev-dark rounded-xl shadow-lg p-6 chat-container border border-dev-border flex flex-col">
+            <div class="message-container flex-grow mb-4" id="messageContainer">
+                <div class="flex mb-4">
+                    <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
+                        <span class="text-lg">🤖</span>
+                    </div>
+                    <div class="bg-dev-message-ai rounded-lg p-3 max-w-3xl border border-dev-border">
+                        <p class="text-dev-text">Welcome to the AI Agent! How can I help you today?</p>
+                    </div>
+                </div>
+                <!-- Messages will be added here dynamically -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="border-t border-dev-border pt-4 mt-auto">
+                <form id="chatForm" class="flex w-full">
+                    <input type="file" id="fileInput" class="hidden" accept=".jpg,.jpeg,.png">
+                    <button type="button" id="fileButton" class="bg-dev-accent text-white px-4 py-3 rounded-l-lg hover:bg-dev-accent-hover transition flex items-center justify-center">
+                        📎
+                    </button>
+                    <input type="text" id="userInput" class="flex-grow bg-dev-darker border border-dev-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-dev-accent text-dev-text" placeholder="Please ask your question...">
+                    <button type="submit" class="bg-dev-accent text-white px-6 py-3 rounded-r-lg hover:bg-dev-accent-hover transition">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const messageContainer = document.getElementById('messageContainer');
+            const chatForm = document.getElementById('chatForm');
+            const userInput = document.getElementById('userInput');
+            const fileInput = document.getElementById('fileInput');
+            const fileButton = document.getElementById('fileButton');
+
+            // File upload button click handler
+            fileButton.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            let selectedFile = null;
+            let currentFileBase64 = null;
+            let currentFileName = null;
+
+            // File selection handler
+            fileInput.addEventListener('change', async function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    try {
+                        // Convert file to base64 and store locally
+                        currentFileBase64 = await fileToBase64(file);
+                        currentFileName = file.name;
+
+                        // Show file attached message
+                        addMessage(`📎 File attached: ${file.name}`, 'user');
+                        console.log('File processed successfully, base64 length:', currentFileBase64.length);
+
+                        // Automatically analyze the document by sending empty prompt
+                        await sendAutomaticAnalysis();
+
+                    } catch (error) {
+                        console.error('Error processing file:', error);
+                        addMessage('Error processing file. Please try again.', 'ai');
+                    }
+                }
+            });
+
+            // Function to send automatic analysis with empty prompt (server will use default analysis prompt)
+            async function sendAutomaticAnalysis() {
+                try {
+                    // Show loading indicator
+                    const loadingId = showLoading();
+
+                    console.log('Sending automatic document analysis with empty prompt');
+                    const response = await fetch('api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            prompt: "", // Empty prompt - server will use default analysis prompt
+                            fileBase64: currentFileBase64,
+                            fileName: currentFileName
+                        })
+                    });
+
+                    // Remove loading indicator
+                    removeLoading(loadingId);
+
+                    if (!response.ok) {
+                        throw new Error('Failed to analyze document');
+                    }
+
+                    const analysisResult = await response.text();
+                    addMessage(analysisResult, 'ai');
+
+                    // Keep currentFileBase64 and currentFileName for potential future use
+
+                } catch (error) {
+                    console.error('Error analyzing document:', error);
+                    addMessage('I don\'t know - there was an error analyzing the document.', 'ai');
+                }
+            }
+
+            chatForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const message = userInput.value.trim();
+                if (!message) return;
+
+                // Add user message to chat
+                addMessage(message, 'user');
+                userInput.value = '';
+
+                try {
+                    // Show loading indicator
+                    const loadingId = showLoading();
+
+                    // Always use the unified chat endpoint
+                    console.log('Sending request to unified endpoint');
+                    if (currentFileBase64) {
+                        console.log('Including file data:', currentFileName, 'Base64 length:', currentFileBase64.length);
+                    }
+
+                    const response = await fetch('api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            prompt: message,
+                            fileBase64: currentFileBase64 || null,
+                            fileName: currentFileName || null
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to get response');
+                    }
+
+                    const data = await response.text();
+
+                    // Remove loading indicator
+                    removeLoading(loadingId);
+
+                    // Add AI response to chat
+                    addMessage(data, 'ai');
+                } catch (error) {
+                    console.error('Error:', error);
+                    addMessage('Sorry, I encountered an error. Please try again.', 'ai');
+                }
+            });
+
+            function addMessage(content, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'flex mb-4';
+
+                if (sender === 'user') {
+                    messageDiv.innerHTML = `
+                        <div class="ml-auto flex">
+                            <div class="bg-dev-message-user rounded-lg p-3 max-w-3xl border border-dev-border">
+                                <p class="text-dev-text">${escapeHtml(content)}</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-dev-secondary bg-opacity-20 flex items-center justify-center ml-3">
+                                <span class="text-lg">👤</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    messageDiv.innerHTML = `
+                        <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
+                            <span class="text-lg">🤖</span>
+                        </div>
+                        <div class="bg-dev-message-ai rounded-lg p-3 max-w-3xl border border-dev-border">
+                            <p class="text-dev-text whitespace-pre-line">${escapeHtml(content)}</p>
+                        </div>
+                    `;
+                }
+
+                messageContainer.appendChild(messageDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+            }
+
+            function showLoading() {
+                const loadingId = 'loading-' + Date.now();
+                const loadingDiv = document.createElement('div');
+                loadingDiv.id = loadingId;
+                loadingDiv.className = 'flex mb-4';
+                loadingDiv.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
+                        <span class="text-lg">🤖</span>
+                    </div>
+                    <div class="bg-dev-message-ai rounded-lg p-3 border border-dev-border">
+                        <div class="flex space-x-2">
+                            <div class="w-2 h-2 bg-dev-accent rounded-full animate-bounce"></div>
+                            <div class="w-2 h-2 bg-dev-accent rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                            <div class="w-2 h-2 bg-dev-accent rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                        </div>
+                    </div>
+                `;
+                messageContainer.appendChild(loadingDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+                return loadingId;
+            }
+
+            function removeLoading(loadingId) {
+                const loadingDiv = document.getElementById(loadingId);
+                if (loadingDiv) {
+                    loadingDiv.remove();
+                }
+            }
+
+            function fileToBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = error => reject(error);
+                });
+            }
+
+            function escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+        });
+    </script>
+</body>
+</html>

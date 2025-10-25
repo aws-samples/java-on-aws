@@ -1,0 +1,35 @@
+@startuml
+!define table(x) class x << (T,#FFAAAA) >>
+!define primary_key(x) <b>x</b>
+!define foreign_key(x) <u>x</u>
+hide methods
+hide stereotypes
+
+skinparam linetype ortho
+skinparam class {
+    BackgroundColor White
+    ArrowColor Black
+    BorderColor Black
+}
+
+table(expenses) {
+    primary_key(id) VARCHAR
+    expense_reference VARCHAR
+    document_type VARCHAR
+    expense_type VARCHAR
+    amount_original DECIMAL
+    amount_eur DECIMAL
+    currency VARCHAR
+    date DATE
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+    user_id VARCHAR
+    expense_status VARCHAR
+    policy_status VARCHAR
+    approval_reason VARCHAR
+    policy_notes VARCHAR
+    expense_details TEXT
+    description VARCHAR
+}
+
+@enduml

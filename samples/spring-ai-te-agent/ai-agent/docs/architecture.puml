@@ -1,0 +1,39 @@
+@startuml
+!include <C4/C4_Component>
+
+LAYOUT_WITH_LEGEND()
+
+title Spring AI Assistant Architecture
+
+Person(user, "User", "Uses the AI assistant")
+
+System_Boundary(assistant_system, "Spring AI Assistant") {
+    Container(assistant_app, "Assistant Application", "Spring Boot", "Provides AI-powered assistant capabilities")
+
+    Component(web_layer, "Web Layer", "Thymeleaf + REST API", "Handles user interactions")
+    Component(chat_service, "Chat Service", "Spring AI", "Processes chat requests and responses")
+    Component(memory_service, "Memory Service", "Spring AI", "Manages conversation history")
+    Component(vector_store, "Vector Store Service", "Spring AI", "Manages document embeddings for RAG")
+    Component(tools_service, "Tools Service", "Spring AI", "Provides tool capabilities to the AI")
+    Component(mcp_client, "MCP Client", "Spring AI", "Connects to external MCP servers")
+
+    ComponentDb(postgres_db, "PostgreSQL Database", "PostgreSQL + pgvector", "Stores conversation history and vector embeddings")
+}
+
+System_Ext(bedrock, "Amazon Bedrock", "Claude Sonnet 4", "Provides AI model capabilities")
+System_Ext(backoffice, "Backoffice MCP Server", "Spring AI", "Provides expense management tools")
+System_Ext(travel, "Travel MCP Server", "Spring AI", "Provides travel booking tools")
+
+Rel(user, web_layer, "Interacts with", "HTTP")
+Rel(web_layer, chat_service, "Forwards requests to")
+Rel(chat_service, memory_service, "Uses for conversation history")
+Rel(chat_service, vector_store, "Uses for RAG capabilities")
+Rel(chat_service, tools_service, "Uses for tool integration")
+Rel(chat_service, mcp_client, "Uses for external tools")
+Rel(memory_service, postgres_db, "Stores conversation history in")
+Rel(vector_store, postgres_db, "Stores vector embeddings in")
+Rel(chat_service, bedrock, "Sends prompts to", "API")
+Rel(mcp_client, backoffice, "Connects to", "HTTP")
+Rel(mcp_client, travel, "Connects to", "HTTP")
+
+@enduml

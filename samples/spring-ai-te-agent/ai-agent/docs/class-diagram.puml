@@ -1,0 +1,111 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+package "com.example.assistant" {
+    class AssistantApplication {
+        + main(args: String[]): void
+    }
+}
+
+package "com.example.assistant.config" {
+    class PromptConfig {
+        + {static} SYSTEM_PROMPT: String
+        + {static} DOCUMENT_ANALYSIS_PROMPT: String
+    }
+}
+
+package "com.example.assistant.controller" {
+    class WebViewController {
+        + index(): String
+    }
+    
+    class ChatController {
+        - chatService: ChatService
+        + chat(request: ChatRequest): String
+    }
+    
+    class VectorStoreController {
+        - vectorStoreService: VectorStoreService
+        + loadContent(content: String): void
+    }
+}
+
+package "com.example.assistant.model" {
+    class ChatRequest {
+        - prompt: String
+        - fileBase64: String
+        - fileName: String
+        + hasPrompt(): boolean
+        + hasFile(): boolean
+        + prompt(): String
+        + fileBase64(): String
+        + fileName(): String
+    }
+}
+
+package "com.example.assistant.service" {
+    class ChatService {
+        - chatClient: ChatClient
+        - chatMemoryService: ChatMemoryService
+        + ChatService(chatClientBuilder: ChatClient.Builder, chatMemoryService: ChatMemoryService, vectorStore: VectorStore, dateTimeService: DateTimeService, tools: ToolCallbackProvider)
+        + processChat(request: ChatRequest): String
+    }
+    
+    class ChatMemoryService {
+        - chatMemory: MessageWindowChatMemory
+        + ChatMemoryService(dataSource: DataSource)
+        + getChatMemory(): MessageWindowChatMemory
+        + getCurrentConversationId(): String
+        + addConversationIdToAdvisor(advisor: Object): void
+    }
+    
+    class VectorStoreService {
+        - vectorStore: VectorStore
+        + VectorStoreService(vectorStore: VectorStore)
+        + addContent(content: String): void
+    }
+    
+    class DateTimeService {
+        + getCurrentDateTime(timeZone: String): String
+    }
+}
+
+package "com.example.assistant.util" {
+    class RetryUtils {
+        + {static} executeWithRetry(supplier: Supplier<T>): T
+        + {static} isAwsThrottlingRelated(e: Exception): boolean
+    }
+}
+
+package "org.springframework.ai" {
+    interface ChatClient {
+        + prompt(): ChatClientPrompt
+    }
+    
+    interface VectorStore {
+        + add(documents: List<Document>): void
+        + similaritySearch(query: String): List<Document>
+    }
+    
+    interface ChatMemory {
+        + {static} CONVERSATION_ID: String
+    }
+    
+    class MessageWindowChatMemory {
+        + builder(): MessageWindowChatMemoryBuilder
+    }
+    
+    interface ToolCallbackProvider {
+    }
+}
+
+ChatController --> ChatService
+VectorStoreController --> VectorStoreService
+ChatService --> ChatMemoryService
+ChatService --> PromptConfig
+ChatService ..> RetryUtils
+ChatMemoryService --> MessageWindowChatMemory
+VectorStoreService --> VectorStore
+
+@enduml

@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: spring-ai-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres  # Default database
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+      - ./init-travel-hotels.sql:/docker-entrypoint-initdb.d/init-travel-hotels.sql:ro
+      - ./init-travel-flights.sql:/docker-entrypoint-initdb.d/init-travel-flights.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spring-ai-network
+
+  pgadmin:
+    image: dpage/pgadmin4:9.5
+    container_name: spring-ai-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: 30
+      GUNICORN_ACCESS_LOGFILE: '/dev/null'
+    ports:
+      - "8090:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin-servers.json:/pgadmin4/servers.json:ro
+    networks:
+      - spring-ai-network
+
+networks:
+  spring-ai-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  pgadmin_data:
