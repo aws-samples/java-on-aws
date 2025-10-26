@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -20,7 +21,15 @@
                         'dev-text-muted': '#94a3b8',
                         'dev-border': '#2d3748',
                         'dev-message-user': '#1e293b',
-                        'dev-message-ai': '#1e1e2d'
+                        'dev-message-ai': '#1e1e2d',
+                        // Light theme colors
+                        'light-bg': '#ffffff',
+                        'light-bg-secondary': '#f8fafc',
+                        'light-text': '#1f2937',
+                        'light-text-muted': '#6b7280',
+                        'light-border': '#e5e7eb',
+                        'light-message-user': '#f3f4f6',
+                        'light-message-ai': '#ffffff'
                     }
                 }
             }
@@ -35,21 +44,167 @@
             overflow-y: auto;
         }
         /* Custom scrollbar for dark mode */
+        .dark ::-webkit-scrollbar {
+            width: 8px;
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #3b3b3b;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #4b4b4b;
+        }
+        
+        /* Light theme scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #1a1a1a;
+            background: #f1f5f9;
         }
         ::-webkit-scrollbar-thumb {
-            background: #3b3b3b;
+            background: #cbd5e1;
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #4b4b4b;
+            background: #94a3b8;
+        }
+        /* Markdown table styling */
+        .ai-response table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+        }
+        .dark .ai-response table {
+            background: #1e1e2d !important;
+            border: 1px solid #2d3748 !important;
+        }
+        .ai-response th {
+            background: #6366f1 !important;
+            color: white !important;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        .ai-response td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #111827 !important;
+            background: #ffffff !important;
+            font-weight: 600 !important;
+        }
+        .dark .ai-response td {
+            border-bottom: 1px solid #2d3748 !important;
+            color: #f9fafb !important;
+            background: #1e1e2d !important;
+        }
+        .ai-response tr:last-child td {
+            border-bottom: none;
+        }
+        .ai-response tr:nth-child(even) td {
+            background: #f1f5f9 !important;
+            color: #111827 !important;
+        }
+        .dark .ai-response tr:nth-child(even) td {
+            background: #2a2a3a !important;
+            color: #f9fafb !important;
+        }
+        .ai-response h1, .ai-response h2, .ai-response h3 {
+            color: #6366f1;
+            margin: 1rem 0 0.5rem 0;
+        }
+        .ai-response strong {
+            color: #111827 !important;
+            font-weight: 700 !important;
+        }
+        .dark .ai-response strong {
+            color: #f9fafb !important;
+            font-weight: 700 !important;
+        }
+        .ai-response em {
+            color: #6b7280;
+        }
+        .dark .ai-response em {
+            color: #94a3b8;
+        }
+        .ai-response p {
+            color: #1f2937;
+        }
+        .dark .ai-response p {
+            color: #e2e8f0;
         }
         
-        /* Markdown table styling */
+        /* Message bubble backgrounds */
+        .message-bubble-ai {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            color: #1f2937;
+        }
+        .dark .message-bubble-ai {
+            background: #1e1e2d !important;
+            border: 1px solid #2d3748 !important;
+            color: #e2e8f0 !important;
+        }
+        .message-bubble-user {
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            color: #1f2937;
+        }
+        .dark .message-bubble-user {
+            background: #1e293b !important;
+            border: 1px solid #2d3748 !important;
+            color: #e2e8f0 !important;
+        }
+        
+        /* Text inside message bubbles */
+        .message-bubble-ai p, .message-bubble-ai * {
+            color: #1f2937 !important;
+        }
+        .dark .message-bubble-ai p, .dark .message-bubble-ai * {
+            color: #e2e8f0 !important;
+        }
+        .message-bubble-user p, .message-bubble-user * {
+            color: #1f2937 !important;
+        }
+        .dark .message-bubble-user p, .dark .message-bubble-user * {
+            color: #e2e8f0 !important;
+        }
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+        }
+        .image-modal img {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            margin-top: 5%;
+        }
+        .image-modal .close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .image-modal .close:hover {
+            color: #bbb;
+        }
         .ai-response table {
             width: 100%;
             border-collapse: collapse;
@@ -88,7 +243,7 @@
         }
     </style>
 </head>
-<body class="bg-dev-darker min-h-screen text-dev-text">
+<body class="bg-light-bg dark:bg-dev-darker min-h-screen text-light-text dark:text-dev-text transition-colors duration-300">
     <div class="container mx-auto px-4 py-8">
         <!-- Header -->
         <header class="mb-8">
@@ -96,36 +251,45 @@
                 <div class="flex items-center">
                     <h1 class="text-3xl font-bold text-dev-accent">🤖 AI Agent</h1>
                 </div>
+                <button id="themeToggle" class="bg-dev-accent text-white px-4 py-2 rounded hover:bg-dev-accent-hover transition">
+                    🌙 Dark
+                </button>
             </div>
-            <p class="text-dev-text-muted mt-2">Chat with our AI Agent to help you with your questions!</p>
+            <p class="text-light-text-muted dark:text-dev-text-muted mt-2">Chat with our AI Agent to help you with your questions!</p>
         </header>
 
         <!-- Chat Interface -->
-        <div class="bg-dev-dark rounded-xl shadow-lg p-6 chat-container border border-dev-border flex flex-col">
-            <div class="message-container flex-grow mb-4" id="messageContainer">
+        <div class="bg-light-bg-secondary dark:bg-dev-dark rounded-xl shadow-lg p-6 chat-container border border-light-border dark:border-dev-border flex flex-col">
+            <div class="message-container flex-grow mb-4 bg-light-bg dark:bg-dev-darker rounded-lg p-4" id="messageContainer">
                 <div class="flex mb-4">
                     <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
                         <span class="text-lg">🤖</span>
                     </div>
-                    <div class="bg-dev-message-ai rounded-lg p-3 max-w-3xl border border-dev-border">
-                        <p class="text-dev-text">Welcome to the AI Agent! How can I help you today?</p>
+                    <div class="message-bubble-ai rounded-lg p-3 max-w-3xl">
+                        <p>Welcome to the AI Agent! How can I help you today?</p>
                     </div>
                 </div>
                 <!-- Messages will be added here dynamically -->
             </div>
 
             <!-- Input Area -->
-            <div class="border-t border-dev-border pt-4 mt-auto">
+            <div class="border-t border-light-border dark:border-dev-border pt-4 mt-auto">
                 <form id="chatForm" class="flex w-full">
                     <input type="file" id="fileInput" class="hidden" accept=".jpg,.jpeg,.png">
                     <button type="button" id="fileButton" class="bg-dev-accent text-white px-4 py-3 rounded-l-lg hover:bg-dev-accent-hover transition flex items-center justify-center">
                         📎
                     </button>
-                    <input type="text" id="userInput" class="flex-grow bg-dev-darker border border-dev-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-dev-accent text-dev-text" placeholder="Please ask your question...">
+                    <input type="text" id="userInput" class="flex-grow bg-light-bg dark:bg-dev-darker border border-light-border dark:border-dev-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-dev-accent text-light-text dark:text-dev-text" placeholder="Please ask your question...">
                     <button type="submit" class="bg-dev-accent text-white px-6 py-3 rounded-r-lg hover:bg-dev-accent-hover transition">Send</button>
                 </form>
             </div>
         </div>
+    </div>
+
+    <!-- Image zoom modal -->
+    <div id="imageModal" class="image-modal">
+        <span class="close">&times;</span>
+        <img id="modalImage" src="" alt="">
     </div>
 
     <script>
@@ -161,12 +325,12 @@
                         currentFileBase64 = await fileToBase64(file);
                         currentFileName = file.name;
 
-                        // Show file attached message
-                        addMessage(`📎 File attached: ${file.name}`, 'user');
+                        // Show file attached message with image preview
+                        addImageMessage(file);
                         console.log('File processed successfully, base64 length:', currentFileBase64.length);
 
                         // Automatically analyze the document by sending empty prompt
-                        await sendAutomaticAnalysis();
+                        await sendDocumentAnalysis();
 
                     } catch (error) {
                         console.error('Error processing file:', error);
@@ -175,13 +339,36 @@
                 }
             });
 
-            // Function to send automatic analysis with empty prompt (server will use default analysis prompt)
-            async function sendAutomaticAnalysis() {
+            // Function to add image message with preview
+            function addImageMessage(file) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'flex mb-4';
+                
+                // Create image preview URL
+                const imageUrl = URL.createObjectURL(file);
+                
+                messageDiv.innerHTML = `
+                    <div class="ml-auto flex">
+                        <div class="message-bubble-user rounded-lg p-3 max-w-3xl">
+                            <p class="text-light-text dark:text-dev-text mb-2">📎 File attached: ${file.name}</p>
+                            <img src="${imageUrl}" alt="${file.name}" class="max-w-full max-h-64 rounded border border-light-border dark:border-dev-border cursor-pointer hover:opacity-80 transition" onclick="openImageModal('${imageUrl}')" />
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-dev-secondary bg-opacity-20 flex items-center justify-center ml-3">
+                            <span class="text-lg">👤</span>
+                        </div>
+                    </div>
+                `;
+                messageContainer.appendChild(messageDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+            }
+
+            // Function to send document analysis with empty prompt and clear file after
+            async function sendDocumentAnalysis() {
                 try {
                     // Show loading indicator
                     const loadingId = showLoading();
 
-                    console.log('Sending automatic document analysis with empty prompt');
+                    console.log('Sending document analysis with empty prompt');
                     const response = await fetch('api/chat', {
                         method: 'POST',
                         headers: {
@@ -204,13 +391,20 @@
                     const analysisResult = await response.text();
                     addMessage(analysisResult, 'ai');
 
-                    // Keep currentFileBase64 and currentFileName for potential future use
+                    // Clear file data so subsequent chats are text-only
+                    currentFileBase64 = null;
+                    currentFileName = null;
+                    fileInput.value = ''; // Clear file input
 
                 } catch (error) {
                     console.error('Error analyzing document:', error);
                     addMessage('I don\'t know - there was an error analyzing the document.', 'ai');
+                    // Clear file data even on error
+                    currentFileBase64 = null;
+                    currentFileName = null;
+                    fileInput.value = '';
                 }
-            }
+            };
 
             chatForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
@@ -268,8 +462,8 @@
                 if (sender === 'user') {
                     messageDiv.innerHTML = `
                         <div class="ml-auto flex">
-                            <div class="bg-dev-message-user rounded-lg p-3 max-w-3xl border border-dev-border">
-                                <p class="text-dev-text">${escapeHtml(content)}</p>
+                            <div class="message-bubble-user rounded-lg p-3 max-w-3xl">
+                                <p class="text-light-text dark:text-dev-text">${escapeHtml(content)}</p>
                             </div>
                             <div class="w-10 h-10 rounded-full bg-dev-secondary bg-opacity-20 flex items-center justify-center ml-3">
                                 <span class="text-lg">👤</span>
@@ -286,7 +480,7 @@
                         <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
                             <span class="text-lg">🤖</span>
                         </div>
-                        <div class="bg-dev-message-ai rounded-lg p-3 max-w-4xl border border-dev-border ai-response">
+                        <div class="message-bubble-ai rounded-lg p-3 max-w-4xl ai-response">
                             ${renderedContent}
                         </div>
                     `;
@@ -305,7 +499,7 @@
                     <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
                         <span class="text-lg">🤖</span>
                     </div>
-                    <div class="bg-dev-message-ai rounded-lg p-3 border border-dev-border">
+                    <div class="message-bubble-ai rounded-lg p-3">
                         <div class="flex space-x-2">
                             <div class="w-2 h-2 bg-dev-accent rounded-full animate-bounce"></div>
                             <div class="w-2 h-2 bg-dev-accent rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
@@ -342,6 +536,36 @@
                     .replace(/"/g, "&quot;")
                     .replace(/'/g, "&#039;");
             }
+
+            // Image zoom functionality
+            window.openImageModal = function(imageSrc) {
+                const modal = document.getElementById('imageModal');
+                const modalImg = document.getElementById('modalImage');
+                modal.style.display = 'block';
+                modalImg.src = imageSrc;
+            }
+
+            // Close modal when clicking the X or outside the image
+            document.getElementById('imageModal').addEventListener('click', function(e) {
+                if (e.target === this || e.target.className === 'close') {
+                    this.style.display = 'none';
+                }
+            });
+
+            // Theme toggle functionality
+            const themeToggle = document.getElementById('themeToggle');
+            const body = document.body;
+
+            themeToggle.addEventListener('click', function() {
+                const html = document.documentElement;
+                html.classList.toggle('dark');
+                
+                if (html.classList.contains('dark')) {
+                    themeToggle.innerHTML = '☀️ Light';
+                } else {
+                    themeToggle.innerHTML = '🌙 Dark';
+                }
+            });
         });
     </script>
 </body>

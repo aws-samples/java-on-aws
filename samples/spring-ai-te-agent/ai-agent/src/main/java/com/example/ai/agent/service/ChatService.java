@@ -1,96 +1,54 @@
 package com.example.ai.agent.service;
 
-import com.example.ai.agent.config.ChatRetryConfig;
-import com.example.ai.agent.config.PromptConfig;
-import com.example.ai.agent.model.ChatRequest;
-import com.example.ai.agent.tool.DateTimeService;
-import io.github.resilience4j.retry.Retry;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
-import org.springframework.ai.tool.ToolCallbackProvider;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.services.bedrockruntime.model.ValidationException;
+
+import com.example.ai.agent.model.ChatRequest;
+import com.example.ai.agent.tool.DateTimeService;
+
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.tool.ToolCallbackProvider;
 
 @Service
-public class ChatService implements ChatServiceInterface {
+public class ChatService {
     private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
 
     private final ChatClient chatClient;
     private final ChatMemoryService chatMemoryService;
-    private final Retry chatRetry;
 
     public ChatService(ChatClient.Builder chatClientBuilder,
                       ChatMemoryService chatMemoryService,
                       VectorStore vectorStore,
                       DateTimeService dateTimeService,
-                      ToolCallbackProvider tools,
-                      Retry chatRetry) {
+                      ToolCallbackProvider tools) {
         this.chatClient = chatClientBuilder
-                .defaultSystem(PromptConfig.SYSTEM_PROMPT)
+                .defaultSystem(Prompts.SYSTEM_PROMPT)
                 .defaultAdvisors(
-                        // MessageChatMemoryAdvisor.builder(chatMemoryService.getChatMemory()).build(),
-                        QuestionAnswerAdvisor.builder(vectorStore).build()  // Temporarily disabled
+                        QuestionAnswerAdvisor.builder(vectorStore).build()
                 )
                 .defaultTools(dateTimeService)
                 .defaultToolCallbacks(tools)
                 .build();
 
         this.chatMemoryService = chatMemoryService;
-        this.chatRetry = chatRetry;
         logger.info("ChatService initialized with embedded ChatClient");
     }
 
     public String processChat(ChatRequest request) {
-        logger.info("Processing chat request - hasFile: {}, hasPrompt: {}, fileName: {}",
-                request.hasFile(), request.hasPrompt(), request.fileName());
+        logger.info("Processing text chat request - prompt: '{}'", request.prompt());
         try {
-            if (!request.hasFile()) {
-                return chatRetry.executeSupplier(() -> sendTextPrompt(request));
-            } else {
-                return chatRetry.executeSupplier(() -> sendFilePrompt(request));
-            }
+            var chatResponse = chatMemoryService.callWithMemory(chatClient, request);
+            return extractTextFromResponse(chatResponse);
         } catch (Exception e) {
-            return handleException(e);
+            logger.error("Error processing chat request", e);
+            return "I don't know - there was an error processing your request.";
         }
     }
 
-    @Nullable
-    private String sendTextPrompt(ChatRequest request) {
-        logger.info("Input prompt: '{}'", request.prompt());
-        var chatResponse = chatClient
-                .prompt().user(request.prompt())
-                .advisors(chatMemoryService::addConversationIdToAdvisor)
-                .call()
-                .chatResponse();
-
-        return extractTextFromResponse(chatResponse);
-    }
-
-    @Nullable
-    private String sendFilePrompt(ChatRequest request) {
-        ChatRequest.FileResource fileResource = request.buildFileResource();
-        String actualPrompt = request.getEffectivePrompt(PromptConfig.DOCUMENT_ANALYSIS_PROMPT);
-
-        logger.info("Using prompt for file {}: '{}'", request.fileName(), actualPrompt);
-
-        var chatResponse = chatClient
-                .prompt()
-                .user(userSpec -> {
-                    userSpec.text(actualPrompt);
-                    userSpec.media(fileResource.mimeType(), fileResource.resource());
-                })
-                .advisors(chatMemoryService::addConversationIdToAdvisor)
-                .call().chatResponse();
-
-        return extractTextFromResponse(chatResponse);
-    }
-
-    private String extractTextFromResponse(org.springframework.ai.chat.model.ChatResponse chatResponse) {
+    public String extractTextFromResponse(org.springframework.ai.chat.model.ChatResponse chatResponse) {
         if (chatResponse != null) {
             // First try the standard approach
             String text = chatResponse.getResult().getOutput().getText();
@@ -111,18 +69,5 @@ public class ChatService implements ChatServiceInterface {
         }
 
         return "I don't know - no response received.";
-    }
-
-    private String handleException(Throwable throwable) {
-        if (throwable instanceof ValidationException) {
-            logger.warn("AWS Bedrock validation error: {}", throwable.getMessage());
-            return "Invalid request format. Please check your input and try again.";
-        } else if (ChatRetryConfig.isAwsThrottlingRelated(throwable)) {
-            logger.error("Throttling exception after all retry attempts: {}", throwable.getMessage());
-            return "The AI service is currently experiencing high demand. Please try again in a few minutes.";
-        } else {
-            logger.error("Error processing chat request", throwable);
-            return "I don't know - there was an error processing your request.";
-        }
     }
 }
