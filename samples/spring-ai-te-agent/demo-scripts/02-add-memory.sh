@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to add memory functionality to the assistant app
+# Script to add memory functionality to the ai-agent app
 
 # Check if source folder exists
 if [ ! -d "$SOURCES_FOLDER" ]; then
@@ -8,10 +8,10 @@ if [ ! -d "$SOURCES_FOLDER" ]; then
     exit 1
 fi
 
-# Check if assistant folder exists
-if [ ! -d "assistant" ]; then
-    echo "Error: assistant folder not found in current directory."
-    echo "Please run this script from the directory containing the assistant folder."
+# Check if ai-agent folder exists
+if [ ! -d "ai-agent" ]; then
+    echo "Error: ai-agent folder not found in current directory."
+    echo "Please run this script from the directory containing the ai-agent folder."
     exit 1
 fi
 
@@ -33,25 +33,25 @@ else
     exit 1
 fi
 
-# Change to assistant directory and commit changes
+# Change to ai-agent directory and commit changes
 echo "Committing previous changes..."
-cd assistant
+cd ai-agent
 git add .
 git commit -m "add ChatController"
 
 echo "Copying ChatMemoryService.java..."
-cp "$SOURCES_FOLDER/assistant/src/main/java/com/example/assistant/ChatMemoryService.java" src/main/java/com/example/assistant/
+cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/service/ChatMemoryService.java" src/main/java/com/example/ai/agent/service/
 
 echo "Copying ChatService.java from version 2..."
-cp "$SOURCES_FOLDER/demo-scripts/ChatService/ChatService.java.2" src/main/java/com/example/assistant/ChatService.java
-code src/main/java/com/example/assistant/ChatService.java
+cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.2" src/main/java/com/example/ai/agent/service/ChatService.java
+# code src/main/java/com/example/ai/agent/ChatService.java
 
 # Add PostgreSQL and JPA configuration to application.properties
 echo "Updating application.properties with database configuration..."
 cat >> src/main/resources/application.properties << 'EOL'
 
 # PostgreSQL Configuration
-spring.datasource.url=jdbc:postgresql://localhost:5432/assistant_db
+spring.datasource.url=jdbc:postgresql://localhost:5432/ai_agent_db
 spring.datasource.username=postgres
 spring.datasource.password=postgres
 spring.datasource.driver-class-name=org.postgresql.Driver
@@ -65,8 +65,8 @@ spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 spring.ai.chat.memory.repository.jdbc.initialize-schema=always
 EOL
 
-echo "Opening application.properties in VS Code..."
-code src/main/resources/application.properties
+# echo "Opening application.properties in VS Code..."
+# code src/main/resources/application.properties
 
 # Update pom.xml to add PostgreSQL and JDBC memory dependencies
 echo "Updating pom.xml with PostgreSQL and JDBC memory dependencies..."
@@ -103,8 +103,8 @@ BEGIN { print_deps = 1; in_first_deps = 0; }
 mv pom.xml.new pom.xml
 rm temp_dependencies.xml
 
-echo "Opening pom.xml in VS Code..."
-code pom.xml
+# echo "Opening pom.xml in VS Code..."
+# code pom.xml
 
 echo "Files copied and configurations updated successfully."
 

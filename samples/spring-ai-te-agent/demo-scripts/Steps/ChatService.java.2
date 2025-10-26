@@ -5,10 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
-import org.springframework.ai.vectorstore.VectorStore;
-import com.example.ai.agent.tool.DateTimeService;
-import org.springframework.ai.tool.ToolCallbackProvider;
 
 @Service
 public class ChatService {
@@ -37,17 +33,9 @@ public class ChatService {
         """;
 
     public ChatService(ChatClient.Builder chatClientBuilder,
-                      ChatMemoryService chatMemoryService,
-                      VectorStore vectorStore,
-                      DateTimeService dateTimeService,
-                      ToolCallbackProvider tools) {
+                      ChatMemoryService chatMemoryService) {
         this.chatClient = chatClientBuilder
                 .defaultSystem(SYSTEM_PROMPT)
-                .defaultAdvisors(
-                        QuestionAnswerAdvisor.builder(vectorStore).build()
-                )
-                .defaultTools(dateTimeService)
-                .defaultToolCallbacks(tools)
                 .build();
 
         this.chatMemoryService = chatMemoryService;
@@ -57,11 +45,7 @@ public class ChatService {
     public String processChat(String prompt) {
         logger.info("Processing text chat request - prompt: '{}'", prompt);
         try {
-            var chatResponse = chatClient
-                .prompt().user(prompt)
-                .call()
-                .chatResponse();
-            // var chatResponse = chatMemoryService.callWithMemory(chatClient, prompt);
+            var chatResponse = chatMemoryService.callWithMemory(chatClient, prompt);
             return extractTextFromResponse(chatResponse);
         } catch (Exception e) {
             logger.error("Error processing chat request", e);

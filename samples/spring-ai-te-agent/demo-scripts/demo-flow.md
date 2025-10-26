@@ -3,16 +3,21 @@
 > In the terminal:
 
 ```bash
-mkdir spring-ai-demo
-code spring-ai-demo/
+mkdir spring-ai-agent
+code spring-ai-agent/
 ```
 
 In the new terminal (Main terminal):
 
 ```bash
-git clone https://github.com/aws-samples/java-on-aws.git ./java-on-aws
-export SOURCES_FOLDER=$(pwd)/java-on-aws/samples/spring-ai-demo
+# git clone https://github.com/aws-samples/java-on-aws.git ./java-on-aws
+# export SOURCES_FOLDER=$(pwd)/java-on-aws/samples/spring-ai-te-agent
+
+export SOURCES_FOLDER=/Users/bezsonov/sources/workshops/java-on-aws/samples/spring-ai-te-agent
+export AWS_REGION=us-east-1
 ```
+
+> add AWS credential to the main terminal
 
 ## 01. Create Spring AI App
 
@@ -22,18 +27,18 @@ export SOURCES_FOLDER=$(pwd)/java-on-aws/samples/spring-ai-demo
 $SOURCES_FOLDER/demo-scripts/01-create-app.sh
 ```
 
-## Run the assistant
+## Run the AI Agent
 
-Open the new terminal (Assistant terminal):
+Open the new terminal (AI Agent terminal):
 
 ```bash
-cd assistant
+cd ai-agent
 export AWS_REGION=us-east-1
 ```
 
 > add AWS credential to the main terminal
 
-In the Assistant terminal:
+In the AI Agent terminal:
 
 ```bash
 ./mvnw spring-boot:run
@@ -60,7 +65,7 @@ cd database/
 ./start-postgres.sh
 ```
 
-> In the assistant terminal:
+> In the AI Agent terminal:
 
 ```bash
 ./mvnw spring-boot:run
@@ -82,7 +87,7 @@ Open localhost:8080 in the browser and ask questions:
 $SOURCES_FOLDER/demo-scripts/03-add-rag.sh
 ```
 
-> In the assistant terminal:
+> In the AI Agent terminal:
 
 ```bash
 ./mvnw spring-boot:run
@@ -91,10 +96,10 @@ $SOURCES_FOLDER/demo-scripts/03-add-rag.sh
 > In the main terminal:
 
 ```bash
-code $SOURCES_FOLDER/assistant/samples/travel_and_expenses_policy.md
+# code $SOURCES_FOLDER/ai-agent/samples/travel_and_expenses_policy.md
 curl -X POST \
   -H "Content-Type: text/plain" \
-  --data-binary @$SOURCES_FOLDER/assistant/samples/travel_and_expenses_policy.md \
+  --data-binary @$SOURCES_FOLDER//ai-agent/samples/travel_and_expenses_policy.md \
   http://localhost:8080/api/rag-load
 
 ```
@@ -117,7 +122,7 @@ Open localhost:8080 in the browser and ask questions:
 $SOURCES_FOLDER/demo-scripts/04-add-tools.sh
 ```
 
-> In the assistant terminal:
+> In the AI Agent terminal:
 
 ```bash
 ./mvnw spring-boot:run
@@ -151,7 +156,7 @@ cd backoffice/
 ./mvnw spring-boot:run
 ```
 
-> In the assistant terminal:
+> In the AI Agent terminal:
 
 ```bash
 ./mvnw spring-boot:run
@@ -159,14 +164,13 @@ cd backoffice/
 
 Open localhost:8080 in the browser and ask questions:
 
-> What is the weather in Paris next Monday?
+> My name is John Doe. Please find me inbound and outbound flights and accommodations for a trip from London to Paris next week, From Monday to Friday. I travel alone, prefer BA flights in the first part of the day, and choose accommodation which is the most expensive, but comply with our travel policy.
+Give me a travel itinerary with flights, accommodation, prices and weather forecast for each day of the travel.
 
-> Could you please book me a flight from London to Paris and back, from next Monday to next Friday?
+## 06. Add Multi-model, Multi-modal
 
-> I would take BA flights
+> In the main terminal:
 
-> John Doe, john@example.com, 1, 1
-
-> Please book me accommodation
-
-> Could you please give me a summary of travel?
+```bash
+$SOURCES_FOLDER/demo-scripts/06-add-multi.sh
+```

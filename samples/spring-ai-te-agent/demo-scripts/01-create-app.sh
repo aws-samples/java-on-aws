@@ -21,10 +21,10 @@ rm spring-boot-cli-3.5.0-bin.zip
 echo "Spring Boot CLI setup complete!"
 echo "You can find the CLI in the spring-boot-cli directory."
 
-echo "Checking if assistant directory exists and remove it..."
-if [ -d "assistant" ]; then
-    echo "Found existing assistant directory, removing it..."
-    rm -rf assistant
+echo "Checking if ai-agent directory exists and remove it..."
+if [ -d "ai-agent" ]; then
+    echo "Found existing ai-agent directory, removing it..."
+    rm -rf ai-agent
 fi
 
 echo ""
@@ -33,12 +33,12 @@ echo -e "\033[1m./spring-boot-cli/spring-3.5.0/bin/spring init --java-version=21
 echo "   --build=maven \\"
 echo "   --packaging=jar \\"
 echo "   --type=maven-project \\"
-echo "   --artifact-id=assistant \\"
-echo "   --name=assistant \\"
+echo "   --artifact-id=ai.agent \\"
+echo "   --name=ai-agent \\"
 echo "   --group-id=com.example \\"
 echo -e "   \033[1m--dependencies=spring-ai-bedrock-converse,web,thymeleaf,actuator,devtools \033[0m\\"
 echo "   --extract \\"
-echo "   assistant"
+echo "   ai-agent"
 
 echo ""
 echo "Press any key to continue with Spring initialization..."
@@ -50,18 +50,18 @@ echo "Initializing Spring Boot project..."
    --build=maven \
    --packaging=jar \
    --type=maven-project \
-   --artifact-id=assistant \
-   --name=assistant \
+   --artifact-id=ai.agent \
+   --name=ai-agent \
    --group-id=com.example \
    --dependencies=spring-ai-bedrock-converse,web,thymeleaf,actuator,devtools \
    --extract \
-   assistant
+   ai-agent
 
 echo ""
 echo "Initializing Git repository..."
 git init
 git add .
-git commit -m "Create app"
+git commit -m "Create ai-agent app"
 
 echo ""
 echo "Press any key to continue with App initialization..."
@@ -69,7 +69,7 @@ read -n 1 -s
 
 echo ""
 echo "Configuring application.properties..."
-cd assistant
+cd ai-agent
 cat >> src/main/resources/application.properties << 'EOL'
 
 # Simplified logging pattern - only show the message
@@ -89,55 +89,40 @@ spring.thymeleaf.suffix=.html
 # Amazon Bedrock Configuration
 spring.ai.bedrock.aws.region=us-east-1
 spring.ai.bedrock.converse.chat.options.max-tokens=10000
-spring.ai.bedrock.converse.chat.options.model=global.anthropic.claude-sonnet-4-20250514-v1:0
+spring.ai.bedrock.converse.chat.options.model=openai.gpt-oss-120b-1:0
 EOL
 
 echo "Creating necessary directories and files..."
 mkdir -p src/main/resources/templates
-mkdir -p src/main/java/com/example/assistant
+mkdir -p src/main/java/com/example/ai/agent/controller
+mkdir -p src/main/java/com/example/ai/agent/service
 
-cp "$SOURCES_FOLDER/assistant/src/main/resources/templates/chat.html" src/main/resources/templates/
-cp "$SOURCES_FOLDER/assistant/src/main/java/com/example/assistant/WebViewController.java" src/main/java/com/example/assistant/
-cp "$SOURCES_FOLDER/assistant/src/main/java/com/example/assistant/PromptConfig.java" src/main/java/com/example/assistant/
-cp "$SOURCES_FOLDER/assistant/src/main/java/com/example/assistant/ChatController.java" src/main/java/com/example/assistant/
-cp "$SOURCES_FOLDER/assistant/src/main/java/com/example/assistant/ChatRequest.java" src/main/java/com/example/assistant/
-cp "$SOURCES_FOLDER/assistant/src/main/java/com/example/assistant/ChatRetryConfig.java" src/main/java/com/example/assistant/
-cp "$SOURCES_FOLDER/demo-scripts/ChatService/ChatService.java.1" src/main/java/com/example/assistant/ChatService.java
+cp "$SOURCES_FOLDER/ai-agent/src/main/resources/templates/chat.html" src/main/resources/templates/
+cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/controller/WebViewController.java" src/main/java/com/example/ai/agent/controller/
+cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.0" src/main/java/com/example/ai/agent/service/ChatService.java
+cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatCOntroller.java.0" src/main/java/com/example/ai/agent/controller/ChatController.java
 
 echo "Files copied successfully."
-
-echo "Updating pom.xml with dependencies..."
-awk '/<dependencies>/ && !done {
-	print
-	print "\t\t<!-- Resilience4j dependencies -->"
-	print "\t\t<dependency>"
-	print "\t\t\t<groupId>io.github.resilience4j</groupId>"
-	print "\t\t\t<artifactId>resilience4j-spring-boot3</artifactId>"
-	print "\t\t\t<version>2.3.0</version>"
-	print "\t\t</dependency>"
-	print "\t\t<dependency>"
-	print "\t\t\t<groupId>io.github.resilience4j</groupId>"
-	print "\t\t\t<artifactId>resilience4j-retry</artifactId>"
-	print "\t\t\t<version>2.3.0</version>"
-	print "\t\t</dependency>"
-	done=1
-	next
-}
-1' pom.xml > pom.xml.tmp && mv pom.xml.tmp pom.xml
 
 echo ""
 echo "Git status:"
 git status
 
-echo ""
-echo "Opening files in VS Code..."
-code src/main/resources/application.properties
-code pom.xml
-code src/main/java/com/example/assistant/ChatService.java
+# echo ""
+# echo "Opening files in VS Code..."
+# code src/main/resources/application.properties
+# code pom.xml
+# code src/main/java/com/example/ai/agent/ChatService.java
 
 echo ""
 echo "Committing changes to Git repository..."
 git add .
 git commit -m "Update initial files"
+
+./mvnw spring-boot:run
+
+cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.1" src/main/java/com/example/ai/agent/service/ChatService.java
+
+./mvnw spring-boot:run
 
 cd ..

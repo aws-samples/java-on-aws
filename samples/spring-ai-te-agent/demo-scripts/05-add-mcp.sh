@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to add MCP functionality to the assistant app
+# Script to add MCP functionality to the ai-agent app
 
 # Check if source folder exists
 if [ ! -d "$SOURCES_FOLDER" ]; then
@@ -8,10 +8,10 @@ if [ ! -d "$SOURCES_FOLDER" ]; then
     exit 1
 fi
 
-# Check if assistant folder exists
-if [ ! -d "assistant" ]; then
-    echo "Error: assistant folder not found in current directory."
-    echo "Please run this script from the directory containing the assistant folder."
+# Check if ai-agent folder exists
+if [ ! -d "ai-agent" ]; then
+    echo "Error: ai-agent folder not found in current directory."
+    echo "Please run this script from the directory containing the ai-agent folder."
     exit 1
 fi
 
@@ -51,15 +51,16 @@ else
     exit 1
 fi
 
-# Change to assistant directory and commit changes
+# Change to ai-agent directory and commit changes
 echo "Committing previous changes..."
-cd assistant
 git add .
 git commit -m "add Tools"
 
+cd ai-agent
+
 echo "Copying ChatService.java from version 5..."
-cp "$SOURCES_FOLDER/demo-scripts/ChatService/ChatService.java.5" src/main/java/com/example/assistant/ChatService.java
-code src/main/java/com/example/assistant/ChatService.java
+cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.5" src/main/java/com/example/ai/agent/service/ChatService.java
+# code src/main/java/com/example/ai-agent/ChatService.java
 
 echo "Updating application.properties with database configuration..."
 cat >> src/main/resources/application.properties << 'EOL'
@@ -70,8 +71,8 @@ spring.ai.mcp.client.sse.connections.server1.url=http://localhost:8081
 spring.ai.mcp.client.sse.connections.server2.url=http://localhost:8082
 EOL
 
-echo "Opening application.properties in VS Code..."
-code src/main/resources/application.properties
+# echo "Opening application.properties in VS Code..."
+# code src/main/resources/application.properties
 
 # Update pom.xml to add MCP Client dependencies
 echo "Updating pom.xml with MCP Client dependencies..."
@@ -103,8 +104,8 @@ BEGIN { print_deps = 1; in_first_deps = 0; }
 mv pom.xml.new pom.xml
 rm temp_dependencies.xml
 
-echo "Opening pom.xml in VS Code..."
-code pom.xml
+# echo "Opening pom.xml in VS Code..."
+# code pom.xml
 
 echo "Files copied and configurations updated successfully."
 

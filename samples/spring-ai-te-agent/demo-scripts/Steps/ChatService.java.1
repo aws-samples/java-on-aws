@@ -5,17 +5,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
-import org.springframework.ai.vectorstore.VectorStore;
-import com.example.ai.agent.tool.DateTimeService;
-import org.springframework.ai.tool.ToolCallbackProvider;
 
 @Service
 public class ChatService {
     private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
 
     private final ChatClient chatClient;
-    private final ChatMemoryService chatMemoryService;
 
     public static final String SYSTEM_PROMPT = """
         You are a helpful and honest AI Agent for our company.
@@ -36,21 +31,11 @@ public class ChatService {
         Remember: Being honest about limitations builds trust. Always choose "I don't know" over potentially incorrect information.
         """;
 
-    public ChatService(ChatClient.Builder chatClientBuilder,
-                      ChatMemoryService chatMemoryService,
-                      VectorStore vectorStore,
-                      DateTimeService dateTimeService,
-                      ToolCallbackProvider tools) {
+    public ChatService(ChatClient.Builder chatClientBuilder) {
         this.chatClient = chatClientBuilder
                 .defaultSystem(SYSTEM_PROMPT)
-                .defaultAdvisors(
-                        QuestionAnswerAdvisor.builder(vectorStore).build()
-                )
-                .defaultTools(dateTimeService)
-                .defaultToolCallbacks(tools)
                 .build();
 
-        this.chatMemoryService = chatMemoryService;
         logger.info("ChatService initialized with embedded ChatClient");
     }
 
@@ -61,7 +46,6 @@ public class ChatService {
                 .prompt().user(prompt)
                 .call()
                 .chatResponse();
-            // var chatResponse = chatMemoryService.callWithMemory(chatClient, prompt);
             return extractTextFromResponse(chatResponse);
         } catch (Exception e) {
             logger.error("Error processing chat request", e);

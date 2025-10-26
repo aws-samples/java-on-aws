@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to add RAG functionality to the assistant app
+# Script to add RAG functionality to the ai-agent app
 
 # Check if source folder exists
 if [ ! -d "$SOURCES_FOLDER" ]; then
@@ -8,28 +8,29 @@ if [ ! -d "$SOURCES_FOLDER" ]; then
     exit 1
 fi
 
-# Check if assistant folder exists
-if [ ! -d "assistant" ]; then
-    echo "Error: assistant folder not found in current directory."
-    echo "Please run this script from the directory containing the assistant folder."
+# Check if ai-agent folder exists
+if [ ! -d "ai-agent" ]; then
+    echo "Error: ai-agent folder not found in current directory."
+    echo "Please run this script from the directory containing the ai-agent folder."
     exit 1
 fi
 
-# Change to assistant directory and commit changes
+# Change to ai-agent directory and commit changes
 echo "Committing previous changes..."
-cd assistant
 git add .
 git commit -m "add Memory"
 
+cd ai-agent
+
 echo "Copying VectorStoreController.java..."
-cp "$SOURCES_FOLDER/assistant/src/main/java/com/example/assistant/VectorStoreController.java" src/main/java/com/example/assistant/
+cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/controller/VectorStoreController.java" src/main/java/com/example/ai/agent/controller/
 
 echo "Copying VectorStoreService.java..."
-cp "$SOURCES_FOLDER/assistant/src/main/java/com/example/assistant//VectorStoreService.java" src/main/java/com/example/assistant/
+cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/service/VectorStoreService.java" src/main/java/com/example/ai/agent/service/
 
 echo "Copying ChatService.java from version 3..."
-cp "$SOURCES_FOLDER/demo-scripts/ChatService/ChatService.java.3" src/main/java/com/example/assistant/ChatService.java
-code src/main/java/com/example/assistant/ChatService.java
+cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.3" src/main/java/com/example/ai/agent/service/ChatService.java
+# code src/main/java/com/example/ai/agent/ChatService.java
 
 # Add RAG Configuration to application.properties
 echo "Updating application.properties with database configuration..."
@@ -44,8 +45,8 @@ spring.ai.vectorstore.pgvector.initialize-schema=true
 spring.ai.vectorstore.pgvector.dimensions=1024
 EOL
 
-echo "Opening application.properties in VS Code..."
-code src/main/resources/application.properties
+# echo "Opening application.properties in VS Code..."
+# code src/main/resources/application.properties
 
 # Update pom.xml to add RAG dependencies
 echo "Updating pom.xml with RAG dependencies..."
@@ -89,8 +90,8 @@ BEGIN { print_deps = 1; in_first_deps = 0; }
 mv pom.xml.new pom.xml
 rm temp_dependencies.xml
 
-echo "Opening pom.xml in VS Code..."
-code pom.xml
+# echo "Opening pom.xml in VS Code..."
+# code pom.xml
 
 echo "Files copied and configurations updated successfully."
 
