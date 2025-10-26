@@ -205,6 +205,33 @@
         .image-modal .close:hover {
             color: #bbb;
         }
+        
+        /* Copy button styling */
+        .copy-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(99, 102, 241, 0.8);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .copy-button:hover {
+            background: rgba(99, 102, 241, 1);
+        }
+        .message-bubble-ai:hover .copy-button,
+        .message-bubble-user:hover .copy-button {
+            opacity: 1;
+        }
+        .message-bubble-ai,
+        .message-bubble-user {
+            position: relative;
+        }
     </style>
 </head>
 <body class="bg-light-bg dark:bg-dev-darker min-h-screen text-light-text dark:text-dev-text transition-colors duration-300">
@@ -314,6 +341,7 @@
                 messageDiv.innerHTML = `
                     <div class="ml-auto flex">
                         <div class="message-bubble-user rounded-lg p-3 max-w-3xl">
+                            <button class="copy-button" data-copy-text="File attached: ${file.name}">📋</button>
                             <p class="text-light-text dark:text-dev-text mb-2">📎 File attached: ${file.name}</p>
                             <img src="${imageUrl}" alt="${file.name}" class="max-w-full max-h-64 rounded border border-light-border dark:border-dev-border cursor-pointer hover:opacity-80 transition" onclick="openImageModal('${imageUrl}')" />
                         </div>
@@ -325,6 +353,23 @@
                 messageContainer.appendChild(messageDiv);
                 messageContainer.scrollTop = messageContainer.scrollHeight;
             }
+
+            // Copy to clipboard function
+            function copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(function() {
+                    console.log('Text copied to clipboard');
+                }).catch(function(err) {
+                    console.error('Failed to copy text: ', err);
+                });
+            }
+
+            // Event delegation for copy buttons
+            messageContainer.addEventListener('click', function(e) {
+                if (e.target.classList.contains('copy-button')) {
+                    const textToCopy = e.target.getAttribute('data-copy-text');
+                    copyToClipboard(textToCopy);
+                }
+            });
 
             // Function to send document analysis with empty prompt and clear file after
             async function sendDocumentAnalysis() {
@@ -427,6 +472,7 @@
                     messageDiv.innerHTML = `
                         <div class="ml-auto flex">
                             <div class="message-bubble-user rounded-lg p-3 max-w-3xl">
+                                <button class="copy-button" data-copy-text="${escapeHtml(content)}">📋</button>
                                 <p class="text-light-text dark:text-dev-text">${escapeHtml(content)}</p>
                             </div>
                             <div class="w-10 h-10 rounded-full bg-dev-secondary bg-opacity-20 flex items-center justify-center ml-3">
@@ -445,6 +491,7 @@
                             <span class="text-lg">🤖</span>
                         </div>
                         <div class="message-bubble-ai rounded-lg p-3 max-w-4xl ai-response">
+                            <button class="copy-button" data-copy-text="${escapeHtml(content)}">📋</button>
                             ${renderedContent}
                         </div>
                     `;
