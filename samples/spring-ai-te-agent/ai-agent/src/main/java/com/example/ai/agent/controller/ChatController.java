@@ -1,6 +1,5 @@
 package com.example.ai.agent.controller;
 
-import com.example.ai.agent.model.ChatRequest;
 import com.example.ai.agent.service.ChatService;
 import com.example.ai.agent.service.DocumentChatService;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,10 +20,16 @@ public class ChatController {
 
     @PostMapping("chat")
     public String chat(@RequestBody ChatRequest request) {
-        if (request.hasFile()) {
-            return documentChatService.processChat(request);
+        if (hasFile(request)) {
+            return documentChatService.processDocument(request.prompt(), request.fileBase64(), request.fileName());
         } else {
-            return chatService.processChat(request);
+            return chatService.processChat(request.prompt());
         }
     }
+
+    private boolean hasFile(ChatRequest request) {
+        return request.fileBase64() != null && !request.fileBase64().trim().isEmpty();
+    }
+
+    public record ChatRequest(String prompt, String fileBase64, String fileName) {}
 }

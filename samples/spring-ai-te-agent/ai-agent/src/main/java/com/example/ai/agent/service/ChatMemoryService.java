@@ -1,6 +1,5 @@
 package com.example.ai.agent.service;
 
-import com.example.ai.agent.model.ChatRequest;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
@@ -48,11 +47,11 @@ public class ChatMemoryService {
         return DEFAULT_CONVERSATION_ID; // In a real app, this would come from auth context
     }
 
-    public org.springframework.ai.chat.model.ChatResponse callWithMemory(ChatClient chatClient, ChatRequest request) {
+    public org.springframework.ai.chat.model.ChatResponse callWithMemory(ChatClient chatClient, String prompt) {
         String conversationId = getCurrentConversationId();
 
         // Add user message to memory
-        UserMessage userMessage = new UserMessage(request.prompt());
+        UserMessage userMessage = new UserMessage(prompt);
         chatMemory.add(conversationId, userMessage);
 
         // Make call with conversation history
