@@ -15,24 +15,6 @@ if [ ! -d "ai-agent" ]; then
     exit 1
 fi
 
-# Check if backoffice folder exists and delete it if it does
-echo "Checking for backoffice folder..."
-if [ -d "backoffice" ]; then
-    echo "Found existing backoffice folder, removing it..."
-    rm -rf backoffice
-fi
-
-Copy backoffice folder from source
-echo "Copying backoffice folder from source..."
-if [ -d "$SOURCES_FOLDER/backoffice" ]; then
-    cp -r "$SOURCES_FOLDER/backoffice" .
-    echo "backoffice folder copied successfully."
-else
-    echo "Error: backoffice folder not found at $SOURCES_FOLDER/backoffice."
-    echo "Please ensure the folder exists at the specified location."
-    exit 1
-fi
-
 # Check if travel folder exists and delete it if it does
 echo "Checking for travel folder..."
 if [ -d "travel" ]; then
@@ -62,13 +44,12 @@ echo "Copying ChatService.java from version 5..."
 cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.5" src/main/java/com/example/ai/agent/service/ChatService.java
 # code src/main/java/com/example/ai-agent/ChatService.java
 
-echo "Updating application.properties with database configuration..."
+echo "Updating application.properties with mcp configuration..."
 cat >> src/main/resources/application.properties << 'EOL'
 
 # MCP Client Configuration
 spring.ai.mcp.client.toolcallback.enabled=true
-spring.ai.mcp.client.sse.connections.server1.url=http://localhost:8081
-spring.ai.mcp.client.sse.connections.server2.url=http://localhost:8082
+spring.ai.mcp.client.sse.connections.server1.url=http://localhost:8082
 EOL
 
 # echo "Opening application.properties in VS Code..."

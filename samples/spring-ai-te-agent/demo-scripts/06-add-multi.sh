@@ -15,6 +15,25 @@ if [ ! -d "ai-agent" ]; then
     exit 1
 fi
 
+
+# Check if backoffice folder exists and delete it if it does
+echo "Checking for backoffice folder..."
+if [ -d "backoffice" ]; then
+    echo "Found existing backoffice folder, removing it..."
+    rm -rf backoffice
+fi
+
+Copy backoffice folder from source
+echo "Copying backoffice folder from source..."
+if [ -d "$SOURCES_FOLDER/backoffice" ]; then
+    cp -r "$SOURCES_FOLDER/backoffice" .
+    echo "backoffice folder copied successfully."
+else
+    echo "Error: backoffice folder not found at $SOURCES_FOLDER/backoffice."
+    echo "Please ensure the folder exists at the specified location."
+    exit 1
+fi
+
 # Change to ai-agent directory and commit changes
 echo "Committing previous changes..."
 git add .
@@ -27,6 +46,7 @@ cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/service/Document
 
 echo "Updating application.properties with database configuration..."
 cat >> src/main/resources/application.properties << 'EOL'
+spring.ai.mcp.client.sse.connections.server2.url=http://localhost:8081
 
 # Document processing model
 ai.agent.document.model=global.anthropic.claude-sonnet-4-20250514-v1:0

@@ -36,11 +36,11 @@ public class ChatService {
         Remember: Being honest about limitations builds trust. Always choose "I don't know" over potentially incorrect information.
         """;
 
-    public ChatService(ChatClient.Builder chatClientBuilder,
-                      ChatMemoryService chatMemoryService,
+    public ChatService(ChatMemoryService chatMemoryService,
                       VectorStore vectorStore,
                       DateTimeService dateTimeService,
-                      ToolCallbackProvider tools) {
+                      ToolCallbackProvider tools,
+                      ChatClient.Builder chatClientBuilder) {
         this.chatClient = chatClientBuilder
                 .defaultSystem(SYSTEM_PROMPT)
                 .defaultAdvisors(

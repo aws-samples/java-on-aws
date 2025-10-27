@@ -35,9 +35,10 @@ fi
 
 # Change to ai-agent directory and commit changes
 echo "Committing previous changes..."
-cd ai-agent
 git add .
 git commit -m "add ChatController"
+
+cd ai-agent
 
 echo "Copying ChatMemoryService.java..."
 cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/service/ChatMemoryService.java" src/main/java/com/example/ai/agent/service/
