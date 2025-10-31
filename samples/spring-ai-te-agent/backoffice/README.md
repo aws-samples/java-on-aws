@@ -26,12 +26,25 @@ This application serves as:
 ### Technology Stack
 
 - **Java 21**: Latest LTS version with modern language features
-- **Spring Boot 3.5.3**: Core framework for building the application
-- **Spring AI 1.0.0**: AI integration with Model Context Protocol (MCP)
+- **Spring Boot 3.5.7**: Core framework for building the application
+- **Spring AI 1.0.3**: AI integration with Model Context Protocol (MCP)
 - **Spring Data JPA**: Data access layer with Hibernate
 - **PostgreSQL**: Database for storing expense data
+- **Testcontainers 1.21.3**: Automatic database container management for development and testing
 - **Spring WebFlux**: Reactive programming for external API calls
 - **Docker**: Containerization for database and application
+
+## Quick Start
+
+```bash
+# Clone and navigate to the project
+cd backoffice/
+
+# Run with automatic PostgreSQL container
+mvn spring-boot:test-run
+
+# Application available at http://localhost:8081
+```
 
 ## Getting Started
 
@@ -39,51 +52,43 @@ This application serves as:
 
 - Java 21 or higher
 - Maven 3.8 or higher
-- Docker and Docker Compose
-- PostgreSQL (provided via Docker)
+- Docker (for Testcontainers - PostgreSQL is automatically managed)
+- No manual PostgreSQL setup required
 
-### Database Setup
+### Running the Application
 
-The application requires a PostgreSQL database. A Docker Compose setup is provided in the `database` directory.
+The application uses **Testcontainers** for automatic PostgreSQL database management during development. No manual database setup is required.
 
 ```bash
-cd samples/spring-ai/database/
-./start-postgres.sh
+cd backoffice/
+mvn spring-boot:test-run
 ```
 
-This script will:
-- Start PostgreSQL
-- Initialize the backoffice_db database
-- Start pgAdmin web interface for database management
-- Display connection information
-
-### Building and Running the Application
-
-1. Build the application:
-   ```bash
-   cd samples/spring-ai/backoffice/
-   mvn clean package
-   ```
-
-2. Run the application:
-   ```bash
-   mvn spring-boot:run
-   ```
-
-3. The application will be available at:
-   ```
-   http://localhost:8081
-   ```
+This will:
+- Automatically start a PostgreSQL container using Testcontainers 1.21.3
+- Initialize the database with the required schema
+- Start the application on http://localhost:8081
+- Clean up the container when the application stops
 
 ### Testing the API
 
 The project includes test scripts to verify API functionality:
 
 ```bash
-cd samples/spring-ai/backoffice/scripts/
+cd scripts/
 ./test-api-expenses.sh    # Test expense-related endpoints
 ./test-api-currencies.sh  # Test currency-related endpoints
 ```
+
+### Running Tests
+
+Run the test suite with Testcontainers:
+
+```bash
+mvn test
+```
+
+Tests automatically use Testcontainers to spin up a PostgreSQL database for integration testing.
 
 ## Architecture
 
@@ -240,7 +245,18 @@ The application exposes the following AI tools through the MCP server:
 
 ## Database Configuration
 
-### PostgreSQL Configuration
+### Testcontainers Configuration (Development)
+
+When using `mvn spring-boot:test-run`, the database is automatically configured via Testcontainers:
+
+- **Database**: PostgreSQL 16 Alpine
+- **Container**: Automatically started and stopped
+- **Connection**: Dynamically configured via `@ServiceConnection`
+- **Schema**: Auto-created via JPA DDL
+
+### Traditional PostgreSQL Configuration (Production)
+
+For production or external database setup:
 
 ```properties
 # PostgreSQL Configuration
@@ -278,8 +294,9 @@ The application demonstrates several best practices:
 
 ### Testing
 - Unit tests for business logic
-- Integration tests for repositories
+- Integration tests with Testcontainers for realistic database testing
 - API tests for controllers
+- Automatic test database management
 
 ## Future Enhancements
 
