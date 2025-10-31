@@ -26,12 +26,25 @@ This application serves as:
 ### Technology Stack
 
 - **Java 21**: Latest LTS version with modern language features
-- **Spring Boot 3.5.3**: Core framework for building the application
-- **Spring AI 1.0.0**: AI integration with Model Context Protocol (MCP)
+- **Spring Boot 3.5.7**: Core framework for building the application
+- **Spring AI 1.0.3**: AI integration with Model Context Protocol (MCP)
 - **Spring Data JPA**: Data access layer with Hibernate
-- **PostgreSQL**: Database with pgvector extension for vector operations
+- **PostgreSQL**: Database for storing travel data
+- **Testcontainers 1.21.3**: Automatic database container management for development and testing
 - **Spring WebFlux**: Reactive programming for external API calls
 - **Docker**: Containerization for database and application
+
+## Quick Start
+
+```bash
+# Clone and navigate to the project
+cd travel/
+
+# Run with automatic PostgreSQL container
+mvn spring-boot:test-run
+
+# Application available at http://localhost:8082
+```
 
 ## Getting Started
 
@@ -39,25 +52,34 @@ This application serves as:
 
 - Java 21 or higher
 - Maven 3.8 or higher
-- Docker and Docker Compose
-- PostgreSQL 16 with pgvector extension (provided via Docker)
+- Docker (for Testcontainers - PostgreSQL is automatically managed)
+- No manual PostgreSQL setup required
 
-### Database Setup
+### Running the Application
 
-The application requires a PostgreSQL database with the pgvector extension. A Docker Compose setup is provided in the `database` directory.
+The application uses **Testcontainers** for automatic PostgreSQL database management during development and testing. No manual database setup is required.
 
-#### Starting the Database
+#### Development Mode
 
 ```bash
-cd samples/spring-ai/database/
-./start-postgres.sh
+cd travel/
+mvn spring-boot:test-run
 ```
 
-This script will:
-- Start PostgreSQL with pgvector extension
-- Initialize the travel_db database with sample data
-- Start pgAdmin web interface for database management
-- Display connection information
+This will:
+- Automatically start a PostgreSQL 16 container using Testcontainers 1.21.3
+- Initialize the database with sample data from SQL scripts
+- Start the application on http://localhost:8082
+- Clean up the container when the application stops
+
+#### Production Mode
+
+```bash
+cd travel/
+mvn spring-boot:run
+```
+
+For production, configure your PostgreSQL connection in `application.properties`.
 
 #### Database Structure
 
@@ -76,17 +98,17 @@ The database is pre-populated with:
 - Major international airports
 - Sample flights between popular destinations
 
-### Building and Running the Application
+### Building and Testing
 
 1. Build the application:
    ```bash
-   cd samples/spring-ai/travel/
+   cd travel/
    mvn clean package
    ```
 
-2. Run the application:
+2. Run tests (includes Testcontainers integration tests):
    ```bash
-   mvn spring-boot:run
+   mvn test
    ```
 
 3. The application will be available at:
@@ -96,14 +118,16 @@ The database is pre-populated with:
 
 ### Testing the API
 
-The project includes test scripts to verify API functionality:
+The project includes comprehensive test scripts to verify API functionality:
 
 ```bash
-cd samples/spring-ai/travel/scripts/
+cd travel/scripts/
 ./test-api-hotels.sh    # Test hotel-related endpoints
 ./test-api-flights.sh   # Test flight-related endpoints
 ./test-api-weather.sh   # Test weather forecast endpoints
 ```
+
+All tests run against the live application with Testcontainers-managed PostgreSQL database.
 
 ## Architecture
 
@@ -355,33 +379,58 @@ The application demonstrates several best practices:
 
 ### Testing
 - Unit tests for business logic
-- Integration tests for repositories
+- Integration tests with Testcontainers
 - API tests for controllers
+- Automated test scripts for end-to-end validation
 
 ## Database Configuration
 
-### PostgreSQL Configuration
+### Testcontainers Integration
 
-```properties
-# PostgreSQL Configuration
-spring.datasource.url=jdbc:postgresql://localhost:5432/travel_db
-spring.datasource.username=postgres
-spring.datasource.password=postgres
-spring.datasource.driver-class-name=org.postgresql.Driver
+The application uses **Testcontainers** for automatic database management:
 
-# JPA Configuration
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=false
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
-```
+- **Development**: `mvn spring-boot:test-run` automatically starts PostgreSQL 16 container
+- **Testing**: Integration tests use `@ServiceConnection` for seamless container management
+- **No manual setup**: Database schema and sample data are automatically initialized
+
+### Configuration Files
+
+- `TestcontainersConfiguration.java`: Configures PostgreSQL container with `@ServiceConnection`
+- `application-test.properties`: Test-specific database configuration
+- `AbstractIntegrationTest.java`: Base class for integration tests
 
 ### Database Initialization
 
-The database is initialized with the following scripts:
+The database is automatically initialized with sample data from:
 
-1. `init-databases.sql`: Creates the travel_db database
-2. `init-travel-hotels.sql`: Populates the hotels table
-3. `init-travel-flights.sql`: Populates the airports and flights tables
+1. `init-travel-db.sql`: Creates the travel_db schema
+2. `init-travel-hotels.sql`: Populates hotels and hotel bookings
+3. `init-travel-flights.sql`: Populates airports and flights
+
+### Production Configuration
+
+For production deployment, configure PostgreSQL connection in `application.properties`:
+
+```properties
+spring.datasource.url=jdbc:postgresql://your-host:5432/travel_db
+spring.datasource.username=your-username
+spring.datasource.password=your-password
+spring.jpa.hibernate.ddl-auto=validate
+```
+
+## Development Features
+
+### Modern Spring Boot Setup
+- **Spring Boot 3.5.7**: Latest stable version with enhanced features
+- **Spring AI 1.0.3**: Cutting-edge AI integration capabilities
+- **Testcontainers 1.21.3**: Seamless container-based testing
+- **Java 21**: Modern language features and performance improvements
+
+### Testing Infrastructure
+- **Automated Database Management**: No manual PostgreSQL setup required
+- **Integration Test Base**: `AbstractIntegrationTest` for consistent test setup
+- **API Test Scripts**: Comprehensive endpoint validation
+- **Container Lifecycle**: Automatic cleanup and resource management
 
 ## Future Enhancements
 
@@ -391,6 +440,7 @@ The database is initialized with the following scripts:
 - Integrate with external booking systems
 - Add more AI capabilities for travel recommendations
 - Deploy to AWS with containerization
+- Add monitoring and observability features
 
 ## Contributing
 
