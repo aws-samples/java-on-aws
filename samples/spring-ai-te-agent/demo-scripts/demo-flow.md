@@ -17,7 +17,16 @@ export SOURCES_FOLDER=/Users/bezsonov/sources/workshops/java-on-aws/samples/spri
 export AWS_REGION=us-east-1
 ```
 
-> add AWS credential to the main terminal
+> **AWS Credentials Setup:**
+>
+> Add AWS credentials to the main terminal using one of these methods:
+> 1. **AWS CLI**: `aws configure` (recommended)
+> 2. **Environment variables**:
+>    ```bash
+>    export AWS_ACCESS_KEY_ID=your-access-key-id
+>    export AWS_SECRET_ACCESS_KEY=your-secret-access-key
+>    ```
+> 3. **Create .env file** in the project root with your credentials
 
 ## 01. Create Spring AI App
 
@@ -36,12 +45,12 @@ cd ai-agent
 export AWS_REGION=us-east-1
 ```
 
-> add AWS credential to the main terminal
+> Ensure AWS credentials are available in this terminal (inherit from main terminal or set again)
 
 In the AI Agent terminal:
 
 ```bash
-./mvnw spring-boot:run
+./mvnw spring-boot:test-run
 ```
 
 Open localhost:8080 in the browser and ask questions:
@@ -68,7 +77,7 @@ cd database/
 > In the AI Agent terminal:
 
 ```bash
-./mvnw spring-boot:run
+./mvnw spring-boot:test-run
 ```
 
 Open localhost:8080 in the browser and ask questions:
@@ -90,7 +99,7 @@ $SOURCES_FOLDER/demo-scripts/03-add-rag.sh
 > In the AI Agent terminal:
 
 ```bash
-./mvnw spring-boot:run
+./mvnw spring-boot:test-run
 ```
 
 > In the main terminal:
@@ -125,7 +134,7 @@ $SOURCES_FOLDER/demo-scripts/04-add-tools.sh
 > In the AI Agent terminal:
 
 ```bash
-./mvnw spring-boot:run
+./mvnw spring-boot:test-run
 ```
 
 Open localhost:8080 in the browser and ask questions:
@@ -142,27 +151,46 @@ Open localhost:8080 in the browser and ask questions:
 $SOURCES_FOLDER/demo-scripts/05-add-mcp.sh
 ```
 
-Open the new terminal (Travel terminal):
+**Microservice Architecture:**
+- **Weather Service** (port 8081): Weather forecasts and climate data
+- **Travel Service** (port 8082): Hotel and flight booking
+- **Backoffice Service** (port 8083): Expense management and currency conversion
+- **AI Agent** (port 8080): Central AI assistant orchestrating all services
+
+**Start the microservices in the following order:**
+
+Open the new terminal (Weather terminal - port 8081):
+
+```bash
+cd weather/
+./mvnw spring-boot:run
+```
+
+Open the new terminal (Travel terminal - port 8082):
 
 ```bash
 cd travel/
-./mvnw spring-boot:run
+./mvnw spring-boot:test-run
 ```
 
-Open the new terminal (Backoffice terminal):
+Open the new terminal (Backoffice terminal - port 8083):
 
 ```bash
 cd backoffice/
-./mvnw spring-boot:run
+./mvnw spring-boot:test-run
 ```
 
-> In the AI Agent terminal:
+> **Note**: Travel and Backoffice services use `test-run` which automatically starts PostgreSQL containers with Testcontainers - no manual database setup required!
+
+> In the AI Agent terminal (port 8080):
 
 ```bash
-./mvnw spring-boot:run
+./mvnw spring-boot:test-run
 ```
 
 Open localhost:8080 in the browser and ask questions:
+
+> What's the weather in London today?
 
 > My name is John Doe. Please find me inbound and outbound flights and accommodations for a trip from London to Paris next week, From Monday to Friday. I travel alone, prefer BA flights in the first part of the day, and choose accommodation which is the most expensive, but comply with our travel policy.
 Give me a travel itinerary with flights, accommodation, prices and weather forecast for each day of the travel.
