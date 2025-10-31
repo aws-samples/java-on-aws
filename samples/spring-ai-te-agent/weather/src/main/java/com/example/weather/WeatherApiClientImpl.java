@@ -1,4 +1,4 @@
-package com.example.travel.weather;
+package com.example.weather;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,11 +16,11 @@ import java.util.Map;
  * Implementation of WeatherApiClient that makes actual HTTP calls to external weather APIs.
  */
 @Component
-class WeatherApiClientImpl implements WeatherApiClient {
+public class WeatherApiClientImpl implements WeatherApiClient {
     private static final Logger logger = LoggerFactory.getLogger(WeatherApiClientImpl.class);
     private final WebClient webClient;
 
-    WeatherApiClientImpl(WebClient.Builder webClientBuilder) {
+    public WeatherApiClientImpl(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.build();
     }
 

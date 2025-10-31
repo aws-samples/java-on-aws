@@ -1,10 +1,9 @@
-package com.example.travel.weather;
+package com.example.weather;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
@@ -17,7 +16,7 @@ public class WeatherService {
     private static final Logger logger = LoggerFactory.getLogger(WeatherService.class);
     private final WeatherApiClient apiClient;
 
-    WeatherService(WeatherApiClient apiClient) {
+    public WeatherService(WeatherApiClient apiClient) {
         this.apiClient = apiClient;
     }
 
@@ -28,7 +27,6 @@ public class WeatherService {
      * @param date The date in YYYY-MM-DD format
      * @return Weather forecast with min/max temperatures
      */
-    @Transactional(readOnly = true)
     public String getWeather(String city, String date) {
         if (city == null || city.trim().isEmpty()) {
             logger.warn("Weather request failed: city parameter is missing");

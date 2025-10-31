@@ -10,7 +10,6 @@ The Spring AI Travel Application is a demonstration of how to build modern trave
 
 - Hotel search and booking
 - Flight search and booking
-- Weather forecasts for destinations
 
 The application follows Domain-Driven Design (DDD) principles and showcases best practices for building Spring Boot applications with AI capabilities.
 
@@ -124,7 +123,6 @@ The project includes comprehensive test scripts to verify API functionality:
 cd travel/scripts/
 ./test-api-hotels.sh    # Test hotel-related endpoints
 ./test-api-flights.sh   # Test flight-related endpoints
-./test-api-weather.sh   # Test weather forecast endpoints
 ```
 
 All tests run against the live application with Testcontainers-managed PostgreSQL database.
@@ -139,8 +137,6 @@ The domain model is organized around two main bounded contexts:
 
 1. **Accommodations**: Hotels and hotel bookings
 2. **Transportation**: Airports, flights, and flight bookings
-
-Additionally, there's a supporting Weather service for destination forecasts.
 
 ### Layered Architecture
 
@@ -306,15 +302,7 @@ PUT /api/flight-bookings/{bookingReference}/cancel
 Parameters:
 - `bookingReference`: Unique booking reference code
 
-### Weather API
 
-#### Get Weather Forecast
-```
-GET /api/weather?city={city}&date={date}
-```
-Parameters:
-- `city`: Name of the city for weather forecast
-- `date`: Date for the forecast in format yyyy-MM-dd (can be past, present, or future)
 
 ## AI Tools
 
@@ -340,10 +328,6 @@ The application exposes the following AI tools through the MCP server:
 - `confirmFlightBooking`: Confirm a pending flight booking
 - `cancelFlightBooking`: Cancel an existing flight booking
 
-### Weather Tools
-- `getWeatherForecast`: Get weather forecast for a city on a specific date
-- `cancelBooking`: Cancel a hotel booking
-
 ### Flight Tools
 - `searchAirports`: Search for airports by city or code
 - `getAirportDetails`: Get detailed information about an airport
@@ -352,9 +336,6 @@ The application exposes the following AI tools through the MCP server:
 - `bookFlight`: Create a flight booking
 - `getFlightBookingDetails`: Get details of a flight booking
 - `cancelFlightBooking`: Cancel a flight booking
-
-### Weather Tools
-- `getWeatherForecast`: Get weather forecast for a city
 
 ## Best Practices
 

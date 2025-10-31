@@ -1,4 +1,4 @@
-package com.example.travel.weather;
+package com.example.weather;
 
 import java.util.Map;
 
@@ -6,7 +6,7 @@ import java.util.Map;
  * Interface for weather API client to abstract external API calls
  * for better testability and decoupling.
  */
-interface WeatherApiClient {
+public interface WeatherApiClient {
 
     /**
      * Get geocoding data for a city

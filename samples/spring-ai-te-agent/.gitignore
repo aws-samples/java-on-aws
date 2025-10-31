@@ -1,0 +1,20 @@
+# Environment variables
+.env
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+target/
+build/
+*.jar
+*.war
+
+# Logs
+*.log

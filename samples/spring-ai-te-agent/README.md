@@ -4,13 +4,14 @@ A comprehensive AI-powered agent ecosystem built with Spring AI framework, demon
 
 ## Overview
 
-The ecosystem consists of three microservices that work together:
+The ecosystem consists of four microservices that work together:
 
 1. **[AI Agent](ai-agent/README.md)** - Central AI assistant with chat interface, document analysis, and RAG capabilities
 2. **[Travel Service](travel/README.md)** - Hotel and flight booking service with MCP integration
-3. **[Backoffice Service](backoffice/README.md)** - Expense management and currency conversion service with MCP integration
+3. **[Weather Service](weather/README.md)** - Weather forecast service with MCP integration
+4. **[Backoffice Service](backoffice/README.md)** - Expense management and currency conversion service with MCP integration
 
-The AI Agent connects to Travel and Backoffice services through MCP, enabling it to book travel, manage expenses, and provide comprehensive business assistance.
+The AI Agent connects to Travel, Weather, and Backoffice services through MCP, enabling it to book travel, get weather forecasts, manage expenses, and provide comprehensive business assistance.
 
 ## Quick Start
 
@@ -22,19 +23,25 @@ The AI Agent connects to Travel and Backoffice services through MCP, enabling it
 
 ### Running the Services
 
-1. **Start Travel Service** (port 8081):
+1. **Start Weather Service** (port 8081):
+   ```bash
+   cd weather/
+   mvn spring-boot:run
+   ```
+
+2. **Start Travel Service** (port 8082):
    ```bash
    cd travel/
    mvn spring-boot:test-run
    ```
 
-2. **Start Backoffice Service** (port 8082):
+3. **Start Backoffice Service** (port 8083):
    ```bash
    cd backoffice/
    mvn spring-boot:test-run
    ```
 
-3. **Start AI Agent** (port 8080):
+4. **Start AI Agent** (port 8080):
    ```bash
    cd ai-agent/
    mvn spring-boot:test-run
@@ -58,8 +65,13 @@ Each service uses Testcontainers for automatic database setup - no manual config
 
 ### Travel Service
 - **Hotel & flight booking** with comprehensive search
-- **Airport information** and weather forecasts
+- **Airport information** and flight management
 - **MCP server** exposing travel tools to AI Agent
+
+### Weather Service
+- **Weather forecasts** for any city worldwide
+- **Historical and future weather data** with external API integration
+- **MCP server** exposing weather tools to AI Agent
 
 ### Backoffice Service
 - **Expense management** with approval workflows
@@ -100,4 +112,5 @@ Ensure access to required models:
 
 - [AI Agent Documentation](ai-agent/README.md) - Detailed setup and architecture
 - [Travel Service Documentation](travel/README.md) - Travel booking API
+- [Weather Service Documentation](weather/README.md) - Weather forecast API
 - [Backoffice Service Documentation](backoffice/README.md) - Expense management API

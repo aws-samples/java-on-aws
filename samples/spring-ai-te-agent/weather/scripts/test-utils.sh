@@ -10,8 +10,8 @@ export YELLOW='\033[1;33m'
 export BLUE='\033[0;34m'
 export NC='\033[0m' # No Color
 
-# Default base URL
-export BASE_URL=${BASE_URL:-"http://localhost:8083"}
+# Default base URL for weather service
+export BASE_URL=${BASE_URL:-"http://localhost:8081"}
 
 # Initialize counters
 export TESTS_PASSED=0
@@ -98,8 +98,8 @@ test_endpoint_expect_fail() {
         echo "Response Body: $body"
     fi
 
-    # Check if the status code is 4xx or 5xx (client or server error)
-    if [[ "$status_code" =~ ^[45][0-9][0-9]$ ]]; then
+    # Check if the status code matches the expected status or is a 4xx/5xx error
+    if [ "$status_code" -eq "$expected_status" ] || [[ "$status_code" =~ ^[45][0-9][0-9]$ ]]; then
         echo -e "${GREEN}✓ PASS${NC}: $description (failed as expected with HTTP $status_code)"
         ((TESTS_PASSED++))
     else

@@ -1,4 +1,4 @@
-package com.example.travel.weather;
+package com.example.weather;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,9 +22,9 @@ public class WeatherTools {
     }
 
     @Bean
-    public ToolCallbackProvider weatherToolsProvider(WeatherTools weatherTools) {
+    public ToolCallbackProvider weatherToolsProvider() {
         return MethodToolCallbackProvider.builder()
-                .toolObjects(weatherTools)
+                .toolObjects(this)
                 .build();
     }
 
@@ -37,7 +37,7 @@ public class WeatherTools {
                NOT_FOUND if city doesn't exist or no data for date,
                SERVICE_UNAVAILABLE if weather service is down.
         """)
-    public String getWeather(String city, String date) {
+    public String getWeatherForecast(String city, String date) {
         logger.info("Tool request: Getting weather for city: {} on date: {}", city, date);
         return weatherService.getWeather(city, date);
     }
