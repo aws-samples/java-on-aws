@@ -16,6 +16,7 @@ public class TestcontainersConfiguration {
                 .withDatabaseName("backoffice_db")
                 .withUsername("postgres")
                 .withPassword("postgres")
+                .withCreateContainerCmdModifier(cmd -> cmd.withName("backoffice-postgres"))
                 .withInitScript("init-backoffice-db.sql");
     }
 }

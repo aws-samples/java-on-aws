@@ -57,11 +57,11 @@ public class ChatService {
     public String processChat(String prompt) {
         logger.info("Processing text chat request - prompt: '{}'", prompt);
         try {
-            var chatResponse = chatClient
-                .prompt().user(prompt)
-                .call()
-                .chatResponse();
-            // var chatResponse = chatMemoryService.callWithMemory(chatClient, prompt);
+            // var chatResponse = chatClient
+            //     .prompt().user(prompt)
+            //     .call()
+            //     .chatResponse();
+            var chatResponse = chatMemoryService.callWithMemory(chatClient, prompt);
             return extractTextFromResponse(chatResponse);
         } catch (Exception e) {
             logger.error("Error processing chat request", e);

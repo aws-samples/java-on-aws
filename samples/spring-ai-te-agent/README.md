@@ -1,135 +1,103 @@
-# Spring AI Microservices Ecosystem
+# Spring AI Travel & Expense Agent
 
-This repository contains a comprehensive ecosystem of Spring AI-powered microservices that demonstrate how to build modern AI applications using the Spring AI framework.
+A comprehensive AI-powered agent ecosystem built with Spring AI framework, demonstrating modern AI application patterns including RAG, persistent memory, tool integration, and microservices communication via Model Context Protocol (MCP).
 
 ## Overview
 
-The ecosystem consists of three main applications and a shared database infrastructure:
+The ecosystem consists of three microservices that work together:
 
-1. **AI Assistant** - The central application that provides a chat interface with AI capabilities
-2. **Travel Service** - A specialized service for travel booking and management
-3. **Backoffice Service** - A specialized service for expense management and currency conversion
-4. **Database Infrastructure** - Shared PostgreSQL database with pgvector extension
+1. **[AI Agent](ai-agent/README.md)** - Central AI assistant with chat interface, document analysis, and RAG capabilities
+2. **[Travel Service](travel/README.md)** - Hotel and flight booking service with MCP integration
+3. **[Backoffice Service](backoffice/README.md)** - Expense management and currency conversion service with MCP integration
 
-These applications work together through the Model Context Protocol (MCP), allowing the AI Assistant to leverage specialized capabilities from the Travel and Backoffice services.
+The AI Agent connects to Travel and Backoffice services through MCP, enabling it to book travel, manage expenses, and provide comprehensive business assistance.
 
-## Architecture
+## Quick Start
 
-The overall architecture follows a microservices pattern with the AI Assistant as the central component:
+### Prerequisites
+- Java 21+
+- Maven 3.8+
+- Docker (for Testcontainers)
+- AWS account with Amazon Bedrock access
 
-![Assistant Architecture](assistant/docs/architecture.png)
+### Running the Services
 
-The AI Assistant connects to the Travel and Backoffice services through the MCP protocol, allowing it to:
-- Search for and book hotels and flights (via Travel service)
-- Create and manage expenses (via Backoffice service)
-- Convert currencies (via Backoffice service)
-
-## Projects
-
-### [AI Assistant](assistant/README.md)
-
-The AI Assistant is the central application in the ecosystem, providing:
-
-- Text-based conversations with persistent memory
-- Document analysis (PDF, JPG, JPEG, PNG)
-- Retrieval-Augmented Generation (RAG) for knowledge base integration
-- Tool integration for enhanced capabilities
-- Model Context Protocol (MCP) client for connecting to external services
-
-**Key Technologies:**
-- Spring AI with Amazon Bedrock (Claude Sonnet 4)
-- PostgreSQL with pgvector for vector embeddings
-- Thymeleaf web interface
-
-![assistant-ui](assistant/docs/assistant-ui.png)
-
-### [Travel Service](travel/README.md)
-
-The Travel service provides specialized functionality for travel management:
-
-- Hotel search and booking
-- Flight search and booking
-- Airport information
-- Weather forecasts for destinations
-- MCP server for AI integration
-
-**Key Technologies:**
-- Spring Boot with Spring Data JPA
-- PostgreSQL for data storage
-- Spring AI MCP Server for AI integration
-
-### [Backoffice Service](backoffice/README.md)
-
-The Backoffice service provides specialized functionality for business operations:
-
-- Expense management (create, track, update, approve)
-- Currency conversion with real-time exchange rates
-- MCP server for AI integration
-
-**Key Technologies:**
-- Spring Boot with Spring Data JPA
-- PostgreSQL for data storage
-- Spring AI MCP Server for AI integration
-
-### [Database Infrastructure](database/README.md)
-
-The shared database infrastructure provides:
-
-- PostgreSQL 16 with pgvector extension for vector embeddings
-- Multiple databases for different application domains
-- pgAdmin web interface for database management
-
-## Getting Started
-
-1. Start the database infrastructure:
-   ```bash
-   cd database/
-   ./start-postgres.sh
-   ```
-
-2. Start the Travel service:
+1. **Start Travel Service** (port 8081):
    ```bash
    cd travel/
-   mvn spring-boot:run
+   mvn spring-boot:test-run
    ```
 
-3. Start the Backoffice service:
+2. **Start Backoffice Service** (port 8082):
    ```bash
    cd backoffice/
-   mvn spring-boot:run
+   mvn spring-boot:test-run
    ```
 
-4. Start the AI Assistant:
+3. **Start AI Agent** (port 8080):
    ```bash
-   cd assistant/
-   mvn spring-boot:run
+   cd ai-agent/
+   mvn spring-boot:test-run
    ```
 
-5. Access the AI Assistant web interface:
+4. **Access the application**:
    ```
    http://localhost:8080
    ```
 
-## Key Spring AI Features
+Each service uses Testcontainers for automatic database setup - no manual configuration required!
 
-This ecosystem demonstrates several key features of the [Spring AI framework](https://docs.spring.io/spring-ai/reference/index.html):
+## Services
 
-1. **AI Integration** - Using Spring AI to integrate with AI models (Amazon Bedrock)
-2. **System Prompts** - Configuring AI behavior with system prompts
-3. **Chat Memory** - Implementing persistent conversation memory
-4. **RAG** - Implementing Retrieval-Augmented Generation for knowledge base integration
-5. **Tool Integration** - Extending AI capabilities with custom tools
-6. **MCP** - Using the Model Context Protocol for microservices integration
+### AI Agent
+- **Chat interface** with persistent memory using JDBC
+- **Document analysis** (PDF, images) with multimodal AI models
+- **RAG implementation** using pgvector for knowledge base
+- **Tool integration** and MCP client for microservices
+- **Models**: OpenAI GPT-OSS-120B, Claude Sonnet 4, Amazon Nova
 
-For more details on each feature, refer to the [AI Assistant documentation](assistant/README.md).
+### Travel Service
+- **Hotel & flight booking** with comprehensive search
+- **Airport information** and weather forecasts
+- **MCP server** exposing travel tools to AI Agent
 
-## Prerequisites
+### Backoffice Service
+- **Expense management** with approval workflows
+- **Currency conversion** with real-time exchange rates
+- **MCP server** exposing business tools to AI Agent
 
-- Java 21 or higher
-- Maven 3.8 or higher
-- Docker and Docker Compose
-- AWS account with Amazon Bedrock access
+## Technology Stack
 
-## License
+- **Spring Boot 3.5.7** - Core framework
+- **Spring AI 1.0.3** - AI integration framework
+- **Amazon Bedrock** - AI model provider
+- **PostgreSQL 16** with pgvector extension
+- **Testcontainers 1.21.3** - Development and testing
+- **Model Context Protocol** - Microservices communication
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## Key Features Demonstrated
+
+- **Persistent Chat Memory** - JDBC-based conversation history
+- **RAG Implementation** - Vector search with pgvector
+- **Multimodal AI** - Text and document analysis
+- **Tool Integration** - Custom tools and MCP protocol
+- **Microservices Architecture** - Distributed AI capabilities
+- **Testcontainers** - Seamless development experience
+
+## AWS Configuration
+
+Configure AWS credentials for Bedrock access:
+```bash
+aws configure
+```
+
+Ensure access to required models:
+- `openai.gpt-oss-120b-1:0`
+- `global.anthropic.claude-sonnet-4-20250514-v1:0`
+- `us.amazon.nova-pro-v1:0` (optional)
+
+## Documentation
+
+- [AI Agent Documentation](ai-agent/README.md) - Detailed setup and architecture
+- [Travel Service Documentation](travel/README.md) - Travel booking API
+- [Backoffice Service Documentation](backoffice/README.md) - Expense management API

@@ -17,6 +17,7 @@ public class TestcontainersConfiguration {
                 .withDatabaseName("travel_db")
                 .withUsername("postgres")
                 .withPassword("postgres")
+                .withCreateContainerCmdModifier(cmd -> cmd.withName("travel-postgres"))
                 .withCopyFileToContainer(
                     MountableFile.forClasspathResource("init-travel-db.sql"),
                     "/docker-entrypoint-initdb.d/01-init-travel-db.sql"
