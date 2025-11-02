@@ -51,24 +51,6 @@ else
     exit 1
 fi
 
-# Check if backoffice folder exists and delete it if it does
-echo "Checking for backoffice folder..."
-if [ -d "backoffice" ]; then
-    echo "Found existing backoffice folder, removing it..."
-    rm -rf backoffice
-fi
-
-# Copy backoffice folder from source
-echo "Copying backoffice folder from source..."
-if [ -d "$SOURCES_FOLDER/backoffice" ]; then
-    cp -r "$SOURCES_FOLDER/backoffice" .
-    echo "backoffice folder copied successfully."
-else
-    echo "Error: backoffice folder not found at $SOURCES_FOLDER/backoffice."
-    echo "Please ensure the folder exists at the specified location."
-    exit 1
-fi
-
 # Change to ai-agent directory and commit changes
 echo "Committing previous changes..."
 git add .
@@ -87,7 +69,6 @@ cat >> src/main/resources/application.properties << 'EOL'
 spring.ai.mcp.client.toolcallback.enabled=true
 spring.ai.mcp.client.sse.connections.server1.url=http://localhost:8081
 spring.ai.mcp.client.sse.connections.server2.url=http://localhost:8082
-spring.ai.mcp.client.sse.connections.server3.url=http://localhost:8083
 EOL
 
 # echo "Opening application.properties in VS Code..."

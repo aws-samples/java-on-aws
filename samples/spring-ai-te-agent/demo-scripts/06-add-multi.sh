@@ -15,7 +15,6 @@ if [ ! -d "ai-agent" ]; then
     exit 1
 fi
 
-
 # Check if backoffice folder exists and delete it if it does
 echo "Checking for backoffice folder..."
 if [ -d "backoffice" ]; then
@@ -23,7 +22,7 @@ if [ -d "backoffice" ]; then
     rm -rf backoffice
 fi
 
-Copy backoffice folder from source
+# Copy backoffice folder from source
 echo "Copying backoffice folder from source..."
 if [ -d "$SOURCES_FOLDER/backoffice" ]; then
     cp -r "$SOURCES_FOLDER/backoffice" .
@@ -46,7 +45,7 @@ cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/service/Document
 
 echo "Updating application.properties with database configuration..."
 cat >> src/main/resources/application.properties << 'EOL'
-spring.ai.mcp.client.sse.connections.server2.url=http://localhost:8081
+spring.ai.mcp.client.sse.connections.server3.url=http://localhost:8083
 
 # Document processing model
 ai.agent.document.model=global.anthropic.claude-sonnet-4-20250514-v1:0

@@ -15,24 +15,6 @@ if [ ! -d "ai-agent" ]; then
     exit 1
 fi
 
-# Check if database folder exists and delete it if it does
-echo "Checking for database folder..."
-if [ -d "database" ]; then
-    echo "Found existing database folder, removing it..."
-    rm -rf database
-fi
-
-Copy database folder from source
-echo "Copying database folder from source..."
-if [ -d "$SOURCES_FOLDER/database" ]; then
-    cp -r "$SOURCES_FOLDER/database" .
-    echo "Database folder copied successfully."
-else
-    echo "Error: Database folder not found at $SOURCES_FOLDER/database."
-    echo "Please ensure the folder exists at the specified location."
-    exit 1
-fi
-
 # Change to ai-agent directory and commit changes
 echo "Committing previous changes..."
 git add .
@@ -51,7 +33,7 @@ cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.2" src/main/java/com/exa
 echo "Updating application.properties with database configuration..."
 cat >> src/main/resources/application.properties << 'EOL'
 
-# PostgreSQL Configuration
+# PostgreSQL Configuration (will be overridden by Testcontainers in test-run mode)
 spring.datasource.url=jdbc:postgresql://localhost:5432/ai_agent_db
 spring.datasource.username=postgres
 spring.datasource.password=postgres
@@ -79,11 +61,6 @@ cat > temp_dependencies.xml << 'EOL'
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-chat-memory-repository-jdbc</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-			<scope>runtime</scope>
-        </dependency>
 EOL
 
 # Create a temporary file for the modified pom.xml
@@ -106,6 +83,18 @@ rm temp_dependencies.xml
 
 # echo "Opening pom.xml in VS Code..."
 # code pom.xml
+
+# Copy Testcontainers configuration for database setup (if directory exists)
+if [ -d "$SOURCES_FOLDER/ai-agent/src/test" ]; then
+    echo "Copying test configuration files..."
+    rm -rf "src/test" 2>/dev/null || true
+    mkdir -p src/test/
+    cp -r "$SOURCES_FOLDER/ai-agent/src/test"/* src/test/ 2>/dev/null || echo "Some test files not found, continuing..."
+    echo "Testcontainers configuration copied successfully!"
+else
+    echo "Test directory not found at $SOURCES_FOLDER/ai-agent/src/test, skipping test setup..."
+    echo "Note: You can add Testcontainers configuration later for database support."
+fi
 
 echo "Files copied and configurations updated successfully."
 

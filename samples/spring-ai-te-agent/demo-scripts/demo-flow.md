@@ -13,20 +13,14 @@ In the new terminal (Main terminal):
 # git clone https://github.com/aws-samples/java-on-aws.git ./java-on-aws
 # export SOURCES_FOLDER=$(pwd)/java-on-aws/samples/spring-ai-te-agent
 
-export SOURCES_FOLDER=/Users/bezsonov/sources/workshops/java-on-aws/samples/spring-ai-te-agent
+export SOURCES_FOLDER=../workshops/java-on-aws/samples/spring-ai-te-agent
+cd $SOURCES_FOLDER
+export SOURCES_FOLDER=$(pwd)
+cd ../../../../spring-ai-agent
 export AWS_REGION=us-east-1
 ```
 
-> **AWS Credentials Setup:**
->
-> Add AWS credentials to the main terminal using one of these methods:
-> 1. **AWS CLI**: `aws configure` (recommended)
-> 2. **Environment variables**:
->    ```bash
->    export AWS_ACCESS_KEY_ID=your-access-key-id
->    export AWS_SECRET_ACCESS_KEY=your-secret-access-key
->    ```
-> 3. **Create .env file** in the project root with your credentials
+> Ensure AWS credentials are available in this terminal
 
 ## 01. Create Spring AI App
 
@@ -45,7 +39,7 @@ cd ai-agent
 export AWS_REGION=us-east-1
 ```
 
-> Ensure AWS credentials are available in this terminal (inherit from main terminal or set again)
+> Ensure AWS credentials are available in this terminal
 
 In the AI Agent terminal:
 
@@ -57,6 +51,8 @@ Open localhost:8080 in the browser and ask questions:
 
 > Who are you?
 
+> Our company name is Company1
+
 > What is our company name?
 
 ## 02. Add Memory
@@ -65,13 +61,6 @@ Open localhost:8080 in the browser and ask questions:
 
 ```bash
 $SOURCES_FOLDER/demo-scripts/02-add-memory.sh
-```
-
-Open the new terminal (Database terminal):
-
-```bash
-cd database/
-./start-postgres.sh
 ```
 
 > In the AI Agent terminal:
@@ -111,10 +100,6 @@ curl -X POST \
   --data-binary @$SOURCES_FOLDER//ai-agent/samples/travel_and_expenses_policy.md \
   http://localhost:8080/api/rag-load
 
-```
-
-```
-cd /Users/bezsonov/sources/workshops/java-on-aws/samples/spring-ai-te-agent/ai-agent && curl -X POST -H "Content-Type: text/plain" --data-binary @./samples/travel_and_expenses_policy.md http://localhost:8080/api/rag-load
 ```
 
 Open localhost:8080 in the browser and ask questions:
@@ -173,13 +158,6 @@ cd travel/
 ./mvnw spring-boot:test-run
 ```
 
-Open the new terminal (Backoffice terminal - port 8083):
-
-```bash
-cd backoffice/
-./mvnw spring-boot:test-run
-```
-
 > **Note**: Travel and Backoffice services use `test-run` which automatically starts PostgreSQL containers with Testcontainers - no manual database setup required!
 
 > In the AI Agent terminal (port 8080):
@@ -201,4 +179,11 @@ Give me a travel itinerary with flights, accommodation, prices and weather forec
 
 ```bash
 $SOURCES_FOLDER/demo-scripts/06-add-multi.sh
+```
+
+Open the new terminal (Backoffice terminal - port 8083):
+
+```bash
+cd backoffice/
+./mvnw spring-boot:test-run
 ```

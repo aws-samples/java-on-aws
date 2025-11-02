@@ -90,37 +90,17 @@ spring.thymeleaf.suffix=.html
 spring.ai.bedrock.aws.region=us-east-1
 spring.ai.bedrock.converse.chat.options.max-tokens=10000
 spring.ai.bedrock.converse.chat.options.model=openai.gpt-oss-120b-1:0
-
-# PostgreSQL Configuration (will be overridden by Testcontainers in test-run mode)
-spring.datasource.url=jdbc:postgresql://localhost:5432/ai_agent_db
-spring.datasource.username=postgres
-spring.datasource.password=postgres
-spring.datasource.driver-class-name=org.postgresql.Driver
-
-# JPA Configuration
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=false
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 EOL
 
 echo "Creating necessary directories and files..."
 mkdir -p src/main/resources/templates
 mkdir -p src/main/java/com/example/ai/agent/controller
 mkdir -p src/main/java/com/example/ai/agent/service
-mkdir -p src/test/java/com/example/ai/agent/config
 
 cp "$SOURCES_FOLDER/ai-agent/src/main/resources/templates/chat.html" src/main/resources/templates/
 cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/controller/WebViewController.java" src/main/java/com/example/ai/agent/controller/
 cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.0" src/main/java/com/example/ai/agent/service/ChatService.java
-cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatCOntroller.java.0" src/main/java/com/example/ai/agent/controller/ChatController.java
-
-# Copy Testcontainers configuration for database setup
-cp "$SOURCES_FOLDER/ai-agent/src/test/java/com/example/ai/agent/config/TestcontainersConfiguration.java" src/test/java/com/example/ai/agent/config/
-cp "$SOURCES_FOLDER/ai-agent/src/test/java/com/example/ai/agent/AbstractIntegrationTest.java" src/test/java/com/example/ai/agent/
-cp "$SOURCES_FOLDER/ai-agent/src/test/resources/application-test.properties" src/test/resources/
-
-echo "Files copied successfully."
-echo "Testcontainers configuration added - PostgreSQL will start automatically with test-run!"
+cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatController.java.0" src/main/java/com/example/ai/agent/controller/ChatController.java
 
 echo ""
 echo "Git status:"
