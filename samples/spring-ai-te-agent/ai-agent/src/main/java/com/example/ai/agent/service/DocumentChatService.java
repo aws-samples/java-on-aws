@@ -12,6 +12,7 @@ import org.springframework.http.MediaTypeFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
+import reactor.core.publisher.Flux;
 
 import java.util.Base64;
 
@@ -74,20 +75,30 @@ public class DocumentChatService {
         this.chatService = chatService;
     }
 
-    public String processDocument(String prompt, String fileBase64, String fileName) {
+    public Flux<String> processDocument(String prompt, String fileBase64, String fileName) {
         logger.info("Processing document chat request - fileName: {}", fileName);
 
-        // Step 1: Analyze document with document model
-        String documentAnalysis = analyzeDocument(prompt, fileBase64, fileName);
-
-        // Step 2: Send analysis to ChatService with additional prompt
-        String additionalPrompt = documentAnalysis + "\n\n" +
-            "Based on the extracted information, please provide a structured summary of the expense document including the following fields:\n" +
-            "Add Amount in EUR: If original currency is EUR, use the original amount. " +
-            "If original currency is not EUR, use available currency conversion tools to convert the original amount to EUR based on the document date. If conversion is not available, use current date. \n\n" +
-            "After presenting the information, ask the user to confirm and offer to register the expense.";
-
-        return chatService.processChat(additionalPrompt);
+        return Flux.create(sink -> {
+            // Step 1: Emit immediate feedback
+            sink.next("Analyzing document...\n\n");
+            
+            // Step 2: Analyze document (blocking)
+            String documentAnalysis = analyzeDocument(prompt, fileBase64, fileName);
+            
+            // Step 3: Stream the analysis result
+            String additionalPrompt = documentAnalysis + "\n\n" +
+                "Based on the extracted information, please provide a structured summary of the expense document including the following fields:\n" +
+                "Add Amount in EUR: If original currency is EUR, use the original amount. " +
+                "If original currency is not EUR, use available currency conversion tools to convert the original amount to EUR based on the document date. If conversion is not available, use current date. \n\n" +
+                "After presenting the information, ask the user to confirm and offer to register the expense.";
+            
+            chatService.processChat(additionalPrompt)
+                .subscribe(
+                    chunk -> sink.next(chunk),
+                    error -> sink.error(error),
+                    () -> sink.complete()
+                );
+        });
     }
 
     private String analyzeDocument(String prompt, String fileBase64, String fileName) {

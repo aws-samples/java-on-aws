@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
+    <!-- ========== BASE: Core Dependencies ========== -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Agent</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js"></script>
+
+    <!-- BASE: Tailwind Configuration -->
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -22,7 +25,6 @@
                         'dev-border': '#2d3748',
                         'dev-message-user': '#1e293b',
                         'dev-message-ai': '#1e1e2d',
-                        // Light theme colors
                         'light-bg': '#ffffff',
                         'light-bg-secondary': '#f8fafc',
                         'light-text': '#1f2937',
@@ -35,7 +37,9 @@
             }
         }
     </script>
+
     <style>
+        /* ========== BASE: Layout ========== */
         .chat-container {
             height: calc(100vh - 180px);
         }
@@ -43,7 +47,8 @@
             height: calc(100vh - 280px);
             overflow-y: auto;
         }
-        /* Custom scrollbar for dark mode */
+
+        /* BASE: Scrollbar - Dark Mode */
         .dark ::-webkit-scrollbar {
             width: 8px;
         }
@@ -58,7 +63,7 @@
             background: #4b4b4b;
         }
 
-        /* Light theme scrollbar */
+        /* BASE: Scrollbar - Light Mode */
         ::-webkit-scrollbar {
             width: 8px;
         }
@@ -72,7 +77,8 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
-        /* Markdown table styling */
+
+        /* ========== BASE: Markdown Tables ========== */
         .ai-response table {
             width: 100%;
             border-collapse: collapse;
@@ -116,6 +122,8 @@
             background: #2a2a3a !important;
             color: #f9fafb !important;
         }
+
+        /* BASE: Markdown Headings and Text */
         .ai-response h1, .ai-response h2, .ai-response h3 {
             color: #6366f1;
             margin: 1rem 0 0.5rem 0;
@@ -141,11 +149,12 @@
             color: #e2e8f0;
         }
 
-        /* Message bubble backgrounds */
+        /* ========== BASE: Message Bubbles ========== */
         .message-bubble-ai {
             background: #ffffff;
             border: 1px solid #e5e7eb;
             color: #1f2937;
+            position: relative;
         }
         .dark .message-bubble-ai {
             background: #1e1e2d !important;
@@ -156,14 +165,13 @@
             background: #f3f4f6;
             border: 1px solid #e5e7eb;
             color: #1f2937;
+            position: relative;
         }
         .dark .message-bubble-user {
             background: #1e293b !important;
             border: 1px solid #2d3748 !important;
             color: #e2e8f0 !important;
         }
-
-        /* Text inside message bubbles */
         .message-bubble-ai p, .message-bubble-ai * {
             color: #1f2937 !important;
         }
@@ -176,6 +184,31 @@
         .dark .message-bubble-user p, .dark .message-bubble-user * {
             color: #e2e8f0 !important;
         }
+
+        /* BASE: Copy Button */
+        .copy-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(99, 102, 241, 0.8);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .copy-button:hover {
+            background: rgba(99, 102, 241, 1);
+        }
+        .message-bubble-ai:hover .copy-button,
+        .message-bubble-user:hover .copy-button {
+            opacity: 1;
+        }
+
+        /* ========== UPLOAD: Image Modal ========== */
         .image-modal {
             display: none;
             position: fixed;
@@ -205,43 +238,16 @@
         .image-modal .close:hover {
             color: #bbb;
         }
-
-        /* Copy button styling */
-        .copy-button {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: rgba(99, 102, 241, 0.8);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 4px 8px;
-            font-size: 12px;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-        .copy-button:hover {
-            background: rgba(99, 102, 241, 1);
-        }
-        .message-bubble-ai:hover .copy-button,
-        .message-bubble-user:hover .copy-button {
-            opacity: 1;
-        }
-        .message-bubble-ai,
-        .message-bubble-user {
-            position: relative;
-        }
     </style>
 </head>
 <body class="bg-light-bg dark:bg-dev-darker min-h-screen text-light-text dark:text-dev-text transition-colors duration-300">
     <div class="container mx-auto px-4 py-8">
-        <!-- Header -->
+        <!-- ========== BASE: Header ========== -->
         <header class="mb-8">
             <div class="flex justify-between items-center">
                 <h1 class="text-3xl font-bold text-dev-accent">🤖 AI Agent</h1>
                 <div class="flex items-center gap-2">
-                    <!-- Multi-user features -->
+                    <!-- MEMORY: Multi-user Controls -->
                     <div th:if="${multiUserEnabled}" class="flex items-center gap-2">
                         <label for="userIdInput" class="text-sm text-light-text-muted dark:text-dev-text-muted">User:</label>
                         <input type="text" id="userIdInput" value="user1"
@@ -250,6 +256,7 @@
                             📝 Summarize
                         </button>
                     </div>
+                    <!-- BASE: Dark Mode Toggle -->
                     <button id="themeToggle" class="bg-dev-accent text-white px-4 py-2 rounded hover:bg-dev-accent-hover transition">
                         🌙 Dark
                     </button>
@@ -258,8 +265,9 @@
             <p class="text-light-text-muted dark:text-dev-text-muted mt-2">Chat with our AI Agent to help you with your questions!</p>
         </header>
 
-        <!-- Chat Interface -->
+        <!-- ========== BASE: Chat Container ========== -->
         <div class="bg-light-bg-secondary dark:bg-dev-dark rounded-xl shadow-lg p-6 chat-container border border-light-border dark:border-dev-border flex flex-col">
+            <!-- BASE: Message Container -->
             <div class="message-container flex-grow mb-4 bg-light-bg dark:bg-dev-darker rounded-lg p-4" id="messageContainer">
                 <div class="flex mb-4">
                     <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
@@ -269,24 +277,26 @@
                         <p>Welcome to the AI Agent! How can I help you today?</p>
                     </div>
                 </div>
-                <!-- Messages will be added here dynamically -->
             </div>
 
-            <!-- Input Area -->
+            <!-- BASE: Input Area -->
             <div class="border-t border-light-border dark:border-dev-border pt-4 mt-auto">
                 <form id="chatForm" class="flex w-full">
+                    <!-- UPLOAD: File Input and Button -->
                     <input type="file" id="fileInput" class="hidden" accept=".jpg,.jpeg,.png">
                     <button th:if="${multiModalEnabled}" type="button" id="fileButton" class="bg-dev-accent text-white px-4 py-3 rounded-l-lg hover:bg-dev-accent-hover transition flex items-center justify-center">
                         📎
                     </button>
+                    <!-- BASE: Text Input -->
                     <input type="text" id="userInput" th:class="${multiModalEnabled} ? 'flex-grow bg-light-bg dark:bg-dev-darker border border-light-border dark:border-dev-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-dev-accent text-light-text dark:text-dev-text' : 'flex-grow bg-light-bg dark:bg-dev-darker border border-light-border dark:border-dev-border px-4 py-3 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-dev-accent text-light-text dark:text-dev-text'" placeholder="Please ask your question...">
+                    <!-- BASE: Send Button -->
                     <button type="submit" class="bg-dev-accent text-white px-6 py-3 rounded-r-lg hover:bg-dev-accent-hover transition">Send</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Image zoom modal -->
+    <!-- ========== UPLOAD: Image Modal ========== -->
     <div id="imageModal" class="image-modal">
         <span class="close">&times;</span>
         <img id="modalImage" src="" alt="">
@@ -294,61 +304,55 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Configure marked.js for tables
+            // ========== BASE: Initialize Marked.js ==========
             marked.setOptions({
                 gfm: true,
                 tables: true,
                 breaks: true
             });
 
+            // ========== BASE: DOM Elements ==========
             const messageContainer = document.getElementById('messageContainer');
             const chatForm = document.getElementById('chatForm');
             const userInput = document.getElementById('userInput');
             const fileInput = document.getElementById('fileInput');
             const fileButton = document.getElementById('fileButton');
 
-            // File upload button click handler (only if multi-modal enabled)
+            // ========== UPLOAD: File Upload Handler ==========
             if (fileButton) {
                 fileButton.addEventListener('click', function() {
                     fileInput.click();
                 });
             }
 
-            let selectedFile = null;
+            // UPLOAD: File State
             let currentFileBase64 = null;
             let currentFileName = null;
 
-            // File selection handler
-            fileInput.addEventListener('change', async function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    try {
-                        // Convert file to base64 and store locally
-                        currentFileBase64 = await fileToBase64(file);
-                        currentFileName = file.name;
-
-                        // Show file attached message with image preview
-                        addImageMessage(file);
-                        console.log('File processed successfully, base64 length:', currentFileBase64.length);
-
-                        // Automatically analyze the document by sending empty prompt
-                        await sendDocumentAnalysis();
-
-                    } catch (error) {
-                        console.error('Error processing file:', error);
-                        addMessage('Error processing file. Please try again.', 'ai');
+            // UPLOAD: File Selection Handler
+            if (fileInput) {
+                fileInput.addEventListener('change', async function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        try {
+                            currentFileBase64 = await fileToBase64(file);
+                            currentFileName = file.name;
+                            addImageMessage(file);
+                            console.log('File processed successfully, base64 length:', currentFileBase64.length);
+                            await sendDocumentAnalysis();
+                        } catch (error) {
+                            console.error('Error processing file:', error);
+                            addMessage('Error processing file. Please try again.', 'ai');
+                        }
                     }
-                }
-            });
+                });
+            }
 
-            // Function to add image message with preview
+            // UPLOAD: Add Image Message with Preview
             function addImageMessage(file) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'flex mb-4';
-
-                // Create image preview URL
                 const imageUrl = URL.createObjectURL(file);
-
                 messageDiv.innerHTML = `
                     <div class="ml-auto flex">
                         <div class="message-bubble-user rounded-lg p-3 max-w-3xl">
@@ -365,7 +369,77 @@
                 messageContainer.scrollTop = messageContainer.scrollHeight;
             }
 
-            // Copy to clipboard function
+            // UPLOAD: Send Document Analysis
+            async function sendDocumentAnalysis() {
+                try {
+                    const loadingId = showLoading();
+                    console.log('Sending document analysis with empty prompt');
+                    const response = await fetch('api/chat/message', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: "",
+                            fileBase64: currentFileBase64,
+                            fileName: currentFileName
+                        })
+                    });
+                    removeLoading(loadingId);
+                    if (!response.ok) throw new Error('Failed to analyze document');
+                    
+                    // Handle streaming response
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    const messageId = createStreamingMessage();
+                    let fullText = '';
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        fullText += chunk;
+                        updateStreamingMessage(messageId, fullText);
+                    }
+                    
+                    currentFileBase64 = null;
+                    currentFileName = null;
+                    fileInput.value = '';
+                } catch (error) {
+                    console.error('Error analyzing document:', error);
+                    addMessage('I don\'t know - there was an error analyzing the document.', 'ai');
+                    currentFileBase64 = null;
+                    currentFileName = null;
+                    fileInput.value = '';
+                }
+            }
+
+            // UPLOAD: File to Base64 Conversion
+            function fileToBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = error => reject(error);
+                });
+            }
+
+            // UPLOAD: Image Modal Functions
+            window.openImageModal = function(imageSrc) {
+                const modal = document.getElementById('imageModal');
+                const modalImg = document.getElementById('modalImage');
+                modal.style.display = 'block';
+                modalImg.src = imageSrc;
+            }
+
+            const imageModal = document.getElementById('imageModal');
+            if (imageModal) {
+                imageModal.addEventListener('click', function(e) {
+                    if (e.target === this || e.target.className === 'close') {
+                        this.style.display = 'none';
+                    }
+                });
+            }
+
+            // ========== BASE: Copy to Clipboard ==========
             function copyToClipboard(text) {
                 navigator.clipboard.writeText(text).then(function() {
                     console.log('Text copied to clipboard');
@@ -374,7 +448,6 @@
                 });
             }
 
-            // Event delegation for copy buttons
             messageContainer.addEventListener('click', function(e) {
                 if (e.target.classList.contains('copy-button')) {
                     const textToCopy = e.target.getAttribute('data-copy-text');
@@ -382,75 +455,29 @@
                 }
             });
 
-            // Function to send document analysis with empty prompt and clear file after
-            async function sendDocumentAnalysis() {
-                try {
-                    // Show loading indicator
-                    const loadingId = showLoading();
-
-                    console.log('Sending document analysis with empty prompt');
-                    const response = await fetch('api/chat/message', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            prompt: "", // Empty prompt - server will use default analysis prompt
-                            fileBase64: currentFileBase64,
-                            fileName: currentFileName
-                        })
-                    });
-
-                    // Remove loading indicator
-                    removeLoading(loadingId);
-
-                    if (!response.ok) {
-                        throw new Error('Failed to analyze document');
-                    }
-
-                    const analysisResult = await response.text();
-                    addMessage(analysisResult, 'ai');
-
-                    // Clear file data so subsequent chats are text-only
-                    currentFileBase64 = null;
-                    currentFileName = null;
-                    fileInput.value = ''; // Clear file input
-
-                } catch (error) {
-                    console.error('Error analyzing document:', error);
-                    addMessage('I don\'t know - there was an error analyzing the document.', 'ai');
-                    // Clear file data even on error
-                    currentFileBase64 = null;
-                    currentFileName = null;
-                    fileInput.value = '';
-                }
-            };
-
+            // ========== BASE: Chat Form Submit ==========
             chatForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-
                 const message = userInput.value.trim();
                 if (!message) return;
 
-                // Add user message to chat
                 addMessage(message, 'user');
                 userInput.value = '';
 
                 try {
-                    // Show loading indicator
                     const loadingId = showLoading();
-
-                    // Always use the unified chat endpoint
-                    console.log('Sending request to unified endpoint');
+                    console.log('Sending streaming request to endpoint');
                     if (currentFileBase64) {
                         console.log('Including file data:', currentFileName, 'Base64 length:', currentFileBase64.length);
                     }
 
+                    // MEMORY: Include userId if available
                     const userIdInput = document.getElementById('userIdInput');
                     const response = await fetch('api/chat/message', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/octet-stream'
                         },
                         body: JSON.stringify({
                             prompt: message,
@@ -460,22 +487,62 @@
                         })
                     });
 
-                    if (!response.ok) {
-                        throw new Error('Failed to get response');
-                    }
+                    if (!response.ok) throw new Error('Failed to get response');
 
-                    const data = await response.text();
-
-                    // Remove loading indicator
                     removeLoading(loadingId);
 
-                    // Add AI response to chat
-                    addMessage(data, 'ai');
+                    // Handle streaming response
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullResponse = '';
+                    let messageDiv = null;
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        fullResponse += chunk;
+
+                        // Update or create message
+                        if (!messageDiv) {
+                            messageDiv = createStreamingMessage();
+                        }
+                        updateStreamingMessage(messageDiv, fullResponse);
+                    }
                 } catch (error) {
+                    removeLoading(loadingId);
                     console.error('Error:', error);
                     addMessage('Sorry, I encountered an error. Please try again.', 'ai');
                 }
             });
+
+            // ========== BASE: Add Message to Chat ==========
+            function createStreamingMessage() {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'flex mb-4';
+                messageDiv.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
+                        <span class="text-lg">🤖</span>
+                    </div>
+                    <div class="message-bubble-ai rounded-lg p-3 max-w-4xl ai-response">
+                        <button class="copy-button" data-copy-text="">📋</button>
+                        <div class="streaming-content"></div>
+                    </div>
+                `;
+                messageContainer.appendChild(messageDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+                return messageDiv;
+            }
+
+            function updateStreamingMessage(messageDiv, content) {
+                const contentDiv = messageDiv.querySelector('.streaming-content');
+                const copyButton = messageDiv.querySelector('.copy-button');
+                const renderedContent = marked.parse(content);
+                contentDiv.innerHTML = renderedContent;
+                copyButton.setAttribute('data-copy-text', escapeHtml(content));
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+            }
 
             function addMessage(content, sender) {
                 const messageDiv = document.createElement('div');
@@ -494,11 +561,9 @@
                         </div>
                     `;
                 } else {
-                    // Always parse AI responses as markdown
                     console.log('Parsing AI response as markdown:', content.substring(0, 200));
                     const renderedContent = marked.parse(content);
                     console.log('Rendered HTML:', renderedContent.substring(0, 200));
-
                     messageDiv.innerHTML = `
                         <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
                             <span class="text-lg">🤖</span>
@@ -514,6 +579,7 @@
                 messageContainer.scrollTop = messageContainer.scrollHeight;
             }
 
+            // ========== BASE: Loading Indicator ==========
             function showLoading() {
                 const loadingId = 'loading-' + Date.now();
                 const loadingDiv = document.createElement('div');
@@ -538,20 +604,10 @@
 
             function removeLoading(loadingId) {
                 const loadingDiv = document.getElementById(loadingId);
-                if (loadingDiv) {
-                    loadingDiv.remove();
-                }
+                if (loadingDiv) loadingDiv.remove();
             }
 
-            function fileToBase64(file) {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = error => reject(error);
-                });
-            }
-
+            // ========== BASE: Escape HTML ==========
             function escapeHtml(unsafe) {
                 return unsafe
                     .replace(/&/g, "&amp;")
@@ -561,22 +617,7 @@
                     .replace(/'/g, "&#039;");
             }
 
-            // Image zoom functionality
-            window.openImageModal = function(imageSrc) {
-                const modal = document.getElementById('imageModal');
-                const modalImg = document.getElementById('modalImage');
-                modal.style.display = 'block';
-                modalImg.src = imageSrc;
-            }
-
-            // Close modal when clicking the X or outside the image
-            document.getElementById('imageModal').addEventListener('click', function(e) {
-                if (e.target === this || e.target.className === 'close') {
-                    this.style.display = 'none';
-                }
-            });
-
-            // Summarize button functionality (only if multi-user enabled)
+            // ========== MEMORY: Summarize Button ==========
             const summarizeBtn = document.getElementById('summarizeBtn');
             if (summarizeBtn) {
                 summarizeBtn.addEventListener('click', async function() {
@@ -586,20 +627,12 @@
 
                         const response = await fetch('api/chat/summarize', {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                userId: userId
-                            })
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: userId })
                         });
 
                         removeLoading(loadingId);
-
-                        if (!response.ok) {
-                            throw new Error('Failed to summarize');
-                        }
-
+                        if (!response.ok) throw new Error('Failed to summarize');
                         const summary = await response.text();
                         addMessage('📝 Summary: ' + summary, 'ai');
                     } catch (error) {
@@ -609,19 +642,12 @@
                 });
             }
 
-            // Theme toggle functionality
+            // ========== BASE: Dark Mode Toggle ==========
             const themeToggle = document.getElementById('themeToggle');
-            const body = document.body;
-
             themeToggle.addEventListener('click', function() {
                 const html = document.documentElement;
                 html.classList.toggle('dark');
-
-                if (html.classList.contains('dark')) {
-                    themeToggle.innerHTML = '☀️ Light';
-                } else {
-                    themeToggle.innerHTML = '🌙 Dark';
-                }
+                themeToggle.innerHTML = html.classList.contains('dark') ? '☀️ Light' : '🌙 Dark';
             });
         });
     </script>

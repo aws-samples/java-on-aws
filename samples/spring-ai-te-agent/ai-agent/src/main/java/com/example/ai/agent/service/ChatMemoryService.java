@@ -11,6 +11,7 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.context.annotation.Lazy;
+import reactor.core.publisher.Flux;
 
 import org.springframework.stereotype.Service;
 
@@ -24,9 +25,11 @@ public class ChatMemoryService {
     private static final Logger logger = LoggerFactory.getLogger(ChatMemoryService.class);
     private static final int MAX_SESSION_MESSAGES = 30;
     private static final int MAX_SUMMARIES = 10;
+    private static final int MAX_PREFERENCES = 1;
 
     private final MessageWindowChatMemory sessionMemory;
     private final MessageWindowChatMemory longTermMemory;
+    private final MessageWindowChatMemory preferencesMemory;
     private final ChatService chatService;
 
     // Thread-local to store current userId per request
@@ -52,8 +55,14 @@ public class ChatMemoryService {
             .maxMessages(MAX_SUMMARIES)
             .build();
 
-        logger.info("ChatMemoryService initialized with InMemory (max {} messages) + JDBC (max {} summaries)",
-            MAX_SESSION_MESSAGES, MAX_SUMMARIES);
+        // JDBC for user preferences (single record)
+        this.preferencesMemory = MessageWindowChatMemory.builder()
+            .chatMemoryRepository(jdbcRepository)
+            .maxMessages(MAX_PREFERENCES)
+            .build();
+
+        logger.info("ChatMemoryService initialized with InMemory (max {} messages) + JDBC (max {} summaries + {} preferences)",
+            MAX_SESSION_MESSAGES, MAX_SUMMARIES, MAX_PREFERENCES);
     }
 
     public MessageWindowChatMemory getSessionMemory() {
@@ -64,6 +73,10 @@ public class ChatMemoryService {
         return longTermMemory;
     }
 
+    public MessageWindowChatMemory getPreferencesMemory() {
+        return preferencesMemory;
+    }
+
     public void setCurrentUserId(String userId) {
         this.currentUserId.set(userId);
     }
@@ -72,7 +85,7 @@ public class ChatMemoryService {
         return currentUserId.get();
     }
 
-    public org.springframework.ai.chat.model.ChatResponse callWithMemory(ChatClient chatClient, String prompt) {
+    public Flux<String> callWithMemory(ChatClient chatClient, String prompt) {
         String conversationId = getCurrentConversationId();
 
         // Check if first message - load previous context from JDBC
@@ -84,45 +97,59 @@ public class ChatMemoryService {
         UserMessage userMessage = new UserMessage(prompt);
         sessionMemory.add(conversationId, userMessage);
 
-        // Make call with conversation history from session memory
-        var chatResponse = chatClient
+        // Stream response with conversation history
+        StringBuilder fullResponse = new StringBuilder();
+
+        return chatClient
                 .prompt(new Prompt(sessionMemory.get(conversationId)))
-                .call()
-                .chatResponse();
-
-        // Add assistant response to session memory
-        if (chatResponse != null && chatResponse.getResult() != null && chatResponse.getResult().getOutput() != null) {
-            String responseText = chatService.extractTextFromResponse(chatResponse);
-            if (responseText != null && !responseText.isEmpty()) {
-                AssistantMessage assistantMessage = new AssistantMessage(responseText);
-                sessionMemory.add(conversationId, assistantMessage);
-            }
-        }
-
-        return chatResponse;
+                .stream()
+                .content()
+                .doOnNext(chunk -> {
+                    fullResponse.append(chunk);
+                    logger.debug("Streaming chunk: {} chars", chunk.length());
+                })
+                .doOnComplete(() -> {
+                    // Add complete assistant response to session memory after streaming completes
+                    String responseText = fullResponse.toString();
+                    if (responseText != null && !responseText.isEmpty()) {
+                        AssistantMessage assistantMessage = new AssistantMessage(responseText);
+                        sessionMemory.add(conversationId, assistantMessage);
+                        logger.info("Added assistant response to memory: {} chars", responseText.length());
+                    }
+                    logger.info("Completed streaming response.");
+                });
     }
 
     private void loadPreviousContext(String conversationId, ChatClient chatClient) {
         logger.info("Loading previous context for conversation: {}", conversationId);
 
-        // Get summaries from JDBC
+        // Load user preferences
+        List<Message> preferences = preferencesMemory.get(conversationId + "_preferences");
+        String preferencesText = preferences.isEmpty() ? "" : preferences.get(0).getText();
+
+        // Load conversation summaries
         List<Message> summaries = longTermMemory.get(conversationId);
 
-        if (summaries.isEmpty()) {
+        if (summaries.isEmpty() && preferencesText.isEmpty()) {
             logger.info("No previous context found");
             return;
         }
 
-        logger.info("Found {} previous summaries", summaries.size());
+        logger.info("Found {} previous summaries and {} preferences", summaries.size(), preferences.isEmpty() ? 0 : 1);
 
-        // Summarize the summaries with AI
-        String summariesText = summaries.stream()
-            .map(Message::getText)
-            .reduce((a, b) -> a + "\n" + b)
-            .orElse("");
+        // Combine preferences and summaries
+        StringBuilder contextBuilder = new StringBuilder();
+        if (!preferencesText.isEmpty()) {
+            contextBuilder.append("User Preferences:\n").append(preferencesText).append("\n\n");
+        }
+        if (!summaries.isEmpty()) {
+            contextBuilder.append("Previous Conversations:\n");
+            summaries.forEach(msg -> contextBuilder.append(msg.getText()).append("\n\n"));
+        }
 
+        String combinedContext = contextBuilder.toString();
         var chatResponse = chatClient.prompt()
-            .user("Summarize these previous conversation summaries concisely: " + summariesText)
+            .user("Summarize this user information concisely:\n\n" + combinedContext)
             .call()
             .chatResponse();
 
@@ -135,10 +162,9 @@ public class ChatMemoryService {
 
         logger.info("Loaded context summary: {}", contextSummary);
 
-        // Add to session memory as system message with clear instruction
         String contextMessage = String.format(
-            "You are continuing a conversation with this user. Here is what you know from previous sessions:\n\n%s\n\n" +
-            "Use this information to provide personalized responses. If the user asks about themselves, refer to this context.",
+            "You are continuing a conversation with this user. Here is what you know:\n\n%s\n\n" +
+            "Use this information to provide personalized responses.",
             contextSummary
         );
         sessionMemory.add(conversationId, new SystemMessage(contextMessage));

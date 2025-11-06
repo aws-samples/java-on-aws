@@ -4,12 +4,14 @@ import com.example.ai.agent.service.ChatService;
 import com.example.ai.agent.service.ChatMemoryService;
 import com.example.ai.agent.service.ConversationSummaryService;
 import com.example.ai.agent.service.DocumentChatService;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 import java.security.Principal;
 
 @RestController
@@ -32,8 +34,8 @@ public class ChatController {
         this.chatMemoryService = chatMemoryService;
     }
 
-    @PostMapping("message")
-    public String chat(@RequestBody ChatRequest request, Principal principal) {
+    @PostMapping(value = "message", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public Flux<String> chat(@RequestBody ChatRequest request, Principal principal) {
         String userId = getUserId(request.userId(), principal);
         chatMemoryService.setCurrentUserId(userId);
 

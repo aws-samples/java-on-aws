@@ -3,6 +3,7 @@ package com.example.ai.agent.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
@@ -54,18 +55,18 @@ public class ChatService {
         logger.info("ChatService initialized with embedded ChatClient");
     }
 
-    public String processChat(String prompt) {
-        logger.info("Processing text chat request - prompt: '{}'", prompt);
+    public Flux<String> processChat(String prompt) {
+        logger.info("Processing streaming chat request - prompt: '{}'", prompt);
         try {
-            // var chatResponse = chatClient
+            // Simple streaming without memory:
+            // return chatClient
             //     .prompt().user(prompt)
-            //     .call()
-            //     .chatResponse();
-            var chatResponse = chatMemoryService.callWithMemory(chatClient, prompt);
-            return extractTextFromResponse(chatResponse);
+            //     .stream()
+            //     .content();
+            return chatMemoryService.callWithMemory(chatClient, prompt);
         } catch (Exception e) {
-            logger.error("Error processing chat request", e);
-            return "I don't know - there was an error processing your request.";
+            logger.error("Error processing streaming chat request", e);
+            return Flux.just("I don't know - there was an error processing your request.");
         }
     }
 
