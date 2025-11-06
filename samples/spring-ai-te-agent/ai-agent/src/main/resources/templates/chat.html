@@ -57,7 +57,7 @@
         .dark ::-webkit-scrollbar-thumb:hover {
             background: #4b4b4b;
         }
-        
+
         /* Light theme scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
@@ -140,7 +140,7 @@
         .dark .ai-response p {
             color: #e2e8f0;
         }
-        
+
         /* Message bubble backgrounds */
         .message-bubble-ai {
             background: #ffffff;
@@ -162,7 +162,7 @@
             border: 1px solid #2d3748 !important;
             color: #e2e8f0 !important;
         }
-        
+
         /* Text inside message bubbles */
         .message-bubble-ai p, .message-bubble-ai * {
             color: #1f2937 !important;
@@ -205,7 +205,7 @@
         .image-modal .close:hover {
             color: #bbb;
         }
-        
+
         /* Copy button styling */
         .copy-button {
             position: absolute;
@@ -239,12 +239,18 @@
         <!-- Header -->
         <header class="mb-8">
             <div class="flex justify-between items-center">
-                <div class="flex items-center">
-                    <h1 class="text-3xl font-bold text-dev-accent">🤖 AI Agent</h1>
+                <h1 class="text-3xl font-bold text-dev-accent">🤖 AI Agent</h1>
+                <div class="flex items-center gap-2">
+                    <label for="userIdInput" class="text-sm text-light-text-muted dark:text-dev-text-muted">User:</label>
+                    <input type="text" id="userIdInput" value="user1"
+                           class="bg-light-bg dark:bg-dev-darker border border-light-border dark:border-dev-border px-3 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-dev-accent text-light-text dark:text-dev-text w-32">
+                    <button id="summarizeBtn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition">
+                        📝 Summarize
+                    </button>
+                    <button id="themeToggle" class="bg-dev-accent text-white px-4 py-2 rounded hover:bg-dev-accent-hover transition">
+                        🌙 Dark
+                    </button>
                 </div>
-                <button id="themeToggle" class="bg-dev-accent text-white px-4 py-2 rounded hover:bg-dev-accent-hover transition">
-                    🌙 Dark
-                </button>
             </div>
             <p class="text-light-text-muted dark:text-dev-text-muted mt-2">Chat with our AI Agent to help you with your questions!</p>
         </header>
@@ -334,10 +340,10 @@
             function addImageMessage(file) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'flex mb-4';
-                
+
                 // Create image preview URL
                 const imageUrl = URL.createObjectURL(file);
-                
+
                 messageDiv.innerHTML = `
                     <div class="ml-auto flex">
                         <div class="message-bubble-user rounded-lg p-3 max-w-3xl">
@@ -442,6 +448,7 @@
                         },
                         body: JSON.stringify({
                             prompt: message,
+                            userId: document.getElementById('userIdInput').value,
                             fileBase64: currentFileBase64 || null,
                             fileName: currentFileName || null
                         })
@@ -485,7 +492,7 @@
                     console.log('Parsing AI response as markdown:', content.substring(0, 200));
                     const renderedContent = marked.parse(content);
                     console.log('Rendered HTML:', renderedContent.substring(0, 200));
-                    
+
                     messageDiv.innerHTML = `
                         <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
                             <span class="text-lg">🤖</span>
@@ -563,6 +570,36 @@
                 }
             });
 
+            // Summarize button functionality
+            document.getElementById('summarizeBtn').addEventListener('click', async function() {
+                try {
+                    const userId = document.getElementById('userIdInput').value;
+                    const loadingId = showLoading();
+
+                    const response = await fetch('api/summarize', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            userId: userId
+                        })
+                    });
+
+                    removeLoading(loadingId);
+
+                    if (!response.ok) {
+                        throw new Error('Failed to summarize');
+                    }
+
+                    const summary = await response.text();
+                    addMessage('📝 Summary: ' + summary, 'ai');
+                } catch (error) {
+                    console.error('Error summarizing:', error);
+                    addMessage('Failed to summarize conversation. Please try again.', 'ai');
+                }
+            });
+
             // Theme toggle functionality
             const themeToggle = document.getElementById('themeToggle');
             const body = document.body;
@@ -570,7 +607,7 @@
             themeToggle.addEventListener('click', function() {
                 const html = document.documentElement;
                 html.classList.toggle('dark');
-                
+
                 if (html.classList.contains('dark')) {
                     themeToggle.innerHTML = '☀️ Light';
                 } else {
