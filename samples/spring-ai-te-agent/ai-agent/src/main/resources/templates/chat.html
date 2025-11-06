@@ -241,12 +241,15 @@
             <div class="flex justify-between items-center">
                 <h1 class="text-3xl font-bold text-dev-accent">🤖 AI Agent</h1>
                 <div class="flex items-center gap-2">
-                    <label for="userIdInput" class="text-sm text-light-text-muted dark:text-dev-text-muted">User:</label>
-                    <input type="text" id="userIdInput" value="user1"
-                           class="bg-light-bg dark:bg-dev-darker border border-light-border dark:border-dev-border px-3 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-dev-accent text-light-text dark:text-dev-text w-32">
-                    <button id="summarizeBtn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition">
-                        📝 Summarize
-                    </button>
+                    <!-- Multi-user features -->
+                    <div th:if="${multiUserEnabled}" class="flex items-center gap-2">
+                        <label for="userIdInput" class="text-sm text-light-text-muted dark:text-dev-text-muted">User:</label>
+                        <input type="text" id="userIdInput" value="user1"
+                               class="bg-light-bg dark:bg-dev-darker border border-light-border dark:border-dev-border px-3 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-dev-accent text-light-text dark:text-dev-text w-32">
+                        <button id="summarizeBtn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition">
+                            📝 Summarize
+                        </button>
+                    </div>
                     <button id="themeToggle" class="bg-dev-accent text-white px-4 py-2 rounded hover:bg-dev-accent-hover transition">
                         🌙 Dark
                     </button>
@@ -273,10 +276,10 @@
             <div class="border-t border-light-border dark:border-dev-border pt-4 mt-auto">
                 <form id="chatForm" class="flex w-full">
                     <input type="file" id="fileInput" class="hidden" accept=".jpg,.jpeg,.png">
-                    <button type="button" id="fileButton" class="bg-dev-accent text-white px-4 py-3 rounded-l-lg hover:bg-dev-accent-hover transition flex items-center justify-center">
+                    <button th:if="${multiModalEnabled}" type="button" id="fileButton" class="bg-dev-accent text-white px-4 py-3 rounded-l-lg hover:bg-dev-accent-hover transition flex items-center justify-center">
                         📎
                     </button>
-                    <input type="text" id="userInput" class="flex-grow bg-light-bg dark:bg-dev-darker border border-light-border dark:border-dev-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-dev-accent text-light-text dark:text-dev-text" placeholder="Please ask your question...">
+                    <input type="text" id="userInput" th:class="${multiModalEnabled} ? 'flex-grow bg-light-bg dark:bg-dev-darker border border-light-border dark:border-dev-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-dev-accent text-light-text dark:text-dev-text' : 'flex-grow bg-light-bg dark:bg-dev-darker border border-light-border dark:border-dev-border px-4 py-3 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-dev-accent text-light-text dark:text-dev-text'" placeholder="Please ask your question...">
                     <button type="submit" class="bg-dev-accent text-white px-6 py-3 rounded-r-lg hover:bg-dev-accent-hover transition">Send</button>
                 </form>
             </div>
@@ -304,10 +307,12 @@
             const fileInput = document.getElementById('fileInput');
             const fileButton = document.getElementById('fileButton');
 
-            // File upload button click handler
-            fileButton.addEventListener('click', function() {
-                fileInput.click();
-            });
+            // File upload button click handler (only if multi-modal enabled)
+            if (fileButton) {
+                fileButton.addEventListener('click', function() {
+                    fileInput.click();
+                });
+            }
 
             let selectedFile = null;
             let currentFileBase64 = null;
@@ -441,6 +446,7 @@
                         console.log('Including file data:', currentFileName, 'Base64 length:', currentFileBase64.length);
                     }
 
+                    const userIdInput = document.getElementById('userIdInput');
                     const response = await fetch('api/chat', {
                         method: 'POST',
                         headers: {
@@ -448,7 +454,7 @@
                         },
                         body: JSON.stringify({
                             prompt: message,
-                            userId: document.getElementById('userIdInput').value,
+                            userId: userIdInput ? userIdInput.value : null,
                             fileBase64: currentFileBase64 || null,
                             fileName: currentFileName || null
                         })
@@ -570,35 +576,38 @@
                 }
             });
 
-            // Summarize button functionality
-            document.getElementById('summarizeBtn').addEventListener('click', async function() {
-                try {
-                    const userId = document.getElementById('userIdInput').value;
-                    const loadingId = showLoading();
+            // Summarize button functionality (only if multi-user enabled)
+            const summarizeBtn = document.getElementById('summarizeBtn');
+            if (summarizeBtn) {
+                summarizeBtn.addEventListener('click', async function() {
+                    try {
+                        const userId = document.getElementById('userIdInput').value;
+                        const loadingId = showLoading();
 
-                    const response = await fetch('api/summarize', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            userId: userId
-                        })
-                    });
+                        const response = await fetch('api/summarize', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                userId: userId
+                            })
+                        });
 
-                    removeLoading(loadingId);
+                        removeLoading(loadingId);
 
-                    if (!response.ok) {
-                        throw new Error('Failed to summarize');
+                        if (!response.ok) {
+                            throw new Error('Failed to summarize');
+                        }
+
+                        const summary = await response.text();
+                        addMessage('📝 Summary: ' + summary, 'ai');
+                    } catch (error) {
+                        console.error('Error summarizing:', error);
+                        addMessage('Failed to summarize conversation. Please try again.', 'ai');
                     }
-
-                    const summary = await response.text();
-                    addMessage('📝 Summary: ' + summary, 'ai');
-                } catch (error) {
-                    console.error('Error summarizing:', error);
-                    addMessage('Failed to summarize conversation. Please try again.', 'ai');
-                }
-            });
+                });
+            }
 
             // Theme toggle functionality
             const themeToggle = document.getElementById('themeToggle');

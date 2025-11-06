@@ -121,14 +121,26 @@ public class ChatMemoryService {
             .reduce((a, b) -> a + "\n" + b)
             .orElse("");
 
-        String contextSummary = chatClient.prompt()
+        var chatResponse = chatClient.prompt()
             .user("Summarize these previous conversation summaries concisely: " + summariesText)
             .call()
-            .content();
+            .chatResponse();
+
+        String contextSummary = chatService.extractTextFromResponse(chatResponse);
+
+        if (contextSummary == null || contextSummary.isEmpty()) {
+            logger.warn("Failed to generate context summary");
+            return;
+        }
 
         logger.info("Loaded context summary: {}", contextSummary);
 
-        // Add to session memory as system message
-        sessionMemory.add(conversationId, new SystemMessage("Previous context: " + contextSummary));
+        // Add to session memory as system message with clear instruction
+        String contextMessage = String.format(
+            "You are continuing a conversation with this user. Here is what you know from previous sessions:\n\n%s\n\n" +
+            "Use this information to provide personalized responses. If the user asks about themselves, refer to this context.",
+            contextSummary
+        );
+        sessionMemory.add(conversationId, new SystemMessage(contextMessage));
     }
 }

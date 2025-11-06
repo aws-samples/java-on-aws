@@ -29,7 +29,8 @@ public class TestAiAgentApplication {
                     .withUsername("postgres")
                     .withPassword("postgres")
                     .withStartupTimeout(Duration.ofMinutes(5))
-                    .withCreateContainerCmdModifier(cmd -> cmd.withName("ai-agent-postgres"));
+                    .withCreateContainerCmdModifier(cmd -> cmd.withName("ai-agent-postgres"))
+                    .withReuse(true);  // Reuse container between restarts
 
             container.waitingFor(Wait.defaultWaitStrategy());
             return container;
