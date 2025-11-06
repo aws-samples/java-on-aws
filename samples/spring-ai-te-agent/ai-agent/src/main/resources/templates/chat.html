@@ -389,7 +389,7 @@
                     const loadingId = showLoading();
 
                     console.log('Sending document analysis with empty prompt');
-                    const response = await fetch('api/chat', {
+                    const response = await fetch('api/chat/message', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -447,7 +447,7 @@
                     }
 
                     const userIdInput = document.getElementById('userIdInput');
-                    const response = await fetch('api/chat', {
+                    const response = await fetch('api/chat/message', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -584,7 +584,7 @@
                         const userId = document.getElementById('userIdInput').value;
                         const loadingId = showLoading();
 
-                        const response = await fetch('api/summarize', {
+                        const response = await fetch('api/chat/summarize', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'

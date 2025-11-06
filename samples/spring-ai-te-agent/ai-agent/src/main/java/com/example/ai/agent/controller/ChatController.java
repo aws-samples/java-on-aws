@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.security.Principal;
 
 @RestController
-@RequestMapping("api")
+@RequestMapping("api/chat")
 public class ChatController {
     private static final Logger logger = LoggerFactory.getLogger(ChatController.class);
 
@@ -32,7 +32,7 @@ public class ChatController {
         this.chatMemoryService = chatMemoryService;
     }
 
-    @PostMapping("chat")
+    @PostMapping("message")
     public String chat(@RequestBody ChatRequest request, Principal principal) {
         String userId = getUserId(request.userId(), principal);
         chatMemoryService.setCurrentUserId(userId);
