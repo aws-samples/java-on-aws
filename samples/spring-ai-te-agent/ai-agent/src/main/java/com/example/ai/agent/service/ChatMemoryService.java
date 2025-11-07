@@ -28,13 +28,11 @@ public class ChatMemoryService {
     private final MessageWindowChatMemory sessionMemory;
     private final MessageWindowChatMemory contextMemory;
     private final MessageWindowChatMemory preferencesMemory;
-    private final ChatResponseExtractor responseExtractor;
 
     // Thread-local to store current userId per request
     private final ThreadLocal<String> currentUserId = ThreadLocal.withInitial(() -> "user1");
 
-    public ChatMemoryService(DataSource dataSource, ChatResponseExtractor responseExtractor) {
-        this.responseExtractor = responseExtractor;
+    public ChatMemoryService(DataSource dataSource) {
 
         var jdbcRepository = JdbcChatMemoryRepository.builder()
             .dataSource(dataSource)
@@ -145,7 +143,9 @@ public class ChatMemoryService {
             .call()
             .chatResponse();
 
-        String contextSummary = responseExtractor.extractText(chatResponse);
+        String contextSummary = (chatResponse != null && chatResponse.getResult() != null && chatResponse.getResult().getOutput() != null)
+            ? chatResponse.getResult().getOutput().getText()
+            : null;
 
         if (contextSummary == null || contextSummary.isEmpty()) {
             logger.warn("Failed to generate context summary");

@@ -18,7 +18,6 @@ public class ChatService {
 
     private final ChatClient chatClient;
     private final ChatMemoryService chatMemoryService;
-    private final ChatResponseExtractor responseExtractor;
 
     public static final String SYSTEM_PROMPT = """
         You are a helpful AI Agent for travel and expenses.
@@ -30,14 +29,13 @@ public class ChatService {
         4. Use tools for dynamic data (flights, weather, bookings, currency)
         """;
 
-    public ChatService(ChatResponseExtractor responseExtractor,
-                      ChatMemoryService chatMemoryService,
+    public ChatService(ChatMemoryService chatMemoryService,
                       VectorStore vectorStore,
                       DateTimeService dateTimeService,
                       WeatherService weatherService,
                       ToolCallbackProvider tools,
                       ChatClient.Builder chatClientBuilder) {
-        this.responseExtractor = responseExtractor;
+
         this.chatClient = chatClientBuilder
                 .defaultSystem(SYSTEM_PROMPT)
                 .defaultAdvisors(
@@ -63,9 +61,5 @@ public class ChatService {
             logger.error("Error processing streaming chat request", e);
             return Flux.just("I don't know - there was an error processing your request.");
         }
-    }
-
-    public String extractTextFromResponse(org.springframework.ai.chat.model.ChatResponse chatResponse) {
-        return responseExtractor.extractText(chatResponse);
     }
 }

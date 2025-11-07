@@ -20,18 +20,18 @@ public class ChatController {
     private static final Logger logger = LoggerFactory.getLogger(ChatController.class);
 
     private final ChatService chatService;
-    private final DocumentChatService documentChatService;
-    private final ConversationSummaryService summaryService;
     private final ChatMemoryService chatMemoryService;
+    private final ConversationSummaryService summaryService;
+    private final DocumentChatService documentChatService;
 
-    public ChatController(ChatService chatService,
-                         DocumentChatService documentChatService,
+    public ChatController(ChatMemoryService chatMemoryService,
                          ConversationSummaryService summaryService,
-                         ChatMemoryService chatMemoryService) {
+                         DocumentChatService documentChatService,
+                         ChatService chatService) {
         this.chatService = chatService;
-        this.documentChatService = documentChatService;
-        this.summaryService = summaryService;
         this.chatMemoryService = chatMemoryService;
+        this.summaryService = summaryService;
+        this.documentChatService = documentChatService;
     }
 
     @PostMapping(value = "message", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
