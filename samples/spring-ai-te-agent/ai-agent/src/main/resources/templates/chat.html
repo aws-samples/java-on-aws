@@ -634,7 +634,7 @@
                         removeLoading(loadingId);
                         if (!response.ok) throw new Error('Failed to summarize');
                         const summary = await response.text();
-                        addMessage('📝 Summary: ' + summary, 'ai');
+                        addMessage('📝 ' + summary, 'ai');
                     } catch (error) {
                         console.error('Error summarizing:', error);
                         addMessage('Failed to summarize conversation. Please try again.', 'ai');

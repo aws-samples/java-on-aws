@@ -14,14 +14,14 @@ public class ConversationSummaryService {
     private static final Logger logger = LoggerFactory.getLogger(ConversationSummaryService.class);
 
     private final ChatMemoryService chatMemoryService;
-    private final ChatService chatService;
+    private final ChatResponseExtractor responseExtractor;
     private final ChatClient chatClient;
 
     public ConversationSummaryService(ChatMemoryService chatMemoryService,
-                                     ChatService chatService,
+                                     ChatResponseExtractor responseExtractor,
                                      ChatClient.Builder chatClientBuilder) {
         this.chatMemoryService = chatMemoryService;
-        this.chatService = chatService;
+        this.responseExtractor = responseExtractor;
         this.chatClient = chatClientBuilder.build();
     }
 
@@ -54,7 +54,7 @@ public class ConversationSummaryService {
 
         logger.info("Summarizing {} characters of conversation", messagesText.length());
 
-        String preferencesPrompt = existingPrefsText.isEmpty() 
+        String preferencesPrompt = existingPrefsText.isEmpty()
             ? "Extract ONLY static user information (name, email, preferences, dietary restrictions). If none found, return empty string."
             : "MERGE preferences - keep ALL existing information and ADD any new information:\n\n" +
               "EXISTING PREFERENCES (keep everything):\n" + existingPrefsText + "\n\n" +
@@ -67,45 +67,48 @@ public class ConversationSummaryService {
 
         var chatResponse = chatClient.prompt()
             .user("Analyze this conversation and provide TWO separate summaries:\n\n" +
-                  "## PREFERENCES (output as JSON with key 'preferences'):\n" +
+                  "PREFERENCES:\n" +
                   preferencesPrompt + "\n\n" +
-                  "## CONTEXT (output as JSON with key 'context'):\n" +
+                  "CONTEXT:\n" +
                   "Summarize conversation context:\n" +
                   "- Topics discussed\n" +
                   "- Questions asked\n" +
                   "- Decisions or actions taken\n" +
                   "- Pending items or follow-ups\n\n" +
                   "DO NOT include: prices, dates, flight numbers, hotel names, company policies.\n\n" +
-                  "Output format: {\"preferences\": \"...\", \"context\": \"...\"}\n\n" +
+                  "Output format (plain text, no JSON):\n" +
+                  "===PREFERENCES===\n" +
+                  "[preferences here]\n" +
+                  "===CONTEXT===\n" +
+                  "[context here]\n\n" +
                   "Conversation:\n" + messagesText)
             .call()
             .chatResponse();
 
-        String response = chatService.extractTextFromResponse(chatResponse);
+        String response = responseExtractor.extractText(chatResponse);
 
         if (response == null || response.trim().isEmpty()) {
             logger.error("Generated summary is null or empty");
             throw new RuntimeException("Failed to generate summary");
         }
 
-        // Parse JSON response
+        // Parse plain text response
         String preferences = "";
         String context = "";
         try {
-            // Simple JSON parsing (or use Jackson if available)
-            if (response.contains("\"preferences\"")) {
-                int prefStart = response.indexOf("\"preferences\"") + 15;
-                int prefEnd = response.indexOf("\",", prefStart);
-                if (prefEnd == -1) prefEnd = response.indexOf("\"}", prefStart);
-                preferences = response.substring(prefStart, prefEnd).trim();
+            if (response.contains("===PREFERENCES===")) {
+                int prefStart = response.indexOf("===PREFERENCES===") + 17;
+                int prefEnd = response.indexOf("===CONTEXT===");
+                if (prefEnd > prefStart) {
+                    preferences = response.substring(prefStart, prefEnd).trim();
+                }
             }
-            if (response.contains("\"context\"")) {
-                int ctxStart = response.indexOf("\"context\"") + 11;
-                int ctxEnd = response.lastIndexOf("\"");
-                context = response.substring(ctxStart, ctxEnd).trim();
+            if (response.contains("===CONTEXT===")) {
+                int ctxStart = response.indexOf("===CONTEXT===") + 13;
+                context = response.substring(ctxStart).trim();
             }
         } catch (Exception e) {
-            logger.warn("Failed to parse JSON, using full response as context", e);
+            logger.warn("Failed to parse response, using full response as context", e);
             context = response;
         }
 
@@ -118,27 +121,25 @@ public class ConversationSummaryService {
             logger.info("Saved preferences to memory");
         }
 
-        // Save context to long-term JDBC
+        // Save context to JDBC (userId_context)
         if (!context.isEmpty()) {
-            chatMemoryService.getLongTermMemory().add(conversationId, new AssistantMessage(context));
-            logger.info("Saved context to long-term memory");
+            String timestamp = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
+            String contextWithTimestamp = "[" + timestamp + "] " + context;
+            chatMemoryService.getContextMemory().add(conversationId + "_context", new AssistantMessage(contextWithTimestamp));
+            logger.info("Saved context to memory with timestamp");
         }
 
         // Clear session memory
         chatMemoryService.getSessionMemory().clear(conversationId);
 
-        // Reload into session memory as context
-        if (!preferences.isEmpty()) {
-            chatMemoryService.getSessionMemory().add(conversationId,
-                new SystemMessage("User preferences: " + preferences));
-        }
-        if (!context.isEmpty()) {
-            chatMemoryService.getSessionMemory().add(conversationId,
-                new SystemMessage("Previous conversation: " + context));
-        }
+        logger.info("Summary saved, session cleared");
 
-        logger.info("Summary saved and reloaded to session");
-
-        return "Preferences: " + (preferences.isEmpty() ? "None" : preferences) + "\n\nContext: " + context;
+        String timestamp = java.time.LocalDateTime.now()
+            .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd HHmmss"));
+        
+        return "**Summary:** [" + timestamp + "]\n\n" +
+               "**Preferences:**\n" + (preferences.isEmpty() ? "None" : preferences) + 
+               "\n\n**Context:**\n" + context;
     }
 }

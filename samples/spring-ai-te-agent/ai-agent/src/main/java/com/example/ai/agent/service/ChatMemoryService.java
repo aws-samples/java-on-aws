@@ -2,7 +2,6 @@ package com.example.ai.agent.service;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
-import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 import org.springframework.ai.chat.memory.repository.jdbc.PostgresChatMemoryRepositoryDialect;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -23,54 +22,54 @@ import java.util.List;
 @Service
 public class ChatMemoryService {
     private static final Logger logger = LoggerFactory.getLogger(ChatMemoryService.class);
-    private static final int MAX_SESSION_MESSAGES = 30;
-    private static final int MAX_SUMMARIES = 10;
+    private static final int MAX_SESSION_MESSAGES = 20;
+    private static final int MAX_CONTEXT_SUMMARIES = 10;
     private static final int MAX_PREFERENCES = 1;
 
     private final MessageWindowChatMemory sessionMemory;
-    private final MessageWindowChatMemory longTermMemory;
+    private final MessageWindowChatMemory contextMemory;
     private final MessageWindowChatMemory preferencesMemory;
-    private final ChatService chatService;
+    private final ChatResponseExtractor responseExtractor;
 
     // Thread-local to store current userId per request
     private final ThreadLocal<String> currentUserId = ThreadLocal.withInitial(() -> "user1");
 
-    public ChatMemoryService(DataSource dataSource, @Lazy ChatService chatService) {
-        this.chatService = chatService;
+    public ChatMemoryService(DataSource dataSource, ChatResponseExtractor responseExtractor) {
+        this.responseExtractor = responseExtractor;
 
-        // InMemory for current session (last 30 messages)
-        this.sessionMemory = MessageWindowChatMemory.builder()
-            .chatMemoryRepository(new InMemoryChatMemoryRepository())
-            .maxMessages(MAX_SESSION_MESSAGES)
-            .build();
-
-        // JDBC for long-term summaries (last 10)
         var jdbcRepository = JdbcChatMemoryRepository.builder()
             .dataSource(dataSource)
             .dialect(new PostgresChatMemoryRepositoryDialect())
             .build();
 
-        this.longTermMemory = MessageWindowChatMemory.builder()
+        // JDBC for current session (last 20 messages) - conversationId: userId
+        this.sessionMemory = MessageWindowChatMemory.builder()
             .chatMemoryRepository(jdbcRepository)
-            .maxMessages(MAX_SUMMARIES)
+            .maxMessages(MAX_SESSION_MESSAGES)
             .build();
 
-        // JDBC for user preferences (single record)
+        // JDBC for context summaries (last 10) - conversationId: userId_context
+        this.contextMemory = MessageWindowChatMemory.builder()
+            .chatMemoryRepository(jdbcRepository)
+            .maxMessages(MAX_CONTEXT_SUMMARIES)
+            .build();
+
+        // JDBC for user preferences (1 record) - conversationId: userId_preferences
         this.preferencesMemory = MessageWindowChatMemory.builder()
             .chatMemoryRepository(jdbcRepository)
             .maxMessages(MAX_PREFERENCES)
             .build();
 
-        logger.info("ChatMemoryService initialized with InMemory (max {} messages) + JDBC (max {} summaries + {} preferences)",
-            MAX_SESSION_MESSAGES, MAX_SUMMARIES, MAX_PREFERENCES);
+        logger.info("ChatMemoryService initialized with JDBC (max {} messages, {} context summaries, {} preferences)",
+            MAX_SESSION_MESSAGES, MAX_CONTEXT_SUMMARIES, MAX_PREFERENCES);
     }
 
     public MessageWindowChatMemory getSessionMemory() {
         return sessionMemory;
     }
 
-    public MessageWindowChatMemory getLongTermMemory() {
-        return longTermMemory;
+    public MessageWindowChatMemory getContextMemory() {
+        return contextMemory;
     }
 
     public MessageWindowChatMemory getPreferencesMemory() {
@@ -123,19 +122,19 @@ public class ChatMemoryService {
     private void loadPreviousContext(String conversationId, ChatClient chatClient) {
         logger.info("Loading previous context for conversation: {}", conversationId);
 
-        // Load user preferences
+        // Load user preferences (userId_preferences)
         List<Message> preferences = preferencesMemory.get(conversationId + "_preferences");
         String preferencesText = preferences.isEmpty() ? "" : preferences.get(0).getText();
 
-        // Load conversation summaries
-        List<Message> summaries = longTermMemory.get(conversationId);
+        // Load context summaries (userId_context)
+        List<Message> summaries = contextMemory.get(conversationId + "_context");
 
         if (summaries.isEmpty() && preferencesText.isEmpty()) {
             logger.info("No previous context found");
             return;
         }
 
-        logger.info("Found {} previous summaries and {} preferences", summaries.size(), preferences.isEmpty() ? 0 : 1);
+        logger.info("Found {} context summaries and {} preferences", summaries.size(), preferences.isEmpty() ? 0 : 1);
 
         // Combine preferences and summaries
         StringBuilder contextBuilder = new StringBuilder();
@@ -153,7 +152,7 @@ public class ChatMemoryService {
             .call()
             .chatResponse();
 
-        String contextSummary = chatService.extractTextFromResponse(chatResponse);
+        String contextSummary = responseExtractor.extractText(chatResponse);
 
         if (contextSummary == null || contextSummary.isEmpty()) {
             logger.warn("Failed to generate context summary");
