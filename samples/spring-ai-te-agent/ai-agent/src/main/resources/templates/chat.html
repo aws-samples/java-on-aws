@@ -7,35 +7,8 @@
     <title>AI Agent</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js"></script>
-
-    <!-- BASE: Tailwind Configuration -->
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        'dev-dark': '#1a1a1a',
-                        'dev-darker': '#121212',
-                        'dev-accent': '#6366f1',
-                        'dev-accent-hover': '#4f46e5',
-                        'dev-secondary': '#3b82f6',
-                        'dev-text': '#e2e8f0',
-                        'dev-text-muted': '#94a3b8',
-                        'dev-border': '#2d3748',
-                        'dev-message-user': '#1e293b',
-                        'dev-message-ai': '#1e1e2d',
-                        'light-bg': '#ffffff',
-                        'light-bg-secondary': '#f8fafc',
-                        'light-text': '#1f2937',
-                        'light-text-muted': '#6b7280',
-                        'light-border': '#e5e7eb',
-                        'light-message-user': '#f3f4f6',
-                        'light-message-ai': '#ffffff'
-                    }
-                }
-            }
-        }
+        tailwind.config = { darkMode: 'class' }
     </script>
 
     <style>
@@ -89,8 +62,8 @@
             border: 1px solid #e5e7eb;
         }
         .dark .ai-response table {
-            background: #1e1e2d !important;
-            border: 1px solid #2d3748 !important;
+            background: #1e293b !important;
+            border: 1px solid #374151 !important;
         }
         .ai-response th {
             background: #6366f1 !important;
@@ -107,9 +80,9 @@
             font-weight: 600 !important;
         }
         .dark .ai-response td {
-            border-bottom: 1px solid #2d3748 !important;
+            border-bottom: 1px solid #374151 !important;
             color: #f9fafb !important;
-            background: #1e1e2d !important;
+            background: #1e293b !important;
         }
         .ai-response tr:last-child td {
             border-bottom: none;
@@ -119,7 +92,7 @@
             color: #111827 !important;
         }
         .dark .ai-response tr:nth-child(even) td {
-            background: #2a2a3a !important;
+            background: #334155 !important;
             color: #f9fafb !important;
         }
 
@@ -157,8 +130,8 @@
             position: relative;
         }
         .dark .message-bubble-ai {
-            background: #1e1e2d !important;
-            border: 1px solid #2d3748 !important;
+            background: #1e293b !important;
+            border: 1px solid #374151 !important;
             color: #e2e8f0 !important;
         }
         .message-bubble-user {
@@ -169,7 +142,7 @@
         }
         .dark .message-bubble-user {
             background: #1e293b !important;
-            border: 1px solid #2d3748 !important;
+            border: 1px solid #374151 !important;
             color: #e2e8f0 !important;
         }
         .message-bubble-ai p, .message-bubble-ai * {
@@ -240,37 +213,37 @@
         }
     </style>
 </head>
-<body class="bg-light-bg dark:bg-dev-darker min-h-screen text-light-text dark:text-dev-text transition-colors duration-300">
+<body class="bg-white dark:bg-gray-900 min-h-screen text-gray-800 dark:text-slate-200 transition-colors duration-300">
     <div class="container mx-auto px-4 py-8">
         <!-- ========== BASE: Header ========== -->
         <header class="mb-8">
             <div class="flex justify-between items-center">
-                <h1 class="text-3xl font-bold text-dev-accent">🤖 AI Agent</h1>
+                <h1 class="text-3xl font-bold text-indigo-500">🤖 AI Agent</h1>
                 <div class="flex items-center gap-2">
                     <!-- MEMORY: Multi-user Controls -->
                     <div th:if="${multiUserEnabled}" class="flex items-center gap-2">
-                        <label for="userIdInput" class="text-sm text-light-text-muted dark:text-dev-text-muted">User:</label>
+                        <label for="userIdInput" class="text-sm text-gray-500 dark:text-slate-400">User:</label>
                         <input type="text" id="userIdInput" value="user1"
-                               class="bg-light-bg dark:bg-dev-darker border border-light-border dark:border-dev-border px-3 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-dev-accent text-light-text dark:text-dev-text w-32">
+                               class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-slate-200 w-32">
                         <button id="summarizeBtn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition">
                             📝 Summarize
                         </button>
                     </div>
                     <!-- BASE: Dark Mode Toggle -->
-                    <button id="themeToggle" class="bg-dev-accent text-white px-4 py-2 rounded hover:bg-dev-accent-hover transition">
+                    <button id="themeToggle" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 transition">
                         🌙 Dark
                     </button>
                 </div>
             </div>
-            <p class="text-light-text-muted dark:text-dev-text-muted mt-2">Chat with our AI Agent to help you with your questions!</p>
+            <p class="text-gray-500 dark:text-slate-400 mt-2">Chat with our AI Agent to help you with your questions!</p>
         </header>
 
         <!-- ========== BASE: Chat Container ========== -->
-        <div class="bg-light-bg-secondary dark:bg-dev-dark rounded-xl shadow-lg p-6 chat-container border border-light-border dark:border-dev-border flex flex-col">
+        <div class="bg-slate-50 dark:bg-gray-800 rounded-xl shadow-lg p-6 chat-container border border-gray-200 dark:border-gray-700 flex flex-col">
             <!-- BASE: Message Container -->
-            <div class="message-container flex-grow mb-4 bg-light-bg dark:bg-dev-darker rounded-lg p-4" id="messageContainer">
+            <div class="message-container flex-grow mb-4 bg-white dark:bg-gray-900 rounded-lg p-4" id="messageContainer">
                 <div class="flex mb-4">
-                    <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
+                    <div class="w-10 h-10 rounded-full bg-indigo-500 bg-opacity-20 flex items-center justify-center mr-3">
                         <span class="text-lg">🤖</span>
                     </div>
                     <div class="message-bubble-ai rounded-lg p-3 max-w-3xl">
@@ -280,17 +253,17 @@
             </div>
 
             <!-- BASE: Input Area -->
-            <div class="border-t border-light-border dark:border-dev-border pt-4 mt-auto">
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-auto">
                 <form id="chatForm" class="flex w-full">
                     <!-- UPLOAD: File Input and Button -->
                     <input type="file" id="fileInput" class="hidden" accept=".jpg,.jpeg,.png">
-                    <button th:if="${multiModalEnabled}" type="button" id="fileButton" class="bg-dev-accent text-white px-4 py-3 rounded-l-lg hover:bg-dev-accent-hover transition flex items-center justify-center">
+                    <button th:if="${multiModalEnabled}" type="button" id="fileButton" class="bg-indigo-500 text-white px-4 py-3 rounded-l-lg hover:bg-indigo-600 transition flex items-center justify-center">
                         📎
                     </button>
                     <!-- BASE: Text Input -->
-                    <input type="text" id="userInput" th:class="${multiModalEnabled} ? 'flex-grow bg-light-bg dark:bg-dev-darker border border-light-border dark:border-dev-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-dev-accent text-light-text dark:text-dev-text' : 'flex-grow bg-light-bg dark:bg-dev-darker border border-light-border dark:border-dev-border px-4 py-3 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-dev-accent text-light-text dark:text-dev-text'" placeholder="Please ask your question...">
+                    <input type="text" id="userInput" th:class="${multiModalEnabled} ? 'flex-grow bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-slate-200' : 'flex-grow bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-3 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-slate-200'" placeholder="Please ask your question...">
                     <!-- BASE: Send Button -->
-                    <button type="submit" class="bg-dev-accent text-white px-6 py-3 rounded-r-lg hover:bg-dev-accent-hover transition">Send</button>
+                    <button type="submit" class="bg-indigo-500 text-white px-6 py-3 rounded-r-lg hover:bg-indigo-600 transition">Send</button>
                 </form>
             </div>
         </div>
@@ -586,14 +559,14 @@
                 loadingDiv.id = loadingId;
                 loadingDiv.className = 'flex mb-4';
                 loadingDiv.innerHTML = `
-                    <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
+                    <div class="w-10 h-10 rounded-full bg-indigo-500 bg-opacity-20 flex items-center justify-center mr-3">
                         <span class="text-lg">🤖</span>
                     </div>
                     <div class="message-bubble-ai rounded-lg p-3">
                         <div class="flex space-x-2">
-                            <div class="w-2 h-2 bg-dev-accent rounded-full animate-bounce"></div>
-                            <div class="w-2 h-2 bg-dev-accent rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                            <div class="w-2 h-2 bg-dev-accent rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                            <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></div>
+                            <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                            <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
                         </div>
                     </div>
                 `;
