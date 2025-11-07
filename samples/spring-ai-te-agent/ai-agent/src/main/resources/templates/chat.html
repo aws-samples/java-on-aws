@@ -10,7 +10,402 @@
     <script>
         tailwind.config = { darkMode: 'class' }
     </script>
+</head>
+<body class="bg-white dark:bg-gray-900 min-h-screen text-gray-800 dark:text-slate-200 transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8">
+        <!-- ========== BASE: Header ========== -->
+        <header class="mb-8">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-indigo-500">🤖 AI Agent</h1>
+                <div class="flex items-center gap-2">
+                    <!-- MEMORY: Multi-user Controls -->
+                    <div th:if="${multiUserEnabled}" class="flex items-center gap-2">
+                        <label for="userIdInput" class="text-sm text-gray-500 dark:text-slate-400">User:</label>
+                        <input type="text" id="userIdInput" value="user1"
+                               class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-slate-200 w-32">
+                        <button id="summarizeBtn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition">
+                            📝 Summarize
+                        </button>
+                    </div>
+                    <!-- BASE: Dark Mode Toggle -->
+                    <button id="themeToggle" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 transition">
+                        🌙 Dark
+                    </button>
+                </div>
+            </div>
+            <p class="text-gray-500 dark:text-slate-400 mt-2">Chat with our AI Agent to help you with your questions!</p>
+        </header>
 
+        <!-- ========== BASE: Chat Container ========== -->
+        <div class="bg-slate-50 dark:bg-gray-800 rounded-xl shadow-lg p-6 chat-container border border-gray-200 dark:border-gray-700 flex flex-col">
+            <!-- BASE: Message Container -->
+            <div class="message-container flex-grow mb-4 bg-white dark:bg-gray-900 rounded-lg p-4" id="messageContainer">
+                <div class="flex mb-4">
+                    <div class="w-10 h-10 rounded-full bg-indigo-500 bg-opacity-30 flex items-center justify-center mr-3 flex-shrink-0">
+                        <span class="text-lg">🤖</span>
+                    </div>
+                    <div class="message-bubble-ai rounded-lg p-3 max-w-3xl">
+                        <p>Welcome to the AI Agent! How can I help you today?</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BASE: Input Area -->
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-auto">
+                <form id="chatForm" class="flex w-full">
+                    <!-- UPLOAD: File Input and Button -->
+                    <input type="file" id="fileInput" class="hidden" accept=".jpg,.jpeg,.png">
+                    <button th:if="${multiModalEnabled}" type="button" id="fileButton" class="bg-indigo-500 text-white px-4 py-3 rounded-l-lg hover:bg-indigo-600 transition flex items-center justify-center">
+                        📎
+                    </button>
+                    <!-- BASE: Text Input -->
+                    <input type="text" id="userInput" th:class="${multiModalEnabled} ? 'flex-grow bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-slate-200' : 'flex-grow bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-3 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-slate-200'" placeholder="Please ask your question...">
+                    <!-- BASE: Send Button -->
+                    <button type="submit" class="bg-indigo-500 text-white px-6 py-3 rounded-r-lg hover:bg-indigo-600 transition">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== UPLOAD: Image Modal ========== -->
+    <div id="imageModal" class="image-modal">
+        <span class="close">&times;</span>
+        <img id="modalImage" src="" alt="">
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // ========== BASE: Initialize Marked.js ==========
+            marked.setOptions({
+                gfm: true,
+                tables: true,
+                breaks: true
+            });
+
+            // ========== BASE: DOM Elements ==========
+            const messageContainer = document.getElementById('messageContainer');
+            const chatForm = document.getElementById('chatForm');
+            const userInput = document.getElementById('userInput');
+            const themeToggle = document.getElementById('themeToggle');
+            const fileInput = document.getElementById('fileInput');
+            const fileButton = document.getElementById('fileButton');
+
+            // ========== BASE: Chat Form Submit ==========
+            chatForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const message = userInput.value.trim();
+                if (!message) return;
+
+                addMessage(message, 'user');
+                userInput.value = '';
+
+                try {
+                    const loadingId = showLoading();
+                    const userIdInput = document.getElementById('userIdInput');
+                    const response = await fetch('api/chat/message', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/octet-stream'
+                        },
+                        body: JSON.stringify({
+                            prompt: message,
+                            userId: userIdInput ? userIdInput.value : null,
+                            fileBase64: currentFileBase64 || null,
+                            fileName: currentFileName || null
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to get response');
+                    removeLoading(loadingId);
+
+                    // Handle streaming response
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullResponse = '';
+                    let messageDiv = null;
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        fullResponse += chunk;
+
+                        if (!messageDiv) {
+                            messageDiv = createStreamingMessage();
+                        }
+                        updateStreamingMessage(messageDiv, fullResponse);
+                    }
+                } catch (error) {
+                    removeLoading(loadingId);
+                    console.error('Error:', error);
+                    addMessage('Sorry, I encountered an error. Please try again.', 'ai');
+                }
+            });
+
+            // ========== BASE: Message Functions ==========
+            function createStreamingMessage() {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'flex mb-4';
+                messageDiv.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-indigo-500 bg-opacity-30 flex items-center justify-center mr-3 flex-shrink-0">
+                        <span class="text-lg">🤖</span>
+                    </div>
+                    <div class="message-bubble-ai rounded-lg p-3 max-w-4xl ai-response">
+                        <button class="copy-button" data-copy-text="">📋</button>
+                        <div class="streaming-content"></div>
+                    </div>
+                `;
+                messageContainer.appendChild(messageDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+                return messageDiv;
+            }
+
+            function updateStreamingMessage(messageDiv, content) {
+                const contentDiv = messageDiv.querySelector('.streaming-content');
+                const copyButton = messageDiv.querySelector('.copy-button');
+                const renderedContent = marked.parse(content);
+                contentDiv.innerHTML = renderedContent;
+                copyButton.setAttribute('data-copy-text', escapeHtml(content));
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+            }
+
+            function addMessage(content, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'flex mb-4';
+
+                if (sender === 'user') {
+                    messageDiv.innerHTML = `
+                        <div class="ml-auto flex">
+                            <div class="message-bubble-user rounded-lg p-3 max-w-3xl">
+                                <button class="copy-button" data-copy-text="${escapeHtml(content)}">📋</button>
+                                <p>${escapeHtml(content)}</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-blue-500 bg-opacity-30 flex items-center justify-center ml-3 flex-shrink-0">
+                                <span class="text-lg">👤</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const renderedContent = marked.parse(content);
+                    messageDiv.innerHTML = `
+                        <div class="w-10 h-10 rounded-full bg-indigo-500 bg-opacity-30 flex items-center justify-center mr-3 flex-shrink-0">
+                            <span class="text-lg">🤖</span>
+                        </div>
+                        <div class="message-bubble-ai rounded-lg p-3 max-w-4xl ai-response">
+                            <button class="copy-button" data-copy-text="${escapeHtml(content)}">📋</button>
+                            ${renderedContent}
+                        </div>
+                    `;
+                }
+
+                messageContainer.appendChild(messageDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+            }
+
+            // ========== BASE: Loading Indicator ==========
+            function showLoading() {
+                const loadingId = 'loading-' + Date.now();
+                const loadingDiv = document.createElement('div');
+                loadingDiv.id = loadingId;
+                loadingDiv.className = 'flex mb-4';
+                loadingDiv.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-indigo-500 bg-opacity-30 flex items-center justify-center mr-3 flex-shrink-0">
+                        <span class="text-lg">🤖</span>
+                    </div>
+                    <div class="message-bubble-ai rounded-lg p-3">
+                        <div class="flex space-x-2">
+                            <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></div>
+                            <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                            <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                        </div>
+                    </div>
+                `;
+                messageContainer.appendChild(loadingDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+                return loadingId;
+            }
+
+            function removeLoading(loadingId) {
+                const loadingDiv = document.getElementById(loadingId);
+                if (loadingDiv) loadingDiv.remove();
+            }
+
+            // ========== BASE: Utility Functions ==========
+            function escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
+            function copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(function() {
+                    console.log('Text copied to clipboard');
+                }).catch(function(err) {
+                    console.error('Failed to copy text: ', err);
+                });
+            }
+
+            messageContainer.addEventListener('click', function(e) {
+                if (e.target.classList.contains('copy-button')) {
+                    const textToCopy = e.target.getAttribute('data-copy-text');
+                    copyToClipboard(textToCopy);
+                }
+            });
+
+            // ========== BASE: Dark Mode Toggle ==========
+            themeToggle.addEventListener('click', function() {
+                const html = document.documentElement;
+                html.classList.toggle('dark');
+                themeToggle.innerHTML = html.classList.contains('dark') ? '☀️ Light' : '🌙 Dark';
+            });
+
+            // ========== MEMORY: Summarize Button ==========
+            const summarizeBtn = document.getElementById('summarizeBtn');
+            if (summarizeBtn) {
+                summarizeBtn.addEventListener('click', async function() {
+                    try {
+                        const userId = document.getElementById('userIdInput').value;
+                        const loadingId = showLoading();
+
+                        const response = await fetch('api/chat/summarize', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: userId })
+                        });
+
+                        removeLoading(loadingId);
+                        if (!response.ok) throw new Error('Failed to summarize');
+                        const summary = await response.text();
+                        addMessage('📝 ' + summary, 'ai');
+                    } catch (error) {
+                        console.error('Error summarizing:', error);
+                        addMessage('Failed to summarize conversation. Please try again.', 'ai');
+                    }
+                });
+            }
+
+            // ========== UPLOAD: File State ==========
+            let currentFileBase64 = null;
+            let currentFileName = null;
+
+            // ========== UPLOAD: File Upload Handler ==========
+            if (fileButton) {
+                fileButton.addEventListener('click', function() {
+                    fileInput.click();
+                });
+            }
+
+            if (fileInput) {
+                fileInput.addEventListener('change', async function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        try {
+                            currentFileBase64 = await fileToBase64(file);
+                            currentFileName = file.name;
+                            addImageMessage(file);
+                            await sendDocumentAnalysis();
+                        } catch (error) {
+                            console.error('Error processing file:', error);
+                            addMessage('Error processing file. Please try again.', 'ai');
+                        }
+                    }
+                });
+            }
+
+            function addImageMessage(file) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'flex mb-4';
+                const imageUrl = URL.createObjectURL(file);
+                messageDiv.innerHTML = `
+                    <div class="ml-auto flex">
+                        <div class="message-bubble-user rounded-lg p-3 max-w-3xl">
+                            <button class="copy-button" data-copy-text="File attached: ${file.name}">📋</button>
+                            <p class="mb-2">📎 File attached: ${file.name}</p>
+                            <img src="${imageUrl}" alt="${file.name}" class="max-w-full max-h-64 rounded border border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition" onclick="openImageModal('${imageUrl}')" />
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-blue-500 bg-opacity-30 flex items-center justify-center ml-3 flex-shrink-0">
+                            <span class="text-lg">👤</span>
+                        </div>
+                    </div>
+                `;
+                messageContainer.appendChild(messageDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+            }
+
+            async function sendDocumentAnalysis() {
+                try {
+                    const loadingId = showLoading();
+                    const response = await fetch('api/chat/message', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: "",
+                            fileBase64: currentFileBase64,
+                            fileName: currentFileName
+                        })
+                    });
+                    removeLoading(loadingId);
+                    if (!response.ok) throw new Error('Failed to analyze document');
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    const messageId = createStreamingMessage();
+                    let fullText = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        fullText += chunk;
+                        updateStreamingMessage(messageId, fullText);
+                    }
+
+                    currentFileBase64 = null;
+                    currentFileName = null;
+                    fileInput.value = '';
+                } catch (error) {
+                    console.error('Error analyzing document:', error);
+                    addMessage('I don\'t know - there was an error analyzing the document.', 'ai');
+                    currentFileBase64 = null;
+                    currentFileName = null;
+                    fileInput.value = '';
+                }
+            }
+
+            function fileToBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = error => reject(error);
+                });
+            }
+
+            // ========== UPLOAD: Image Modal ==========
+            window.openImageModal = function(imageSrc) {
+                const modal = document.getElementById('imageModal');
+                const modalImg = document.getElementById('modalImage');
+                modal.style.display = 'block';
+                modalImg.src = imageSrc;
+            }
+
+            const imageModal = document.getElementById('imageModal');
+            if (imageModal) {
+                imageModal.addEventListener('click', function(e) {
+                    if (e.target === this || e.target.className === 'close') {
+                        this.style.display = 'none';
+                    }
+                });
+            }
+        });
+    </script>
+
+    <!-- ========== STYLES ========== -->
     <style>
         /* ========== BASE: Layout ========== */
         .chat-container {
@@ -19,36 +414,6 @@
         .message-container {
             height: calc(100vh - 280px);
             overflow-y: auto;
-        }
-
-        /* BASE: Scrollbar - Dark Mode */
-        .dark ::-webkit-scrollbar {
-            width: 8px;
-        }
-        .dark ::-webkit-scrollbar-track {
-            background: #1a1a1a;
-        }
-        .dark ::-webkit-scrollbar-thumb {
-            background: #3b3b3b;
-            border-radius: 4px;
-        }
-        .dark ::-webkit-scrollbar-thumb:hover {
-            background: #4b4b4b;
-        }
-
-        /* BASE: Scrollbar - Light Mode */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
         }
 
         /* ========== BASE: Markdown Tables ========== */
@@ -212,417 +577,5 @@
             color: #bbb;
         }
     </style>
-</head>
-<body class="bg-white dark:bg-gray-900 min-h-screen text-gray-800 dark:text-slate-200 transition-colors duration-300">
-    <div class="container mx-auto px-4 py-8">
-        <!-- ========== BASE: Header ========== -->
-        <header class="mb-8">
-            <div class="flex justify-between items-center">
-                <h1 class="text-3xl font-bold text-indigo-500">🤖 AI Agent</h1>
-                <div class="flex items-center gap-2">
-                    <!-- MEMORY: Multi-user Controls -->
-                    <div th:if="${multiUserEnabled}" class="flex items-center gap-2">
-                        <label for="userIdInput" class="text-sm text-gray-500 dark:text-slate-400">User:</label>
-                        <input type="text" id="userIdInput" value="user1"
-                               class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-slate-200 w-32">
-                        <button id="summarizeBtn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition">
-                            📝 Summarize
-                        </button>
-                    </div>
-                    <!-- BASE: Dark Mode Toggle -->
-                    <button id="themeToggle" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 transition">
-                        🌙 Dark
-                    </button>
-                </div>
-            </div>
-            <p class="text-gray-500 dark:text-slate-400 mt-2">Chat with our AI Agent to help you with your questions!</p>
-        </header>
-
-        <!-- ========== BASE: Chat Container ========== -->
-        <div class="bg-slate-50 dark:bg-gray-800 rounded-xl shadow-lg p-6 chat-container border border-gray-200 dark:border-gray-700 flex flex-col">
-            <!-- BASE: Message Container -->
-            <div class="message-container flex-grow mb-4 bg-white dark:bg-gray-900 rounded-lg p-4" id="messageContainer">
-                <div class="flex mb-4">
-                    <div class="w-10 h-10 rounded-full bg-indigo-500 bg-opacity-20 flex items-center justify-center mr-3">
-                        <span class="text-lg">🤖</span>
-                    </div>
-                    <div class="message-bubble-ai rounded-lg p-3 max-w-3xl">
-                        <p>Welcome to the AI Agent! How can I help you today?</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- BASE: Input Area -->
-            <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-auto">
-                <form id="chatForm" class="flex w-full">
-                    <!-- UPLOAD: File Input and Button -->
-                    <input type="file" id="fileInput" class="hidden" accept=".jpg,.jpeg,.png">
-                    <button th:if="${multiModalEnabled}" type="button" id="fileButton" class="bg-indigo-500 text-white px-4 py-3 rounded-l-lg hover:bg-indigo-600 transition flex items-center justify-center">
-                        📎
-                    </button>
-                    <!-- BASE: Text Input -->
-                    <input type="text" id="userInput" th:class="${multiModalEnabled} ? 'flex-grow bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-slate-200' : 'flex-grow bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-3 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-slate-200'" placeholder="Please ask your question...">
-                    <!-- BASE: Send Button -->
-                    <button type="submit" class="bg-indigo-500 text-white px-6 py-3 rounded-r-lg hover:bg-indigo-600 transition">Send</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- ========== UPLOAD: Image Modal ========== -->
-    <div id="imageModal" class="image-modal">
-        <span class="close">&times;</span>
-        <img id="modalImage" src="" alt="">
-    </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // ========== BASE: Initialize Marked.js ==========
-            marked.setOptions({
-                gfm: true,
-                tables: true,
-                breaks: true
-            });
-
-            // ========== BASE: DOM Elements ==========
-            const messageContainer = document.getElementById('messageContainer');
-            const chatForm = document.getElementById('chatForm');
-            const userInput = document.getElementById('userInput');
-            const fileInput = document.getElementById('fileInput');
-            const fileButton = document.getElementById('fileButton');
-
-            // ========== UPLOAD: File Upload Handler ==========
-            if (fileButton) {
-                fileButton.addEventListener('click', function() {
-                    fileInput.click();
-                });
-            }
-
-            // UPLOAD: File State
-            let currentFileBase64 = null;
-            let currentFileName = null;
-
-            // UPLOAD: File Selection Handler
-            if (fileInput) {
-                fileInput.addEventListener('change', async function(e) {
-                    const file = e.target.files[0];
-                    if (file) {
-                        try {
-                            currentFileBase64 = await fileToBase64(file);
-                            currentFileName = file.name;
-                            addImageMessage(file);
-                            console.log('File processed successfully, base64 length:', currentFileBase64.length);
-                            await sendDocumentAnalysis();
-                        } catch (error) {
-                            console.error('Error processing file:', error);
-                            addMessage('Error processing file. Please try again.', 'ai');
-                        }
-                    }
-                });
-            }
-
-            // UPLOAD: Add Image Message with Preview
-            function addImageMessage(file) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'flex mb-4';
-                const imageUrl = URL.createObjectURL(file);
-                messageDiv.innerHTML = `
-                    <div class="ml-auto flex">
-                        <div class="message-bubble-user rounded-lg p-3 max-w-3xl">
-                            <button class="copy-button" data-copy-text="File attached: ${file.name}">📋</button>
-                            <p class="text-light-text dark:text-dev-text mb-2">📎 File attached: ${file.name}</p>
-                            <img src="${imageUrl}" alt="${file.name}" class="max-w-full max-h-64 rounded border border-light-border dark:border-dev-border cursor-pointer hover:opacity-80 transition" onclick="openImageModal('${imageUrl}')" />
-                        </div>
-                        <div class="w-10 h-10 rounded-full bg-dev-secondary bg-opacity-20 flex items-center justify-center ml-3">
-                            <span class="text-lg">👤</span>
-                        </div>
-                    </div>
-                `;
-                messageContainer.appendChild(messageDiv);
-                messageContainer.scrollTop = messageContainer.scrollHeight;
-            }
-
-            // UPLOAD: Send Document Analysis
-            async function sendDocumentAnalysis() {
-                try {
-                    const loadingId = showLoading();
-                    console.log('Sending document analysis with empty prompt');
-                    const response = await fetch('api/chat/message', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            prompt: "",
-                            fileBase64: currentFileBase64,
-                            fileName: currentFileName
-                        })
-                    });
-                    removeLoading(loadingId);
-                    if (!response.ok) throw new Error('Failed to analyze document');
-                    
-                    // Handle streaming response
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-                    const messageId = createStreamingMessage();
-                    let fullText = '';
-                    
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        const chunk = decoder.decode(value, { stream: true });
-                        fullText += chunk;
-                        updateStreamingMessage(messageId, fullText);
-                    }
-                    
-                    currentFileBase64 = null;
-                    currentFileName = null;
-                    fileInput.value = '';
-                } catch (error) {
-                    console.error('Error analyzing document:', error);
-                    addMessage('I don\'t know - there was an error analyzing the document.', 'ai');
-                    currentFileBase64 = null;
-                    currentFileName = null;
-                    fileInput.value = '';
-                }
-            }
-
-            // UPLOAD: File to Base64 Conversion
-            function fileToBase64(file) {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = error => reject(error);
-                });
-            }
-
-            // UPLOAD: Image Modal Functions
-            window.openImageModal = function(imageSrc) {
-                const modal = document.getElementById('imageModal');
-                const modalImg = document.getElementById('modalImage');
-                modal.style.display = 'block';
-                modalImg.src = imageSrc;
-            }
-
-            const imageModal = document.getElementById('imageModal');
-            if (imageModal) {
-                imageModal.addEventListener('click', function(e) {
-                    if (e.target === this || e.target.className === 'close') {
-                        this.style.display = 'none';
-                    }
-                });
-            }
-
-            // ========== BASE: Copy to Clipboard ==========
-            function copyToClipboard(text) {
-                navigator.clipboard.writeText(text).then(function() {
-                    console.log('Text copied to clipboard');
-                }).catch(function(err) {
-                    console.error('Failed to copy text: ', err);
-                });
-            }
-
-            messageContainer.addEventListener('click', function(e) {
-                if (e.target.classList.contains('copy-button')) {
-                    const textToCopy = e.target.getAttribute('data-copy-text');
-                    copyToClipboard(textToCopy);
-                }
-            });
-
-            // ========== BASE: Chat Form Submit ==========
-            chatForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const message = userInput.value.trim();
-                if (!message) return;
-
-                addMessage(message, 'user');
-                userInput.value = '';
-
-                try {
-                    const loadingId = showLoading();
-                    console.log('Sending streaming request to endpoint');
-                    if (currentFileBase64) {
-                        console.log('Including file data:', currentFileName, 'Base64 length:', currentFileBase64.length);
-                    }
-
-                    // MEMORY: Include userId if available
-                    const userIdInput = document.getElementById('userIdInput');
-                    const response = await fetch('api/chat/message', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/octet-stream'
-                        },
-                        body: JSON.stringify({
-                            prompt: message,
-                            userId: userIdInput ? userIdInput.value : null,
-                            fileBase64: currentFileBase64 || null,
-                            fileName: currentFileName || null
-                        })
-                    });
-
-                    if (!response.ok) throw new Error('Failed to get response');
-
-                    removeLoading(loadingId);
-
-                    // Handle streaming response
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-                    let fullResponse = '';
-                    let messageDiv = null;
-
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        const chunk = decoder.decode(value, { stream: true });
-                        fullResponse += chunk;
-
-                        // Update or create message
-                        if (!messageDiv) {
-                            messageDiv = createStreamingMessage();
-                        }
-                        updateStreamingMessage(messageDiv, fullResponse);
-                    }
-                } catch (error) {
-                    removeLoading(loadingId);
-                    console.error('Error:', error);
-                    addMessage('Sorry, I encountered an error. Please try again.', 'ai');
-                }
-            });
-
-            // ========== BASE: Add Message to Chat ==========
-            function createStreamingMessage() {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'flex mb-4';
-                messageDiv.innerHTML = `
-                    <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
-                        <span class="text-lg">🤖</span>
-                    </div>
-                    <div class="message-bubble-ai rounded-lg p-3 max-w-4xl ai-response">
-                        <button class="copy-button" data-copy-text="">📋</button>
-                        <div class="streaming-content"></div>
-                    </div>
-                `;
-                messageContainer.appendChild(messageDiv);
-                messageContainer.scrollTop = messageContainer.scrollHeight;
-                return messageDiv;
-            }
-
-            function updateStreamingMessage(messageDiv, content) {
-                const contentDiv = messageDiv.querySelector('.streaming-content');
-                const copyButton = messageDiv.querySelector('.copy-button');
-                const renderedContent = marked.parse(content);
-                contentDiv.innerHTML = renderedContent;
-                copyButton.setAttribute('data-copy-text', escapeHtml(content));
-                messageContainer.scrollTop = messageContainer.scrollHeight;
-            }
-
-            function addMessage(content, sender) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'flex mb-4';
-
-                if (sender === 'user') {
-                    messageDiv.innerHTML = `
-                        <div class="ml-auto flex">
-                            <div class="message-bubble-user rounded-lg p-3 max-w-3xl">
-                                <button class="copy-button" data-copy-text="${escapeHtml(content)}">📋</button>
-                                <p class="text-light-text dark:text-dev-text">${escapeHtml(content)}</p>
-                            </div>
-                            <div class="w-10 h-10 rounded-full bg-dev-secondary bg-opacity-20 flex items-center justify-center ml-3">
-                                <span class="text-lg">👤</span>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    console.log('Parsing AI response as markdown:', content.substring(0, 200));
-                    const renderedContent = marked.parse(content);
-                    console.log('Rendered HTML:', renderedContent.substring(0, 200));
-                    messageDiv.innerHTML = `
-                        <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
-                            <span class="text-lg">🤖</span>
-                        </div>
-                        <div class="message-bubble-ai rounded-lg p-3 max-w-4xl ai-response">
-                            <button class="copy-button" data-copy-text="${escapeHtml(content)}">📋</button>
-                            ${renderedContent}
-                        </div>
-                    `;
-                }
-
-                messageContainer.appendChild(messageDiv);
-                messageContainer.scrollTop = messageContainer.scrollHeight;
-            }
-
-            // ========== BASE: Loading Indicator ==========
-            function showLoading() {
-                const loadingId = 'loading-' + Date.now();
-                const loadingDiv = document.createElement('div');
-                loadingDiv.id = loadingId;
-                loadingDiv.className = 'flex mb-4';
-                loadingDiv.innerHTML = `
-                    <div class="w-10 h-10 rounded-full bg-indigo-500 bg-opacity-20 flex items-center justify-center mr-3">
-                        <span class="text-lg">🤖</span>
-                    </div>
-                    <div class="message-bubble-ai rounded-lg p-3">
-                        <div class="flex space-x-2">
-                            <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></div>
-                            <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                            <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
-                        </div>
-                    </div>
-                `;
-                messageContainer.appendChild(loadingDiv);
-                messageContainer.scrollTop = messageContainer.scrollHeight;
-                return loadingId;
-            }
-
-            function removeLoading(loadingId) {
-                const loadingDiv = document.getElementById(loadingId);
-                if (loadingDiv) loadingDiv.remove();
-            }
-
-            // ========== BASE: Escape HTML ==========
-            function escapeHtml(unsafe) {
-                return unsafe
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/"/g, "&quot;")
-                    .replace(/'/g, "&#039;");
-            }
-
-            // ========== MEMORY: Summarize Button ==========
-            const summarizeBtn = document.getElementById('summarizeBtn');
-            if (summarizeBtn) {
-                summarizeBtn.addEventListener('click', async function() {
-                    try {
-                        const userId = document.getElementById('userIdInput').value;
-                        const loadingId = showLoading();
-
-                        const response = await fetch('api/chat/summarize', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId: userId })
-                        });
-
-                        removeLoading(loadingId);
-                        if (!response.ok) throw new Error('Failed to summarize');
-                        const summary = await response.text();
-                        addMessage('📝 ' + summary, 'ai');
-                    } catch (error) {
-                        console.error('Error summarizing:', error);
-                        addMessage('Failed to summarize conversation. Please try again.', 'ai');
-                    }
-                });
-            }
-
-            // ========== BASE: Dark Mode Toggle ==========
-            const themeToggle = document.getElementById('themeToggle');
-            themeToggle.addEventListener('click', function() {
-                const html = document.documentElement;
-                html.classList.toggle('dark');
-                themeToggle.innerHTML = html.classList.contains('dark') ? '☀️ Light' : '🌙 Dark';
-            });
-        });
-    </script>
 </body>
 </html>
