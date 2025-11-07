@@ -9,7 +9,6 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.context.annotation.Lazy;
 import reactor.core.publisher.Flux;
 
 import org.springframework.stereotype.Service;
@@ -42,26 +41,20 @@ public class ChatMemoryService {
             .dialect(new PostgresChatMemoryRepositoryDialect())
             .build();
 
-        // JDBC for current session (last 20 messages) - conversationId: userId
         this.sessionMemory = MessageWindowChatMemory.builder()
             .chatMemoryRepository(jdbcRepository)
             .maxMessages(MAX_SESSION_MESSAGES)
             .build();
 
-        // JDBC for context summaries (last 10) - conversationId: userId_context
         this.contextMemory = MessageWindowChatMemory.builder()
             .chatMemoryRepository(jdbcRepository)
             .maxMessages(MAX_CONTEXT_SUMMARIES)
             .build();
 
-        // JDBC for user preferences (1 record) - conversationId: userId_preferences
         this.preferencesMemory = MessageWindowChatMemory.builder()
             .chatMemoryRepository(jdbcRepository)
             .maxMessages(MAX_PREFERENCES)
             .build();
-
-        logger.info("ChatMemoryService initialized with JDBC (max {} messages, {} context summaries, {} preferences)",
-            MAX_SESSION_MESSAGES, MAX_CONTEXT_SUMMARIES, MAX_PREFERENCES);
     }
 
     public MessageWindowChatMemory getSessionMemory() {

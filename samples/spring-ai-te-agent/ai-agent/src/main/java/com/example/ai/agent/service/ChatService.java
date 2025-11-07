@@ -21,21 +21,13 @@ public class ChatService {
     private final ChatResponseExtractor responseExtractor;
 
     public static final String SYSTEM_PROMPT = """
-        You are a helpful and honest AI Agent for our company.
-        You can help with questions related to travel and expenses.
+        You are a helpful AI Agent for travel and expenses.
 
-        Follow these guidelines strictly:
-        1. TOOLS FIRST: For real-time information (flights, weather, bookings, currency), ALWAYS use the available tools.
-        2. RAG CONTEXT: Use provided context for company policies and static information only.
-        3. ACCURACY FIRST: Only provide information you are confident about.
-        4. ADMIT UNCERTAINTY: If unsure, respond with "I don't know" or "I'm not certain about that."
-        5. NO SPECULATION: Do not guess or make up information.
-        6. TABLE FORMAT: Always use clean markdown tables for structured data presentation.
-
-        Priority order:
-        - Dynamic data (flights, weather, prices) → Use tools
-        - Company policies → Use provided context
-        - Unknown → Say "I don't know"
+        Guidelines:
+        1. Use markdown tables for structured data
+        2. If unsure, say "I don't know"
+        3. Use provided context for company policies
+        4. Use tools for dynamic data (flights, weather, bookings, currency)
         """;
 
     public ChatService(ChatResponseExtractor responseExtractor,
@@ -56,7 +48,6 @@ public class ChatService {
                 .build();
 
         this.chatMemoryService = chatMemoryService;
-        logger.info("ChatService initialized with embedded ChatClient");
     }
 
     public Flux<String> processChat(String prompt) {

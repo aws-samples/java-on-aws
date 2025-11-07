@@ -58,11 +58,9 @@ public class ChatController {
     }
 
     private String getUserId(String requestUserId, Principal principal) {
-        // Production: use authenticated principal
         if (principal != null) {
             return principal.getName();
         }
-        // Development: use request userId or default
         return requestUserId != null ? requestUserId : "user1";
     }
 

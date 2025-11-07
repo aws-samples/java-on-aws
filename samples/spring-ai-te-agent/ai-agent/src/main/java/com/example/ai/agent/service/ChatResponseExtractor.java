@@ -5,10 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.stereotype.Component;
 
-/**
- * Utility for extracting text content from ChatResponse objects.
- * Handles both standard responses and models with reasoning content.
- */
 @Component
 public class ChatResponseExtractor {
     private static final Logger logger = LoggerFactory.getLogger(ChatResponseExtractor.class);

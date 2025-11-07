@@ -29,11 +29,11 @@ public class WeatherService {
         - city: City name (e.g., 'London', 'Paris', 'New York')
         - date: Date in YYYY-MM-DD format
         Returns: Weather forecast with minimum and maximum temperatures.
-        
+
         Examples:
         - getWeather("London", "2025-11-10")
         - getWeather("Paris", "2025-11-15")
-        
+
         Use this tool when users ask about weather conditions for travel planning.
         """)
     public String getWeather(String city, String date) {
@@ -117,7 +117,7 @@ public class WeatherService {
             String locationDisplay = cityName + (country.isEmpty() ? "" : ", " + country);
             String formattedUnit = unit.replace("°", " deg ");
 
-            logger.info("Retrieved weather for {}: min: {}{}, max: {}{}", 
+            logger.info("Retrieved weather for {}: min: {}{}, max: {}{}",
                     locationDisplay, minTemp, formattedUnit, maxTemp, formattedUnit);
 
             return String.format(

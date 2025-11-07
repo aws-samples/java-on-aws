@@ -55,15 +55,9 @@ public class ConversationSummaryService {
         logger.info("Summarizing {} characters of conversation", messagesText.length());
 
         String preferencesPrompt = existingPrefsText.isEmpty()
-            ? "Extract ONLY static user information (name, email, preferences, dietary restrictions). If none found, return empty string."
-            : "MERGE preferences - keep ALL existing information and ADD any new information:\n\n" +
-              "EXISTING PREFERENCES (keep everything):\n" + existingPrefsText + "\n\n" +
-              "INSTRUCTIONS:\n" +
-              "1. Start with ALL existing preferences above\n" +
-              "2. Add any NEW preferences from the conversation\n" +
-              "3. Update ONLY if explicitly changed by user\n" +
-              "4. Never remove existing information\n" +
-              "Output the complete merged preferences.";
+            ? "Extract static user information (name, email, preferences). If none, return empty."
+            : "Merge preferences. Keep existing:\n" + existingPrefsText + 
+              "\nAdd new from conversation. Update only if explicitly changed. Never remove existing.";
 
         var chatResponse = chatClient.prompt()
             .user("Analyze this conversation and provide TWO separate summaries:\n\n" +

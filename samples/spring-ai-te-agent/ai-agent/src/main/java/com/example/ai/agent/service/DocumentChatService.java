@@ -27,45 +27,22 @@ public class DocumentChatService {
     private String documentModel;
 
     public static final String DOCUMENT_ANALYSIS_PROMPT = """
-        Analyze this document and extract expense information if possible.
+        Extract expense information from this document.
 
-        ## Core Information
+        Required fields:
         - Document Type: [RECEIPT, INVOICE, TICKET, BILL, OTHER]
-        - Expense Type: [MEALS, TRANSPORTATION, OFFICE_SUPPLIES, ACCOMMODATION, OTHER]
-        - Amount: [numerical value only]
-        - Currency: [code only, e.g., USD, EUR]
-        - Date: [YYYY-MM-DD format]
-
-        ## Category-Specific Details
-        For ACCOMMODATION:
-        - Check-in/out Dates
-        - Nights
-        - Price per Night
-        - Breakfast Included [Yes/No]
-        - Location
-
-        For MEALS:
-        - Contains Alcohol [Yes/No]
-
-        For TRANSPORTATION:
-        - Type [car, train, plane, etc.]
-        - Location
-
-        ## Policy Compliance
-        Check the expense against the company's Travel and Expense Policy and provide:
-        - Status: [APPROVED, REQUIRES_MANAGER_APPROVAL, REQUIRES_DIRECTOR_APPROVAL, REQUIRES_EXECUTIVE_APPROVAL, POLICY_VIOLATION]
-        - Reason: [brief explanation]
-        - Policy Reference: Specifically mention which section of the Travel and Expense Policy applies
-
-        For any field where information is missing or unclear, state "I don't know".
-        Double-check all monetary values for accuracy.
-
-        ## Non-Expense Documents
-        If the document cannot be recognized as an expense document (receipt, invoice, bill, ticket, etc.),
-        do not attempt to extract expense information. Instead:
-        1. Clearly state that this does not appear to be an expense document
-        2. Provide a concise summary of the document's content in 2-3 paragraphs
-        3. Describe the key information, purpose, and type of document it appears to be
+        - Expense Type: [MEALS, ACCOMMODATION, TRANSPORTATION, OFFICE_SUPPLIES, OTHER]
+        - Amount and Currency
+        - Date: [YYYY-MM-DD]
+        
+        Category-specific details:
+        - ACCOMMODATION: check-in/out dates, nights, rate per night, location
+        - MEALS: contains alcohol (yes/no)
+        - TRANSPORTATION: type, route or location
+        
+        Check against the Expense Policy and provide approval status with reasoning.
+        If not an expense document, provide a brief summary.
+        For missing information, state "I don't know".
         """;
 
     public DocumentChatService(ChatModel chatModel, ChatService chatService) {
