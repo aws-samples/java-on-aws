@@ -56,10 +56,10 @@ public class ChatController {
     private String getUserId(String requestUserId, Principal principal) {
         // Production: use authenticated user from Spring Security
         if (principal != null) {
-            return principal.getName();
+            return principal.getName().toLowerCase();
         }
         // Development: use provided userId or default
-        return requestUserId != null ? requestUserId : "user1";
+        return requestUserId != null ? requestUserId.toLowerCase() : "user1";
     }
 
     private boolean hasFile(ChatRequest request) {

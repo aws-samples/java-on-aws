@@ -143,7 +143,7 @@ public class ChatMemoryService {
     }
 
     public void setCurrentUserId(String userId) {
-        this.currentUserId.set(userId);
+        this.currentUserId.set(userId.toLowerCase());
     }
 
     public String getCurrentConversationId() {
