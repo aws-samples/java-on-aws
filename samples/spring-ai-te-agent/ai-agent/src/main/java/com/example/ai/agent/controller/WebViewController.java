@@ -16,6 +16,7 @@ public class WebViewController {
 
     @GetMapping("/")
     public String index(Model model) {
+        // Pass feature flags to UI for conditional rendering
         model.addAttribute("multiUserEnabled", multiUserEnabled);
         model.addAttribute("multiModalEnabled", multiModalEnabled);
         return "chat";

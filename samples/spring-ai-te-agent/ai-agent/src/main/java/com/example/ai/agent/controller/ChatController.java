@@ -5,10 +5,7 @@ import com.example.ai.agent.service.ChatMemoryService;
 import com.example.ai.agent.service.ConversationSummaryService;
 import com.example.ai.agent.service.DocumentChatService;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -39,11 +36,10 @@ public class ChatController {
         String userId = getUserId(request.userId(), principal);
         chatMemoryService.setCurrentUserId(userId);
 
-        if (hasFile(request)) {
-            return documentChatService.processDocument(request.prompt(), request.fileBase64(), request.fileName());
-        } else {
-            return chatService.processChat(request.prompt());
-        }
+        // Route to document analysis or regular chat
+        return hasFile(request)
+            ? documentChatService.processDocument(request.prompt(), request.fileBase64(), request.fileName())
+            : chatService.processChat(request.prompt());
     }
 
     @PostMapping("summarize")
@@ -58,9 +54,11 @@ public class ChatController {
     }
 
     private String getUserId(String requestUserId, Principal principal) {
+        // Production: use authenticated user from Spring Security
         if (principal != null) {
             return principal.getName();
         }
+        // Development: use provided userId or default
         return requestUserId != null ? requestUserId : "user1";
     }
 

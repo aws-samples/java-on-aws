@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
-
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -36,20 +35,19 @@ public class ChatService {
                       ToolCallbackProvider tools,
                       ChatClient.Builder chatClientBuilder) {
 
+        // Build ChatClient with RAG, tools, and memory
         this.chatClient = chatClientBuilder
                 .defaultSystem(SYSTEM_PROMPT)
-                .defaultAdvisors(
-                        QuestionAnswerAdvisor.builder(vectorStore).build()
-                )
-                .defaultTools(dateTimeService, weatherService)
-                .defaultToolCallbacks(tools)
+                .defaultAdvisors(QuestionAnswerAdvisor.builder(vectorStore).build())  // RAG for policies
+                .defaultTools(dateTimeService, weatherService)  // Custom tools
+                .defaultToolCallbacks(tools)  // Auto-registered tools from MCP
                 .build();
 
         this.chatMemoryService = chatMemoryService;
     }
 
     public Flux<String> processChat(String prompt) {
-        logger.info("Processing streaming chat request - prompt: '{}'", prompt);
+        logger.info("Processing chat: '{}'", prompt);
         try {
             // Simple streaming without memory:
             // return chatClient
@@ -58,7 +56,7 @@ public class ChatService {
             //     .content();
             return chatMemoryService.callWithMemory(chatClient, prompt);
         } catch (Exception e) {
-            logger.error("Error processing streaming chat request", e);
+            logger.error("Error processing chat", e);
             return Flux.just("I don't know - there was an error processing your request.");
         }
     }

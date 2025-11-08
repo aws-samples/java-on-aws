@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 import reactor.core.publisher.Flux;
-
 import java.util.Base64;
 
 @Service
@@ -34,12 +33,12 @@ public class DocumentChatService {
         - Expense Type: [MEALS, ACCOMMODATION, TRANSPORTATION, OFFICE_SUPPLIES, OTHER]
         - Amount and Currency
         - Date: [YYYY-MM-DD]
-        
+
         Category-specific details:
         - ACCOMMODATION: check-in/out dates, nights, rate per night, location
         - MEALS: contains alcohol (yes/no)
         - TRANSPORTATION: type, route or location
-        
+
         Check against the Expense Policy and provide approval status with reasoning.
         If not an expense document, provide a brief summary.
         For missing information, state "I don't know".
@@ -53,23 +52,23 @@ public class DocumentChatService {
     }
 
     public Flux<String> processDocument(String prompt, String fileBase64, String fileName) {
-        logger.info("Processing document chat request - fileName: {}", fileName);
+        logger.info("Processing document: {}", fileName);
 
         return Flux.create(sink -> {
-            // Step 1: Emit immediate feedback
+            // 1. Emit immediate feedback
             sink.next("Analyzing document...\n\n");
-            
-            // Step 2: Analyze document (blocking)
+
+            // 2. Analyze document with multimodal AI
             String documentAnalysis = analyzeDocument(prompt, fileBase64, fileName);
-            
-            // Step 3: Stream the analysis result
-            String additionalPrompt = documentAnalysis + "\n\n" +
-                "Based on the extracted information, please provide a structured summary of the expense document including the following fields:\n" +
-                "Add Amount in EUR: If original currency is EUR, use the original amount. " +
-                "If original currency is not EUR, use available currency conversion tools to convert the original amount to EUR based on the document date. If conversion is not available, use current date. \n\n" +
+
+            // 3. Stream structured summary with currency conversion
+            String summaryPrompt = documentAnalysis + "\n\n" +
+                "Based on the extracted information, provide a structured summary including:\n" +
+                "- Amount in EUR: If original currency is EUR, use original amount. " +
+                "Otherwise, convert to EUR using the document date (or current date if unavailable).\n\n" +
                 "After presenting the information, ask the user to confirm and offer to register the expense.";
-            
-            chatService.processChat(additionalPrompt)
+
+            chatService.processChat(summaryPrompt)
                 .subscribe(
                     chunk -> sink.next(chunk),
                     error -> sink.error(error),
@@ -83,7 +82,7 @@ public class DocumentChatService {
         byte[] fileData = Base64.getDecoder().decode(fileBase64);
         ByteArrayResource resource = new ByteArrayResource(fileData);
 
-        final String userPrompt = (prompt != null && !prompt.trim().isEmpty())
+        String userPrompt = (prompt != null && !prompt.trim().isEmpty())
                 ? prompt
                 : "Analyze this document";
 
@@ -99,7 +98,9 @@ public class DocumentChatService {
                     })
                     .call().chatResponse();
 
-            return (chatResponse != null) ? chatResponse.getResult().getOutput().getText() : "I don't know - no response received.";
+            return (chatResponse != null)
+                ? chatResponse.getResult().getOutput().getText()
+                : "I don't know - no response received.";
         } catch (Exception e) {
             logger.error("Error analyzing document", e);
             return "I don't know - there was an error analyzing the document.";
@@ -114,5 +115,4 @@ public class DocumentChatService {
         }
         return MimeTypeUtils.APPLICATION_OCTET_STREAM;
     }
-
 }

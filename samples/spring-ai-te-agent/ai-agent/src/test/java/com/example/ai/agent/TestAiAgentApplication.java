@@ -9,6 +9,13 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 import java.time.Duration;
 
+/**
+ * Test application that starts with Testcontainers PostgreSQL.
+ * Run with: ./mvnw spring-boot:test-run
+ *
+ * Container reuse enabled: same container persists between restarts.
+ * To enable reuse: add "testcontainers.reuse.enable=true" to ~/.testcontainers.properties
+ */
 public class TestAiAgentApplication {
 
     public static void main(String[] args) {
@@ -21,19 +28,16 @@ public class TestAiAgentApplication {
     @TestConfiguration(proxyBeanMethods = false)
     static class TestcontainersConfig {
         @Bean
-        @ServiceConnection
+        @ServiceConnection  // Auto-configures DataSource from container
         PostgreSQLContainer<?> postgresContainer() {
-            PostgreSQLContainer<?> container = new PostgreSQLContainer<>(
-                    DockerImageName.parse("pgvector/pgvector:pg16"))
+            return new PostgreSQLContainer<>(DockerImageName.parse("pgvector/pgvector:pg16"))
                     .withDatabaseName("ai_agent_db")
                     .withUsername("postgres")
                     .withPassword("postgres")
                     .withStartupTimeout(Duration.ofMinutes(5))
                     .withCreateContainerCmdModifier(cmd -> cmd.withName("ai-agent-postgres"))
-                    .withReuse(true);  // Reuse container between restarts
-
-            container.waitingFor(Wait.defaultWaitStrategy());
-            return container;
+                    .withReuse(true)  // Reuse container between restarts
+                    .waitingFor(Wait.defaultWaitStrategy());
         }
     }
 }
