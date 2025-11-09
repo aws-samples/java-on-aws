@@ -15,24 +15,6 @@ if [ ! -d "ai-agent" ]; then
     exit 1
 fi
 
-# Check if weather folder exists and delete it if it does
-echo "Checking for weather folder..."
-if [ -d "weather" ]; then
-    echo "Found existing weather folder, removing it..."
-    rm -rf weather
-fi
-
-# Copy weather folder from source
-echo "Copying weather folder from source..."
-if [ -d "$SOURCES_FOLDER/weather" ]; then
-    cp -r "$SOURCES_FOLDER/weather" .
-    echo "weather folder copied successfully."
-else
-    echo "Error: weather folder not found at $SOURCES_FOLDER/weather."
-    echo "Please ensure the folder exists at the specified location."
-    exit 1
-fi
-
 # Check if travel folder exists and delete it if it does
 echo "Checking for travel folder..."
 if [ -d "travel" ]; then
@@ -67,7 +49,6 @@ cat >> src/main/resources/application.properties << 'EOL'
 
 # MCP Client Configuration
 spring.ai.mcp.client.toolcallback.enabled=true
-spring.ai.mcp.client.sse.connections.server1.url=http://localhost:8081
 spring.ai.mcp.client.sse.connections.server2.url=http://localhost:8082
 EOL
 

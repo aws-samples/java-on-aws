@@ -27,6 +27,9 @@ mkdir -p src/main/java/com/example/ai/agent/tool
 echo "Copying DateTimeService.java..."
 cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/tool/DateTimeService.java" src/main/java/com/example/ai/agent/tool/
 
+echo "Copying WeatherService.java..."
+cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/tool/WeatherService.java" src/main/java/com/example/ai/agent/tool/
+
 echo "Copying ChatService.java from version 4..."
 cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.4" src/main/java/com/example/ai/agent/service/ChatService.java
 

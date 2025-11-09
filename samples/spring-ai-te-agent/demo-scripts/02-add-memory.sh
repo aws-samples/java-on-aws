@@ -25,9 +25,17 @@ cd ai-agent
 echo "Copying ChatMemoryService.java..."
 cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/service/ChatMemoryService.java" src/main/java/com/example/ai/agent/service/
 
+echo "Copying ConversationSummaryService.java..."
+cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/service/ConversationSummaryService.java" src/main/java/com/example/ai/agent/service/
+
 echo "Copying ChatService.java from version 2..."
 cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.2" src/main/java/com/example/ai/agent/service/ChatService.java
-# code src/main/java/com/example/ai/agent/ChatService.java
+
+echo "Copying ChatController.java from version 2..."
+cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatController.java.2" src/main/java/com/example/ai/agent/controller/ChatController.java
+
+echo "Copying WebViewController.java from version 2..."
+cp "$SOURCES_FOLDER/demo-scripts/Steps/WebViewController.java.2" src/main/java/com/example/ai/agent/controller/WebViewController.java
 
 # Add PostgreSQL and JPA configuration to application.properties
 echo "Updating application.properties with database configuration..."
@@ -61,6 +69,21 @@ cat > temp_dependencies.xml << 'EOL'
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-chat-memory-repository-jdbc</artifactId>
         </dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
 EOL
 
 # Create a temporary file for the modified pom.xml

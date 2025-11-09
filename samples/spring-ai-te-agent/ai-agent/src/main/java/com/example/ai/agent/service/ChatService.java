@@ -19,7 +19,7 @@ public class ChatService {
     private final ChatMemoryService chatMemoryService;
 
     public static final String SYSTEM_PROMPT = """
-        You are a helpful AI Agent for travel and expenses.
+        You are a helpful AI Agent for travel and expenses management.
 
         Guidelines:
         1. Use markdown tables for structured data

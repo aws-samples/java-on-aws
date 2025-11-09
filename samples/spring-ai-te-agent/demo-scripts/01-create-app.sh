@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Clear current directory completely
+echo "Clearing current directory: $(pwd)"
+rm -rf ./*
+rm -rf ./.[!.]* 2>/dev/null || true
+
 echo "Checking if spring-boot-cli directory exists and remove it if it does..."
 if [ -d "spring-boot-cli" ]; then
     echo "Found existing spring-boot-cli directory, removing it..."
@@ -36,7 +41,7 @@ echo "   --type=maven-project \\"
 echo "   --artifact-id=ai.agent \\"
 echo "   --name=ai-agent \\"
 echo "   --group-id=com.example \\"
-echo -e "   \033[1m--dependencies=spring-ai-bedrock-converse,web,thymeleaf,actuator,devtools,testcontainers,postgresql \033[0m\\"
+echo -e "   \033[1m--dependencies=spring-ai-bedrock-converse,web,thymeleaf \033[0m\\"
 echo "   --extract \\"
 echo "   ai-agent"
 
@@ -53,7 +58,7 @@ echo "Initializing Spring Boot project..."
    --artifact-id=ai.agent \
    --name=ai-agent \
    --group-id=com.example \
-   --dependencies=spring-ai-bedrock-converse,web,thymeleaf,actuator,devtools,testcontainers,postgresql \
+   --dependencies=spring-ai-bedrock-converse,web,thymeleaf \
    --extract \
    ai-agent
 
@@ -89,7 +94,7 @@ spring.thymeleaf.suffix=.html
 # Amazon Bedrock Configuration
 spring.ai.bedrock.aws.region=us-east-1
 spring.ai.bedrock.converse.chat.options.max-tokens=10000
-spring.ai.bedrock.converse.chat.options.model=openai.gpt-oss-120b-1:0
+spring.ai.bedrock.converse.chat.options.model=global.anthropic.claude-sonnet-4-20250514-v1:0
 EOL
 
 echo "Creating necessary directories and files..."
@@ -98,7 +103,7 @@ mkdir -p src/main/java/com/example/ai/agent/controller
 mkdir -p src/main/java/com/example/ai/agent/service
 
 cp "$SOURCES_FOLDER/ai-agent/src/main/resources/templates/chat.html" src/main/resources/templates/
-cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/controller/WebViewController.java" src/main/java/com/example/ai/agent/controller/
+cp "$SOURCES_FOLDER/demo-scripts/Steps/WebViewController.java.1" src/main/java/com/example/ai/agent/controller/WebViewController.java
 cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.0" src/main/java/com/example/ai/agent/service/ChatService.java
 cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatController.java.0" src/main/java/com/example/ai/agent/controller/ChatController.java
 
@@ -117,10 +122,10 @@ echo "Committing changes to Git repository..."
 git add .
 git commit -m "Update initial files"
 
-./mvnw spring-boot:test-run
+./mvnw spring-boot:run
 
 cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.1" src/main/java/com/example/ai/agent/service/ChatService.java
 
-./mvnw spring-boot:test-run
+./mvnw spring-boot:run
 
 cd ..

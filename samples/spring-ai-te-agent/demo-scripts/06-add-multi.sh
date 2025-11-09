@@ -40,15 +40,21 @@ git commit -m "add MCP"
 
 cd ai-agent
 
+echo "Copying ChatController.java with multi-modal support..."
 cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/controller/ChatController.java" src/main/java/com/example/ai/agent/controller/
+
+echo "Copying WebViewController.java with feature flags..."
+cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/controller/WebViewController.java" src/main/java/com/example/ai/agent/controller/
+
+echo "Copying DocumentChatService.java..."
 cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/service/DocumentChatService.java" src/main/java/com/example/ai/agent/service/
 
-echo "Updating application.properties with database configuration..."
+echo "Updating application.properties with multi-modal configuration..."
 cat >> src/main/resources/application.properties << 'EOL'
 spring.ai.mcp.client.sse.connections.server3.url=http://localhost:8083
 
 # Document processing model
-ai.agent.document.model=global.anthropic.claude-sonnet-4-20250514-v1:0
+ai.agent.document.model=global.anthropic.claude-sonnet-4-5-20250929-v1:0
 EOL
 
 # echo "Opening application.properties in VS Code..."
