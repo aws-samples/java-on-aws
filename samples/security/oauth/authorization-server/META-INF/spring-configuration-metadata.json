@@ -1,0 +1,105 @@
+{
+  "groups": [
+    {
+      "name": "spring.ai.mcp.client",
+      "type": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties"
+    },
+    {
+      "name": "spring.ai.mcp.client.sse",
+      "type": "org.springframework.ai.mcp.client.autoconfigure.properties.McpSseClientProperties",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpSseClientProperties"
+    },
+    {
+      "name": "spring.ai.mcp.client.stdio",
+      "type": "org.springframework.ai.mcp.client.autoconfigure.properties.McpStdioClientProperties",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpStdioClientProperties"
+    },
+    {
+      "name": "spring.ai.mcp.client.toolcallback",
+      "type": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties$Toolcallback",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties",
+      "sourceMethod": "getToolcallback()"
+    }
+  ],
+  "properties": [
+    {
+      "name": "spring.ai.mcp.client.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable\/disable the MCP client. <p> When set to false, the MCP client and all its components will not be initialized.",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.ai.mcp.client.initialized",
+      "type": "java.lang.Boolean",
+      "description": "Flag to indicate if the MCP client has to be initialized.",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.ai.mcp.client.name",
+      "type": "java.lang.String",
+      "description": "The name of the MCP client instance. <p> This name is reported to clients and used for compatibility checks.",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties",
+      "defaultValue": "spring-ai-mcp-client"
+    },
+    {
+      "name": "spring.ai.mcp.client.request-timeout",
+      "type": "java.time.Duration",
+      "description": "The timeout duration for MCP client requests. <p> Defaults to 20 seconds.",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties",
+      "defaultValue": "20s"
+    },
+    {
+      "name": "spring.ai.mcp.client.root-change-notification",
+      "type": "java.lang.Boolean",
+      "description": "Flag to enable\/disable root change notifications. <p> When enabled, the client will be notified of changes to the root configuration. Defaults to true.",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.ai.mcp.client.sse.connections",
+      "type": "java.util.Map<java.lang.String,org.springframework.ai.mcp.client.autoconfigure.properties.McpSseClientProperties$SseParameters>",
+      "description": "Map of named SSE connection configurations. <p> The key represents the connection name, and the value contains the SSE parameters for that connection.",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpSseClientProperties"
+    },
+    {
+      "name": "spring.ai.mcp.client.stdio.connections",
+      "type": "java.util.Map<java.lang.String,org.springframework.ai.mcp.client.autoconfigure.properties.McpStdioClientProperties$Parameters>",
+      "description": "Map of MCP stdio connections configurations. <p> Each entry represents a named connection with its specific configuration parameters.",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpStdioClientProperties"
+    },
+    {
+      "name": "spring.ai.mcp.client.stdio.servers-configuration",
+      "type": "org.springframework.core.io.Resource",
+      "description": "Resource containing the MCP servers configuration. <p> This resource should contain a JSON configuration defining the MCP servers and their parameters.",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpStdioClientProperties"
+    },
+    {
+      "name": "spring.ai.mcp.client.toolcallback.enabled",
+      "type": "java.lang.Boolean",
+      "description": "A boolean flag indicating whether the tool callback is enabled. If true, the tool callback is active; otherwise, it is disabled.",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties$Toolcallback",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.ai.mcp.client.type",
+      "type": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties$ClientType",
+      "description": "The type of client to use for MCP client communication. <p> Supported types are: <ul> <li>SYNC - Standard synchronous client (default)<\/li> <li>ASYNC - Asynchronous client<\/li> <\/ul>",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties",
+      "defaultValue": "sync"
+    },
+    {
+      "name": "spring.ai.mcp.client.version",
+      "type": "java.lang.String",
+      "description": "The version of the MCP client instance. <p> This version is reported to clients and used for compatibility checks.",
+      "sourceType": "org.springframework.ai.mcp.client.autoconfigure.properties.McpClientCommonProperties",
+      "defaultValue": "1.0.0"
+    }
+  ],
+  "hints": [],
+  "ignored": {
+    "properties": []
+  }
+}
