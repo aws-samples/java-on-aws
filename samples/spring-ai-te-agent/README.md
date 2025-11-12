@@ -2,20 +2,20 @@
 
 A comprehensive AI-powered agent ecosystem built with Spring AI framework, demonstrating modern AI application patterns including RAG, persistent memory, tool integration, and microservices communication via Model Context Protocol (MCP).
 
-## Overview
+## Architecture Overview
 
-The ecosystem consists of four microservices that work together:
+The ecosystem consists of three microservices that work together:
 
 1. **[AI Agent](ai-agent/README.md)** - Central AI assistant with chat interface, document analysis, and RAG capabilities
 2. **[Travel Service](travel/README.md)** - Hotel and flight booking service with MCP integration
-3. **[Weather Service](weather/README.md)** - Weather forecast service with MCP integration
-4. **[Backoffice Service](backoffice/README.md)** - Expense management and currency conversion service with MCP integration
+3. **[Backoffice Service](backoffice/README.md)** - Expense management and currency conversion service with MCP integration
 
-The AI Agent connects to Travel, Weather, and Backoffice services through MCP, enabling it to book travel, get weather forecasts, manage expenses, and provide comprehensive business assistance.
+The AI Agent connects to Travel and Backoffice services through Model Context Protocol (MCP), enabling it to book travel, manage expenses, and provide comprehensive business assistance.
 
 ## Quick Start
 
 ### Prerequisites
+
 - Java 21+
 - Maven 3.8+
 - Docker (for Testcontainers)
@@ -23,31 +23,29 @@ The AI Agent connects to Travel, Weather, and Backoffice services through MCP, e
 
 ### Running the Services
 
-1. **Start Weather Service** (port 8081):
-   ```bash
-   cd weather/
-   mvn spring-boot:run
-   ```
+1. **Start Travel Service** (port 8082):
 
-2. **Start Travel Service** (port 8082):
    ```bash
    cd travel/
    mvn spring-boot:test-run
    ```
 
-3. **Start Backoffice Service** (port 8083):
+2. **Start Backoffice Service** (port 8083):
+
    ```bash
    cd backoffice/
    mvn spring-boot:test-run
    ```
 
-4. **Start AI Agent** (port 8080):
+3. **Start AI Agent** (port 8080):
+
    ```bash
    cd ai-agent/
    mvn spring-boot:test-run
    ```
 
 4. **Access the application**:
+
    ```
    http://localhost:8080
    ```
@@ -57,23 +55,21 @@ Each service uses Testcontainers for automatic database setup - no manual config
 ## Services
 
 ### AI Agent
+
 - **Chat interface** with persistent memory using JDBC
 - **Document analysis** (PDF, images) with multimodal AI models
 - **RAG implementation** using pgvector for knowledge base
 - **Tool integration** and MCP client for microservices
-- **Models**: OpenAI GPT-OSS-120B, Claude Sonnet 4, Amazon Nova
+- **Models**: Claude Sonnet 4, Amazon Nova
 
 ### Travel Service
+
 - **Hotel & flight booking** with comprehensive search
 - **Airport information** and flight management
 - **MCP server** exposing travel tools to AI Agent
 
-### Weather Service
-- **Weather forecasts** for any city worldwide
-- **Historical and future weather data** with external API integration
-- **MCP server** exposing weather tools to AI Agent
-
 ### Backoffice Service
+
 - **Expense management** with approval workflows
 - **Currency conversion** with real-time exchange rates
 - **MCP server** exposing business tools to AI Agent
@@ -99,12 +95,13 @@ Each service uses Testcontainers for automatic database setup - no manual config
 ## AWS Configuration
 
 Configure AWS credentials for Bedrock access:
+
 ```bash
 aws configure
 ```
 
 Ensure access to required models:
-- `openai.gpt-oss-120b-1:0`
+
 - `global.anthropic.claude-sonnet-4-20250514-v1:0`
 - `us.amazon.nova-pro-v1:0` (optional)
 
@@ -112,5 +109,4 @@ Ensure access to required models:
 
 - [AI Agent Documentation](ai-agent/README.md) - Detailed setup and architecture
 - [Travel Service Documentation](travel/README.md) - Travel booking API
-- [Weather Service Documentation](weather/README.md) - Weather forecast API
 - [Backoffice Service Documentation](backoffice/README.md) - Expense management API

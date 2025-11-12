@@ -1,129 +1,65 @@
 # Spring AI Agent
 
-A comprehensive AI-powered agent built with Spring AI framework, featuring multimodal chat capabilities, document analysis, RAG (Retrieval-Augmented Generation), persistent memory, tool integration, and Testcontainers support for development.
+A comprehensive AI-powered agent built with Spring AI framework, featuring multimodal chat capabilities, document analysis, RAG (Retrieval-Augmented Generation), persistent memory, tool integration, and Model Context Protocol (MCP) client functionality.
 
-## Related Documentation
+## Features
 
-This project is part of a larger microservices ecosystem:
+- **Multimodal Chat Interface** - Text conversations with document upload support (PDF, JPG, JPEG, PNG)
+- **Persistent Memory** - JDBC-based chat memory for conversation continuity across sessions
+- **RAG Implementation** - Knowledge base integration using pgvector for document retrieval
+- **Tool Integration** - Custom function calling capabilities for extended functionality
+- **MCP Client** - Connects to Travel and Backoffice services via Model Context Protocol
+- **Multiple AI Models** - Support for Claude Sonnet 4 and Amazon Nova
 
-- [Travel Service Documentation](../travel/README.md) - Travel booking service with hotel and flight management
-- [Backoffice Service Documentation](../backoffice/README.md) - Expense management and currency conversion service
-
-## Project Overview
-
-### Description
-
-The Spring AI Agent is a demonstration of how to build modern AI-powered applications using the Spring AI framework. It provides a complete set of capabilities for interacting with AI models, including:
-
-- Text-based conversations with persistent memory using JDBC-based chat memory
-- Document analysis (PDF, JPG, JPEG, PNG) with multimodal AI models
-- Retrieval-Augmented Generation (RAG) for knowledge base integration using pgvector
-- Tool integration for enhanced capabilities (DateTime tools)
-- Model Context Protocol (MCP) client for connecting to external services
-- Testcontainers integration for seamless development and testing
-
-The application serves as the central component in a microservices architecture, connecting to specialized services like the Travel and Backoffice applications through the Model Context Protocol (MCP).
-
-### Purpose
-
-This application serves as:
-
-1. A reference implementation for Spring AI integration in enterprise applications
-2. A demonstration of key AI application patterns (RAG, memory, tools, MCP)
-3. A practical example of building AI assistants with Spring Boot
-4. A showcase for integrating with Amazon Bedrock and other AI services
-
-### Technology Stack
-
-- **Java 21**: Latest LTS version with modern language features
-- **Spring Boot 3.5.7**: Core framework for building the application
-- **Spring AI 1.0.3**: AI integration framework
-- **Amazon Bedrock**: AI model provider (OpenAI GPT-OSS-120B, Claude Sonnet 4, Nova Pro/Premier)
-- **PostgreSQL 16**: Database with pgvector extension for vector operations
-- **Testcontainers 1.21.3**: Integration testing with containerized dependencies
-- **Thymeleaf**: Server-side templating for the web interface
-- **Docker**: Containerization for database and application
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
-- Java 21 or higher
-- Maven 3.8 or higher
+- Java 21+
+- Maven 3.8+
 - Docker (for Testcontainers)
 - AWS account with Amazon Bedrock access
 
-### Development with Testcontainers
-
-The application uses Testcontainers for seamless development and testing. No manual database setup is required!
-
-#### Prerequisites for Full Functionality
-
-Before starting the AI agent, ensure the dependent services are running:
-
-1. **Start Travel Service** (port 8081):
-   ```bash
-   cd travel/
-   mvn spring-boot:test-run
-   ```
-
-2. **Start Backoffice Service** (port 8082):
-   ```bash
-   cd backoffice/
-   mvn spring-boot:test-run
-   ```
-
-These services provide MCP tools that the AI agent can use for travel booking and expense management.
-
-#### Running the AI Agent
+### Running the Application
 
 ```bash
-cd ai-agent/
 mvn spring-boot:test-run
 ```
 
-This will:
-- Automatically start a PostgreSQL container with pgvector extension
-- Initialize the `ai_agent_db` database
-- Configure the application to use the containerized database
-- Connect to the travel and backoffice services via MCP
-- Start the application on port 8080
+The application will start on port 8080 with automatic PostgreSQL setup via Testcontainers.
 
-The container will be named `ai-agent-postgres` for easy identification.
+Access the web interface at: http://localhost:8080
 
-### AWS Configuration
+## Configuration
 
-1. Configure AWS credentials:
-   ```bash
-   aws configure
-   ```
+### AWS Bedrock Setup
 
-2. Ensure you have access to Amazon Bedrock and the required models (Claude Sonnet 4).
+Configure AWS credentials and region:
 
-### Building and Running the Application
+```bash
+aws configure
+export AWS_REGION=us-east-1
+```
 
-1. **With Testcontainers (Recommended for Development):**
-   ```bash
-   cd ai-agent/
-   mvn spring-boot:test-run
-   ```
+Ensure access to required models:
 
-2. **Traditional Build and Run:**
-   ```bash
-   cd ai-agent/
-   mvn clean package
-   mvn spring-boot:run
-   ```
+- `global.anthropic.claude-sonnet-4-20250514-v1:0`
+- `us.amazon.nova-pro-v1:0` (optional)
 
-3. The application will be available at:
-   ```
-   http://localhost:8080
-   ```
+## Architecture
 
-## Contributing
+The AI Agent follows a layered architecture:
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- **Web Layer** - Thymeleaf templates and REST controllers
+- **Service Layer** - Chat service with memory and RAG integration
+- **Integration Layer** - MCP client for external services
+- **Data Layer** - PostgreSQL with pgvector extension
 
-## License
+## Technology Stack
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+- **Spring Boot 3.5.7** - Core framework
+- **Spring AI 1.0.3** - AI integration framework
+- **Amazon Bedrock** - AI model provider
+- **PostgreSQL 16** with pgvector extension
+- **Testcontainers 1.21.3** - Development and testing
+- **Thymeleaf** - Web templating engine
