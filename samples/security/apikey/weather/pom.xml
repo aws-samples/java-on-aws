@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.example</groupId>
-	<artifactId>weather-secured-oauth</artifactId>
+	<artifactId>weather-secured-apikey</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>weather-secured-oauth</name>
-	<description>Weather Forecast Service secured with OAuth</description>
+	<name>weather-secured-apikey</name>
+	<description>Weather Forecast Service secured with ApiKey</description>
 	<url/>
 	<licenses>
 		<license/>
