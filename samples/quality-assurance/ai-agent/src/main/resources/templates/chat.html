@@ -373,7 +373,7 @@
 
             // Function to send document analysis with empty prompt and clear file after
             async function sendDocumentAnalysis() {
-//                try {
+                try {
                     // Show loading indicator
                     const loadingId = showLoading();
 
@@ -406,14 +406,14 @@
                     currentFileName = null;
                     fileInput.value = ''; // Clear file input
 
-                // } catch (error) {
-                //     console.error('Error analyzing document:', error);
-                //     addMessage('I don\'t know - there was an error analyzing the document.', 'ai');
-                //     // Clear file data even on error
-                //     currentFileBase64 = null;
-                //     currentFileName = null;
-                //     fileInput.value = '';
-                // }
+                } catch (error) {
+                    console.error('Error analyzing document:', error);
+                    addMessage('I don\'t know - there was an error analyzing the document.', 'ai');
+                    // Clear file data even on error
+                    currentFileBase64 = null;
+                    currentFileName = null;
+                    fileInput.value = '';
+                }
             };
 
             chatForm.addEventListener('submit', async function(e) {
@@ -426,7 +426,7 @@
                 addMessage(message, 'user');
                 userInput.value = '';
 
-//                try {
+                try {
                     // Show loading indicator
                     const loadingId = showLoading();
 
@@ -460,10 +460,10 @@
 
                     // Add AI response to chat
                     addMessage(data, 'ai');
-                // } catch (error) {
-                //     console.error('Error:', error);
-                //     addMessage('Sorry, I encountered an error. Please try again.', 'ai');
-                // }
+                } catch (error) {
+                    console.error('Error:', error);
+                    addMessage('Sorry, I encountered an error. Please try again.', 'ai');
+                }
             });
 
             function addMessage(content, sender) {
