@@ -19,23 +19,7 @@ public class WeatherTools {
         this.weatherService = weatherService;
     }
 
-//    @Bean
-//    public ToolCallbackProvider weatherToolsProvider() {
-//        return MethodToolCallbackProvider.builder()
-//                .toolObjects(this)
-//                .build();
-//    }
-
     @PreAuthorize("isAuthenticated()")
-//    @Tool(description = """
-//        Get weather forecast for a city on a specific date.
-//        Requires: city - Name of the city,
-//                 date - Date in YYYY-MM-DD format.
-//        Returns: Weather forecast with min/max temperatures.
-//        Errors: BAD_REQUEST if city is missing or date format is invalid,
-//               NOT_FOUND if city doesn't exist or no data for date,
-//               SERVICE_UNAVAILABLE if weather service is down.
-//        """)
     @McpTool(description = """
         Get weather forecast for a city on a specific date.
         Requires: city - Name of the city,
