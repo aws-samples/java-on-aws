@@ -7,6 +7,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class WebViewController {
     @GetMapping("/")
     public String index() {
-        return "chat-working";
+        return "chat";
     }
 }
