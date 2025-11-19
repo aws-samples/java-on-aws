@@ -100,7 +100,12 @@ $SOURCES_FOLDER/demo-scripts/03-add-rag.sh
 ```bash
 curl -X POST \
   -H "Content-Type: text/plain" \
-  --data-binary @$SOURCES_FOLDER/ai-agent/samples/policy-travel.md \
+  --data-binary @ai-agent/samples/policy-travel.md \
+  http://localhost:8080/api/admin/rag-load
+
+curl -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary @ai-agent/samples/policy-expense.md \
   http://localhost:8080/api/admin/rag-load
 
 ```
