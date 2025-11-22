@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.example</groupId>
-	<artifactId>ai-agent-secured</artifactId>
+	<artifactId>ai-agent-secured-oauth</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>ai-agent</name>
-	<description>Travel and Expenses AI Agent</description>
+	<name>ai-agent-secured-oauth</name>
+	<description>Travel and Expenses AI Agent, secured with OAuth</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -28,7 +28,7 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
-		<spring-ai.version>1.1.0-SNAPSHOT</spring-ai.version>
+		<spring-ai.version>1.1.0</spring-ai.version>
 		<mcp-client-security.version>0.0.3</mcp-client-security.version>
 	</properties>
 	<repositories>
