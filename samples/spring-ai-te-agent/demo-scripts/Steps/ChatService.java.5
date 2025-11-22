@@ -25,7 +25,7 @@ public class ChatService {
         1. Use markdown tables for structured data
         2. If unsure, say "I don't know"
         3. Use provided context for company policies
-        4. Use tools for dynamic data (flights, weather, bookings)
+        4. Use tools for dynamic data (weather, dates, flights, bookings)
         """;
 
     public ChatService(ChatMemoryService chatMemoryService,
@@ -49,11 +49,6 @@ public class ChatService {
     public Flux<String> processChat(String prompt) {
         logger.info("Processing chat: '{}'", prompt);
         try {
-            // Simple streaming without memory:
-            // return chatClient
-            //     .prompt().user(prompt)
-            //     .stream()
-            //     .content();
             return chatMemoryService.callWithMemory(chatClient, prompt);
         } catch (Exception e) {
             logger.error("Error processing chat", e);

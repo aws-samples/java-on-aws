@@ -7,17 +7,19 @@ mkdir spring-ai-agent
 kiro spring-ai-agent/
 ```
 
+We use 4 terminals, open to save time
+
 In the new terminal (Main terminal):
 
 ```bash
 # git clone https://github.com/aws-samples/java-on-aws.git ./java-on-aws
 # export SOURCES_FOLDER=$(pwd)/java-on-aws/samples/spring-ai-te-agent
 
-export SOURCES_FOLDER=../workshops/java-on-aws/samples/spring-ai-te-agent
-cd $SOURCES_FOLDER
+pushd ../workshops/java-on-aws/samples/spring-ai-te-agent
 export SOURCES_FOLDER=$(pwd)
-cd ../../../../spring-ai-agent
+echo $SOURCES_FOLDER
 export AWS_REGION=us-east-1
+popd
 ```
 
 > Ensure AWS credentials are available in this terminal
@@ -65,13 +67,23 @@ In the AI Agent terminal:
 $SOURCES_FOLDER/demo-scripts/02-add-memory.sh
 ```
 
+Show changes in:
+
+- pom.xml
+- application.properties
+- ChatService
+- ChatMemoryService
+- ConversationSummaryService
+- ChatController
+- WebViewController
+
 > In the AI Agent terminal:
 
 ```bash
 ./mvnw spring-boot:test-run
 ```
 
-Open localhost:8080 in the browser and ask questions:
+Open localhost:8080 in the browser, refresh and ask questions:
 
 > My name in Alex
 > What is my name?
@@ -89,6 +101,17 @@ Open localhost:8080 in the browser and ask questions:
 $SOURCES_FOLDER/demo-scripts/03-add-rag.sh
 ```
 
+Show changes in:
+
+- pom.xml
+- application.properties
+- ChatService
+- ChatController
+- VectorStoreService
+- VectorStoreController
+
+Highlight in Terminal output for RAG
+
 > In the AI Agent terminal:
 
 ```bash
@@ -100,12 +123,12 @@ $SOURCES_FOLDER/demo-scripts/03-add-rag.sh
 ```bash
 curl -X POST \
   -H "Content-Type: text/plain" \
-  --data-binary @ai-agent/samples/policy-travel.md \
+  --data-binary @$SOURCES_FOLDER/ai-agent/samples/policy-travel.md \
   http://localhost:8080/api/admin/rag-load
 
 curl -X POST \
   -H "Content-Type: text/plain" \
-  --data-binary @ai-agent/samples/policy-expense.md \
+  --data-binary @$SOURCES_FOLDER/ai-agent/samples/policy-expense.md \
   http://localhost:8080/api/admin/rag-load
 
 ```
@@ -113,7 +136,9 @@ curl -X POST \
 Open localhost:8080 in the browser and ask questions:
 
 > What is our travel policy?
+Highlight Europe 130
 
+> What is the weather in Paris tomorrow?
 > What is the weather in Las Vegas tomorrow?
 
 `Ctrl+C`
@@ -126,6 +151,11 @@ Open localhost:8080 in the browser and ask questions:
 $SOURCES_FOLDER/demo-scripts/04-add-tools.sh
 ```
 
+Show changes in:
+
+- ChatService
+- /tools
+
 > In the AI Agent terminal:
 
 ```bash
@@ -134,7 +164,10 @@ $SOURCES_FOLDER/demo-scripts/04-add-tools.sh
 
 Open localhost:8080 in the browser and ask questions:
 
-> What is the weather in Las Vegas tomorrow?
+> What is the weather in Paris tomorrow?
+
+> Please find me inbound and outbound flights and accommodations for a trip from London to Paris next week, From Monday to Friday. I travel alone, prefer BA flights in the first part of the day, and choose accommodation which is the most expensive, but comply with our travel policy.
+Give me a travel itinerary with flights, accommodation, prices for each day of the travel.
 
 `Ctrl+C`
 
@@ -168,6 +201,8 @@ cd travel/
 ./mvnw spring-boot:test-run
 ```
 
+Highlight in Terminal output for MCP server
+
 Open localhost:8080 in the browser and ask questions:
 
 > Please find me inbound and outbound flights and accommodations for a trip from London to Paris next week, From Monday to Friday. I travel alone, prefer BA flights in the first part of the day, and choose accommodation which is the most expensive, but comply with our travel policy.
@@ -191,6 +226,8 @@ Open the new terminal (Backoffice terminal - port 8083):
 cd backoffice/
 ./mvnw spring-boot:test-run
 ```
+
+spring.ai.bedrock.converse.chat.options.cache-options.strategy=SYSTEM_AND_TOOLS
 
 ---
 

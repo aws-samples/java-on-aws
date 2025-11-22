@@ -1,30 +1,15 @@
 #!/bin/bash
 
-# Clear current directory completely
-echo "Clearing current directory: $(pwd)"
-rm -rf ./*
-rm -rf ./.[!.]* 2>/dev/null || true
-
-echo "Checking if spring-boot-cli directory exists and remove it if it does..."
-if [ -d "spring-boot-cli" ]; then
-    echo "Found existing spring-boot-cli directory, removing it..."
-    rm -rf spring-boot-cli
-fi
-
-echo "Downloading Spring Boot CLI 3.5.0..."
-curl -L https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-cli/3.5.0/spring-boot-cli-3.5.0-bin.zip -o spring-boot-cli-3.5.0-bin.zip
-
-echo "Creating spring-boot-cli directory..."
-mkdir -p spring-boot-cli
-
-echo "Extracting Spring Boot CLI to spring-boot-cli folder..."
-unzip -q spring-boot-cli-3.5.0-bin.zip -d spring-boot-cli
-
-echo "Cleaning up zip file..."
-rm spring-boot-cli-3.5.0-bin.zip
-
-echo "Spring Boot CLI setup complete!"
-echo "You can find the CLI in the spring-boot-cli directory."
+pause_and_execute() {
+    echo ""
+    echo "About to execute:"
+    echo "$1"
+    echo ""
+    echo "Press any key to continue..."
+    read -n 1 -s
+    echo ""
+    eval "$1"
+}
 
 echo "Checking if ai-agent directory exists and remove it..."
 if [ -d "ai-agent" ]; then
@@ -32,35 +17,23 @@ if [ -d "ai-agent" ]; then
     rm -rf ai-agent
 fi
 
-echo ""
-echo "About to initialize Spring Boot project with the following command:"
-echo -e "\033[1m./spring-boot-cli/spring-3.5.0/bin/spring init --java-version=21 \033[0m"
-echo "   --build=maven \\"
-echo "   --packaging=jar \\"
-echo "   --type=maven-project \\"
-echo "   --artifact-id=ai.agent \\"
-echo "   --name=ai-agent \\"
-echo "   --group-id=com.example \\"
-echo -e "   \033[1m--dependencies=spring-ai-bedrock-converse,web,thymeleaf \033[0m\\"
-echo "   --extract \\"
-echo "   ai-agent"
+pause_and_execute "curl https://start.spring.io/starter.zip \\
+  -d type=maven-project \\
+  -d language=java \\
+  -d bootVersion=3.5.7 \\
+  -d baseDir=ai-agent \\
+  -d groupId=com.example \\
+  -d artifactId=ai-agent \\
+  -d name=ai-agent \\
+  -d description='AI Agent with Spring AI and Amazon Bedrock' \\
+  -d packageName=com.example.ai.agent \\
+  -d packaging=jar \\
+  -d javaVersion=21 \\
+  -d dependencies=spring-ai-bedrock-converse,web,thymeleaf \\
+  -o ai-agent.zip"
 
-echo ""
-echo "Press any key to continue with Spring initialization..."
-read -n 1 -s
-
-echo ""
-echo "Initializing Spring Boot project..."
-./spring-boot-cli/spring-3.5.0/bin/spring init --java-version=21 \
-   --build=maven \
-   --packaging=jar \
-   --type=maven-project \
-   --artifact-id=ai.agent \
-   --name=ai-agent \
-   --group-id=com.example \
-   --dependencies=spring-ai-bedrock-converse,web,thymeleaf \
-   --extract \
-   ai-agent
+unzip ai-agent.zip
+rm ai-agent.zip
 
 echo ""
 echo "Initializing Git repository..."
@@ -111,18 +84,14 @@ echo ""
 echo "Git status:"
 git status
 
-# echo ""
-# echo "Opening files in VS Code..."
-# code src/main/resources/application.properties
-# code pom.xml
-# code src/main/java/com/example/ai/agent/ChatService.java
+sleep 1
+./mvnw clean package
+./mvnw spring-boot:run
 
 echo ""
 echo "Committing changes to Git repository..."
 git add .
 git commit -m "Update initial files"
-
-./mvnw spring-boot:run
 
 cp "$SOURCES_FOLDER/demo-scripts/Steps/ChatService.java.1" src/main/java/com/example/ai/agent/service/ChatService.java
 

@@ -25,7 +25,7 @@ public class ChatService {
         1. Use markdown tables for structured data
         2. If unsure, say "I don't know"
         3. Use provided context for company policies
-        4. Use tools for dynamic data (flights, weather, bookings, currency)
+        4. Use tools for dynamic data (weather, dates, flights, bookings, expenses, currency)
         """;
 
     public ChatService(ChatMemoryService chatMemoryService,
