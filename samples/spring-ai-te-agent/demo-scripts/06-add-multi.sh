@@ -51,7 +51,7 @@ cp "$SOURCES_FOLDER/ai-agent/src/main/java/com/example/ai/agent/service/Document
 
 echo "Updating application.properties with multi-modal configuration..."
 cat >> src/main/resources/application.properties << 'EOL'
-spring.ai.mcp.client.sse.connections.server3.url=http://localhost:8083
+spring.ai.mcp.client.streamable-http.connections.backoffice.url=http://localhost:8083
 
 # Document processing model
 ai.agent.document.model=global.anthropic.claude-sonnet-4-5-20250929-v1:0

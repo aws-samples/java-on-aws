@@ -49,7 +49,7 @@ cat >> src/main/resources/application.properties << 'EOL'
 
 # MCP Client Configuration
 spring.ai.mcp.client.toolcallback.enabled=true
-spring.ai.mcp.client.sse.connections.server2.url=http://localhost:8082
+spring.ai.mcp.client.streamable-http.connections.travel.url=http://localhost:8082
 EOL
 
 # echo "Opening application.properties in VS Code..."
