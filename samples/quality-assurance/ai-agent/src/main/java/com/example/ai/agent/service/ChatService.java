@@ -4,6 +4,8 @@ import com.example.ai.agent.tool.DateTimeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -33,8 +35,14 @@ public class ChatService {
 
     public ChatService(DateTimeService dateTimeService,
                       ChatClient.Builder chatClientBuilder) {
+
+        var chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(20)
+                .build();
+
         this.chatClient = chatClientBuilder
                 .defaultSystem(SYSTEM_PROMPT)
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .defaultTools(dateTimeService)
                 .build();
 
