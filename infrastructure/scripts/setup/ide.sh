@@ -137,18 +137,32 @@ sudo yum -q install -y session-manager-plugin.rpm
 session-manager-plugin
 rm session-manager-plugin.rpm
 
-echo "Installing Q Cli ..."
-curl --proto '=https' --tlsv1.2 -sSf "https://desktop-release.codewhisperer.us-east-1.amazonaws.com/latest/q-x86_64-linux.zip" -o /home/ec2-user/q.zip
-unzip /home/ec2-user/q.zip -d /home/ec2-user/
-chmod +x /home/ec2-user/q/install.sh
-sudo Q_INSTALL_GLOBAL=1 /home/ec2-user/q/install.sh
+# echo "Installing Q Cli ..."
+# curl --proto '=https' --tlsv1.2 -sSf "https://desktop-release.codewhisperer.us-east-1.amazonaws.com/latest/q-x86_64-linux.zip" -o /home/ec2-user/q.zip
+# unzip /home/ec2-user/q.zip -d /home/ec2-user/
+# chmod +x /home/ec2-user/q/install.sh
+# sudo Q_INSTALL_GLOBAL=1 /home/ec2-user/q/install.sh
 
-echo "Fixing bash-preexec errors in Amazon Q shell integration..."
-# Run the fix script from the same directory
-bash "$(dirname "$0")/fix-bash-preexec.sh"
+# echo "Fixing bash-preexec errors in Amazon Q shell integration..."
+# # Run the fix script from the same directory
+# bash "$(dirname "$0")/fix-bash-preexec.sh"
 
-echo "Installing Spring CLI"
-curl -L https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-cli/3.5.0/spring-boot-cli-3.5.0-bin.zip -o /home/ec2-user/spring-boot-cli-3.5.0-bin.zip && unzip /home/ec2-user/spring-boot-cli-3.5.0-bin.zip -d /home/ec2-user
+echo "Installing Kiro CLI (optional) ..."
+if curl -fsSL https://cli.kiro.dev/install | bash 2>&1 | tee /tmp/kiro-install.log; then
+    echo "alias kc='AMAZON_Q_SIGV4=1 kiro-cli'" | sudo tee -a /etc/profile.d/workshop.sh
+    echo "Kiro CLI installed successfully"
+else
+    echo "⚠️  Kiro CLI installation failed (optional component)"
+    echo "Installation log saved to /tmp/kiro-install.log"
+fi || true
+
+echo "Installing Spring CLI (optional) ..."
+if curl -L https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-cli/3.5.0/spring-boot-cli-3.5.0-bin.zip -o /home/ec2-user/spring-boot-cli-3.5.0-bin.zip 2>/dev/null; then
+    unzip -q /home/ec2-user/spring-boot-cli-3.5.0-bin.zip -d /home/ec2-user 2>/dev/null || true
+    echo "Spring CLI installed successfully"
+else
+    echo "⚠️  Spring CLI download failed (optional component)"
+fi || true
 
 source /etc/profile.d/workshop.sh
 aws configure set default.region ${AWS_REGION}

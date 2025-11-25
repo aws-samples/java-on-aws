@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.5</version>
+        <version>3.5.8</version>
         <relativePath/>
     </parent>
     <groupId>com.unicorn</groupId>
@@ -16,9 +16,9 @@
 
     <properties>
         <java.version>21</java.version>
-        <aws.sdk.version>2.33.4</aws.sdk.version>
-        <jfr-converter.version>4.1</jfr-converter.version>
-        <resilience4j.version>2.2.0</resilience4j.version>
+        <aws.sdk.version>2.39.2</aws.sdk.version>
+        <jfr-converter.version>4.2</jfr-converter.version>
+        <resilience4j.version>2.3.0</resilience4j.version>
     </properties>
 
     <dependencies>
@@ -72,7 +72,7 @@
             <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>jib-maven-plugin</artifactId>
-                <version>3.4.6</version>
+                <version>3.5.1</version>
                 <configuration>
                     <from>
                         <image>amazoncorretto:21-alpine</image>
