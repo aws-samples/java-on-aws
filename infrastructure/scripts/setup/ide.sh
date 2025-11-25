@@ -147,14 +147,40 @@ rm session-manager-plugin.rpm
 # # Run the fix script from the same directory
 # bash "$(dirname "$0")/fix-bash-preexec.sh"
 
-echo "Installing Kiro CLI (optional) ..."
-if curl -fsSL https://cli.kiro.dev/install | bash 2>&1 | tee /tmp/kiro-install.log; then
-    echo "alias kc='AMAZON_Q_SIGV4=1 kiro-cli'" | sudo tee -a /etc/profile.d/workshop.sh
-    echo "Kiro CLI installed successfully"
-else
-    echo "⚠️  Kiro CLI installation failed (optional component)"
-    echo "Installation log saved to /tmp/kiro-install.log"
-fi || true
+# echo "Installing Kiro CLI (optional) ..."
+# if curl -fsSL https://cli.kiro.dev/install | bash 2>&1 | tee /tmp/kiro-install.log; then
+#     echo "alias kc='AMAZON_Q_SIGV4=1 kiro-cli'" | sudo tee -a /etc/profile.d/workshop.sh
+#     echo "Kiro CLI installed successfully"
+# else
+#     echo "⚠️  Kiro CLI installation failed (optional component)"
+#     echo "Installation log saved to /tmp/kiro-install.log"
+# fi || true
+
+# Installing Q CLI (with error handling)
+echo "Installing Q CLI..."
+
+{
+    curl --proto '=https' --tlsv1.2 -sSf "https://desktop-release.codewhisperer.us-east-1.amazonaws.com/latest/q-x86_64-linux.zip" -o /home/ec2-user/q.zip && \
+    unzip -q /home/ec2-user/q.zip -d /home/ec2-user/ && \
+    chmod +x /home/ec2-user/q/install.sh && \
+    sudo Q_INSTALL_GLOBAL=1 /home/ec2-user/q/install.sh && \
+    echo "✓ Q CLI installed successfully"
+
+    # Fix bash-preexec if install succeeded
+    if [ -f "$(dirname "$0")/fix-bash-preexec.sh" ]; then
+        bash "$(dirname "$0")/fix-bash-preexec.sh" || echo "⚠ Warning: bash-preexec fix failed (non-critical)"
+    fi
+
+    # Add Q CLI alias
+    echo "alias qc='AMAZON_Q_SIGV4=1 q chat'" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
+    echo "✓ Q CLI alias 'qc' added"
+} || echo "⚠ Warning: Q CLI installation failed (non-critical)"
+
+# Cleanup (always runs)
+rm -f /home/ec2-user/q.zip 2>/dev/null || true
+rm -rf /home/ec2-user/q 2>/dev/null || true
+
+echo "Continuing with setup..."
 
 echo "Installing Spring CLI (optional) ..."
 if curl -L https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-cli/3.5.0/spring-boot-cli-3.5.0-bin.zip -o /home/ec2-user/spring-boot-cli-3.5.0-bin.zip 2>/dev/null; then
