@@ -40,3 +40,5 @@ build/
 
 infrastructure/cdk/output*
 dependency-reduced-pom.xml
+
+.env

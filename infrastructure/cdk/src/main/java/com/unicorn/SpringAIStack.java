@@ -78,7 +78,7 @@ public class SpringAIStack extends Stack {
             ideProps.setBootstrapScript(bootstrapScript);
             ideProps.setVpc(vpc);
             ideProps.setInstanceName("unicornstore-ide");
-            ideProps.setInstanceType(InstanceType.of(InstanceClass.M5, InstanceSize.XLARGE));
+            // ideProps.setInstanceType(InstanceType.of(InstanceClass.M5, InstanceSize.XLARGE));
             ideProps.setExtensions(Arrays.asList(
                 // "amazonwebservices.aws-toolkit-vscode",
                 // "amazonwebservices.amazon-q-vscode",

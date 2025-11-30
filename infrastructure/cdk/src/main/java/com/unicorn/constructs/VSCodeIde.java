@@ -17,16 +17,11 @@ import software.amazon.awscdk.services.cloudfront.OriginRequestPolicy;
 import software.amazon.awscdk.services.cloudfront.ViewerProtocolPolicy;
 import software.amazon.awscdk.services.cloudfront.origins.HttpOrigin;
 import software.amazon.awscdk.services.cloudfront.origins.HttpOriginProps;
-import software.amazon.awscdk.services.ec2.BlockDevice;
-import software.amazon.awscdk.services.ec2.BlockDeviceVolume;
 import software.amazon.awscdk.services.ec2.CfnEIP;
 import software.amazon.awscdk.services.ec2.CfnEIPAssociation;
-import software.amazon.awscdk.services.ec2.EbsDeviceOptions;
-import software.amazon.awscdk.services.ec2.EbsDeviceVolumeType;
 import software.amazon.awscdk.services.ec2.IMachineImage;
 import software.amazon.awscdk.services.ec2.ISecurityGroup;
 import software.amazon.awscdk.services.ec2.IVpc;
-import software.amazon.awscdk.services.ec2.Instance;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
@@ -80,7 +75,8 @@ public class VSCodeIde extends Construct {
         private IVpc vpc;
         private String availabilityZone;
         private IMachineImage machineImage = MachineImage.latestAmazonLinux2023();
-        private InstanceType instanceType = InstanceType.of(InstanceClass.T3, InstanceSize.MEDIUM);
+        // private InstanceType instanceType = InstanceType.of(InstanceClass.T3, InstanceSize.MEDIUM);
+        private List<String> instanceTypes = Arrays.asList("m5.xlarge", "m6i.xlarge", "t3.xlarge");
         private String codeServerVersion = "4.104.3";
         private List<IManagedPolicy> additionalIamPolicies = new ArrayList<>();
         private List<ISecurityGroup> additionalSecurityGroups = new ArrayList<>();
@@ -113,8 +109,11 @@ public class VSCodeIde extends Construct {
         public IMachineImage getMachineImage() { return machineImage; }
         public void setMachineImage(IMachineImage machineImage) { this.machineImage = machineImage; }
 
-        public InstanceType getInstanceType() { return instanceType; }
-        public void setInstanceType(InstanceType instanceType) { this.instanceType = instanceType; }
+        // public InstanceType getInstanceType() { return instanceType; }
+        // public void setInstanceType(InstanceType instanceType) { this.instanceType = instanceType; }
+
+        public List<String> getInstanceTypes() { return instanceTypes; }
+        public void setInstanceTypes(List<String> instanceTypes) { this.instanceTypes = instanceTypes; }
 
         public String getCodeServerVersion() { return codeServerVersion; }
         public void setCodeServerVersion(String codeServerVersion) { this.codeServerVersion = codeServerVersion; }
@@ -164,9 +163,11 @@ public class VSCodeIde extends Construct {
             throw new IllegalArgumentException("VPC must be provided in the properties and cannot be null");
         }
 
-        if (props.getAvailabilityZone() == null) {
-            props.setAvailabilityZone(props.getVpc().getAvailabilityZones().get(0));
-        }
+        // Note: Commented out to allow AWS to choose an AZ with available capacity
+        // instead of hardcoding to the first AZ which may not have capacity
+        // if (props.getAvailabilityZone() == null) {
+        //     props.setAvailabilityZone(props.getVpc().getAvailabilityZones().get(0));
+        // }
 
         // Check IAM role
         if (props.getRole() == null) {
@@ -275,52 +276,79 @@ public class VSCodeIde extends Construct {
             .domain("vpc")
             .build();
 
-        // Create EC2 instance
-        var ec2Instance = Instance.Builder.create(this, "IdeEC2Instance")
-            .instanceName(props.getInstanceName())
-            .vpc(props.getVpc())
-            .machineImage(props.getMachineImage())
-            .instanceType(props.getInstanceType())
-            // .role(props.getRole())
-            .instanceProfile(instanceProfile)
-            .securityGroup(ideSecurityGroup)
-            .vpcSubnets(SubnetSelection.builder()
-                .subnetType(SubnetType.PUBLIC)
-                .build())
-            .blockDevices(List.of(BlockDevice.builder()
-                .deviceName("/dev/xvda")
-                .volume(BlockDeviceVolume.ebs(props.getDiskSize(), EbsDeviceOptions.builder()
-                    .volumeType(EbsDeviceVolumeType.GP3)
-                    .deleteOnTermination(true)
-                    .encrypted(true)
-                    .build()))
-                .build()))
+        // Create instance launcher Lambda with multi-AZ and multi-instance-type support
+        Function instanceLauncherFunction = Function.Builder.create(this, "IdeInstanceLauncherFunction")
+            .code(Code.fromInline(loadFile("/instance-launcher.py")))
+            .handler("index.lambda_handler")
+            .runtime(Runtime.PYTHON_3_13)
+            .timeout(Duration.minutes(5))
+            .functionName(props.getInstanceName() + "-instance-launcher")
             .build();
 
-        // Associate Elastic IP with the instance
-        var ipAssociation = CfnEIPAssociation.Builder.create(this, "IdeEipAssociation")
-            .allocationId(elasticIP.getAttrAllocationId())
-            .instanceId(ec2Instance.getInstanceId())
-            .build();
+        instanceLauncherFunction.addToRolePolicy(PolicyStatement.Builder.create()
+            .resources(List.of("*"))
+            .actions(List.of(
+                "ec2:RunInstances",
+                "ec2:TerminateInstances",
+                "ec2:CreateTags",
+                "ec2:DescribeInstances",
+                "ec2:DescribeSubnets"
+            ))
+            .build());
 
-        // Internal security group, allow traffic only between members
+        instanceLauncherFunction.addToRolePolicy(PolicyStatement.Builder.create()
+            .resources(List.of(props.getRole().getRoleArn(), instanceProfile.getInstanceProfileArn()))
+            .actions(List.of("iam:PassRole"))
+            .build());
+
+        // Get public subnets
+        var publicSubnets = props.getVpc().selectSubnets(SubnetSelection.builder()
+            .subnetType(SubnetType.PUBLIC)
+            .build());
+
+        // Internal security group (created before instance)
         ideInternalSecurityGroup = SecurityGroup.Builder.create(this, "IdeInternalSecurityGroup")
             .vpc(props.getVpc())
             .allowAllOutbound(false)
             .securityGroupName(props.getInstanceName() + "-internal-sg")
             .description("IDE internal security group")
             .build();
-        // Add ingress rule to allow all traffic from within the same security group
         ideInternalSecurityGroup.getConnections().allowInternally(
             Port.allTraffic(),
             "Allow all internal traffic"
         );
-        ec2Instance.addSecurityGroup(ideInternalSecurityGroup);
+
+        // Build security group IDs list
+        List<String> securityGroupIds = new ArrayList<>();
+        securityGroupIds.add(ideSecurityGroup.getSecurityGroupId());
+        securityGroupIds.add(ideInternalSecurityGroup.getSecurityGroupId());
         if (props.getAppPort() > 0) {
-            ec2Instance.addSecurityGroup(appSecurityGroup);
+            securityGroupIds.add(appSecurityGroup.getSecurityGroupId());
         }
-        // Add additional security groups if any
-        props.getAdditionalSecurityGroups().forEach(sg -> ec2Instance.addSecurityGroup(sg));
+        props.getAdditionalSecurityGroups().forEach(sg -> securityGroupIds.add(sg.getSecurityGroupId()));
+
+        // Create EC2 instance via Custom Resource with failover support
+        CustomResource ec2InstanceResource = CustomResource.Builder.create(this, "IdeEC2InstanceResource")
+            .serviceToken(instanceLauncherFunction.getFunctionArn())
+            .properties(Map.of(
+                "SubnetIds", String.join(",", publicSubnets.getSubnetIds()),
+                "InstanceTypes", String.join(",", props.getInstanceTypes()),
+                "ImageId", props.getMachineImage().getImage(this).getImageId(),
+                "SecurityGroupIds", String.join(",", securityGroupIds),
+                "IamInstanceProfileArn", instanceProfile.getInstanceProfileArn(),
+                "VolumeSize", String.valueOf(props.getDiskSize()),
+                "InstanceName", props.getInstanceName(),
+                "UserData", Fn.base64("#!/bin/bash")
+            ))
+            .build();
+
+        String instanceId = ec2InstanceResource.getAttString("InstanceId");
+
+        // Associate Elastic IP with the instance
+        var ipAssociation = CfnEIPAssociation.Builder.create(this, "IdeEipAssociation")
+            .allocationId(elasticIP.getAttrAllocationId())
+            .instanceId(instanceId)
+            .build();
 
         // Set up wait condition
         var waitHandle = CfnWaitConditionHandle.Builder.create(this, "IdeBootstrapWaitConditionHandle")
@@ -331,12 +359,26 @@ public class VSCodeIde extends Construct {
             .handle(waitHandle.getRef())
             .timeout(String.valueOf(props.getBootstrapTimeoutMinutes() * 60))
             .build();
-        waitCondition.getNode().addDependency(ec2Instance);
+        waitCondition.getNode().addDependency(ec2InstanceResource);
+
+        // Get public DNS name from EIP (after association) using Fn::GetAtt
+        // This ensures we get the correct DNS after EIP is associated
+        String publicDnsName = Fn.join("", List.of(
+            "ec2-",
+            Fn.select(0, Fn.split(".", Fn.select(0, Fn.split(".", elasticIP.getAttrPublicIp())))),
+            "-",
+            Fn.select(1, Fn.split(".", elasticIP.getAttrPublicIp())),
+            "-",
+            Fn.select(2, Fn.split(".", elasticIP.getAttrPublicIp())),
+            "-",
+            Fn.select(3, Fn.split(".", elasticIP.getAttrPublicIp())),
+            ".compute-1.amazonaws.com"
+        ));
 
         // Create CloudFront distribution
         var distribution = Distribution.Builder.create(this, "IdeDistribution")
             .defaultBehavior(BehaviorOptions.builder()
-                .origin(new HttpOrigin(ec2Instance.getInstancePublicDnsName(),
+                .origin(new HttpOrigin(publicDnsName,
                     HttpOriginProps.builder()
                         .protocolPolicy(OriginProtocolPolicy.HTTP_ONLY)
                         .httpPort(80)
@@ -348,22 +390,6 @@ public class VSCodeIde extends Construct {
                 .build())
             .httpVersion(HttpVersion.HTTP2)
             .build();
-        // if (props.getAppPort() > 0) {
-        //     distribution.addBehavior(
-        //         "/app/*",
-        //         new HttpOrigin(ec2Instance.getInstancePublicDnsName(),
-        //             HttpOriginProps.builder()
-        //                 .protocolPolicy(OriginProtocolPolicy.HTTP_ONLY)
-        //                 .httpPort(props.getAppPort())
-        //                 .build()),
-        //         AddBehaviorOptions.builder()
-        //             .allowedMethods(AllowedMethods.ALLOW_ALL)
-        //             .cachePolicy(CachePolicy.CACHING_DISABLED)
-        //             .originRequestPolicy(OriginRequestPolicy.ALL_VIEWER)
-        //             .viewerProtocolPolicy(ViewerProtocolPolicy.ALLOW_ALL)
-        //             .build()
-        //     );
-        // }
         distribution.applyRemovalPolicy(RemovalPolicy.DESTROY);
         distribution.getNode().addDependency(ipAssociation);
 
@@ -386,7 +412,7 @@ public class VSCodeIde extends Construct {
                 .build())
             .secretName(props.getInstanceName() + "-password-lambda")
             .build();
-        ec2Instance.getNode().addDependency(ideSecretsManagerPassword);
+        ec2InstanceResource.getNode().addDependency(ideSecretsManagerPassword);
 
         ideSecretsManagerPassword.grantRead(props.getRole());
         var outputIdePassword = CfnOutput.Builder.create(this, "IdePassword")
@@ -474,7 +500,7 @@ public class VSCodeIde extends Construct {
         CustomResource.Builder.create(this, "IdeBootstrapResource")
             .serviceToken(bootstrapFunction.getFunctionArn())
             .properties(Map.of(
-                "InstanceId", ec2Instance.getInstanceId(),
+                "InstanceId", instanceId,
                 "SsmDocument", ssmDocument.getRef(),
                 "LogGroupName", logGroup.getLogGroupName()
             ))

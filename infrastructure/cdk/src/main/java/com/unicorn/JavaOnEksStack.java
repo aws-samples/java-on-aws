@@ -81,7 +81,9 @@ public class JavaOnEksStack extends Stack {
             ideProps.setBootstrapScript(bootstrapScript);
             ideProps.setVpc(vpc);
             ideProps.setInstanceName("unicornstore-ide");
-            ideProps.setInstanceType(InstanceType.of(InstanceClass.M5, InstanceSize.XLARGE));
+            // ideProps.setInstanceType(InstanceType.of(InstanceClass.M5, InstanceSize.XLARGE));
+            // Now using instanceTypes (plural) with defaults: m5.xlarge, m6i.xlarge, t3.xlarge
+            // ideProps.setInstanceTypes(Arrays.asList("m5.xlarge", "m6i.xlarge", "t3.xlarge"));
             ideProps.setExtensions(Arrays.asList(
                 // "amazonwebservices.aws-toolkit-vscode",
                 // "amazonwebservices.amazon-q-vscode",
