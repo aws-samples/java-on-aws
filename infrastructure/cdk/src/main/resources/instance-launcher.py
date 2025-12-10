@@ -75,6 +75,18 @@ def lambda_handler(event, context):
                     instance_id = response['Instances'][0]['InstanceId']
                     print(f'Successfully launched instance {instance_id} ({instance_type} in {subnet_id})')
 
+                    # Wait for instance to reach running state before returning
+                    print(f'Waiting for instance {instance_id} to reach running state...')
+                    waiter = ec2.get_waiter('instance_running')
+                    waiter.wait(
+                        InstanceIds=[instance_id],
+                        WaiterConfig={
+                            'Delay': 10,
+                            'MaxAttempts': 30  # 30 * 10 = 300 seconds (5 minutes) max wait
+                        }
+                    )
+                    print(f'Instance {instance_id} is now running')
+
                     responseData = {
                         'InstanceId': instance_id,
                         'InstanceType': instance_type,

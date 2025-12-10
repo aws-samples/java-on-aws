@@ -292,6 +292,7 @@ public class VSCodeIde extends Construct {
                 "ec2:TerminateInstances",
                 "ec2:CreateTags",
                 "ec2:DescribeInstances",
+                "ec2:DescribeInstanceStatus",
                 "ec2:DescribeSubnets"
             ))
             .build());
