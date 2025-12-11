@@ -1,6 +1,43 @@
 bash << 'HEREDOC'
 set -e
 
+# Generate unique log group name with runtime timestamp
+LOG_GROUP_NAME="${logGroupPrefix}-$(date +%Y%m%d-%H%M%S)"
+echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
+
+# Install and configure CloudWatch agent for logging
+echo "Installing CloudWatch agent..."
+yum install -y amazon-cloudwatch-agent
+
+# Create CloudWatch agent configuration
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << EOF
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/bootstrap.log",
+            "log_group_name": "$LOG_GROUP_NAME",
+            "log_stream_name": "{instance_id}",
+            "retention_in_days": 7
+          }
+        ]
+      }
+    }
+  }
+}
+EOF
+
+# Start CloudWatch agent
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+
+# Redirect all bootstrap output to log file and console
+exec > >(tee -a /var/log/bootstrap.log)
+exec 2>&1
+
+echo "Bootstrap started at $(date) - Logging to $LOG_GROUP_NAME"
 echo "Retrieving IDE password..."
 
 PASSWORD_SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id "${passwordName}" --query 'SecretString' --output text)

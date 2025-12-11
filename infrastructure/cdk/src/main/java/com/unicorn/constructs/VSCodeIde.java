@@ -22,9 +22,7 @@ import software.amazon.awscdk.services.ec2.CfnEIPAssociation;
 import software.amazon.awscdk.services.ec2.IMachineImage;
 import software.amazon.awscdk.services.ec2.ISecurityGroup;
 import software.amazon.awscdk.services.ec2.IVpc;
-import software.amazon.awscdk.services.ec2.InstanceClass;
-import software.amazon.awscdk.services.ec2.InstanceSize;
-import software.amazon.awscdk.services.ec2.InstanceType;
+
 import software.amazon.awscdk.services.ec2.MachineImage;
 import software.amazon.awscdk.services.ec2.Peer;
 import software.amazon.awscdk.services.ec2.Port;
@@ -41,8 +39,7 @@ import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
-import software.amazon.awscdk.services.logs.LogGroup;
-import software.amazon.awscdk.services.logs.RetentionDays;
+
 import software.amazon.awscdk.services.secretsmanager.Secret;
 import software.amazon.awscdk.services.secretsmanager.SecretStringGenerator;
 import software.amazon.awscdk.services.ssm.CfnDocument;
@@ -54,8 +51,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -180,6 +176,7 @@ public class VSCodeIde extends Construct {
         // props.getRole().addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
         props.getRole().addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("ReadOnlyAccess"));
         props.getRole().addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
+        props.getRole().addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy"));
 
         var filePath = props.getAdditionalIamPolicyPath();
         if (Files.exists(Path.of(getClass().getResource(filePath).getPath()))) {
@@ -191,15 +188,8 @@ public class VSCodeIde extends Construct {
                 props.getRole().addManagedPolicy(policy);
         }
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
-        String timestamp = LocalDateTime.now().format(formatter);
-
-        // Set up logging
-        LogGroup logGroup = LogGroup.Builder.create(this, "IdeLogGroup")
-            .retention(RetentionDays.ONE_WEEK)
-            .logGroupName(props.getInstanceName() + "-bootstrap-log-" + timestamp)
-            .build();
-        logGroup.grantWrite(props.getRole());
+        // Log group will be created dynamically by CloudWatch agent at runtime
+        // No pre-created log group needed - avoids hardcoded timestamp issues
 
         // Create prefix List of CloudFront IP for EC2 instance segurity Group
         Function prefixListFunction = Function.Builder.create(this, "IdePrefixListFunction")
@@ -448,7 +438,8 @@ public class VSCodeIde extends Construct {
                 Map.entry("readmeUrl", props.getReadmeUrl()),
                 Map.entry("environmentContentsZip", props.getEnvironmentContentsZip()),
                 Map.entry("extensions", String.join(",", props.getExtensions())),
-                Map.entry("terminalOnStartup", String.valueOf(props.isTerminalOnStartup()))
+                Map.entry("terminalOnStartup", String.valueOf(props.isTerminalOnStartup())),
+                Map.entry("logGroupPrefix", props.getInstanceName() + "-bootstrap")
             ))
         ));
 
@@ -502,8 +493,8 @@ public class VSCodeIde extends Construct {
             .serviceToken(bootstrapFunction.getFunctionArn())
             .properties(Map.of(
                 "InstanceId", instanceId,
-                "SsmDocument", ssmDocument.getRef(),
-                "LogGroupName", logGroup.getLogGroupName()
+                "SsmDocument", ssmDocument.getRef()
+                // LogGroupName removed - will be created dynamically by CloudWatch agent
             ))
             .build();
     }

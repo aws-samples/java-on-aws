@@ -53,11 +53,7 @@ def lambda_handler(event, context):
 
             ssm.send_command(
                 InstanceIds=[instance_id],
-                DocumentName=ssm_document,
-                CloudWatchOutputConfig={
-                    'CloudWatchLogGroupName': event['ResourceProperties']['LogGroupName'],
-                    'CloudWatchOutputEnabled': True
-                })
+                DocumentName=ssm_document)
 
             responseData = {'Success': 'Started bootstrapping for instance: '+instance_id}
         except Exception as e:

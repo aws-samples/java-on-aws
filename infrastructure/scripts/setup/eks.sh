@@ -24,6 +24,9 @@ while ! kubectl get ns; do
     sleep 10
 done
 
+echo "$(date): Checking pods - initial"
+kubectl get pods -A
+
 echo "Deploying common manifests ..."
 
 cat <<EOF | kubectl apply -f -
@@ -78,6 +81,9 @@ spec:
     consolidateAfter: 1m
 EOF
 
+echo "$(date): Checking pods - after manifests"
+kubectl get pods -A
+
 echo "Deploying External Secrets operator ..."
 
 aws eks create-pod-identity-association --cluster-name $CLUSTER_NAME \
@@ -92,6 +98,9 @@ helm repo update
 
 helm install external-secrets external-secrets/external-secrets --version 0.16.0 -n external-secrets --create-namespace --wait
 helm upgrade --install aws-mountpoint-s3-csi-driver --namespace kube-system aws-mountpoint-s3-csi-driver/aws-mountpoint-s3-csi-driver
+
+echo "$(date): Checking pods - after helm"
+kubectl get pods -A
 
 cat <<EOF | envsubst | kubectl create -f -
 apiVersion: external-secrets.io/v1beta1
@@ -143,6 +152,9 @@ spec:
           property: password
 EOF
 
+echo "$(date): Checking pods - after secrets"
+kubectl get pods -A
+
 echo "Setting up namespaces "
 setup_namespace_and_service_account() {
     local name=$1
@@ -190,5 +202,8 @@ aws eks associate-access-policy --cluster-name unicorn-store \
   --principal-arn arn:aws:iam::$ACCOUNT_ID:role/WSParticipantRole \
   --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
   --access-scope type=cluster 2>/dev/null || true
+
+echo "$(date): Checking pods - final"
+kubectl get pods -A
 
 echo "EKS cluster setup is complete."
