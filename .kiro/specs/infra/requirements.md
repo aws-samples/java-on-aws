@@ -77,6 +77,6 @@ This document specifies the requirements for creating a new AWS workshop infrast
 5. WHEN each workshop migration completes, THE system SHALL validate that new templates produce equivalent infrastructure to existing ones before migrating the next workshop type
 6. WHEN migrating CDK constructs, THE system SHALL refactor existing code to use unified patterns and updated package names
 7. WHEN migrating setup scripts, THE system SHALL reorganize them into logical categories with improved error handling
-8. WHEN migrating Lambda functions, THE system SHALL consolidate existing Python/JavaScript functions into a single Java Lambda handler
+8. WHEN migrating Lambda functions, THE system SHALL create modular Python Lambda functions with inline source code stored in CDK resources for CloudFormation template compatibility
 9. WHEN the new system is ready, THE system SHALL enable parallel operation where both old and new systems function independently
 

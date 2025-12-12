@@ -28,12 +28,7 @@ infra/
 │   │   └── WorkshopApp.java     # Main CDK application
 │   ├── pom.xml
 │   └── cdk.json
-├── cfn/                         # Generated CloudFormation templates
-│   ├── ide.yaml
-│   ├── java-on-aws.yaml
-│   ├── java-on-eks.yaml
-│   ├── java-ai-agents.yaml
-│   └── java-spring-ai-agents.yaml
+├── workshop-template.yaml       # Generated unified CloudFormation template
 ├── scripts/
 │   ├── workshops/               # Workshop-specific orchestration scripts
 │   │   ├── ide.sh
@@ -103,6 +98,75 @@ public class WorkshopStack extends Stack {
 **CodeBuild**: Creates CodeBuild project for workshop setup automation
 **Roles**: Creates IAM roles and policies for workshop resources
 
+### Lambda Function Architecture
+
+#### Design Rationale
+The new design uses **minimal Lambda functions** with inline Python source code for CloudFormation template compatibility:
+- **Java CDK constructs** for infrastructure definition and type safety
+- **Single inline Python Lambda** for EC2 instance launching with intelligent failover
+- **EC2 User Data** for bootstrap processes instead of Lambda functions
+- **Native CDK implementations** for simple operations (prefix lists, secrets)
+
+#### Simplified Architecture
+Instead of multiple Lambda functions, the new design uses:
+1. **One launcher Lambda** with inline Python code for intelligent EC2 failover
+2. **Native CDK features** for CloudFront prefix lists and Secrets Manager
+3. **EC2 User Data scripts** for instance bootstrap
+
+#### Lambda Function Naming & Mapping
+
+**Concise Naming Scheme**:
+- Instance-specific: `{instance-name}-{purpose}`
+- Workshop-wide: `workshop-{purpose}`
+
+| Old Function Name Pattern | New Implementation | New Function Name | Scope | Purpose |
+|---------------------------|-------------------|-------------------|-------|---------|
+| `{instance}-prefix-list-lambda` | **CDK Native** | N/A | N/A | Static CloudFront prefix list reference |
+| `{instance}-instance-launcher` | **Inline Lambda** | `{instance}-launcher` | Instance | EC2 instance launching with intelligent failover |
+| `{instance}-password-lambda` | **CDK Native** | N/A | N/A | Direct secret value reference |
+| `{instance}-bootstrap-lambda` | **EC2 User Data** | N/A | N/A | Moved to EC2 User Data scripts |
+| `unicornstore-db-setup-lambda` | **Setup Scripts** | N/A | N/A | Moved to workshop setup scripts |
+
+#### External Resource Approach
+The new design uses **external files** for all complex scripts and code, loaded via CDK for better maintainability while preserving CloudFormation template compatibility through inline code generation. This approach eliminates hard-to-maintain inline code blocks.
+
+#### External Resource Organization
+```
+infra/cdk/src/main/resources/
+├── launcher.py    # EC2 instance launching with multi-AZ/instance-type failover
+└── bootstrap.sh   # EC2 User Data bootstrap script with CloudWatch logging
+```
+
+#### Usage in IDE Construct
+```java
+// Create instance launcher Lambda loading from external file
+var instanceLauncherFunction = Function.Builder.create(this, "IdeInstanceLauncherFunction")
+    .runtime(Runtime.PYTHON_3_13)
+    .handler("index.lambda_handler")
+    .code(Code.fromInline(loadFile("/launcher.py")))
+    .timeout(Duration.minutes(5))
+    .functionName(instanceName + "-launcher")
+    .role(props.getLambdaRole())
+    .build();
+
+// Create User Data from external script with variable substitution
+var userData = UserData.forLinux();
+String bootstrapScript = loadFile("/bootstrap.sh")
+    .replace("${stackName}", Aws.STACK_NAME)
+    .replace("${awsRegion}", Aws.REGION)
+    .replace("${idePassword}", ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap());
+userData.addCommands(bootstrapScript.split("\n"));
+
+// Helper method for loading files
+private String loadFile(String filePath) {
+    try {
+        return Files.readString(Path.of(getClass().getResource(filePath).getPath()));
+    } catch (IOException e) {
+        throw new RuntimeException("Failed to load file " + filePath, e);
+    }
+}
+```
+
 ### Script Organization
 
 #### Convention-Based Script Discovery
@@ -142,10 +206,10 @@ echo "🔧 Generating unified template..."
 
 cd cdk
 mvn clean package
-cdk synth stack --yaml --path-metadata false --version-reporting false > ../cfn/stack.yaml
+cdk synth WorkshopStack --yaml --path-metadata false --version-reporting false > ../workshop-template.yaml
 cd ..
 
-echo "✅ Generated cfn/stack.yaml"
+echo "✅ Generated workshop-template.yaml"
 ```
 
 **scripts/cfn/sync.sh**:
@@ -160,13 +224,13 @@ for workshop in "${WORKSHOPS[@]}"; do
 
   if [[ -d "$target_dir" ]]; then
     # Copy CloudFormation template
-    cp "cfn/stack.yaml" "$target_dir/$workshop-stack.yaml"
-    echo "✅ Synced stack.yaml to $workshop/static/$workshop-stack.yaml"
+    cp "workshop-template.yaml" "$target_dir/$workshop-stack.yaml"
+    echo "✅ Synced workshop-template.yaml to $workshop/static/$workshop-stack.yaml"
 
-    # Copy IAM policy if it exists
-    if [[ -f "policies/policy.json" ]]; then
-      cp "policies/policy.json" "$target_dir/"
-      echo "✅ Synced policy to $workshop/static/"
+    # Copy IAM policy from resources
+    if [[ -f "cdk/src/main/resources/iam-policy.json" ]]; then
+      cp "cdk/src/main/resources/iam-policy.json" "$target_dir/policy.json"
+      echo "✅ Synced iam-policy.json to $workshop/static/policy.json"
     fi
   else
     echo "⚠️  Directory $target_dir not found, skipping sync for $workshop"
@@ -283,8 +347,8 @@ public class BuildConfig {
 *For any* migrated workshop type, the new template should produce equivalent infrastructure to the existing template
 **Validates: Requirements 5.5**
 
-### Property 17: Lambda Function Consolidation
-*For any* consolidated Lambda handler, it should provide equivalent functionality to all original Python/JavaScript functions
+### Property 17: Lambda Function Modularity
+*For any* modular Lambda function, it should provide equivalent functionality to original functions while maintaining CloudFormation template compatibility through inline Python source code
 **Validates: Requirements 5.8**
 
 ## Error Handling

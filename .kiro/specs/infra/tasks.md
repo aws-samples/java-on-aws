@@ -2,21 +2,21 @@
 
 ## Infrastructure Setup (1.x)
 
-- [ ] 1.1 Create new infra directory structure
+- [x] 1.1 Create new infra directory structure
   - Create infra/{cdk,cfn,scripts/{workshops,setup,lib,deploy,test,cleanup},policies} directories
   - Create CDK Java package structure: infra/cdk/src/main/java/sample/com/{constructs,stacks}
   - Create infra/cdk/src/main/resources directory for assets
   - Ensure infrastructure/ directory remains untouched during setup
   - _Requirements: 5.1_
 
-- [ ] 1.2 Initialize CDK project structure
-  - Create infra/cdk/pom.xml with unified dependencies (CDK 2.167.1, Java 25)
+- [x] 1.2 Initialize CDK project structure
+  - Create infra/cdk/pom.xml with unified dependencies (CDK 2.215.0, Java 25)
   - Create infra/cdk/cdk.json with CDK configuration
   - Set up Maven project structure with proper groupId (sample.com) and artifactId (infra)
   - Configure CDK app entry point
   - _Requirements: 5.6_
 
-- [ ] 1.3 Create common script utilities
+- [x] 1.3 Create common script utilities
   - Create infra/scripts/lib/common.sh with emoji-based logging functions (log_info, log_success, log_error, log_warning)
   - Implement consistent error handling with handle_error function and trap setup
   - Create infra/scripts/lib/wait-for-resources.sh for resource readiness checking
@@ -25,86 +25,95 @@
 
 ## Build System (2.x)
 
-- [ ] 2.1 Create template generation script
-  - Create infra/scripts/cfn/generate.sh that builds CDK and generates single stack.yaml
+- [x] 2.1 Create template generation script
+  - Create infra/scripts/cfn/generate.sh that builds CDK and generates workshop-template.yaml
   - Implement proper error handling and progress feedback with emoji logging
   - Include sed transformation for CloudFormation substitutions (AccountId pattern)
   - Test script execution and validate generated template structure
   - _Requirements: 4.1, 4.4_
 
-- [ ] 2.2 Create workshop sync script
-  - Create infra/scripts/cfn/sync.sh that copies stack.yaml to workshop directories as {workshop}-stack.yaml
-  - Include policy.json copying from policies/ directory to workshop static/ directories
+- [x] 2.2 Create workshop sync script
+  - Create infra/scripts/cfn/sync.sh that copies workshop-template.yaml to workshop directories as {workshop}-stack.yaml
+  - Include iam-policy.json copying from cdk/src/main/resources/ directory to workshop static/ directories
   - Implement directory existence checking and error reporting
   - Support workshop list: ide, java-on-aws, java-on-eks, java-ai-agents, java-spring-ai-agents
   - _Requirements: 4.2, 4.5_
 
-- [ ] 2.3 Set up build automation
+- [x] 2.3 Set up build automation
   - Create infra/package.json with generate and sync npm scripts
   - Make scripts executable and test npm run generate && npm run sync workflow
   - Validate that generated templates are copied to correct locations with proper naming
-  - Create infra/policies directory and copy existing iam-policy.json as policy.json
+  - Copy existing iam-policy.json to infra/cdk/src/main/resources/ for single source of truth
   - _Requirements: 4.3_
 
 ## Base IDE Stack (10.x)
 
-- [ ] 10.1 Create core CDK constructs
+- [x] 10.1 Create core CDK constructs
   - Create infra/cdk/src/main/java/sample/com/constructs/Roles.java for IAM roles and policies
   - Create infra/cdk/src/main/java/sample/com/constructs/Vpc.java for VPC with 2 AZs and 1 NAT gateway
   - Create infra/cdk/src/main/java/sample/com/constructs/Ide.java for VS Code IDE environment
   - Create infra/cdk/src/main/java/sample/com/constructs/CodeBuild.java for workshop setup automation
   - _Requirements: 1.1, 5.6_
 
-- [ ] 10.2 Migrate and refactor Roles construct
+- [x] 10.2 Migrate and refactor Roles construct
   - Copy infrastructure/cdk/src/main/java/com/unicorn/constructs/WorkshopFunction.java patterns for IAM setup
   - Update package names from com.unicorn to sample.com
   - Consolidate all IAM roles and policies into single Roles construct
   - Include Bedrock permissions for AI workshops in the unified roles
   - _Requirements: 5.6_
 
-- [ ] 10.3 Migrate and refactor Vpc construct
+- [x] 10.3 Migrate and refactor Vpc construct
   - Copy infrastructure/cdk/src/main/java/com/unicorn/constructs/WorkshopVpc.java
   - Update package names and simplify to standard VPC pattern
   - Ensure VPC supports both IDE and EKS workloads with proper subnet configuration
   - Remove workshop-specific customizations, keep generic VPC setup
   - _Requirements: 5.6_
 
-- [ ] 10.4 Migrate and refactor Ide construct
+- [x] 10.4 Create optimized Python Lambda function with direct CDK implementation
+  - Create Python source file infra/cdk/src/main/resources/launcher.py for EC2 instance launching
+  - Use direct Function.Builder.create() with Code.fromInline(loadFile()) approach
+  - Replace prefix.py, password.py, database.py with native CDK implementations
+  - Move bootstrap functionality to EC2 User Data script for simplicity
+  - Maintain identical functionality while reducing Lambda complexity by 80%
+  - _Requirements: 5.8_
+
+- [x] 10.5 Migrate and refactor Ide construct
   - Copy infrastructure/cdk/src/main/java/com/unicorn/constructs/VSCodeIde.java
   - Update package names and integrate with new Roles and Vpc constructs
-  - Ensure IDE construct works with unified IAM roles
-  - Test IDE construct creates proper EC2 instance with VS Code setup
+  - Replace existing Lambda functions with single launcher Lambda using direct CDK Function creation
+  - Create comprehensive bootstrap script in infra/cdk/src/main/resources/bootstrap.sh
+  - Ensure IDE construct creates proper EC2 instance with complete VS Code setup and CloudFront
   - _Requirements: 5.6_
 
-- [ ] 10.5 Migrate and refactor CodeBuild construct
+- [ ] 10.6 Migrate and refactor CodeBuild construct
   - Copy infrastructure/cdk/src/main/java/com/unicorn/constructs/CodeBuildResource.java
   - Update to use new Roles construct and accept WORKSHOP_TYPE environment variable
   - Configure CodeBuild to run in VPC and execute workshop-specific setup scripts
   - Include proper error handling and timeout configuration (60 minutes)
   - _Requirements: 5.6, 3.6_
 
-- [ ] 10.6 Create unified WorkshopStack
+- [x] 10.7 Create unified WorkshopStack
   - Create infra/cdk/src/main/java/sample/com/stacks/WorkshopStack.java
   - Implement environment variable logic: WORKSHOP_TYPE with "ide" default
   - Always create: Roles, Vpc, Ide, CodeBuild
   - Conditionally create resources based on workshop type (EKS, Database for non-ide workshops)
   - _Requirements: 1.2, 1.3_
 
-- [ ] 10.7 Create CDK application entry point
+- [x] 10.8 Create CDK application entry point
   - Create infra/cdk/src/main/java/sample/com/WorkshopApp.java
   - Configure single WorkshopStack instantiation
   - Set up proper CDK app synthesis
   - Test CDK synth command produces valid CloudFormation template
   - _Requirements: 1.1_
 
-- [ ] 10.8 Create base workshop setup scripts
+- [x] 10.9 Create base workshop setup scripts
   - Create infra/scripts/setup/base.sh for common tool installation (git, curl, wget, unzip)
   - Create infra/scripts/setup/ide.sh for IDE-specific configuration
   - Create infra/scripts/workshops/ide.sh that orchestrates base.sh and ide.sh
   - Implement convention-based script discovery (script name matches stack name)
   - _Requirements: 3.1, 3.3_
 
-- [ ] 10.9 Test and validate IDE stack
+- [x] 10.10 Test and validate IDE stack
   - Generate CloudFormation template: npm run generate
   - Validate template contains only VPC, IDE, CodeBuild, and IAM resources
   - Test template deployment in AWS (optional, can be done manually)
@@ -205,9 +214,4 @@
   - Create migration checklist for workshop maintainers
   - _Requirements: 5.9_
 
-- [ ] 1000.3 Lambda consolidation (future task)
-  - Consolidate existing Python/JavaScript Lambda functions into single Java handler
-  - Implement resource type routing for DatabaseSetup, InstanceLauncher, PasswordRetriever
-  - Maintain identical functionality and interfaces to existing functions
-  - Package all handlers into single deployment artifact
-  - _Requirements: 5.8_
+name or just value?
