@@ -823,6 +823,11 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeInstanceLauncherFunctionA2FF489A
           - Arn
+      InstanceName: unicornstore-ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - UnicornStoreIdeIdeInstanceProfileCEFB2BB2
+          - Arn
       VolumeSize: "50"
       SubnetIds:
         Fn::Join:
@@ -845,11 +850,6 @@ Resources:
       UserData:
         Fn::Base64: "#!/bin/bash"
       InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
-      InstanceName: unicornstore-ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - UnicornStoreIdeIdeInstanceProfileCEFB2BB2
-          - Arn
     DependsOn:
       - UnicornStoreIdeIdePasswordSecret514252E2
     UpdateReplacePolicy: Delete
@@ -1097,9 +1097,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
+            type: String
             default: ""
             description: (Optional) Custom bootstrap script to run.
-            type: String
         mainSteps:
           - inputs:
               runCommand:
@@ -1397,7 +1397,12 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - instanceIamRoleArn:
+                    - terminalOnStartup: "true"
+                      logGroupPrefix: unicornstore-ide-bootstrap
+                      extensions: vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
+                      environmentContentsZip: ""
+                      splashUrl: ""
+                      instanceIamRoleArn:
                         Fn::GetAtt:
                           - UnicornStoreIdeIdeRole81A2CEAA
                           - Arn
@@ -1464,11 +1469,6 @@ Resources:
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring.sh"
                         sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/monitoring-jvm.sh"
                       domain: ""
-                      terminalOnStartup: "true"
-                      logGroupPrefix: unicornstore-ide-bootstrap
-                      extensions: vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
-                      environmentContentsZip: ""
-                      splashUrl: ""
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1793,7 +1793,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251211035223"
+            - "-20251212121545"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2626,13 +2626,13 @@ Resources:
               }
       Environment:
         Variables:
+          S3_BUCKET_NAME:
+            Ref: InfrastructureCoreWorkshopBucketB6510E67
+          EKS_CLUSTER_NAME: unicorn-store
           S3_THREAD_DUMPS_PREFIX: thread-dumps/
           APP_LABEL: unicorn-store-spring
           KUBERNETES_AUTH_TYPE: aws
           K8S_NAMESPACE: unicorn-store-spring
-          S3_BUCKET_NAME:
-            Ref: InfrastructureCoreWorkshopBucketB6510E67
-          EKS_CLUSTER_NAME: unicorn-store
       FunctionName: unicornstore-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
@@ -3125,9 +3125,6 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreDatabaseSetupDatabaseSetupFunction83636DD9
           - Arn
-      SqlStatements: |-
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -3158,6 +3155,9 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: InfrastructureCorepostgresB0D0C6BB
+      SqlStatements: |-
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - InfrastructureCoreUnicornStoreDatabaseF56884BA
       - InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8
@@ -3922,12 +3922,12 @@ Resources:
       Description: Build complete
       EventPattern:
         detail:
+          project-name:
+            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
-          project-name:
-            - Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
         detail-type:
           - CodeBuild Build State Change
         source:

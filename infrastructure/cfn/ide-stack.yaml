@@ -300,6 +300,11 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonSSMManagedInstanceCore
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/CloudWatchAgentServerPolicy
         - Ref: VSCodeIdeWorkshopIdeUserPolicy98DFEC00
         - Fn::Join:
             - ""
@@ -312,14 +317,6 @@ Resources:
     Properties:
       PolicyDocument:
         Statement:
-          - Action:
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - VSCodeIdeIdeLogGroup364F2B78
-                - Arn
           - Action:
               - secretsmanager:GetSecretValue
               - secretsmanager:DescribeSecret
@@ -448,13 +445,6 @@ Resources:
             Resource: "*"
             Sid: DenyReservations
         Version: "2012-10-17"
-  VSCodeIdeIdeLogGroup364F2B78:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: ide-bootstrap-log-20251021-111755
-      RetentionInDays: 7
-    UpdateReplacePolicy: Retain
-    DeletionPolicy: Retain
   VSCodeIdeIdePrefixListFunctionServiceRoleE64D8247:
     Type: AWS::IAM::Role
     Properties:
@@ -597,55 +587,193 @@ Resources:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
-  VSCodeIdeIdeEC2Instance846AE373:
-    Type: AWS::EC2::Instance
+  VSCodeIdeIdeInstanceLauncherFunctionServiceRole0763493C:
+    Type: AWS::IAM::Role
     Properties:
-      AvailabilityZone:
-        Fn::Select:
-          - 0
-          - Fn::GetAZs: ""
-      BlockDeviceMappings:
-        - DeviceName: /dev/xvda
-          Ebs:
-            DeleteOnTermination: true
-            Encrypted: true
-            VolumeSize: 50
-            VolumeType: gp3
-      IamInstanceProfile:
-        Ref: VSCodeIdeIdeInstanceProfileD50529DC
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
-      InstanceType: m5.xlarge
-      SecurityGroupIds:
-        - Fn::GetAtt:
-            - VSCodeIdeIdeSecurityGroup69EC68AF
-            - GroupId
-        - Fn::GetAtt:
-            - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
-            - GroupId
-        - Fn::GetAtt:
-            - VSCodeIdeAppSecurityGroup3CD2EECD
-            - GroupId
-      SubnetId:
-        Ref: IdeVpcPublicSubnet1Subnet5568D48C
-      Tags:
-        - Key: Name
-          Value: ide
-      UserData:
-        Fn::Base64: "#!/bin/bash"
-    DependsOn:
-      - VSCodeIdeIdePasswordSecret39AD78F3
-      - VSCodeIdeIdeRoleDefaultPolicyB89C55CF
-      - VSCodeIdeIdeRole21951A1F
-  VSCodeIdeIdeEipAssociation5CF25E52:
-    Type: AWS::EC2::EIPAssociation
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  VSCodeIdeIdeInstanceLauncherFunctionServiceRoleDefaultPolicy0DDDE6EE:
+    Type: AWS::IAM::Policy
     Properties:
-      AllocationId:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - ec2:RunInstances
+              - ec2:TerminateInstances
+              - ec2:CreateTags
+              - ec2:DescribeInstances
+              - ec2:DescribeInstanceStatus
+              - ec2:DescribeSubnets
+            Effect: Allow
+            Resource: "*"
+          - Action: iam:PassRole
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - VSCodeIdeIdeRole21951A1F
+                  - Arn
+              - Fn::GetAtt:
+                  - VSCodeIdeIdeInstanceProfileD50529DC
+                  - Arn
+        Version: "2012-10-17"
+      PolicyName: VSCodeIdeIdeInstanceLauncherFunctionServiceRoleDefaultPolicy0DDDE6EE
+      Roles:
+        - Ref: VSCodeIdeIdeInstanceLauncherFunctionServiceRole0763493C
+  VSCodeIdeIdeInstanceLauncherFunction1DCDEA86:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          import traceback
+          import cfnresponse
+
+          ec2 = boto3.client('ec2')
+
+          def lambda_handler(event, context):
+              print(f'Event: {event}')
+              responseData = {}
+              status = cfnresponse.SUCCESS
+              physical_id = event.get('PhysicalResourceId', 'InstanceLauncher')
+
+              try:
+                  if event['RequestType'] == 'Delete':
+                      # Terminate the instance if it exists
+                      instance_id = event.get('PhysicalResourceId')
+                      if instance_id and instance_id.startswith('i-'):
+                          try:
+                              ec2.terminate_instances(InstanceIds=[instance_id])
+                              print(f'Terminated instance: {instance_id}')
+                          except Exception as e:
+                              print(f'Error terminating instance: {e}')
+                      responseData = {'Message': 'Instance terminated'}
+                      cfnresponse.send(event, context, status, responseData, physical_id)
+                      return
+
+                  if event['RequestType'] == 'Update':
+                      # For updates, return existing instance
+                      instance_id = event.get('PhysicalResourceId')
+                      if instance_id and instance_id.startswith('i-'):
+                          responseData = {'InstanceId': instance_id}
+                          cfnresponse.send(event, context, status, responseData, instance_id)
+                          return
+
+                  # Create new instance
+                  props = event['ResourceProperties']
+                  subnet_ids = props['SubnetIds'].split(',')
+                  instance_types = props['InstanceTypes'].split(',')
+
+                  instance_id = None
+                  last_error = None
+
+                  # Try each instance type across all AZs
+                  for instance_type in instance_types:
+                      for subnet_id in subnet_ids:
+                          try:
+                              print(f'Attempting to launch {instance_type} in subnet {subnet_id}')
+
+                              response = ec2.run_instances(
+                                  ImageId=props['ImageId'],
+                                  InstanceType=instance_type,
+                                  SubnetId=subnet_id,
+                                  SecurityGroupIds=props['SecurityGroupIds'].split(','),
+                                  IamInstanceProfile={'Arn': props['IamInstanceProfileArn']},
+                                  BlockDeviceMappings=[{
+                                      'DeviceName': '/dev/xvda',
+                                      'Ebs': {
+                                          'VolumeSize': int(props['VolumeSize']),
+                                          'VolumeType': 'gp3',
+                                          'DeleteOnTermination': True,
+                                          'Encrypted': True
+                                      }
+                                  }],
+                                  TagSpecifications=[{
+                                      'ResourceType': 'instance',
+                                      'Tags': [
+                                          {'Key': 'Name', 'Value': props['InstanceName']}
+                                      ]
+                                  }],
+                                  UserData=props.get('UserData', ''),
+                                  MinCount=1,
+                                  MaxCount=1
+                              )
+
+                              instance_id = response['Instances'][0]['InstanceId']
+                              print(f'Successfully launched instance {instance_id} ({instance_type} in {subnet_id})')
+
+                              # Wait for instance to reach running state before returning
+                              print(f'Waiting for instance {instance_id} to reach running state...')
+                              waiter = ec2.get_waiter('instance_running')
+                              waiter.wait(
+                                  InstanceIds=[instance_id],
+                                  WaiterConfig={
+                                      'Delay': 10,
+                                      'MaxAttempts': 30  # 30 * 10 = 300 seconds (5 minutes) max wait
+                                  }
+                              )
+                              print(f'Instance {instance_id} is now running')
+
+                              responseData = {
+                                  'InstanceId': instance_id,
+                                  'InstanceType': instance_type,
+                                  'SubnetId': subnet_id
+                              }
+                              cfnresponse.send(event, context, status, responseData, instance_id)
+                              return
+
+                          except Exception as e:
+                              error_msg = str(e)
+                              print(f'Failed to launch {instance_type} in {subnet_id}: {error_msg}')
+
+                              # Check if it's a retryable error (capacity or instance type issues)
+                              retryable_errors = [
+                                  'InsufficientInstanceCapacity',  # No capacity in AZ
+                                  'Unsupported',                    # Instance type not supported
+                                  'InstanceLimitExceeded',          # Hit instance limit
+                                  'VcpuLimitExceeded',              # Hit vCPU limit
+                                  'InvalidParameterValue',          # Invalid instance type or config
+                              ]
+
+                              if any(err in error_msg for err in retryable_errors):
+                                  last_error = error_msg
+                                  continue  # Try next combination
+                              else:
+                                  # Other error (permissions, network, etc), fail immediately
+                                  raise
+
+                  # All attempts failed
+                  status = cfnresponse.FAILED
+                  responseData = {'Error': f'No capacity available. Last error: {last_error}'}
+
+              except Exception as e:
+                  status = cfnresponse.FAILED
+                  tb_err = traceback.format_exc()
+                  print(tb_err)
+                  responseData = {'Error': tb_err}
+
+              cfnresponse.send(event, context, status, responseData, physical_id)
+      FunctionName: ide-instance-launcher
+      Handler: index.lambda_handler
+      Role:
         Fn::GetAtt:
-          - VSCodeIdeIdeElasticIP9EC1C0FF
-          - AllocationId
-      InstanceId:
-        Ref: VSCodeIdeIdeEC2Instance846AE373
+          - VSCodeIdeIdeInstanceLauncherFunctionServiceRole0763493C
+          - Arn
+      Runtime: python3.13
+      Timeout: 300
+    DependsOn:
+      - VSCodeIdeIdeInstanceLauncherFunctionServiceRoleDefaultPolicy0DDDE6EE
+      - VSCodeIdeIdeInstanceLauncherFunctionServiceRole0763493C
   VSCodeIdeIdeInternalSecurityGroup84C0CB7B:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -679,6 +807,59 @@ Resources:
           - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
           - GroupId
       IpProtocol: "-1"
+  VSCodeIdeIdeEC2InstanceResourceBC65CC05:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - VSCodeIdeIdeInstanceLauncherFunction1DCDEA86
+          - Arn
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - VSCodeIdeIdeInstanceProfileD50529DC
+          - Arn
+      VolumeSize: "50"
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: IdeVpcPublicSubnet1Subnet5568D48C
+            - ","
+            - Ref: IdeVpcPublicSubnet2Subnet8D75E006
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - VSCodeIdeIdeSecurityGroup69EC68AF
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - VSCodeIdeIdeInternalSecurityGroup84C0CB7B
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - VSCodeIdeAppSecurityGroup3CD2EECD
+                - GroupId
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      UserData:
+        Fn::Base64: "#!/bin/bash"
+      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
+      InstanceName: ide
+    DependsOn:
+      - VSCodeIdeIdePasswordSecret39AD78F3
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  VSCodeIdeIdeEipAssociation5CF25E52:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - VSCodeIdeIdeElasticIP9EC1C0FF
+          - AllocationId
+      InstanceId:
+        Fn::GetAtt:
+          - VSCodeIdeIdeEC2InstanceResourceBC65CC05
+          - InstanceId
   VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82:
     Type: AWS::CloudFormation::WaitConditionHandle
   VSCodeIdeIdeBootstrapWaitConditionEDA1E0E7:
@@ -690,7 +871,7 @@ Resources:
       Timeout: "1800"
     DependsOn:
       - VSCodeIdeIdeBootstrapDocument8DDB05AD
-      - VSCodeIdeIdeEC2Instance846AE373
+      - VSCodeIdeIdeEC2InstanceResourceBC65CC05
   VSCodeIdeIdeDistribution613960F4:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -719,9 +900,45 @@ Resources:
               OriginSSLProtocols:
                 - TLSv1.2
             DomainName:
-              Fn::GetAtt:
-                - VSCodeIdeIdeEC2Instance846AE373
-                - PublicDnsName
+              Fn::Join:
+                - ""
+                - - ec2-
+                  - Fn::Select:
+                      - 0
+                      - Fn::Split:
+                          - "."
+                          - Fn::Select:
+                              - 0
+                              - Fn::Split:
+                                  - "."
+                                  - Fn::GetAtt:
+                                      - VSCodeIdeIdeElasticIP9EC1C0FF
+                                      - PublicIp
+                  - "-"
+                  - Fn::Select:
+                      - 1
+                      - Fn::Split:
+                          - "."
+                          - Fn::GetAtt:
+                              - VSCodeIdeIdeElasticIP9EC1C0FF
+                              - PublicIp
+                  - "-"
+                  - Fn::Select:
+                      - 2
+                      - Fn::Split:
+                          - "."
+                          - Fn::GetAtt:
+                              - VSCodeIdeIdeElasticIP9EC1C0FF
+                              - PublicIp
+                  - "-"
+                  - Fn::Select:
+                      - 3
+                      - Fn::Split:
+                          - "."
+                          - Fn::GetAtt:
+                              - VSCodeIdeIdeElasticIP9EC1C0FF
+                              - PublicIp
+                  - .compute-1.amazonaws.com
             Id: idestackVSCodeIdeIdeDistributionOrigin12E9C5C1A
     DependsOn:
       - VSCodeIdeIdeEipAssociation5CF25E52
@@ -866,8 +1083,8 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            description: (Optional) Custom bootstrap script to run.
             default: ""
+            description: (Optional) Custom bootstrap script to run.
             type: String
         mainSteps:
           - inputs:
@@ -877,6 +1094,43 @@ Resources:
                       bash << 'HEREDOC'
                       set -e
 
+                      # Generate unique log group name with runtime timestamp
+                      LOG_GROUP_NAME="${logGroupPrefix}-$(date +%Y%m%d-%H%M%S)"
+                      echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
+
+                      # Install and configure CloudWatch agent for logging
+                      echo "Installing CloudWatch agent..."
+                      yum install -y amazon-cloudwatch-agent
+
+                      # Create CloudWatch agent configuration
+                      cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << EOF
+                      {
+                        "logs": {
+                          "logs_collected": {
+                            "files": {
+                              "collect_list": [
+                                {
+                                  "file_path": "/var/log/bootstrap.log",
+                                  "log_group_name": "$LOG_GROUP_NAME",
+                                  "log_stream_name": "{instance_id}",
+                                  "retention_in_days": 7
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                      EOF
+
+                      # Start CloudWatch agent
+                      /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+                        -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+
+                      # Redirect all bootstrap output to log file and console
+                      exec > >(tee -a /var/log/bootstrap.log)
+                      exec 2>&1
+
+                      echo "Bootstrap started at $(date) - Logging to $LOG_GROUP_NAME"
                       echo "Retrieving IDE password..."
 
                       PASSWORD_SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id "${passwordName}" --query 'SecretString' --output text)
@@ -1129,17 +1383,12 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - codeServerVersion: 4.104.3
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
+                    - environmentContentsZip: ""
+                      splashUrl: ""
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - VSCodeIdeIdeRole21951A1F
+                          - Arn
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1170,21 +1419,27 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: VSCodeIdeIdePasswordSecret39AD78F3
-                      environmentContentsZip: ""
-                      terminalOnStartup: "true"
-                      installGitea: echo bootstrapGitea was not provided
-                      domain: ""
-                      extensions: shardulm94.trailing-spaces,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
                       waitConditionHandleUrl:
                         Ref: VSCodeIdeIdeBootstrapWaitConditionHandle0A599C82
+                      installGitea: echo bootstrapGitea was not provided
                       readmeUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - VSCodeIdeIdeRole21951A1F
-                          - Arn
-                      splashUrl: ""
                       instanceIamRoleName:
                         Ref: VSCodeIdeIdeRole21951A1F
+                      codeServerVersion: 4.104.3
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
+                      domain: ""
+                      terminalOnStartup: "true"
+                      logGroupPrefix: ide-bootstrap
+                      extensions: shardulm94.trailing-spaces,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1290,11 +1545,7 @@ Resources:
 
                       ssm.send_command(
                           InstanceIds=[instance_id],
-                          DocumentName=ssm_document,
-                          CloudWatchOutputConfig={
-                              'CloudWatchLogGroupName': event['ResourceProperties']['LogGroupName'],
-                              'CloudWatchOutputEnabled': True
-                          })
+                          DocumentName=ssm_document)
 
                       responseData = {'Success': 'Started bootstrapping for instance: '+instance_id}
                   except Exception as e:
@@ -1322,12 +1573,12 @@ Resources:
         Fn::GetAtt:
           - VSCodeIdeIdeBootstrapFunctionADFBCE22
           - Arn
-      InstanceId:
-        Ref: VSCodeIdeIdeEC2Instance846AE373
       SsmDocument:
         Ref: VSCodeIdeIdeBootstrapDocument8DDB05AD
-      LogGroupName:
-        Ref: VSCodeIdeIdeLogGroup364F2B78
+      InstanceId:
+        Fn::GetAtt:
+          - VSCodeIdeIdeEC2InstanceResourceBC65CC05
+          - InstanceId
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 Outputs:

@@ -300,6 +300,11 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonSSMManagedInstanceCore
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/CloudWatchAgentServerPolicy
         - Ref: VSCodeIdeGiteaWorkshopIdeUserPolicy062B10B9
         - Fn::Join:
             - ""
@@ -312,14 +317,6 @@ Resources:
     Properties:
       PolicyDocument:
         Statement:
-          - Action:
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - VSCodeIdeGiteaIdeLogGroupCD76FEFA
-                - Arn
           - Action:
               - secretsmanager:GetSecretValue
               - secretsmanager:DescribeSecret
@@ -448,13 +445,6 @@ Resources:
             Resource: "*"
             Sid: DenyReservations
         Version: "2012-10-17"
-  VSCodeIdeGiteaIdeLogGroupCD76FEFA:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: ide-bootstrap-log-20251021-111814
-      RetentionInDays: 7
-    UpdateReplacePolicy: Retain
-    DeletionPolicy: Retain
   VSCodeIdeGiteaIdePrefixListFunctionServiceRole8E037D06:
     Type: AWS::IAM::Role
     Properties:
@@ -614,55 +604,193 @@ Resources:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
-  VSCodeIdeGiteaIdeEC2Instance51274E6D:
-    Type: AWS::EC2::Instance
+  VSCodeIdeGiteaIdeInstanceLauncherFunctionServiceRoleE3EC558C:
+    Type: AWS::IAM::Role
     Properties:
-      AvailabilityZone:
-        Fn::Select:
-          - 0
-          - Fn::GetAZs: ""
-      BlockDeviceMappings:
-        - DeviceName: /dev/xvda
-          Ebs:
-            DeleteOnTermination: true
-            Encrypted: true
-            VolumeSize: 50
-            VolumeType: gp3
-      IamInstanceProfile:
-        Ref: VSCodeIdeGiteaIdeInstanceProfileCE7EC5EA
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
-      InstanceType: m5.xlarge
-      SecurityGroupIds:
-        - Fn::GetAtt:
-            - VSCodeIdeGiteaIdeSecurityGroupF32C3523
-            - GroupId
-        - Fn::GetAtt:
-            - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
-            - GroupId
-        - Fn::GetAtt:
-            - VSCodeIdeGiteaAppSecurityGroup2574CAA7
-            - GroupId
-      SubnetId:
-        Ref: IdeVpcPublicSubnet1Subnet5568D48C
-      Tags:
-        - Key: Name
-          Value: ide
-      UserData:
-        Fn::Base64: "#!/bin/bash"
-    DependsOn:
-      - VSCodeIdeGiteaIdePasswordSecretD25F73F4
-      - VSCodeIdeGiteaIdeRoleDefaultPolicy7AA4DC42
-      - VSCodeIdeGiteaIdeRole90308F47
-  VSCodeIdeGiteaIdeEipAssociation2B351459:
-    Type: AWS::EC2::EIPAssociation
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  VSCodeIdeGiteaIdeInstanceLauncherFunctionServiceRoleDefaultPolicyCF9C4BDB:
+    Type: AWS::IAM::Policy
     Properties:
-      AllocationId:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - ec2:RunInstances
+              - ec2:TerminateInstances
+              - ec2:CreateTags
+              - ec2:DescribeInstances
+              - ec2:DescribeInstanceStatus
+              - ec2:DescribeSubnets
+            Effect: Allow
+            Resource: "*"
+          - Action: iam:PassRole
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - VSCodeIdeGiteaIdeRole90308F47
+                  - Arn
+              - Fn::GetAtt:
+                  - VSCodeIdeGiteaIdeInstanceProfileCE7EC5EA
+                  - Arn
+        Version: "2012-10-17"
+      PolicyName: VSCodeIdeGiteaIdeInstanceLauncherFunctionServiceRoleDefaultPolicyCF9C4BDB
+      Roles:
+        - Ref: VSCodeIdeGiteaIdeInstanceLauncherFunctionServiceRoleE3EC558C
+  VSCodeIdeGiteaIdeInstanceLauncherFunction672E8191:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          import traceback
+          import cfnresponse
+
+          ec2 = boto3.client('ec2')
+
+          def lambda_handler(event, context):
+              print(f'Event: {event}')
+              responseData = {}
+              status = cfnresponse.SUCCESS
+              physical_id = event.get('PhysicalResourceId', 'InstanceLauncher')
+
+              try:
+                  if event['RequestType'] == 'Delete':
+                      # Terminate the instance if it exists
+                      instance_id = event.get('PhysicalResourceId')
+                      if instance_id and instance_id.startswith('i-'):
+                          try:
+                              ec2.terminate_instances(InstanceIds=[instance_id])
+                              print(f'Terminated instance: {instance_id}')
+                          except Exception as e:
+                              print(f'Error terminating instance: {e}')
+                      responseData = {'Message': 'Instance terminated'}
+                      cfnresponse.send(event, context, status, responseData, physical_id)
+                      return
+
+                  if event['RequestType'] == 'Update':
+                      # For updates, return existing instance
+                      instance_id = event.get('PhysicalResourceId')
+                      if instance_id and instance_id.startswith('i-'):
+                          responseData = {'InstanceId': instance_id}
+                          cfnresponse.send(event, context, status, responseData, instance_id)
+                          return
+
+                  # Create new instance
+                  props = event['ResourceProperties']
+                  subnet_ids = props['SubnetIds'].split(',')
+                  instance_types = props['InstanceTypes'].split(',')
+
+                  instance_id = None
+                  last_error = None
+
+                  # Try each instance type across all AZs
+                  for instance_type in instance_types:
+                      for subnet_id in subnet_ids:
+                          try:
+                              print(f'Attempting to launch {instance_type} in subnet {subnet_id}')
+
+                              response = ec2.run_instances(
+                                  ImageId=props['ImageId'],
+                                  InstanceType=instance_type,
+                                  SubnetId=subnet_id,
+                                  SecurityGroupIds=props['SecurityGroupIds'].split(','),
+                                  IamInstanceProfile={'Arn': props['IamInstanceProfileArn']},
+                                  BlockDeviceMappings=[{
+                                      'DeviceName': '/dev/xvda',
+                                      'Ebs': {
+                                          'VolumeSize': int(props['VolumeSize']),
+                                          'VolumeType': 'gp3',
+                                          'DeleteOnTermination': True,
+                                          'Encrypted': True
+                                      }
+                                  }],
+                                  TagSpecifications=[{
+                                      'ResourceType': 'instance',
+                                      'Tags': [
+                                          {'Key': 'Name', 'Value': props['InstanceName']}
+                                      ]
+                                  }],
+                                  UserData=props.get('UserData', ''),
+                                  MinCount=1,
+                                  MaxCount=1
+                              )
+
+                              instance_id = response['Instances'][0]['InstanceId']
+                              print(f'Successfully launched instance {instance_id} ({instance_type} in {subnet_id})')
+
+                              # Wait for instance to reach running state before returning
+                              print(f'Waiting for instance {instance_id} to reach running state...')
+                              waiter = ec2.get_waiter('instance_running')
+                              waiter.wait(
+                                  InstanceIds=[instance_id],
+                                  WaiterConfig={
+                                      'Delay': 10,
+                                      'MaxAttempts': 30  # 30 * 10 = 300 seconds (5 minutes) max wait
+                                  }
+                              )
+                              print(f'Instance {instance_id} is now running')
+
+                              responseData = {
+                                  'InstanceId': instance_id,
+                                  'InstanceType': instance_type,
+                                  'SubnetId': subnet_id
+                              }
+                              cfnresponse.send(event, context, status, responseData, instance_id)
+                              return
+
+                          except Exception as e:
+                              error_msg = str(e)
+                              print(f'Failed to launch {instance_type} in {subnet_id}: {error_msg}')
+
+                              # Check if it's a retryable error (capacity or instance type issues)
+                              retryable_errors = [
+                                  'InsufficientInstanceCapacity',  # No capacity in AZ
+                                  'Unsupported',                    # Instance type not supported
+                                  'InstanceLimitExceeded',          # Hit instance limit
+                                  'VcpuLimitExceeded',              # Hit vCPU limit
+                                  'InvalidParameterValue',          # Invalid instance type or config
+                              ]
+
+                              if any(err in error_msg for err in retryable_errors):
+                                  last_error = error_msg
+                                  continue  # Try next combination
+                              else:
+                                  # Other error (permissions, network, etc), fail immediately
+                                  raise
+
+                  # All attempts failed
+                  status = cfnresponse.FAILED
+                  responseData = {'Error': f'No capacity available. Last error: {last_error}'}
+
+              except Exception as e:
+                  status = cfnresponse.FAILED
+                  tb_err = traceback.format_exc()
+                  print(tb_err)
+                  responseData = {'Error': tb_err}
+
+              cfnresponse.send(event, context, status, responseData, physical_id)
+      FunctionName: ide-instance-launcher
+      Handler: index.lambda_handler
+      Role:
         Fn::GetAtt:
-          - VSCodeIdeGiteaIdeElasticIPBF6E624D
-          - AllocationId
-      InstanceId:
-        Ref: VSCodeIdeGiteaIdeEC2Instance51274E6D
+          - VSCodeIdeGiteaIdeInstanceLauncherFunctionServiceRoleE3EC558C
+          - Arn
+      Runtime: python3.13
+      Timeout: 300
+    DependsOn:
+      - VSCodeIdeGiteaIdeInstanceLauncherFunctionServiceRoleDefaultPolicyCF9C4BDB
+      - VSCodeIdeGiteaIdeInstanceLauncherFunctionServiceRoleE3EC558C
   VSCodeIdeGiteaIdeInternalSecurityGroupD236D648:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -696,6 +824,59 @@ Resources:
           - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
           - GroupId
       IpProtocol: "-1"
+  VSCodeIdeGiteaIdeEC2InstanceResourceD073D3A1:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - VSCodeIdeGiteaIdeInstanceLauncherFunction672E8191
+          - Arn
+      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
+      InstanceName: ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - VSCodeIdeGiteaIdeInstanceProfileCE7EC5EA
+          - Arn
+      VolumeSize: "50"
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: IdeVpcPublicSubnet1Subnet5568D48C
+            - ","
+            - Ref: IdeVpcPublicSubnet2Subnet8D75E006
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - VSCodeIdeGiteaIdeSecurityGroupF32C3523
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - VSCodeIdeGiteaIdeInternalSecurityGroupD236D648
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - VSCodeIdeGiteaAppSecurityGroup2574CAA7
+                - GroupId
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      UserData:
+        Fn::Base64: "#!/bin/bash"
+    DependsOn:
+      - VSCodeIdeGiteaIdePasswordSecretD25F73F4
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  VSCodeIdeGiteaIdeEipAssociation2B351459:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - VSCodeIdeGiteaIdeElasticIPBF6E624D
+          - AllocationId
+      InstanceId:
+        Fn::GetAtt:
+          - VSCodeIdeGiteaIdeEC2InstanceResourceD073D3A1
+          - InstanceId
   VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5:
     Type: AWS::CloudFormation::WaitConditionHandle
   VSCodeIdeGiteaIdeBootstrapWaitCondition7A3D8607:
@@ -707,7 +888,7 @@ Resources:
       Timeout: "1800"
     DependsOn:
       - VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
-      - VSCodeIdeGiteaIdeEC2Instance51274E6D
+      - VSCodeIdeGiteaIdeEC2InstanceResourceD073D3A1
   VSCodeIdeGiteaIdeDistribution51935A77:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -736,9 +917,45 @@ Resources:
               OriginSSLProtocols:
                 - TLSv1.2
             DomainName:
-              Fn::GetAtt:
-                - VSCodeIdeGiteaIdeEC2Instance51274E6D
-                - PublicDnsName
+              Fn::Join:
+                - ""
+                - - ec2-
+                  - Fn::Select:
+                      - 0
+                      - Fn::Split:
+                          - "."
+                          - Fn::Select:
+                              - 0
+                              - Fn::Split:
+                                  - "."
+                                  - Fn::GetAtt:
+                                      - VSCodeIdeGiteaIdeElasticIPBF6E624D
+                                      - PublicIp
+                  - "-"
+                  - Fn::Select:
+                      - 1
+                      - Fn::Split:
+                          - "."
+                          - Fn::GetAtt:
+                              - VSCodeIdeGiteaIdeElasticIPBF6E624D
+                              - PublicIp
+                  - "-"
+                  - Fn::Select:
+                      - 2
+                      - Fn::Split:
+                          - "."
+                          - Fn::GetAtt:
+                              - VSCodeIdeGiteaIdeElasticIPBF6E624D
+                              - PublicIp
+                  - "-"
+                  - Fn::Select:
+                      - 3
+                      - Fn::Split:
+                          - "."
+                          - Fn::GetAtt:
+                              - VSCodeIdeGiteaIdeElasticIPBF6E624D
+                              - PublicIp
+                  - .compute-1.amazonaws.com
             Id: idegiteastackVSCodeIdeGiteaIdeDistributionOrigin157710565
     DependsOn:
       - VSCodeIdeGiteaIdeEipAssociation2B351459
@@ -883,9 +1100,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            default: ""
-            type: String
             description: (Optional) Custom bootstrap script to run.
+            type: String
+            default: ""
         mainSteps:
           - inputs:
               runCommand:
@@ -894,6 +1111,43 @@ Resources:
                       bash << 'HEREDOC'
                       set -e
 
+                      # Generate unique log group name with runtime timestamp
+                      LOG_GROUP_NAME="${logGroupPrefix}-$(date +%Y%m%d-%H%M%S)"
+                      echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
+
+                      # Install and configure CloudWatch agent for logging
+                      echo "Installing CloudWatch agent..."
+                      yum install -y amazon-cloudwatch-agent
+
+                      # Create CloudWatch agent configuration
+                      cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << EOF
+                      {
+                        "logs": {
+                          "logs_collected": {
+                            "files": {
+                              "collect_list": [
+                                {
+                                  "file_path": "/var/log/bootstrap.log",
+                                  "log_group_name": "$LOG_GROUP_NAME",
+                                  "log_stream_name": "{instance_id}",
+                                  "retention_in_days": 7
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                      EOF
+
+                      # Start CloudWatch agent
+                      /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+                        -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+
+                      # Redirect all bootstrap output to log file and console
+                      exec > >(tee -a /var/log/bootstrap.log)
+                      exec 2>&1
+
+                      echo "Bootstrap started at $(date) - Logging to $LOG_GROUP_NAME"
                       echo "Retrieving IDE password..."
 
                       PASSWORD_SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id "${passwordName}" --query 'SecretString' --output text)
@@ -1146,27 +1400,16 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - waitConditionHandleUrl:
-                        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
-                      readmeUrl: ""
+                    - domain: ""
+                      terminalOnStartup: "true"
+                      logGroupPrefix: ide-bootstrap
+                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
+                      environmentContentsZip: ""
+                      splashUrl: ""
                       instanceIamRoleArn:
                         Fn::GetAtt:
                           - VSCodeIdeGiteaIdeRole90308F47
                           - Arn
-                      splashUrl: ""
-                      instanceIamRoleName:
-                        Ref: VSCodeIdeGiteaIdeRole90308F47
-                      codeServerVersion: 4.104.3
-                      customBootstrapScript: |
-                        date
-
-                        echo '=== Clone Git repository ==='
-                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
-                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
-
-                        echo '=== Setup IDE ==='
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
-                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1197,8 +1440,8 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: VSCodeIdeGiteaIdePasswordSecretD25F73F4
-                      environmentContentsZip: ""
-                      terminalOnStartup: "true"
+                      waitConditionHandleUrl:
+                        Ref: VSCodeIdeGiteaIdeBootstrapWaitConditionHandle78036ED5
                       installGitea: |
                         dnf install -y nerdctl cni-plugins
                         mkdir -p /gitea/config /gitea/data
@@ -1391,8 +1634,20 @@ Resources:
                         EOF
 
                         source /etc/profile.d/gitea.sh
-                      domain: ""
-                      extensions: ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
+                      readmeUrl: ""
+                      instanceIamRoleName:
+                        Ref: VSCodeIdeGiteaIdeRole90308F47
+                      codeServerVersion: 4.104.3
+                      customBootstrapScript: |
+                        date
+
+                        echo '=== Clone Git repository ==='
+                        sudo -H -u ec2-user bash -c "git clone https://github.com/aws-samples/java-on-aws ~/java-on-aws/"
+                        # sudo -H -u ec2-user bash -c "cd ~/java-on-aws && git checkout refactoring"
+
+                        echo '=== Setup IDE ==='
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/ide.sh"
+                        sudo -H -i -u ec2-user bash -c "~/java-on-aws/infrastructure/scripts/setup/idp.sh"
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1498,11 +1753,7 @@ Resources:
 
                       ssm.send_command(
                           InstanceIds=[instance_id],
-                          DocumentName=ssm_document,
-                          CloudWatchOutputConfig={
-                              'CloudWatchLogGroupName': event['ResourceProperties']['LogGroupName'],
-                              'CloudWatchOutputEnabled': True
-                          })
+                          DocumentName=ssm_document)
 
                       responseData = {'Success': 'Started bootstrapping for instance: '+instance_id}
                   except Exception as e:
@@ -1531,11 +1782,11 @@ Resources:
           - VSCodeIdeGiteaIdeBootstrapFunction34BA645E
           - Arn
       InstanceId:
-        Ref: VSCodeIdeGiteaIdeEC2Instance51274E6D
+        Fn::GetAtt:
+          - VSCodeIdeGiteaIdeEC2InstanceResourceD073D3A1
+          - InstanceId
       SsmDocument:
         Ref: VSCodeIdeGiteaIdeBootstrapDocument7FC8732A
-      LogGroupName:
-        Ref: VSCodeIdeGiteaIdeLogGroupCD76FEFA
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 Outputs:

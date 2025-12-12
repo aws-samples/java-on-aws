@@ -320,6 +320,11 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonSSMManagedInstanceCore
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/CloudWatchAgentServerPolicy
         - Ref: UnicornStoreIdeWorkshopIdeUserPolicy4FE3EC67
       RoleName: unicornstore-ide-user
   UnicornStoreIdeIdeRoleDefaultPolicy7083F507:
@@ -327,14 +332,6 @@ Resources:
     Properties:
       PolicyDocument:
         Statement:
-          - Action:
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - UnicornStoreIdeIdeLogGroup7A5EFA50
-                - Arn
           - Action:
               - secretsmanager:GetSecretValue
               - secretsmanager:DescribeSecret
@@ -463,13 +460,6 @@ Resources:
             Resource: "*"
             Sid: DenyReservations
         Version: "2012-10-17"
-  UnicornStoreIdeIdeLogGroup7A5EFA50:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: unicornstore-ide-bootstrap-log-20251128-171420
-      RetentionInDays: 7
-    UpdateReplacePolicy: Retain
-    DeletionPolicy: Retain
   UnicornStoreIdeIdePrefixListFunctionServiceRole32E30C10:
     Type: AWS::IAM::Role
     Properties:
@@ -632,6 +622,7 @@ Resources:
               - ec2:TerminateInstances
               - ec2:CreateTags
               - ec2:DescribeInstances
+              - ec2:DescribeInstanceStatus
               - ec2:DescribeSubnets
             Effect: Allow
             Resource: "*"
@@ -730,6 +721,18 @@ Resources:
                               instance_id = response['Instances'][0]['InstanceId']
                               print(f'Successfully launched instance {instance_id} ({instance_type} in {subnet_id})')
 
+                              # Wait for instance to reach running state before returning
+                              print(f'Waiting for instance {instance_id} to reach running state...')
+                              waiter = ec2.get_waiter('instance_running')
+                              waiter.wait(
+                                  InstanceIds=[instance_id],
+                                  WaiterConfig={
+                                      'Delay': 10,
+                                      'MaxAttempts': 30  # 30 * 10 = 300 seconds (5 minutes) max wait
+                                  }
+                              )
+                              print(f'Instance {instance_id} is now running')
+
                               responseData = {
                                   'InstanceId': instance_id,
                                   'InstanceType': instance_type,
@@ -820,23 +823,6 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeInstanceLauncherFunctionA2FF489A
           - Arn
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
-      UserData:
-        Fn::Base64: "#!/bin/bash"
-      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
-      InstanceName: unicornstore-ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - UnicornStoreIdeIdeInstanceProfileCEFB2BB2
-          - Arn
-      VolumeSize: "50"
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: UnicornStoreVpcPublicSubnet1Subnet5A587A94
-            - ","
-            - Ref: UnicornStoreVpcPublicSubnet2Subnet6C10127F
       SecurityGroupIds:
         Fn::Join:
           - ""
@@ -847,6 +833,23 @@ Resources:
             - Fn::GetAtt:
                 - UnicornStoreIdeIdeInternalSecurityGroup29539F21
                 - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: UnicornStoreVpcPublicSubnet1Subnet5A587A94
+            - ","
+            - Ref: UnicornStoreVpcPublicSubnet2Subnet6C10127F
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - UnicornStoreIdeIdeInstanceProfileCEFB2BB2
+          - Arn
+      InstanceName: unicornstore-ide
+      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
+      UserData:
+        Fn::Base64: "#!/bin/bash"
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
     DependsOn:
       - UnicornStoreIdeIdePasswordSecret514252E2
     UpdateReplacePolicy: Delete
@@ -1094,9 +1097,9 @@ Resources:
         description: Bootstrap IDE
         parameters:
           BootstrapScript:
-            description: (Optional) Custom bootstrap script to run.
-            type: String
             default: ""
+            type: String
+            description: (Optional) Custom bootstrap script to run.
         mainSteps:
           - inputs:
               runCommand:
@@ -1105,6 +1108,43 @@ Resources:
                       bash << 'HEREDOC'
                       set -e
 
+                      # Generate unique log group name with runtime timestamp
+                      LOG_GROUP_NAME="${logGroupPrefix}-$(date +%Y%m%d-%H%M%S)"
+                      echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
+
+                      # Install and configure CloudWatch agent for logging
+                      echo "Installing CloudWatch agent..."
+                      yum install -y amazon-cloudwatch-agent
+
+                      # Create CloudWatch agent configuration
+                      cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << EOF
+                      {
+                        "logs": {
+                          "logs_collected": {
+                            "files": {
+                              "collect_list": [
+                                {
+                                  "file_path": "/var/log/bootstrap.log",
+                                  "log_group_name": "$LOG_GROUP_NAME",
+                                  "log_stream_name": "{instance_id}",
+                                  "retention_in_days": 7
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                      EOF
+
+                      # Start CloudWatch agent
+                      /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+                        -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+
+                      # Redirect all bootstrap output to log file and console
+                      exec > >(tee -a /var/log/bootstrap.log)
+                      exec 2>&1
+
+                      echo "Bootstrap started at $(date) - Logging to $LOG_GROUP_NAME"
                       echo "Retrieving IDE password..."
 
                       PASSWORD_SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id "${passwordName}" --query 'SecretString' --output text)
@@ -1357,10 +1397,10 @@ Resources:
                       /opt/aws/bin/cfn-signal -e $exit_code '${waitConditionHandleUrl}'
 
                       exit $exit_code
-                    - domain: ""
+                    - readmeUrl: ""
                       installGitea: echo bootstrapGitea was not provided
-                      terminalOnStartup: "true"
-                      environmentContentsZip: ""
+                      waitConditionHandleUrl:
+                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
                       passwordName:
                         Fn::Join:
                           - "-"
@@ -1400,6 +1440,16 @@ Resources:
                                         - Fn::Split:
                                             - ":"
                                             - Ref: UnicornStoreIdeIdePasswordSecret514252E2
+                      instanceIamRoleArn:
+                        Fn::GetAtt:
+                          - UnicornStoreIdeIdeRole81A2CEAA
+                          - Arn
+                      splashUrl: ""
+                      environmentContentsZip: ""
+                      extensions: vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
+                      logGroupPrefix: unicornstore-ide-bootstrap
+                      terminalOnStartup: "true"
+                      domain: ""
                       customBootstrapScript: |
                         date
 
@@ -1421,15 +1471,6 @@ Resources:
                       codeServerVersion: 4.104.3
                       instanceIamRoleName:
                         Ref: UnicornStoreIdeIdeRole81A2CEAA
-                      splashUrl: ""
-                      instanceIamRoleArn:
-                        Fn::GetAtt:
-                          - UnicornStoreIdeIdeRole81A2CEAA
-                          - Arn
-                      readmeUrl: ""
-                      waitConditionHandleUrl:
-                        Ref: UnicornStoreIdeIdeBootstrapWaitConditionHandle3D9B67F1
-                      extensions: vscjava.vscode-java-pack,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
             name: IdeBootstrapFunction
             action: aws:runShellScript
       DocumentFormat: YAML
@@ -1535,11 +1576,7 @@ Resources:
 
                       ssm.send_command(
                           InstanceIds=[instance_id],
-                          DocumentName=ssm_document,
-                          CloudWatchOutputConfig={
-                              'CloudWatchLogGroupName': event['ResourceProperties']['LogGroupName'],
-                              'CloudWatchOutputEnabled': True
-                          })
+                          DocumentName=ssm_document)
 
                       responseData = {'Success': 'Started bootstrapping for instance: '+instance_id}
                   except Exception as e:
@@ -1567,14 +1604,12 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreIdeIdeBootstrapFunctionF57074A6
           - Arn
-      LogGroupName:
-        Ref: UnicornStoreIdeIdeLogGroup7A5EFA50
-      SsmDocument:
-        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
       InstanceId:
         Fn::GetAtt:
           - UnicornStoreIdeIdeEC2InstanceResource2D5EEAC0
           - InstanceId
+      SsmDocument:
+        Ref: UnicornStoreIdeIdeBootstrapDocumentE330810B
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   InfrastructureCorepostgresB0D0C6BB:
@@ -1760,7 +1795,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251128171420"
+            - "-20251212121604"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2616,6 +2651,9 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreDatabaseSetupDatabaseSetupFunction83636DD9
           - Arn
+      SqlStatements: |-
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -2646,9 +2684,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: InfrastructureCorepostgresB0D0C6BB
-      SqlStatements: |-
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - InfrastructureCoreUnicornStoreDatabaseF56884BA
       - InfrastructureCoreUnicornStoreDatabaseSubnets55C412B8
@@ -3158,13 +3193,13 @@ Resources:
         Fn::GetAtt:
           - UnicornStoreCodeBuildStartBuildFunctionB2FE9156
           - Arn
-      ContentHash: fd70d4491df3a6a44292446f6b364c8a
-      ProjectName:
-        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - UnicornStoreCodeBuildCodeBuildRoleB9CE0DE7
           - Arn
+      ProjectName:
+        Ref: UnicornStoreCodeBuildCodeBuildProjectAF799FF7
+      ContentHash: fd70d4491df3a6a44292446f6b364c8a
     DependsOn:
       - UnicornStoreCodeBuildBuildCompleteRuleAllowEventRulejavaoneksstackUnicornStoreCodeBuildReportBuildFunctionFF577E403F79BB3E
       - UnicornStoreCodeBuildBuildCompleteRule7E287561
