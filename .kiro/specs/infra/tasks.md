@@ -85,7 +85,7 @@
   - Ensure IDE construct creates proper EC2 instance with complete VS Code setup and CloudFront
   - _Requirements: 5.6_
 
-- [ ] 10.6 Migrate and refactor CodeBuild construct
+- [x] 10.6 Migrate and refactor CodeBuild construct
   - Copy infrastructure/cdk/src/main/java/com/unicorn/constructs/CodeBuildResource.java
   - Update to use new Roles construct and accept WORKSHOP_TYPE environment variable
   - Configure CodeBuild to run in VPC and execute workshop-specific setup scripts
@@ -93,10 +93,10 @@
   - _Requirements: 5.6, 3.6_
 
 - [x] 10.7 Create unified WorkshopStack
-  - Create infra/cdk/src/main/java/sample/com/stacks/WorkshopStack.java
-  - Implement environment variable logic: WORKSHOP_TYPE with "ide" default
-  - Always create: Roles, Vpc, Ide, CodeBuild
-  - Conditionally create resources based on workshop type (EKS, Database for non-ide workshops)
+  - Create infra/cdk/src/main/java/sample/com/WorkshopStack.java
+  - Implement environment variable logic: TEMPLATE_TYPE with "base" default
+  - Always create: Vpc, Ide, CodeBuild
+  - Conditionally create Roles only for non-base templates
   - _Requirements: 1.2, 1.3_
 
 - [x] 10.8 Create CDK application entry point
@@ -106,19 +106,48 @@
   - Test CDK synth command produces valid CloudFormation template
   - _Requirements: 1.1_
 
-- [x] 10.9 Create base workshop setup scripts
-  - Create infra/scripts/setup/base.sh for common tool installation (git, curl, wget, unzip)
-  - Create infra/scripts/setup/ide.sh for IDE-specific configuration
-  - Create infra/scripts/workshops/ide.sh that orchestrates base.sh and ide.sh
-  - Implement convention-based script discovery (script name matches stack name)
+- [x] 10.9 Create modular bootstrap scripts
+  - Create infra/cdk/src/main/resources/scripts/ide-bootstrap.sh for system setup and orchestration
+  - Create infra/scripts/ide/vscode.sh for complete VS Code IDE setup
+  - Create infra/scripts/ide/ide.sh as placeholder for base development tools
+  - Implement git branch configuration via GIT_BRANCH environment variable (defaults to main)
   - _Requirements: 3.1, 3.3_
 
-- [x] 10.10 Test and validate IDE stack
+- [x] 10.10 Refactor bootstrap script into modular components
+  - Split monolithic ide-bootstrap.sh into system setup + VS Code setup + workshop orchestration
+  - Define git branch in code, VS Code version uses latest by default
+  - Implement modular script structure: ide-bootstrap.sh → vscode.sh → {workshop}.sh
+  - Added comprehensive refactoring with helper functions and error handling
+  - Standardized on dnf package manager across all scripts
+  - Function-based organization with consistent logging and cleanup
+  - _Requirements: 3.3, 5.7_
+
+- [x] 10.11 Test and validate IDE stack
   - Generate CloudFormation template: npm run generate
   - Validate template contains only VPC, IDE, CodeBuild, and IAM resources
   - Test template deployment in AWS (optional, can be done manually)
   - Verify CodeBuild can find and execute ide.sh script
   - _Requirements: 5.3_
+
+- [x] 10.12 Comprehensive script refactoring and optimization
+  - Updated all tool versions to latest available (kubectl 1.34.2, Helm 3.19.3, etc.)
+  - Pinned Node.js to version 20 LTS and Helm to v3.x for stability
+  - Moved Docker and jq from bootstrap to ide.sh for better organization
+  - Implemented comprehensive refactoring with helper functions and error handling
+  - Added consistent logging, download verification, and cleanup
+  - Standardized on dnf package manager and improved comments
+  - Set VS Code to use latest version by default
+  - _Requirements: 3.3, 5.7_
+
+- [x] 10.13 Implement minimal UserData architecture and finalize base template
+  - Created infra/cdk/src/main/resources/ec2-userdata.sh (2.4KB - 46% size reduction)
+  - Moved bootstrap logic to infra/scripts/ide/bootstrap.sh (3.8KB)
+  - Renamed ide.sh to base.sh for base template type
+  - Updated CDK to use TEMPLATE_TYPE="base" as default
+  - Simplified CodeBuild buildSpec to match original (service-linked role creation only)
+  - Updated bootstrap to look for template scripts in infra/scripts/ide/${TEMPLATE_TYPE}.sh
+  - Flattened UserData script path and removed workshops directory
+  - _Requirements: 3.3, 5.7_
 
 ## Java-on-AWS Migration (100.x)
 

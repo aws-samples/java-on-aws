@@ -20,9 +20,7 @@ import software.amazon.awscdk.services.cloudfront.origins.HttpOrigin;
 import software.amazon.awscdk.services.cloudfront.origins.HttpOriginProps;
 import software.amazon.awscdk.services.ec2.*;
 import software.amazon.awscdk.services.iam.*;
-import software.amazon.awscdk.services.lambda.Code;
-import software.amazon.awscdk.services.lambda.Function;
-import software.amazon.awscdk.services.lambda.Runtime;
+
 import software.amazon.awscdk.services.secretsmanager.Secret;
 import software.amazon.awscdk.services.secretsmanager.SecretStringGenerator;
 import software.constructs.Construct;
@@ -35,11 +33,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.json.JSONObject;
 
 public class Ide extends Construct {
     private final SecurityGroup ideSecurityGroup;
     private final SecurityGroup ideInternalSecurityGroup;
     private final Secret ideSecretsManagerPassword;
+    private final Role workshopRole;
+    private final Role lambdaRole;
 
     public static class IdeProps {
         private String instanceName = "ide";
@@ -48,9 +49,12 @@ public class Ide extends Construct {
         private IMachineImage machineImage = MachineImage.latestAmazonLinux2023();
         private List<String> instanceTypes = Arrays.asList("m5.xlarge", "m6i.xlarge", "t3.xlarge");
         private List<ISecurityGroup> additionalSecurityGroups = new ArrayList<>();
-        private int bootstrapTimeoutMinutes = 30;
-        private Role role;
-        private Role lambdaRole;
+        private int bootstrapTimeoutMinutes = 10;
+        private List<String> vscodeExtensions = Arrays.asList(
+            "shardulm94.trailing-spaces",
+            "ms-kubernetes-tools.vscode-kubernetes-tools",
+            "ms-azuretools.vscode-docker"
+        );
 
         public static IdeProps.Builder builder() { return new Builder(); }
 
@@ -64,8 +68,7 @@ public class Ide extends Construct {
             public Builder instanceTypes(List<String> instanceTypes) { props.instanceTypes = instanceTypes; return this; }
             public Builder additionalSecurityGroups(List<ISecurityGroup> additionalSecurityGroups) { props.additionalSecurityGroups = additionalSecurityGroups; return this; }
             public Builder bootstrapTimeoutMinutes(int bootstrapTimeoutMinutes) { props.bootstrapTimeoutMinutes = bootstrapTimeoutMinutes; return this; }
-            public Builder role(Role role) { props.role = role; return this; }
-            public Builder lambdaRole(Role lambdaRole) { props.lambdaRole = lambdaRole; return this; }
+            public Builder vscodeExtensions(List<String> vscodeExtensions) { props.vscodeExtensions = vscodeExtensions; return this; }
 
             public IdeProps build() { return props; }
         }
@@ -78,15 +81,12 @@ public class Ide extends Construct {
         public List<String> getInstanceTypes() { return instanceTypes; }
         public List<ISecurityGroup> getAdditionalSecurityGroups() { return additionalSecurityGroups; }
         public int getBootstrapTimeoutMinutes() { return bootstrapTimeoutMinutes; }
-        public Role getRole() { return role; }
-        public Role getLambdaRole() { return lambdaRole; }
+        public List<String> getVscodeExtensions() { return vscodeExtensions; }
     }
 
-    public Ide(final Construct scope, final String id, final IVpc vpc, final Roles roles) {
+    public Ide(final Construct scope, final String id, final IVpc vpc) {
         this(scope, id, IdeProps.builder()
             .vpc(vpc)
-            .role(roles.getWorkshopRole())
-            .lambdaRole(roles.getLambdaRole())
             .build());
     }
 
@@ -95,12 +95,80 @@ public class Ide extends Construct {
 
         String instanceName = props.getInstanceName();
 
+        // Create workshop role for IDE instances
+        this.workshopRole = Role.Builder.create(this, "IdeRole")
+            .roleName("ide-user")
+            .assumedBy(ServicePrincipal.Builder.create("ec2.amazonaws.com").build())
+            .managedPolicies(List.of(
+                ManagedPolicy.fromAwsManagedPolicyName("ReadOnlyAccess"),
+                ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"),
+                ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy")
+            ))
+            .build();
+
+        // Load additional IAM policy from file
+        var policyDocumentJson = loadFile("/iam-policy.json");
+        if (policyDocumentJson != null) {
+            var policyDocument = PolicyDocument.fromJson(new JSONObject(policyDocumentJson).toMap());
+            var policy = ManagedPolicy.Builder.create(this, "WorkshopIdeUserPolicy")
+                .document(policyDocument)
+                .build();
+            workshopRole.addManagedPolicy(policy);
+        }
+
+        // Create Lambda role for IDE Lambda functions
+        this.lambdaRole = Role.Builder.create(this, "IdeLambdaRole")
+            .assumedBy(ServicePrincipal.Builder.create("lambda.amazonaws.com").build())
+            .managedPolicies(List.of(
+                ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")
+            ))
+            .build();
+
+        // Add specific permissions for Lambda functions
+        PolicyStatement lambdaPermissions = PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of(
+                "ec2:DescribeManagedPrefixLists",
+                "ec2:RunInstances",
+                "ec2:TerminateInstances",
+                "ec2:CreateTags",
+                "ec2:DescribeInstances",
+                "ec2:DescribeInstanceStatus",
+                "ec2:DescribeSubnets",
+                "iam:PassRole",
+                "ssm:DescribeInstanceInformation",
+                "ssm:SendCommand",
+                "ssm:GetCommandInvocation",
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret"
+            ))
+            .resources(List.of("*"))
+            .build();
+
+        lambdaRole.addToPolicy(lambdaPermissions);
+
         // Set up wait condition handle for bootstrap completion (needed for User Data)
         var waitHandle = CfnWaitConditionHandle.Builder.create(this, "IdeBootstrapWaitConditionHandle")
             .build();
 
-        // Use static CloudFront prefix list ID (more reliable than Lambda lookup)
-        String cloudFrontPrefixListId = "pl-3b927c52"; // CloudFront origin-facing prefix list
+        // Create CloudFront prefix list lookup Lambda function
+        var prefixListLookup = new Lambda(this, "PrefixListLookup",
+            "/lambda/cloudfront-prefix-lookup.py", instanceName + "-prefix-list-lambda", Duration.minutes(3), lambdaRole);
+        var prefixListFunction = prefixListLookup.getFunction();
+
+        // Add EC2 permissions for prefix list lookup
+        PolicyStatement prefixListPermissions = PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("ec2:DescribeManagedPrefixLists"))
+            .resources(List.of("*"))
+            .build();
+
+        lambdaRole.addToPolicy(prefixListPermissions);
+
+        // Create custom resource to get CloudFront prefix list ID
+        var prefixListResource = CustomResource.Builder.create(this, "PrefixListResource")
+            .serviceToken(prefixListFunction.getFunctionArn())
+            .build();
 
         // Create security group for IDE access (CloudFront only)
         this.ideSecurityGroup = SecurityGroup.Builder.create(this, "IdeSecurityGroup")
@@ -111,7 +179,7 @@ public class Ide extends Construct {
             .build();
 
         ideSecurityGroup.addIngressRule(
-            Peer.prefixList(cloudFrontPrefixListId),
+            Peer.prefixList(prefixListResource.getAttString("PrefixListId")),
             Port.tcp(80),
             "HTTP from CloudFront only"
         );
@@ -131,8 +199,8 @@ public class Ide extends Construct {
 
         // Create instance profile
         var instanceProfile = InstanceProfile.Builder.create(this, "IdeInstanceProfile")
-            .role(props.getRole())
-            .instanceProfileName(props.getRole().getRoleName())
+            .role(workshopRole)
+            .instanceProfileName(workshopRole.getRoleName())
             .build();
 
         // Create Elastic IP
@@ -162,27 +230,28 @@ public class Ide extends Construct {
                 .excludeCharacters("\"@/\\\\")
                 .build())
             .secretName(instanceName + "-password")
+            .removalPolicy(RemovalPolicy.DESTROY)
             .build();
 
-        ideSecretsManagerPassword.grantRead(props.getRole());
+        ideSecretsManagerPassword.grantRead(workshopRole);
 
         // Create User Data for bootstrap with CloudWatch logging
         var userData = UserData.forLinux();
-        String bootstrapScript = loadFile("/bootstrap.sh")
-            .replace("${stackName}", Aws.STACK_NAME)
-            .replace("${awsRegion}", Aws.REGION)
-            .replace("${idePassword}", ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap());
+        String extensionsString = String.join(",", props.getVscodeExtensions());
+        String bootstrapScript = Fn.sub(loadFile("/ec2-userdata.sh"), Map.of(
+            "stackName", Aws.STACK_NAME,
+            "awsRegion", Aws.REGION,
+            "idePassword", ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap(),
+            "vscodeExtensions", extensionsString,
+            "templateType", "base",
+            "gitBranch", "new-ws-infra"
+        ));
         userData.addCommands(bootstrapScript.split("\n"));
 
         // Create instance launcher Lambda with multi-AZ and multi-instance-type failover
-        var instanceLauncherFunction = Function.Builder.create(this, "IdeInstanceLauncherFunction")
-            .runtime(Runtime.PYTHON_3_13)
-            .handler("index.lambda_handler")
-            .code(Code.fromInline(loadFile("/launcher.py")))
-            .timeout(Duration.minutes(5))
-            .functionName(instanceName + "-launcher")
-            .role(props.getLambdaRole())
-            .build();
+        var instanceLauncher = new Lambda(this, "InstanceLauncher",
+            "/lambda/ec2-launcher.py", instanceName + "-launcher", Duration.minutes(5), lambdaRole);
+        var instanceLauncherFunction = instanceLauncher.getFunction();
 
         // Create EC2 instance via Custom Resource with intelligent failover
         var ec2InstanceResource = CustomResource.Builder.create(this, "IdeEC2InstanceResource")
@@ -249,7 +318,7 @@ public class Ide extends Construct {
         // Outputs
         CfnOutput.Builder.create(this, "IdeUrl")
             .value("https://" + distribution.getDistributionDomainName())
-            .description("Workshop IDE URL")
+            .description("Workshop IDE Url")
             .exportName(instanceName + "-url")
             .build();
 

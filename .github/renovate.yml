@@ -1,0 +1,60 @@
+extends:
+  - config:base
+schedule:
+  - "before 6am on monday"
+regexManagers:
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "NVM_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: nvm-sh/nvm
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "MAVEN_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: apache/maven
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "KUBECTL_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: kubernetes/kubernetes
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "HELM_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: helm/helm
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "EKSCTL_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: weaveworks/eksctl
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "YQ_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: mikefarah/yq
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "DOCKER_COMPOSE_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: docker/compose
+
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "EKS_NODE_VIEWER_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: awslabs/eks-node-viewer
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "SOCI_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: awslabs/soci-snapshotter

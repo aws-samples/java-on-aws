@@ -22,31 +22,28 @@ infra/
 │   │   │   ├── Eks.java
 │   │   │   ├── Database.java
 │   │   │   ├── CodeBuild.java
+│   │   │   ├── Lambda.java
 │   │   │   └── Roles.java
-│   │   ├── stacks/
-│   │   │   └── WorkshopStack.java
-│   │   └── WorkshopApp.java     # Main CDK application
+│   │   ├── WorkshopStack.java    # Main stack
+│   │   └── WorkshopApp.java      # Main CDK application
+│   ├── src/main/resources/
+│   │   └── ec2-userdata.sh       # Minimal UserData script (embedded in CDK)
 │   ├── pom.xml
 │   └── cdk.json
 ├── workshop-template.yaml       # Generated unified CloudFormation template
 ├── scripts/
-│   ├── workshops/               # Workshop-specific orchestration scripts
-│   │   ├── ide.sh
-│   │   ├── java-on-aws.sh
-│   │   ├── java-on-eks.sh
-│   │   ├── java-ai-agents.sh
-│   │   └── java-spring-ai-agents.sh
-│   ├── setup/                   # Modular setup scripts
-│   │   ├── base.sh
-│   │   ├── eks.sh
-│   │   ├── app.sh
-│   │   ├── monitoring.sh
-│   │   └── ai-agents.sh
+│   ├── ide/                     # Modular IDE and workshop scripts
+│   │   ├── vscode.sh            # VS Code installation and configuration
+│   │   ├── base.sh              # Base development tools
+│   │   ├── java-on-aws.sh       # Java-on-AWS workshop setup
+│   │   ├── java-on-eks.sh       # Java-on-EKS workshop setup
+│   │   └── java-ai-agents.sh    # Java AI Agents workshop setup
 │   ├── lib/                     # Common utilities
 │   │   ├── common.sh
 │   │   └── wait-for-resources.sh
-│   ├── deploy/                  # Deployment utilities
-│   ├── test/                    # Testing scripts
+│   ├── cfn/                     # CloudFormation utilities
+│   │   ├── generate.sh
+│   │   └── sync.sh
 │   └── cleanup/                 # Cleanup scripts
 └── package.json                 # Build automation
 ```
@@ -56,35 +53,30 @@ infra/
 ### CDK Components
 
 #### WorkshopStack
-The main CDK stack that conditionally creates resources based on workshop type:
+The main CDK stack that conditionally creates resources based on template type:
 
 ```java
 public class WorkshopStack extends Stack {
     public WorkshopStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
 
-        String workshopType = System.getenv("WORKSHOP_TYPE");
-        if (workshopType == null) {
-            workshopType = "ide"; // default
+        String templateType = System.getenv("TEMPLATE_TYPE");
+        if (templateType == null) {
+            templateType = "base"; // default
         }
 
         // Core infrastructure (always created)
-        var roles = new Roles(this, "Roles");
         var vpc = new Vpc(this, "Vpc");
-        var ide = new Ide(this, "Ide", vpc.getVpc(), roles);
+        var ide = new Ide(this, "Ide", vpc.getVpc());
 
-        // Conditional resources based on workshop type
-        if (!"ide".equals(workshopType) && !"java-ai-agents".equals(workshopType)) {
-            new Eks(this, "Eks", vpc.getVpc(), roles);
+        // Custom roles only for non-base templates
+        if (!"base".equals(templateType)) {
+            var roles = new Roles(this, "Roles");
         }
 
-        if (!"ide".equals(workshopType)) {
-            new Database(this, "Database", vpc.getVpc());
-        }
-
-        // CodeBuild for workshop setup
+        // CodeBuild for service-linked role creation
         new CodeBuild(this, "CodeBuild",
-            Map.of("STACK_NAME", Aws.STACK_NAME, "WORKSHOP_TYPE", workshopType));
+            Map.of("STACK_NAME", Aws.STACK_NAME, "TEMPLATE_TYPE", templateType));
     }
 }
 ```
@@ -95,7 +87,7 @@ public class WorkshopStack extends Stack {
 **Ide**: Creates VS Code IDE environment with necessary permissions
 **Eks**: Creates EKS cluster with AutoMode
 **Database**: Configures RDS instances and database schemas
-**CodeBuild**: Creates CodeBuild project for workshop setup automation
+**CodeBuild**: Creates CodeBuild project for AWS service-linked role creation
 **Roles**: Creates IAM roles and policies for workshop resources
 
 ### Lambda Function Architecture
@@ -128,60 +120,148 @@ Instead of multiple Lambda functions, the new design uses:
 | `unicornstore-db-setup-lambda` | **Setup Scripts** | N/A | N/A | Moved to workshop setup scripts |
 
 #### External Resource Approach
-The new design uses **external files** for all complex scripts and code, loaded via CDK for better maintainability while preserving CloudFormation template compatibility through inline code generation. This approach eliminates hard-to-maintain inline code blocks.
+The new design uses **external files** for all complex scripts and code, loaded via CDK for better maintainability while preserving CloudFormation template compatibility through inline code generation. This approach eliminates hard-to-maintain inline code blocks and provides a **reusable Lambda construct** for consistent function creation.
 
 #### External Resource Organization
 ```
 infra/cdk/src/main/resources/
-├── launcher.py    # EC2 instance launching with multi-AZ/instance-type failover
-└── bootstrap.sh   # EC2 User Data bootstrap script with CloudWatch logging
+├── lambda/
+│   ├── ec2-launcher.py      # EC2 instance launching with multi-AZ/instance-type failover
+│   ├── codebuild-start.py   # CodeBuild project starter for workshop setup
+│   └── codebuild-report.py  # CodeBuild completion reporter via EventBridge
+└── ec2-userdata.sh          # Minimal UserData script (2.4KB) with CloudWatch logging
 ```
 
-#### Usage in IDE Construct
+#### Reusable Lambda Construct
 ```java
-// Create instance launcher Lambda loading from external file
-var instanceLauncherFunction = Function.Builder.create(this, "IdeInstanceLauncherFunction")
-    .runtime(Runtime.PYTHON_3_13)
-    .handler("index.lambda_handler")
-    .code(Code.fromInline(loadFile("/launcher.py")))
-    .timeout(Duration.minutes(5))
-    .functionName(instanceName + "-launcher")
-    .role(props.getLambdaRole())
-    .build();
+public class Lambda extends Construct {
+    public Lambda(final Construct scope, final String id, final LambdaProps props) {
+        super(scope, id);
 
-// Create User Data from external script with variable substitution
-var userData = UserData.forLinux();
-String bootstrapScript = loadFile("/bootstrap.sh")
-    .replace("${stackName}", Aws.STACK_NAME)
-    .replace("${awsRegion}", Aws.REGION)
-    .replace("${idePassword}", ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap());
-userData.addCommands(bootstrapScript.split("\n"));
-
-// Helper method for loading files
-private String loadFile(String filePath) {
-    try {
-        return Files.readString(Path.of(getClass().getResource(filePath).getPath()));
-    } catch (IOException e) {
-        throw new RuntimeException("Failed to load file " + filePath, e);
+        Function.Builder.create(this, "Function")
+            .runtime(Runtime.PYTHON_3_13)
+            .handler("index.lambda_handler")
+            .code(Code.fromInline(loadFile(props.getSourceFile())))
+            .timeout(props.getTimeout())
+            .functionName(props.getFunctionName())
+            .role(props.getRole())
+            .build();
     }
 }
 ```
 
+#### Usage in IDE Construct
+```java
+// Create EC2 launcher Lambda using reusable construct
+var launcherLambda = new Lambda(this, "LauncherLambda",
+    Lambda.LambdaProps.builder()
+        .sourceFile("/lambda/ec2-launcher.py")
+        .functionName(instanceName + "-launcher")
+        .timeout(Duration.minutes(5))
+        .role(props.getLambdaRole())
+        .build());
+
+// Create User Data from external script with variable substitution
+var userData = UserData.forLinux();
+String bootstrapScript = loadFile("/ec2-userdata.sh")
+    .replace("${stackName}", Aws.STACK_NAME)
+    .replace("${awsRegion}", Aws.REGION)
+    .replace("${idePassword}", ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap());
+userData.addCommands(bootstrapScript.split("\n"));
+```
+
 ### Script Organization
 
-#### Convention-Based Script Discovery
-Scripts are organized using a naming convention where the script name matches the stack name:
-- `ide.sh` → executed for ide workshop type
-- `java-on-aws.sh` → executed for java-on-aws workshop type
-- `java-on-eks.sh` → executed for java-on-eks workshop type
+#### Minimal UserData Architecture
+The new architecture uses minimal UserData (2.4KB) that downloads and executes a full bootstrap script, avoiding AWS UserData size limits:
 
-#### Modular Setup Scripts
-Common functionality is extracted into reusable modules:
-- `base.sh`: Common tools and AWS CLI configuration
-- `eks.sh`: EKS cluster configuration and kubectl setup
-- `app.sh`: Application deployment and configuration
-- `monitoring.sh`: Observability stack setup
-- `ai-agents.sh`: AI-specific setup for agent workshops
+```
+infra/cdk/src/main/resources/
+└── ec2-userdata.sh       # Minimal UserData script (2.4KB)
+
+infra/scripts/ide/
+├── bootstrap.sh          # Full bootstrap script (3.8KB)
+├── vscode.sh             # VS Code installation and configuration
+├── base.sh               # Base development tools (foundational for all workshops)
+├── java-on-aws.sh        # calls base.sh + EKS/DB setup
+├── java-on-eks.sh        # calls base.sh + EKS setup
+└── java-ai-agents.sh     # calls base.sh + AI setup
+```
+
+#### Bootstrap Flow
+```
+ec2-userdata.sh → bootstrap.sh → vscode.sh → {workshop}.sh
+```
+
+Where:
+- `ec2-userdata.sh`: Minimal UserData script that downloads and runs bootstrap.sh with fallback URLs
+- `bootstrap.sh`: Full system setup, CloudWatch, environment variables, git clone, calls vscode.sh and template script
+- `vscode.sh`: Complete VS Code IDE setup (code-server, Caddy, configuration)
+- `base.sh`: Base development tools (for base template type)
+- Future template scripts will be added to `/ide` folder as needed
+
+#### Configuration
+- **Template Type**: Configurable via `TEMPLATE_TYPE` environment variable (defaults to `base`)
+- **Git Branch**: Defined in code as `"main"`
+- **VS Code Version**: Uses latest version by default
+
+#### Environment Variables
+**Input (CDK reads):**
+- `TEMPLATE_TYPE` - determines template type (defaults to "base")
+
+**Output (CDK passes to scripts):**
+- `STACK_NAME` - AWS stack name
+- `TEMPLATE_TYPE` - template type
+- `GIT_BRANCH` - git branch (hardcoded to "main")
+
+#### Tool Version Management
+The system uses a hybrid approach for tool versions:
+
+**Pinned Versions (Renovate Managed):**
+- Java: 25 (default, installs 8,17,21,25)
+- Node.js: 20 (LTS)
+- Maven: 3.9.11
+- kubectl: 1.34.2
+- Helm: 3.19.3 (v3.x for chart compatibility)
+- eksctl: 0.220.0
+- eks-node-viewer: 0.7.4
+- Docker Compose: 2.40.2
+- SOCI: 0.12.0
+- yq: 4.49.2
+
+**Latest Versions (Auto-updating):**
+- VS Code: latest
+- AWS SAM CLI: latest
+- Session Manager Plugin: latest
+- AWS CLI: latest
+- CDK: latest (npm global)
+- Artillery: latest (npm global)
+- k9s: latest (webinstall.dev)
+- e1s: latest (GitHub script)
+
+**System Packages (Repository Latest):**
+- jq, Docker, git, Caddy: latest available in package repositories
+
+#### Script Architecture
+Scripts are organized with helper functions and consistent error handling:
+
+**Bootstrap Script (`ide-bootstrap.sh`):**
+- Standardized on `dnf` package manager
+- Added error handling for critical operations (AWS CLI, git clone, CloudFront)
+- Improved logging and comments
+
+**VS Code Script (`vscode.sh`):**
+- Helper functions eliminate repetitive `sudo -u ec2-user` patterns
+- `setup_user_file()` function for clean file creation
+- `run_as_user()` function for user command execution
+- Uses latest VS Code version by default
+
+**IDE Script (`ide.sh`):**
+- Function-based organization by tool category
+- Comprehensive logging with timestamps (`log_info()`)
+- Error handling and download verification (`handle_error()`, `download_and_verify()`)
+- Consistent output handling and cleanup
+- Removed redundant operations (multiple `java -version` calls)
 
 ### Build Automation
 
