@@ -55,6 +55,7 @@ public class Ide extends Construct {
             "ms-kubernetes-tools.vscode-kubernetes-tools",
             "ms-azuretools.vscode-docker"
         );
+        private String gitBranch = "main";
 
         public static IdeProps.Builder builder() { return new Builder(); }
 
@@ -69,6 +70,7 @@ public class Ide extends Construct {
             public Builder additionalSecurityGroups(List<ISecurityGroup> additionalSecurityGroups) { props.additionalSecurityGroups = additionalSecurityGroups; return this; }
             public Builder bootstrapTimeoutMinutes(int bootstrapTimeoutMinutes) { props.bootstrapTimeoutMinutes = bootstrapTimeoutMinutes; return this; }
             public Builder vscodeExtensions(List<String> vscodeExtensions) { props.vscodeExtensions = vscodeExtensions; return this; }
+            public Builder gitBranch(String gitBranch) { props.gitBranch = gitBranch; return this; }
 
             public IdeProps build() { return props; }
         }
@@ -82,6 +84,7 @@ public class Ide extends Construct {
         public List<ISecurityGroup> getAdditionalSecurityGroups() { return additionalSecurityGroups; }
         public int getBootstrapTimeoutMinutes() { return bootstrapTimeoutMinutes; }
         public List<String> getVscodeExtensions() { return vscodeExtensions; }
+        public String getGitBranch() { return gitBranch; }
     }
 
     public Ide(final Construct scope, final String id, final IVpc vpc) {
@@ -153,7 +156,7 @@ public class Ide extends Construct {
 
         // Create CloudFront prefix list lookup Lambda function
         var prefixListLookup = new Lambda(this, "PrefixListLookup",
-            "/lambda/cloudfront-prefix-lookup.py", instanceName + "-prefix-list-lambda", Duration.minutes(3), lambdaRole);
+            "/lambda/cloudfront-prefix-lookup.py", Aws.STACK_NAME + "-cloudfront-prefix-lookup", Duration.minutes(3), lambdaRole);
         var prefixListFunction = prefixListLookup.getFunction();
 
         // Add EC2 permissions for prefix list lookup
@@ -241,12 +244,15 @@ public class Ide extends Construct {
         String bootstrapScript = loadFile("/ec2-userdata.sh")
             .replace("${vscodeExtensions}", extensionsString)
             .replace("${templateType}", "base")
-            .replace("${gitBranch}", "new-ws-infra");
+            .replace("${gitBranch}", props.getGitBranch())
+            .replace("${stackName}", Aws.STACK_NAME)
+            .replace("${awsRegion}", Aws.REGION)
+            .replace("${idePassword}", ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap());
         userData.addCommands(bootstrapScript.split("\n"));
 
         // Create instance launcher Lambda with multi-AZ and multi-instance-type failover
         var instanceLauncher = new Lambda(this, "InstanceLauncher",
-            "/lambda/ec2-launcher.py", instanceName + "-launcher", Duration.minutes(5), lambdaRole);
+            "/lambda/ec2-launcher.py", Aws.STACK_NAME + "-ec2-launcher", Duration.minutes(5), lambdaRole);
         var instanceLauncherFunction = instanceLauncher.getFunction();
 
         // Create EC2 instance via Custom Resource with intelligent failover

@@ -7,6 +7,7 @@ import software.amazon.awscdk.CfnParameter;
 import software.amazon.awscdk.Aws;
 import software.constructs.Construct;
 import sample.com.constructs.*;
+import sample.com.constructs.Ide.IdeProps;
 import java.util.Map;
 
 public class WorkshopStack extends Stack {
@@ -50,7 +51,10 @@ public class WorkshopStack extends Stack {
 
         // Core infrastructure (always created)
         Vpc vpc = new Vpc(this, "Vpc");
-        Ide ide = new Ide(this, "Ide", vpc.getVpc());
+        Ide ide = new Ide(this, "Ide", IdeProps.builder()
+            .vpc(vpc.getVpc())
+            .gitBranch(gitBranch)
+            .build());
 
         // Custom roles only for non-base templates
         if (!"base".equals(templateType)) {
