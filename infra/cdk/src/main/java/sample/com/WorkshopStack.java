@@ -54,6 +54,7 @@ public class WorkshopStack extends Stack {
         Ide ide = new Ide(this, "Ide", IdeProps.builder()
             .vpc(vpc.getVpc())
             .gitBranch(gitBranch)
+            .templateType(templateType)
             .build());
 
         // Custom roles only for non-base templates

@@ -56,6 +56,7 @@ public class Ide extends Construct {
             "ms-azuretools.vscode-docker"
         );
         private String gitBranch = "main";
+        private String templateType = "base";
 
         public static IdeProps.Builder builder() { return new Builder(); }
 
@@ -71,6 +72,7 @@ public class Ide extends Construct {
             public Builder bootstrapTimeoutMinutes(int bootstrapTimeoutMinutes) { props.bootstrapTimeoutMinutes = bootstrapTimeoutMinutes; return this; }
             public Builder vscodeExtensions(List<String> vscodeExtensions) { props.vscodeExtensions = vscodeExtensions; return this; }
             public Builder gitBranch(String gitBranch) { props.gitBranch = gitBranch; return this; }
+            public Builder templateType(String templateType) { props.templateType = templateType; return this; }
 
             public IdeProps build() { return props; }
         }
@@ -85,6 +87,7 @@ public class Ide extends Construct {
         public int getBootstrapTimeoutMinutes() { return bootstrapTimeoutMinutes; }
         public List<String> getVscodeExtensions() { return vscodeExtensions; }
         public String getGitBranch() { return gitBranch; }
+        public String getTemplateType() { return templateType; }
     }
 
     public Ide(final Construct scope, final String id, final IVpc vpc) {
@@ -241,14 +244,120 @@ public class Ide extends Construct {
         // Create User Data for bootstrap with CloudWatch logging
         var userData = UserData.forLinux();
         String extensionsString = String.join(",", props.getVscodeExtensions());
-        String bootstrapScript = loadFile("/ec2-userdata.sh")
-            .replace("${vscodeExtensions}", extensionsString)
-            .replace("${templateType}", "base")
-            .replace("${gitBranch}", props.getGitBranch())
-            .replace("${stackName}", Aws.STACK_NAME)
-            .replace("${awsRegion}", Aws.REGION)
-            .replace("${idePassword}", ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap());
-        userData.addCommands(bootstrapScript.split("\n"));
+        String gitBranch = props.getGitBranch();
+        String templateType = props.getTemplateType();
+
+        // Build UserData content with proper substitutions
+        String userDataContent = String.format("""
+            #!/bin/bash
+            set -e
+
+            # Minimal EC2 UserData script - downloads and runs full bootstrap
+            # This keeps UserData under size limits while allowing unlimited bootstrap size
+
+            # Configuration from CDK
+            GIT_BRANCH="%s"
+            IDE_PASSWORD="%s"
+            STACK_NAME="%s"
+            AWS_REGION="%s"
+            TEMPLATE_TYPE="%s"
+            VSCODE_EXTENSIONS="%s"
+
+            # Setup logging
+            LOG_GROUP_NAME="ide-bootstrap-$(date +%%Y%%m%%d-%%H%%M%%S)"
+            echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
+
+            # Install CloudWatch agent for logging
+            dnf install -y amazon-cloudwatch-agent
+
+            # Create CloudWatch agent configuration
+            cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << EOF
+            {
+              "logs": {
+                "logs_collected": {
+                  "files": {
+                    "collect_list": [
+                      {
+                        "file_path": "/var/log/bootstrap.log",
+                        "log_group_name": "$LOG_GROUP_NAME",
+                        "log_stream_name": "{instance_id}",
+                        "retention_in_days": 7
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+            EOF
+
+            # Start CloudWatch agent
+            /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \\
+              -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+
+            # Redirect all output to log file and console
+            exec > >(tee -a /var/log/bootstrap.log)
+            exec 2>&1
+
+            echo "UserData started at $(date) - Logging to $LOG_GROUP_NAME"
+
+            # Download and run full bootstrap script with retry logic
+            download_bootstrap() {
+                local urls=(
+                    "https://raw.githubusercontent.com/aws-samples/java-on-aws/${GIT_BRANCH}/infra/scripts/ide/bootstrap.sh"
+                    "https://github.com/aws-samples/java-on-aws/raw/${GIT_BRANCH}/infra/scripts/ide/bootstrap.sh"
+                )
+                local max_attempts=5
+                local delay=5
+
+                for attempt in $(seq 1 $max_attempts); do
+                    echo "Download attempt $attempt of $max_attempts"
+
+                    for url in "${urls[@]}"; do
+                        echo "Trying to download bootstrap from: $url"
+                        if curl -fsSL --connect-timeout 30 --max-time 60 "$url" -o /tmp/bootstrap.sh; then
+                            echo "Successfully downloaded bootstrap script on attempt $attempt"
+                            return 0
+                        fi
+                        echo "Failed to download from: $url"
+                    done
+
+                    if [ $attempt -lt $max_attempts ]; then
+                        echo "All URLs failed on attempt $attempt, waiting ${delay}s before retry..."
+                        sleep $delay
+                    fi
+                done
+
+                echo "All download attempts failed after $max_attempts tries"
+                return 1
+            }
+
+            if download_bootstrap; then
+                chmod +x /tmp/bootstrap.sh
+                echo "Executing full bootstrap script..."
+                export VSCODE_EXTENSIONS="$VSCODE_EXTENSIONS"
+                if /tmp/bootstrap.sh "$IDE_PASSWORD" "$GIT_BRANCH" "$STACK_NAME" "$AWS_REGION" "$TEMPLATE_TYPE"; then
+                    echo "Bootstrap completed successfully"
+                    /opt/aws/bin/cfn-signal -e 0 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
+                else
+                    echo "FATAL: Bootstrap script failed"
+                    /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
+                    exit 1
+                fi
+            else
+                echo "FATAL: Could not download bootstrap script from any source"
+                /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
+                exit 1
+            fi
+            """,
+            gitBranch,
+            ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap(),
+            Aws.STACK_NAME,
+            Aws.REGION,
+            templateType,
+            extensionsString
+        );
+
+        userData.addCommands(userDataContent);
 
         // Create instance launcher Lambda with multi-AZ and multi-instance-type failover
         var instanceLauncher = new Lambda(this, "InstanceLauncher",

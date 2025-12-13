@@ -741,6 +741,11 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeIdeInstanceProfile8BD997EA
+          - Arn
+      VolumeSize: "50"
       SubnetIds:
         Fn::Join:
           - ""
@@ -772,7 +777,7 @@ Resources:
                 # This keeps UserData under size limits while allowing unlimited bootstrap size
 
                 # Configuration from CDK
-                GIT_BRANCH="${gitBranch:-main}"
+                GIT_BRANCH="new-ws-infra"
                 IDE_PASSWORD="{{resolve:secretsmanager:
               - Ref: IdeIdePasswordSecretF3482811
               - |-
@@ -783,10 +788,10 @@ Resources:
                 "
                 AWS_REGION="
               - Ref: AWS::Region
-              - |-
+              - |
                 "
-                TEMPLATE_TYPE="${templateType:-base}"
-                VSCODE_EXTENSIONS="${vscodeExtensions:-}"
+                TEMPLATE_TYPE="base"
+                VSCODE_EXTENSIONS="shardulm94.trailing-spaces,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker"
 
                 # Setup logging
                 LOG_GROUP_NAME="ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
@@ -875,11 +880,6 @@ Resources:
                 fi
       InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeIdeInstanceProfile8BD997EA
-          - Arn
-      VolumeSize: "50"
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1128,12 +1128,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: new-ws-infra
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: base
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: new-ws-infra
           - Name: STACK_NAME
             Type: PLAINTEXT
             Value:
@@ -1374,12 +1374,12 @@ Resources:
       Description: base-setup build complete
       EventPattern:
         detail:
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1411,13 +1411,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
-      ContentHash: "1765651951549"
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1765653430116"
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D
