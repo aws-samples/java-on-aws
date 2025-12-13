@@ -471,17 +471,6 @@ Resources:
     DependsOn:
       - IdeIdeLambdaRoleDefaultPolicy6F800745
       - IdeIdeLambdaRoleCC8748CC
-  IdePrefixListLookupFunctionLogGroup26CD0299:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName:
-        Fn::Join:
-          - ""
-          - - /aws/lambda/
-            - Ref: IdePrefixListLookupFunction9E5A63DE
-      RetentionInDays: 731
-    UpdateReplacePolicy: Retain
-    DeletionPolicy: Retain
   IdePrefixListResourceD2EAC007:
     Type: AWS::CloudFormation::CustomResource
     Properties:
@@ -723,17 +712,6 @@ Resources:
     DependsOn:
       - IdeIdeLambdaRoleDefaultPolicy6F800745
       - IdeIdeLambdaRoleCC8748CC
-  IdeInstanceLauncherFunctionLogGroup9B197697:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName:
-        Fn::Join:
-          - ""
-          - - /aws/lambda/
-            - Ref: IdeInstanceLauncherFunction803C5A2A
-      RetentionInDays: 731
-    UpdateReplacePolicy: Retain
-    DeletionPolicy: Retain
   IdeIdeEC2InstanceResource17A0C9F7:
     Type: AWS::CloudFormation::CustomResource
     Properties:
@@ -741,29 +719,7 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeIdeInstanceProfile8BD997EA
-          - Arn
-      VolumeSize: "50"
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
-            - ","
-            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeIdeSecurityGroup5C503C8A
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeIdeInternalSecurityGroupD5D3B421
-                - GroupId
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -878,7 +834,29 @@ Resources:
                     /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
                     exit 1
                 fi
-      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeIdeSecurityGroup5C503C8A
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeIdeInternalSecurityGroupD5D3B421
+                - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
+            - ","
+            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeIdeInstanceProfile8BD997EA
+          - Arn
       InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
@@ -1128,12 +1106,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: base
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: new-ws-infra
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: base
           - Name: STACK_NAME
             Type: PLAINTEXT
             Value:
@@ -1276,17 +1254,6 @@ Resources:
     DependsOn:
       - CodeBuildCodeBuildLambdaRoleDefaultPolicyA5431D35
       - CodeBuildCodeBuildLambdaRole5FE3BA83
-  CodeBuildStartLambdaFunctionLogGroup97F706D2:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName:
-        Fn::Join:
-          - ""
-          - - /aws/lambda/
-            - Ref: CodeBuildStartLambdaFunction8349284F
-      RetentionInDays: 731
-    UpdateReplacePolicy: Retain
-    DeletionPolicy: Retain
   CodeBuildReportLambdaFunctionA3C396F7:
     Type: AWS::Lambda::Function
     Properties:
@@ -1357,29 +1324,18 @@ Resources:
     DependsOn:
       - CodeBuildCodeBuildLambdaRoleDefaultPolicyA5431D35
       - CodeBuildCodeBuildLambdaRole5FE3BA83
-  CodeBuildReportLambdaFunctionLogGroup434C697C:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName:
-        Fn::Join:
-          - ""
-          - - /aws/lambda/
-            - Ref: CodeBuildReportLambdaFunctionA3C396F7
-      RetentionInDays: 731
-    UpdateReplacePolicy: Retain
-    DeletionPolicy: Retain
   CodeBuildBuildCompleteRule06AAF17D:
     Type: AWS::Events::Rule
     Properties:
       Description: base-setup build complete
       EventPattern:
         detail:
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1411,17 +1367,16 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1765654075204"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
-      ContentHash: "1765653430116"
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D
-      - CodeBuildReportLambdaFunctionLogGroup434C697C
       - CodeBuildReportLambdaFunctionA3C396F7
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
