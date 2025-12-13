@@ -238,14 +238,10 @@ public class Ide extends Construct {
         // Create User Data for bootstrap with CloudWatch logging
         var userData = UserData.forLinux();
         String extensionsString = String.join(",", props.getVscodeExtensions());
-        String bootstrapScript = Fn.sub(loadFile("/ec2-userdata.sh"), Map.of(
-            "stackName", Aws.STACK_NAME,
-            "awsRegion", Aws.REGION,
-            "idePassword", ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap(),
-            "vscodeExtensions", extensionsString,
-            "templateType", "base",
-            "gitBranch", "new-ws-infra"
-        ));
+        String bootstrapScript = loadFile("/ec2-userdata.sh")
+            .replace("${vscodeExtensions}", extensionsString)
+            .replace("${templateType}", "base")
+            .replace("${gitBranch}", "new-ws-infra");
         userData.addCommands(bootstrapScript.split("\n"));
 
         // Create instance launcher Lambda with multi-AZ and multi-instance-type failover

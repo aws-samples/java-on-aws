@@ -733,12 +733,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeIdeInstanceProfile8BD997EA
-          - Arn
-      VolumeSize: "50"
       SubnetIds:
         Fn::Join:
           - ""
@@ -758,126 +752,114 @@ Resources:
       ImageId:
         Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
       UserData:
-        Fn::Base64:
-          Fn::Join:
-            - ""
-            - - |
-                #!/bin/bash
-              - Fn::Sub:
-                  - |-
-                    #!/bin/bash
-                    set -e
+        Fn::Base64: |-
+          #!/bin/bash
+          #!/bin/bash
+          set -e
 
-                    # Minimal EC2 UserData script - downloads and runs full bootstrap
-                    # This keeps UserData under size limits while allowing unlimited bootstrap size
+          # Minimal EC2 UserData script - downloads and runs full bootstrap
+          # This keeps UserData under size limits while allowing unlimited bootstrap size
 
-                    # Configuration from CDK
-                    GIT_BRANCH="${gitBranch:-main}"
-                    IDE_PASSWORD="${idePassword}"
-                    STACK_NAME="${stackName}"
-                    AWS_REGION="${awsRegion}"
-                    TEMPLATE_TYPE="${templateType:-base}"
-                    VSCODE_EXTENSIONS="${vscodeExtensions:-}"
+          # Configuration from CDK
+          GIT_BRANCH="${gitBranch:-main}"
+          IDE_PASSWORD="${idePassword}"
+          STACK_NAME="${stackName}"
+          AWS_REGION="${awsRegion}"
+          TEMPLATE_TYPE="${templateType:-base}"
+          VSCODE_EXTENSIONS="${vscodeExtensions:-}"
 
-                    # Setup logging
-                    LOG_GROUP_NAME="ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
-                    echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
+          # Setup logging
+          LOG_GROUP_NAME="ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
+          echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
 
-                    # Install CloudWatch agent for logging
-                    dnf install -y amazon-cloudwatch-agent
+          # Install CloudWatch agent for logging
+          dnf install -y amazon-cloudwatch-agent
 
-                    # Create CloudWatch agent configuration
-                    cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << EOF
+          # Create CloudWatch agent configuration
+          cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << EOF
+          {
+            "logs": {
+              "logs_collected": {
+                "files": {
+                  "collect_list": [
                     {
-                      "logs": {
-                        "logs_collected": {
-                          "files": {
-                            "collect_list": [
-                              {
-                                "file_path": "/var/log/bootstrap.log",
-                                "log_group_name": "$LOG_GROUP_NAME",
-                                "log_stream_name": "{instance_id}",
-                                "retention_in_days": 7
-                              }
-                            ]
-                          }
-                        }
-                      }
+                      "file_path": "/var/log/bootstrap.log",
+                      "log_group_name": "$LOG_GROUP_NAME",
+                      "log_stream_name": "{instance_id}",
+                      "retention_in_days": 7
                     }
-                    EOF
+                  ]
+                }
+              }
+            }
+          }
+          EOF
 
-                    # Start CloudWatch agent
-                    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
-                      -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+          # Start CloudWatch agent
+          /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+            -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
 
-                    # Redirect all output to log file and console
-                    exec > >(tee -a /var/log/bootstrap.log)
-                    exec 2>&1
+          # Redirect all output to log file and console
+          exec > >(tee -a /var/log/bootstrap.log)
+          exec 2>&1
 
-                    echo "UserData started at $(date) - Logging to $LOG_GROUP_NAME"
+          echo "UserData started at $(date) - Logging to $LOG_GROUP_NAME"
 
-                    # Download and run full bootstrap script with retry logic
-                    download_bootstrap() {
-                        local urls=(
-                            "https://raw.githubusercontent.com/aws-samples/java-on-aws/${GIT_BRANCH}/infra/scripts/ide/bootstrap.sh"
-                            "https://github.com/aws-samples/java-on-aws/raw/${GIT_BRANCH}/infra/scripts/ide/bootstrap.sh"
-                        )
-                        local max_attempts=5
-                        local delay=5
+          # Download and run full bootstrap script with retry logic
+          download_bootstrap() {
+              local urls=(
+                  "https://raw.githubusercontent.com/aws-samples/java-on-aws/${GIT_BRANCH}/infra/scripts/ide/bootstrap.sh"
+                  "https://github.com/aws-samples/java-on-aws/raw/${GIT_BRANCH}/infra/scripts/ide/bootstrap.sh"
+              )
+              local max_attempts=5
+              local delay=5
 
-                        for attempt in $(seq 1 $max_attempts); do
-                            echo "Download attempt $attempt of $max_attempts"
+              for attempt in $(seq 1 $max_attempts); do
+                  echo "Download attempt $attempt of $max_attempts"
 
-                            for url in "${urls[@]}"; do
-                                echo "Trying to download bootstrap from: $url"
-                                if curl -fsSL --connect-timeout 30 --max-time 60 "$url" -o /tmp/bootstrap.sh; then
-                                    echo "Successfully downloaded bootstrap script on attempt $attempt"
-                                    return 0
-                                fi
-                                echo "Failed to download from: $url"
-                            done
+                  for url in "${urls[@]}"; do
+                      echo "Trying to download bootstrap from: $url"
+                      if curl -fsSL --connect-timeout 30 --max-time 60 "$url" -o /tmp/bootstrap.sh; then
+                          echo "Successfully downloaded bootstrap script on attempt $attempt"
+                          return 0
+                      fi
+                      echo "Failed to download from: $url"
+                  done
 
-                            if [ $attempt -lt $max_attempts ]; then
-                                echo "All URLs failed on attempt $attempt, waiting ${delay}s before retry..."
-                                sleep $delay
-                            fi
-                        done
+                  if [ $attempt -lt $max_attempts ]; then
+                      echo "All URLs failed on attempt $attempt, waiting ${delay}s before retry..."
+                      sleep $delay
+                  fi
+              done
 
-                        echo "All download attempts failed after $max_attempts tries"
-                        return 1
-                    }
+              echo "All download attempts failed after $max_attempts tries"
+              return 1
+          }
 
-                    if download_bootstrap; then
-                        chmod +x /tmp/bootstrap.sh
-                        echo "Executing full bootstrap script..."
-                        export VSCODE_EXTENSIONS="$VSCODE_EXTENSIONS"
-                        if /tmp/bootstrap.sh "$IDE_PASSWORD" "$GIT_BRANCH" "$STACK_NAME" "$AWS_REGION" "$TEMPLATE_TYPE"; then
-                            echo "Bootstrap completed successfully"
-                            /opt/aws/bin/cfn-signal -e 0 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
-                        else
-                            echo "FATAL: Bootstrap script failed"
-                            /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
-                            exit 1
-                        fi
-                    else
-                        echo "FATAL: Could not download bootstrap script from any source"
-                        /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
-                        exit 1
-                    fi
-                  - awsRegion:
-                      Ref: AWS::Region
-                    stackName:
-                      Ref: AWS::StackName
-                    gitBranch: new-ws-infra
-                    vscodeExtensions: shardulm94.trailing-spaces,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker
-                    idePassword:
-                      Fn::Join:
-                        - ""
-                        - - "{{resolve:secretsmanager:"
-                          - Ref: IdeIdePasswordSecretF3482811
-                          - :SecretString:password::}}
-                    templateType: base
+          if download_bootstrap; then
+              chmod +x /tmp/bootstrap.sh
+              echo "Executing full bootstrap script..."
+              export VSCODE_EXTENSIONS="$VSCODE_EXTENSIONS"
+              if /tmp/bootstrap.sh "$IDE_PASSWORD" "$GIT_BRANCH" "$STACK_NAME" "$AWS_REGION" "$TEMPLATE_TYPE"; then
+                  echo "Bootstrap completed successfully"
+                  /opt/aws/bin/cfn-signal -e 0 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
+              else
+                  echo "FATAL: Bootstrap script failed"
+                  /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
+                  exit 1
+              fi
+          else
+              echo "FATAL: Could not download bootstrap script from any source"
+              /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
+              exit 1
+          fi
       InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
+      InstanceName: ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeIdeInstanceProfile8BD997EA
+          - Arn
+      VolumeSize: "50"
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1126,12 +1108,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: base
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: new-ws-infra
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: base
           - Name: STACK_NAME
             Type: PLAINTEXT
             Value:
@@ -1364,12 +1346,12 @@ Resources:
       Description: base-setup build complete
       EventPattern:
         detail:
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1401,13 +1383,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
-      ContentHash: "1765650683812"
+      ContentHash: "1765651009800"
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D
