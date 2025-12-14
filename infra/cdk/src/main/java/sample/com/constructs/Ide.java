@@ -253,8 +253,8 @@ public class Ide extends Construct {
         String gitBranch = props.getGitBranch();
         String templateType = props.getTemplateType();
 
-        // Build UserData content with substitutions
-        String userDataContent = String.format("""
+        // Build UserData content with template substitutions
+        String userDataContent = """
             #!/bin/bash
             set -e
 
@@ -262,11 +262,11 @@ public class Ide extends Construct {
             # This keeps UserData under size limits while allowing unlimited bootstrap size
 
             # Configuration from CDK
-            GIT_BRANCH="%s"
-            STACK_NAME="%s"
-            AWS_REGION="%s"
-            TEMPLATE_TYPE="%s"
-            WAIT_CONDITION_HANDLE_URL="%s"
+            export GIT_BRANCH="{{GIT_BRANCH}}"
+            export STACK_NAME="{{STACK_NAME}}"
+            export AWS_REGION="{{AWS_REGION}}"
+            export TEMPLATE_TYPE="{{TEMPLATE_TYPE}}"
+            export WAIT_CONDITION_HANDLE_URL="{{WAIT_CONDITION_HANDLE_URL}}"
 
             # Setup logging
             LOG_GROUP_NAME="ide-bootstrap-$(date +%%Y%%m%%d-%%H%%M%%S)"
@@ -306,7 +306,7 @@ public class Ide extends Construct {
             echo "UserData started at $(date) - Logging to $LOG_GROUP_NAME"
 
             # Set up error trap for UserData failures (before bootstrap.sh takes over)
-            trap 'echo "UserData failed at line $LINENO"; /opt/aws/bin/cfn-signal -e 1 "%s" 2>/dev/null || true; exit 1' ERR
+            trap 'echo "UserData failed at line $LINENO"; /opt/aws/bin/cfn-signal -e 1 "{{WAIT_CONDITION_HANDLE_URL}}" 2>/dev/null || true; exit 1' ERR
 
             # Install git (required for cloning repository)
             echo "Installing git..."
@@ -352,30 +352,28 @@ public class Ide extends Construct {
 
                 echo "Executing full bootstrap script..."
                 # Run bootstrap script as root from the cloned directory
-                if cd /home/ec2-user/java-on-aws && WAIT_CONDITION_HANDLE_URL='%s' infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'; then
+                if cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh "$GIT_BRANCH" "$STACK_NAME" "$TEMPLATE_TYPE"; then
                     echo "Bootstrap completed successfully"
                     # Bootstrap script already signaled success
                 else
                     echo "FATAL: Bootstrap script failed"
-                    /opt/aws/bin/cfn-signal -e 1 '%s'
+                    /opt/aws/bin/cfn-signal -e 1 '{{WAIT_CONDITION_HANDLE_URL}}'
                     exit 1
                 fi
             else
                 echo "FATAL: Could not clone repository"
-                /opt/aws/bin/cfn-signal -e 1 '%s'
+                /opt/aws/bin/cfn-signal -e 1 '{{WAIT_CONDITION_HANDLE_URL}}'
                 exit 1
             fi
-            """,
-            gitBranch,
-            Aws.STACK_NAME,
-            Aws.REGION,
-            templateType,
-            waitHandle.getRef(),
-            waitHandle.getRef(),
-            waitHandle.getRef(),
-            waitHandle.getRef(),
-            waitHandle.getRef()
-        );
+            """;
+
+        // Replace all template variables
+        userDataContent = userDataContent
+            .replace("{{GIT_BRANCH}}", gitBranch)
+            .replace("{{STACK_NAME}}", Aws.STACK_NAME)
+            .replace("{{AWS_REGION}}", Aws.REGION)
+            .replace("{{TEMPLATE_TYPE}}", templateType)
+            .replace("{{WAIT_CONDITION_HANDLE_URL}}", waitHandle.getRef());
 
         userData.addCommands(userDataContent);
 

@@ -165,5 +165,11 @@ fi
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Bootstrap completed successfully"
 
+# Create IDE bootstrap summary for easy reference
+echo "Creating IDE bootstrap summary..."
+grep "✅ Success:" /var/log/bootstrap.log | sudo -u ec2-user tee /home/ec2-user/ide-bootstrap.log >/dev/null
+sudo -u ec2-user chmod 644 /home/ec2-user/ide-bootstrap.log
+echo "Bootstrap summary saved to ~/ide-bootstrap.log"
+
 # Signal CloudFormation completion
 /opt/aws/bin/cfn-signal -e $? "$WAIT_CONDITION_HANDLE_URL"

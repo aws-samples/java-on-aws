@@ -714,31 +714,8 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeIdeInstanceProfile8BD997EA
-          - Arn
-      VolumeSize: "50"
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
-            - ","
-            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeIdeSecurityGroup5C503C8A
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeIdeInternalSecurityGroupD5D3B421
-                - GroupId
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -752,23 +729,23 @@ Resources:
                 # This keeps UserData under size limits while allowing unlimited bootstrap size
 
                 # Configuration from CDK
-                GIT_BRANCH="new-ws-infra"
-                STACK_NAME="
+                export GIT_BRANCH="new-ws-infra"
+                export STACK_NAME="
               - Ref: AWS::StackName
               - |-
                 "
-                AWS_REGION="
+                export AWS_REGION="
               - Ref: AWS::Region
               - |-
                 "
-                TEMPLATE_TYPE="base"
-                WAIT_CONDITION_HANDLE_URL="
+                export TEMPLATE_TYPE="base"
+                export WAIT_CONDITION_HANDLE_URL="
               - Ref: IdeBootstrapWaitConditionHandleD7141CA8
               - |-
                 "
 
                 # Setup logging
-                LOG_GROUP_NAME="ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
+                LOG_GROUP_NAME="ide-bootstrap-$(date +%%Y%%m%%d-%%H%%M%%S)"
                 echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
 
                 # Install CloudWatch agent for logging
@@ -854,10 +831,7 @@ Resources:
 
                     echo "Executing full bootstrap script..."
                     # Run bootstrap script as root from the cloned directory
-                    if cd /home/ec2-user/java-on-aws && WAIT_CONDITION_HANDLE_URL='
-              - Ref: IdeBootstrapWaitConditionHandleD7141CA8
-              - |-
-                ' infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'; then
+                    if cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh "$GIT_BRANCH" "$STACK_NAME" "$TEMPLATE_TYPE"; then
                         echo "Bootstrap completed successfully"
                         # Bootstrap script already signaled success
                     else
@@ -876,6 +850,29 @@ Resources:
                 '
                     exit 1
                 fi
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeIdeSecurityGroup5C503C8A
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeIdeInternalSecurityGroupD5D3B421
+                - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
+            - ","
+            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeIdeInstanceProfile8BD997EA
+          - Arn
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1245,12 +1242,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: base
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: new-ws-infra
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: base
           - Name: STACK_NAME
             Type: PLAINTEXT
             Value:
@@ -1461,12 +1458,12 @@ Resources:
       Description: workshop-setup build complete
       EventPattern:
         detail:
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1498,13 +1495,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ContentHash: "1765697286720"
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1765698307266"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D
