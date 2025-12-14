@@ -25,7 +25,7 @@ public class CodeBuild extends Construct {
     private final Role lambdaRole;
 
     public static class CodeBuildProps {
-        private String projectName = "workshop-codebuild";
+        private String projectName = "workshop-setup";
         private IBuildImage buildImage = LinuxBuildImage.AMAZON_LINUX_2_5;
         private ComputeType computeType = ComputeType.MEDIUM;
         private Duration timeout = Duration.minutes(30);

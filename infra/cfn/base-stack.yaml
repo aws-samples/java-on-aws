@@ -239,7 +239,7 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/CloudWatchAgentServerPolicy
         - Ref: IdeUserPolicy2460FC7D
-      RoleName: ide-user
+      RoleName: workshop-ide-user
   IdeRoleDefaultPolicyFD4BDE67:
     Type: AWS::IAM::Policy
     Properties:
@@ -483,7 +483,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: IDE security group
-      GroupName: ide-cloudfront-ide-sg
+      GroupName: workshop-ide-cloudfront-sg
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
@@ -509,7 +509,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: IDE internal security group
-      GroupName: ide-internal-sg
+      GroupName: workshop-ide-internal-sg
       VpcId:
         Ref: VpcC3027511
   IdeInternalSecurityGroupfromWorkshopStackIdeInternalSecurityGroup2A6A3A7DALLTRAFFIC101F9997:
@@ -541,8 +541,7 @@ Resources:
   IdeInstanceProfile61B92038:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName:
-        Ref: IdeRole4650E22E
+      InstanceProfileName: workshop-ide-instance-profile
       Roles:
         - Ref: IdeRole4650E22E
   IdeElasticIP3327A0B5:
@@ -559,7 +558,7 @@ Resources:
         IncludeSpace: false
         PasswordLength: 32
         SecretStringTemplate: '{"password":""}'
-      Name: ide-password
+      Name: workshop-ide-password
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeInstanceLauncherFunction803C5A2A:
@@ -714,17 +713,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
       InstanceName: ide
       InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       UserData:
@@ -872,6 +860,17 @@ Resources:
             - Fn::GetAtt:
                 - IdeInternalSecurityGroupB0A5D76B
                 - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1081,6 +1080,15 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: IdePasswordSecretF907B9F2
+            - Fn::Select:
+                - 2
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: IdePasswordSecretF907B9F2
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   CodeBuildRoleE9A44575:
@@ -1241,12 +1249,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: base
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: new-ws-infra
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: base
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1452,12 +1460,12 @@ Resources:
       Description: workshop-setup build complete
       EventPattern:
         detail:
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1489,13 +1497,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
-      ContentHash: "1765725419413"
+      ContentHash: "1765726247489"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8

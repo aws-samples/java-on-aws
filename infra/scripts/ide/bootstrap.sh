@@ -87,7 +87,7 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing CloudFormation helper scripts...
 install_with_version "CloudFormation helper scripts" "dnf install -y aws-cfn-bootstrap" "rpm -q aws-cfn-bootstrap --queryformat '%{VERSION}'"
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Fetching IDE password from Secrets Manager..."
-IDE_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "ide-password" --query SecretString --output text | jq -r .password)
+IDE_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "workshop-ide-password" --query SecretString --output text | jq -r .password)
 if [ -z "$IDE_PASSWORD" ] || [ "$IDE_PASSWORD" = "null" ]; then
     echo "ERROR: Failed to retrieve IDE password from Secrets Manager"
     exit 1
@@ -167,9 +167,9 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Bootstrap completed successfully"
 
 # Create IDE bootstrap summary for easy reference
 echo "Creating IDE bootstrap summary..."
-grep "✅ Success:" /var/log/bootstrap.log | sudo -u ec2-user tee /home/ec2-user/ide-bootstrap.log >/dev/null
-sudo -u ec2-user chmod 644 /home/ec2-user/ide-bootstrap.log
-echo "Bootstrap summary saved to ~/ide-bootstrap.log"
+grep "✅ Success:" /var/log/bootstrap.log | sudo -u ec2-user tee /home/ec2-user/workshop-ide-bootstrap.log >/dev/null
+sudo -u ec2-user chmod 644 /home/ec2-user/workshop-ide-bootstrap.log
+echo "Bootstrap summary saved to ~/workshop-ide-bootstrap.log"
 
 # Signal CloudFormation completion
 /opt/aws/bin/cfn-signal -e $? "$WAIT_CONDITION_HANDLE_URL"

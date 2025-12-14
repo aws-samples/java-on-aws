@@ -259,7 +259,7 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/CloudWatchAgentServerPolicy
         - Ref: IdeUserPolicy2460FC7D
-      RoleName: ide-user
+      RoleName: workshop-ide-user
   IdeRoleDefaultPolicyFD4BDE67:
     Type: AWS::IAM::Policy
     Properties:
@@ -503,7 +503,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: IDE security group
-      GroupName: ide-cloudfront-ide-sg
+      GroupName: workshop-ide-cloudfront-sg
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
@@ -529,7 +529,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: IDE internal security group
-      GroupName: ide-internal-sg
+      GroupName: workshop-ide-internal-sg
       VpcId:
         Ref: VpcC3027511
   IdeInternalSecurityGroupfromWorkshopStackIdeInternalSecurityGroup2A6A3A7DALLTRAFFIC101F9997:
@@ -561,8 +561,7 @@ Resources:
   IdeInstanceProfile61B92038:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName:
-        Ref: IdeRole4650E22E
+      InstanceProfileName: workshop-ide-instance-profile
       Roles:
         - Ref: IdeRole4650E22E
   IdeElasticIP3327A0B5:
@@ -579,7 +578,7 @@ Resources:
         IncludeSpace: false
         PasswordLength: 32
         SecretStringTemplate: '{"password":""}'
-      Name: ide-password
+      Name: workshop-ide-password
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeInstanceLauncherFunction803C5A2A:
@@ -734,18 +733,8 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      VolumeSize: "50"
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
       SecurityGroupIds:
         Fn::Join:
           - ""
@@ -756,8 +745,19 @@ Resources:
             - Fn::GetAtt:
                 - IdeInternalSecurityGroupB0A5D76B
                 - GroupId
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      InstanceName: ide
+      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -891,7 +891,6 @@ Resources:
                 "
                     exit 1
                 fi
-      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1094,6 +1093,15 @@ Resources:
                             - Ref: IdePasswordSecretF907B9F2
             - Fn::Select:
                 - 1
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: IdePasswordSecretF907B9F2
+            - Fn::Select:
+                - 2
                 - Fn::Split:
                     - "-"
                     - Fn::Select:
@@ -1509,13 +1517,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1765725424912"
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1765726252761"
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1930,6 +1938,9 @@ Resources:
         Fn::GetAtt:
           - DatabaseSetupFunction6A2230B7
           - Arn
+      SqlStatements: |-
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -1960,9 +1971,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: DatabaseSecret3B817195
-      SqlStatements: |-
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - DatabaseClusterDatabaseWriterF4C0B9A6
       - DatabaseCluster5B53A178

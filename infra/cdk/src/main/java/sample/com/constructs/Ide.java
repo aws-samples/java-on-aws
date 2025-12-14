@@ -101,7 +101,7 @@ public class Ide extends Construct {
         // Create workshop role for IDE instances if not provided
         if (props.getIdeRole() == null) {
             props.ideRole = Role.Builder.create(this, "Role")
-                .roleName("ide-user")
+                .roleName("workshop-ide-user")
                 .assumedBy(ServicePrincipal.Builder.create("ec2.amazonaws.com").build())
                 .managedPolicies(List.of(
                     ManagedPolicy.fromAwsManagedPolicyName("ReadOnlyAccess"),
@@ -191,7 +191,7 @@ public class Ide extends Construct {
         this.ideSecurityGroup = SecurityGroup.Builder.create(this, "SecurityGroup")
             .vpc(props.getVpc())
             .allowAllOutbound(true)
-            .securityGroupName(instanceName + "-cloudfront-ide-sg")
+            .securityGroupName("workshop-ide-cloudfront-sg")
             .description("IDE security group")
             .build();
 
@@ -205,7 +205,7 @@ public class Ide extends Construct {
         this.ideInternalSecurityGroup = SecurityGroup.Builder.create(this, "InternalSecurityGroup")
             .vpc(props.getVpc())
             .allowAllOutbound(false)
-            .securityGroupName(instanceName + "-internal-sg")
+            .securityGroupName("workshop-ide-internal-sg")
             .description("IDE internal security group")
             .build();
 
@@ -217,7 +217,7 @@ public class Ide extends Construct {
         // Create instance profile
         var instanceProfile = InstanceProfile.Builder.create(this, "InstanceProfile")
             .role(this.ideRole)
-            .instanceProfileName(this.ideRole.getRoleName())
+            .instanceProfileName("workshop-ide-instance-profile")
             .build();
 
         // Create Elastic IP
@@ -246,7 +246,7 @@ public class Ide extends Construct {
                 .secretStringTemplate("{\"password\":\"\"}")
                 .excludeCharacters("\"@/\\\\")
                 .build())
-            .secretName(instanceName + "-password")
+            .secretName("workshop-ide-password")
             .removalPolicy(RemovalPolicy.DESTROY)
             .build();
 
