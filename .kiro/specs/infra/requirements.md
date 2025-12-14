@@ -255,6 +255,7 @@ This document specifies the requirements for creating a new AWS workshop infrast
 3. WHEN kubectl context is configured, THE system SHALL deploy GP3 StorageClass, ALB IngressClass, and SecretProviderClass resources
 4. WHEN setup script completes, THE system SHALL verify all deployed resources are functional
 5. WHEN base development tools are installed, THE system SHALL include kubectl alias 'k' for convenience
+6. WHEN EKS setup scripts execute, THE system SHALL use shared library functions from infra/scripts/lib for consistent logging and resource waiting
 
 ### Requirement 19
 

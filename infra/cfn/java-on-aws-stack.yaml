@@ -23,6 +23,8 @@ Resources:
           Value: Public
         - Key: aws-cdk:subnet-type
           Value: Public
+        - Key: kubernetes.io/role/elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/WorkshopVpc/PublicSubnet1
       VpcId:
@@ -31,6 +33,8 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
+        - Key: kubernetes.io/role/elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/WorkshopVpc/PublicSubnet1
       VpcId:
@@ -57,6 +61,8 @@ Resources:
     Properties:
       Domain: vpc
       Tags:
+        - Key: kubernetes.io/role/elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/WorkshopVpc/PublicSubnet1
   VpcWorkshopVpcPublicSubnet1NATGatewayB7F27960:
@@ -69,6 +75,8 @@ Resources:
       SubnetId:
         Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
       Tags:
+        - Key: kubernetes.io/role/elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/WorkshopVpc/PublicSubnet1
     DependsOn:
@@ -88,6 +96,8 @@ Resources:
           Value: Public
         - Key: aws-cdk:subnet-type
           Value: Public
+        - Key: kubernetes.io/role/elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/WorkshopVpc/PublicSubnet2
       VpcId:
@@ -96,6 +106,8 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
+        - Key: kubernetes.io/role/elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/WorkshopVpc/PublicSubnet2
       VpcId:
@@ -131,6 +143,8 @@ Resources:
           Value: Private
         - Key: aws-cdk:subnet-type
           Value: Private
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/WorkshopVpc/PrivateSubnet1
       VpcId:
@@ -139,6 +153,8 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/WorkshopVpc/PrivateSubnet1
       VpcId:
@@ -172,6 +188,8 @@ Resources:
           Value: Private
         - Key: aws-cdk:subnet-type
           Value: Private
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/WorkshopVpc/PrivateSubnet2
       VpcId:
@@ -180,6 +198,8 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/WorkshopVpc/PrivateSubnet2
       VpcId:
@@ -714,6 +734,18 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
+            - ","
+            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeIdeInstanceProfile8BD997EA
+          - Arn
+      InstanceName: ide
       InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       UserData:
         Fn::Base64:
@@ -864,18 +896,6 @@ Resources:
             - Fn::GetAtt:
                 - IdeIdeInternalSecurityGroupD5D3B421
                 - GroupId
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
-            - ","
-            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeIdeInstanceProfile8BD997EA
-          - Arn
-      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1245,12 +1265,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: new-ws-infra
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-on-aws
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: new-ws-infra
           - Name: STACK_NAME
             Type: PLAINTEXT
             Value:
@@ -1461,12 +1481,12 @@ Resources:
       Description: workshop-setup build complete
       EventPattern:
         detail:
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1498,7 +1518,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ContentHash: "1765704213276"
+      ContentHash: "1765709890926"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
@@ -1921,9 +1941,6 @@ Resources:
         Fn::GetAtt:
           - DatabaseDatabaseSetupFunction04FDCEBB
           - Arn
-      SqlStatements: |-
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -1954,12 +1971,210 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: DatabaseDatabaseSecret487264A7
+      SqlStatements: |-
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - DatabaseDatabaseClusterDatabaseWriter0EEAA63C
       - DatabaseDatabaseCluster0C7C993F
       - DatabaseDatabaseClusterSubnets510F513F
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
+  EksClusterRoleD18DF32F:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+              - sts:TagSession
+            Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSClusterPolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSComputePolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSBlockStoragePolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSLoadBalancingPolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSNetworkingPolicy
+  EksClusterControlPlaneSecurityGroup342465A2:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EKS Control Plane Security Group
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: VpcWorkshopVpcAB7D061C
+  EksClusterClusternodePoolRoleE206FBFC:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+  EksClusterB2BDED5B:
+    Type: AWS::EKS::Cluster
+    Properties:
+      AccessConfig:
+        AuthenticationMode: API
+      ComputeConfig:
+        Enabled: true
+        NodePools:
+          - system
+          - general-purpose
+        NodeRoleArn:
+          Fn::GetAtt:
+            - EksClusterClusternodePoolRoleE206FBFC
+            - Arn
+      KubernetesNetworkConfig:
+        ElasticLoadBalancing:
+          Enabled: true
+        IpFamily: ipv4
+      Name: workshop-cluster
+      ResourcesVpcConfig:
+        EndpointPrivateAccess: true
+        EndpointPublicAccess: true
+        SecurityGroupIds:
+          - Fn::GetAtt:
+              - EksClusterControlPlaneSecurityGroup342465A2
+              - GroupId
+        SubnetIds:
+          - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
+          - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
+          - Ref: VpcWorkshopVpcPrivateSubnet1SubnetCE870430
+          - Ref: VpcWorkshopVpcPrivateSubnet2SubnetA1F06CF5
+      RoleArn:
+        Fn::GetAtt:
+          - EksClusterRoleD18DF32F
+          - Arn
+      StorageConfig:
+        BlockStorage:
+          Enabled: true
+      Version: "1.34"
+    DependsOn:
+      - VpcWorkshopVpcIGW19681F96
+      - VpcWorkshopVpcPrivateSubnet1DefaultRouteDAFC9A0B
+      - VpcWorkshopVpcPrivateSubnet1RouteTable554DA77D
+      - VpcWorkshopVpcPrivateSubnet1RouteTableAssociation6440BC71
+      - VpcWorkshopVpcPrivateSubnet1SubnetCE870430
+      - VpcWorkshopVpcPrivateSubnet2DefaultRoute7F56E125
+      - VpcWorkshopVpcPrivateSubnet2RouteTable9C677543
+      - VpcWorkshopVpcPrivateSubnet2RouteTableAssociation541BD7CF
+      - VpcWorkshopVpcPrivateSubnet2SubnetA1F06CF5
+      - VpcWorkshopVpcPublicSubnet1DefaultRouteF815C2F3
+      - VpcWorkshopVpcPublicSubnet1EIP1EDF2EDC
+      - VpcWorkshopVpcPublicSubnet1NATGatewayB7F27960
+      - VpcWorkshopVpcPublicSubnet1RouteTable36F1AD0E
+      - VpcWorkshopVpcPublicSubnet1RouteTableAssociationCF5FEF9E
+      - VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
+      - VpcWorkshopVpcPublicSubnet2DefaultRouteF7AAC1E0
+      - VpcWorkshopVpcPublicSubnet2RouteTableB1955E1B
+      - VpcWorkshopVpcPublicSubnet2RouteTableAssociationF80852AE
+      - VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
+      - VpcWorkshopVpcAB7D061C
+      - VpcWorkshopVpcVPCGWBF8004A5
+  EksClusterKubectlReadyBarrierA32D1E84:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: aws:cdk:eks:kubectl-ready
+    DependsOn:
+      - EksClusterB2BDED5B
+  EksSecretsStoreCsiDriver71D43AE4:
+    Type: AWS::EKS::Addon
+    Properties:
+      AddonName: aws-secrets-store-csi-driver
+      ClusterName:
+        Ref: EksClusterB2BDED5B
+  EksMountpointS3CsiDriver883C78F3:
+    Type: AWS::EKS::Addon
+    Properties:
+      AddonName: aws-mountpoint-s3-csi-driver
+      ClusterName:
+        Ref: EksClusterB2BDED5B
+  EksPodIdentityAgent31D8BD3D:
+    Type: AWS::EKS::Addon
+    Properties:
+      AddonName: eks-pod-identity-agent
+      ClusterName:
+        Ref: EksClusterB2BDED5B
+  EksWSParticipantAccessEntry684161BF:
+    Type: AWS::EKS::AccessEntry
+    Properties:
+      AccessPolicies:
+        - AccessScope:
+            Type: cluster
+          PolicyArn:
+            Fn::Join:
+              - ""
+              - - "arn:"
+                - Ref: AWS::Partition
+                - :eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+      ClusterName:
+        Ref: EksClusterB2BDED5B
+      PrincipalArn:
+        Fn::Join:
+          - ""
+          - - "arn:aws:iam::"
+            - Ref: AWS::AccountId
+            - :role/WSParticipantRole
+      Type: STANDARD
+  EksIdeInstanceAccessEntry69EA0EE2:
+    Type: AWS::EKS::AccessEntry
+    Properties:
+      AccessPolicies:
+        - AccessScope:
+            Type: cluster
+          PolicyArn:
+            Fn::Join:
+              - ""
+              - - "arn:"
+                - Ref: AWS::Partition
+                - :eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+      ClusterName:
+        Ref: EksClusterB2BDED5B
+      PrincipalArn:
+        Fn::GetAtt:
+          - IdeIdeRoleD654ADD4
+          - Arn
+      Type: STANDARD
 Outputs:
   IdeUrl45274C27:
     Description: Workshop IDE Url

@@ -11,7 +11,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>25</maven.compiler.source>
         <maven.compiler.target>25</maven.compiler.target>
-        <cdk.version>2.215.0</cdk.version>
+        <cdk.version>2.224.0</cdk.version>
         <constructs.version>10.4.2</constructs.version>
         <junit.version>5.11.3</junit.version>
     </properties>
@@ -51,6 +51,13 @@
             <groupId>software.constructs</groupId>
             <artifactId>constructs</artifactId>
             <version>${constructs.version}</version>
+        </dependency>
+
+        <!-- EKS v2 Alpha L2 Construct -->
+        <dependency>
+            <groupId>software.amazon.awscdk</groupId>
+            <artifactId>eks-v2-alpha</artifactId>
+            <version>${cdk.version}-alpha.0</version>
         </dependency>
 
         <!-- AWS Lambda Runtime -->

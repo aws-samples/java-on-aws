@@ -8,7 +8,6 @@ import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Fn;
 import software.amazon.awscdk.RemovalPolicy;
-import software.amazon.awscdk.SecretValue;
 import software.amazon.awscdk.services.cloudfront.AllowedMethods;
 import software.amazon.awscdk.services.cloudfront.BehaviorOptions;
 import software.amazon.awscdk.services.cloudfront.CachePolicy;
@@ -33,7 +32,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.json.JSONObject;
@@ -42,7 +40,7 @@ public class Ide extends Construct {
     private final SecurityGroup ideSecurityGroup;
     private final SecurityGroup ideInternalSecurityGroup;
     private final Secret ideSecretsManagerPassword;
-    private final Role workshopRole;
+    private final Role ideRole;
     private final Role lambdaRole;
     private CustomResource passwordResource;
 
@@ -98,7 +96,7 @@ public class Ide extends Construct {
         String instanceName = props.getInstanceName();
 
         // Create workshop role for IDE instances
-        this.workshopRole = Role.Builder.create(this, "IdeRole")
+        this.ideRole = Role.Builder.create(this, "IdeRole")
             .roleName("ide-user")
             .assumedBy(ServicePrincipal.Builder.create("ec2.amazonaws.com").build())
             .managedPolicies(List.of(
@@ -117,7 +115,7 @@ public class Ide extends Construct {
             .resources(List.of("*"))
             .build();
 
-        workshopRole.addToPolicy(cfnSignalPermissions);
+        ideRole.addToPolicy(cfnSignalPermissions);
 
         // Load additional IAM policy from file
         var policyDocumentJson = loadFile("/iam-policy.json");
@@ -126,7 +124,7 @@ public class Ide extends Construct {
             var policy = ManagedPolicy.Builder.create(this, "WorkshopIdeUserPolicy")
                 .document(policyDocument)
                 .build();
-            workshopRole.addManagedPolicy(policy);
+            ideRole.addManagedPolicy(policy);
         }
 
         // Create Lambda role for IDE Lambda functions
@@ -212,8 +210,8 @@ public class Ide extends Construct {
 
         // Create instance profile
         var instanceProfile = InstanceProfile.Builder.create(this, "IdeInstanceProfile")
-            .role(workshopRole)
-            .instanceProfileName(workshopRole.getRoleName())
+            .role(ideRole)
+            .instanceProfileName(ideRole.getRoleName())
             .build();
 
         // Create Elastic IP
@@ -246,7 +244,7 @@ public class Ide extends Construct {
             .removalPolicy(RemovalPolicy.DESTROY)
             .build();
 
-        ideSecretsManagerPassword.grantRead(workshopRole);
+        ideSecretsManagerPassword.grantRead(ideRole);
 
         // Create User Data for bootstrap with CloudWatch logging
         var userData = UserData.forLinux();
@@ -355,6 +353,10 @@ public class Ide extends Construct {
 
     public SecurityGroup getIdeInternalSecurityGroup() {
         return ideInternalSecurityGroup;
+    }
+
+    public Role getIdeRole() {
+        return ideRole;
     }
 
     /**

@@ -38,9 +38,9 @@ infra/
 │   │   ├── java-on-aws.sh       # Java-on-AWS workshop setup
 │   │   ├── java-on-eks.sh       # Java-on-EKS workshop setup
 │   │   └── java-ai-agents.sh    # Java AI Agents workshop setup
-│   ├── lib/                     # Common utilities
-│   │   ├── common.sh
-│   │   └── wait-for-resources.sh
+│   ├── lib/                     # Common utilities (actively used)
+│   │   ├── common.sh            # Emoji logging, error handling (used by generate.sh, sync.sh)
+│   │   └── wait-for-resources.sh # EKS/RDS readiness checking (used by setup scripts)
 │   ├── cfn/                     # CloudFormation utilities
 │   │   ├── generate.sh
 │   │   └── sync.sh

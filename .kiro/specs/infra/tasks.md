@@ -405,6 +405,8 @@
 
 - [ ] 100.5 Create EKS post-deployment setup script
   - Create infra/scripts/setup/eks.sh for EKS cluster configuration (based on original infrastructure/scripts/setup/eks.sh)
+  - Use infra/scripts/lib/common.sh for consistent emoji-based logging and error handling
+  - Use infra/scripts/lib/wait-for-resources.sh wait_for_eks_cluster() function for cluster readiness
   - Check cluster status and wait until kubectl get ns works successfully before proceeding
   - Update kubeconfig and add workshop-cluster to kubectl context
   - Deploy GP3 StorageClass (encrypted, default) since EKS Auto Mode doesn't provide encrypted GP3 by default
@@ -412,8 +414,7 @@
   - Create SecretProviderClass for database secrets (workshop-db-secret, workshop-db-password-secret, workshop-db-connection-string)
   - Configure EKS Pod Identity with AWSSecretsManagerClientReadOnlyAccess managed policy
   - Verify all three add-ons are installed and functional before completing
-  - Update script with emoji-based logging and consistent error handling
-  - _Requirements: 15.1, 15.2, 14.2, 14.3, 14.4, 15.7, 18.1, 18.2, 18.3, 18.4_
+  - _Requirements: 15.1, 15.2, 14.2, 14.3, 14.4, 15.7, 18.1, 18.2, 18.3, 18.4, 18.6_
 
 - [ ] 100.6 Create java-on-aws workshop orchestration script
   - Create infra/scripts/ide/java-on-aws.sh that executes base.sh and EKS implementation

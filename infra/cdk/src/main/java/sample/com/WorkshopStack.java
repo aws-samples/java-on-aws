@@ -71,6 +71,14 @@ public class WorkshopStack extends Stack {
         if (!"base".equals(templateType)) {
             Roles roles = new Roles(this, "Roles");
             Database database = new Database(this, "Database", vpc.getVpc());
+
+            // EKS cluster for java-on-aws and java-on-eks (exclude java-ai-agents)
+            if (!"java-ai-agents".equals(templateType)) {
+                Eks eks = new Eks(this, "Eks", Eks.EksProps.builder()
+                    .vpc(vpc.getVpc())
+                    .ideInstanceRole(ide.getIdeRole())
+                    .build());
+            }
         }
     }
 }
