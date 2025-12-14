@@ -1238,11 +1238,7 @@ Resources:
                   responseData = {'Error': tb_err}
 
               cfnresponse.send(event, context, status, responseData, physical_id)
-      FunctionName:
-        Fn::Join:
-          - ""
-          - - Ref: AWS::StackName
-            - -codebuild-start
+      FunctionName: ide-codebuild-start
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
@@ -1308,11 +1304,7 @@ Resources:
                           'error': str(e)
                       })
                   }
-      FunctionName:
-        Fn::Join:
-          - ""
-          - - Ref: AWS::StackName
-            - -codebuild-report
+      FunctionName: ide-codebuild-report
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
@@ -1372,7 +1364,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
-      ContentHash: "1765688713844"
+      ContentHash: "1765690723450"
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D

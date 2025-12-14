@@ -55,16 +55,14 @@ handle_error() {
     exit 1
 }
 
-# Helper function for download verification
+# Helper function for download verification with retry
 download_and_verify() {
     local url="$1"
     local output="$2"
     local description="$3"
 
     log_info "Downloading $description..."
-    if ! wget -q "$url" -O "$output"; then
-        handle_error "Failed to download $description from $url"
-    fi
+    retry_critical "wget -q '$url' -O '$output'"
 }
 
 cd /tmp
@@ -97,9 +95,7 @@ install_nodejs() {
     log_info "Installing Node.js ${NODE_VERSION} and tools..."
 
     # Install NVM
-    if ! curl -sS -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash; then
-        handle_error "Failed to install NVM"
-    fi
+    retry_critical "curl -sS -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash"
 
     # Setup NVM environment
     export NVM_DIR="$HOME/.nvm"
@@ -128,9 +124,7 @@ install_maven() {
     local mvn_filename=apache-maven-${MAVEN_VERSION}-bin.tar.gz
     local mvn_url="https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/${mvn_filename}"
 
-    if ! curl -sS -4 -L "$mvn_url" | tar -xz; then
-        handle_error "Failed to download and extract Maven"
-    fi
+    retry_critical "curl -sS -4 -L '$mvn_url' | tar -xz"
 
     sudo mv "$mvn_foldername" /usr/lib/maven
     echo "export M2_HOME=/usr/lib/maven" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
@@ -181,9 +175,7 @@ install_kubernetes_tools() {
     # log_info "eksctl version: $(eksctl version)"
 
     log_info "Installing Helm ${HELM_VERSION}..."
-    if ! curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3; then
-        handle_error "Failed to download Helm installer"
-    fi
+    retry_critical "curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3"
     chmod 700 get_helm.sh
     ./get_helm.sh --version v${HELM_VERSION}
     helm completion bash >> ~/.bash_completion
@@ -195,14 +187,10 @@ install_kubernetes_tools() {
     sudo mv eks-node-viewer /usr/local/bin
 
     log_info "Installing k9s..."
-    if ! curl -sS https://webinstall.dev/k9s | bash; then
-        echo "Warning: k9s installation failed, continuing..."
-    fi
+    retry_optional "curl -sS https://webinstall.dev/k9s | bash"
 
     log_info "Installing e1s..."
-    if ! curl -sL https://raw.githubusercontent.com/keidarcy/e1s-install/master/cloudshell-install.sh | bash; then
-        echo "Warning: e1s installation failed, continuing..."
-    fi
+    retry_optional "curl -sL https://raw.githubusercontent.com/keidarcy/e1s-install/master/cloudshell-install.sh | bash"
 }
 
 install_kubernetes_tools
