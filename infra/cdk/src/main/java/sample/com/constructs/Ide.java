@@ -157,7 +157,7 @@ public class Ide extends Construct {
         lambdaRole.addToPolicy(lambdaPermissions);
 
         // Set up wait condition handle for bootstrap completion (needed for User Data)
-        var waitHandle = CfnWaitConditionHandle.Builder.create(this, "IdeBootstrapWaitConditionHandle")
+        var waitHandle = CfnWaitConditionHandle.Builder.create(this, "BootstrapWaitConditionHandle")
             .build();
 
         // Create CloudFront prefix list lookup Lambda function
@@ -262,6 +262,7 @@ public class Ide extends Construct {
             STACK_NAME="%s"
             AWS_REGION="%s"
             TEMPLATE_TYPE="%s"
+            WAIT_CONDITION_HANDLE_URL="%s"
 
             # Setup logging
             LOG_GROUP_NAME="ide-bootstrap-$(date +%%Y%%m%%d-%%H%%M%%S)"
@@ -344,24 +345,29 @@ public class Ide extends Construct {
 
                 echo "Executing full bootstrap script..."
                 # Run bootstrap script as root from the cloned directory
-                if bash -c "cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
+                if bash -c "cd /home/ec2-user/java-on-aws && WAIT_CONDITION_HANDLE_URL='%s' infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
                     echo "Bootstrap completed successfully"
-                    /opt/aws/bin/cfn-signal -e 0 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
+                    /opt/aws/bin/cfn-signal -e 0 '%s'
                 else
                     echo "FATAL: Bootstrap script failed"
-                    /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
+                    /opt/aws/bin/cfn-signal -e 1 '%s'
                     exit 1
                 fi
             else
                 echo "FATAL: Could not clone repository"
-                /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
+                /opt/aws/bin/cfn-signal -e 1 '%s'
                 exit 1
             fi
             """,
             gitBranch,
             Aws.STACK_NAME,
             Aws.REGION,
-            templateType
+            templateType,
+            waitHandle.getRef(),
+            waitHandle.getRef(),
+            waitHandle.getRef(),
+            waitHandle.getRef(),
+            waitHandle.getRef()
         );
 
         userData.addCommands(userDataContent);
@@ -426,7 +432,7 @@ public class Ide extends Construct {
         distribution.applyRemovalPolicy(RemovalPolicy.DESTROY);
         distribution.getNode().addDependency(ipAssociation);
 
-        var waitCondition = CfnWaitCondition.Builder.create(this, "IdeBootstrapWaitCondition")
+        var waitCondition = CfnWaitCondition.Builder.create(this, "BootstrapWaitCondition")
             .count(1)
             .handle(waitHandle.getRef())
             .timeout(String.valueOf(props.getBootstrapTimeoutMinutes() * 60))

@@ -58,7 +58,7 @@ public class WorkshopStack extends Stack {
         // CodeBuild for workshop setup
         CodeBuild codeBuild = new CodeBuild(this, "CodeBuild",
             CodeBuild.CodeBuildProps.builder()
-                .projectName(templateType + "-setup")
+                .projectName("workshop-setup")
                 .vpc(vpc.getVpc())
                 .environmentVariables(Map.of(
                     "STACK_NAME", Aws.STACK_NAME,

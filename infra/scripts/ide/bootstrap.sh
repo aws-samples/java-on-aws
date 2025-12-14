@@ -75,7 +75,7 @@ export TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-e
 export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F\" '{print $4}')
 
 # Now that we have AWS_REGION, set up error trap for CloudFormation signaling
-trap 'echo "Bootstrap failed at line $LINENO"; /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION" 2>/dev/null || true; exit 1' ERR
+trap 'echo "Bootstrap failed at line $LINENO"; /opt/aws/bin/cfn-signal -e 1 "$WAIT_CONDITION_HANDLE_URL" 2>/dev/null || true; exit 1' ERR
 
 export EC2_PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/local-ipv4)
 export EC2_DOMAIN=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/public-hostname)
@@ -143,4 +143,4 @@ fi
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Bootstrap completed successfully"
 
 # Signal CloudFormation completion
-/opt/aws/bin/cfn-signal -e $? --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
+/opt/aws/bin/cfn-signal -e $? "$WAIT_CONDITION_HANDLE_URL"
