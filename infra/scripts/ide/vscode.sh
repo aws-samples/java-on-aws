@@ -43,7 +43,7 @@ run_as_user() {
 }
 
 echo "Installing code-server..."
-codeServer=$(dnf list installed code-server | wc -l)
+codeServer=$(dnf list installed code-server 2>/dev/null | wc -l)
 if [ "$codeServer" -eq "0" ]; then
   # Install as ec2-user with retry logic - pass version as environment variable
   retry_critical "sudo -u ec2-user bash -c 'curl -fsSL https://code-server.dev/install.sh | sh -s -- --version $VSCODE_VERSION'"

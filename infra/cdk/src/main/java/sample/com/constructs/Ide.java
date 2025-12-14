@@ -104,6 +104,17 @@ public class Ide extends Construct {
             ))
             .build();
 
+        // Add CloudFormation signaling permissions
+        PolicyStatement cfnSignalPermissions = PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of(
+                "cloudformation:SignalResource"
+            ))
+            .resources(List.of("*"))
+            .build();
+
+        workshopRole.addToPolicy(cfnSignalPermissions);
+
         // Load additional IAM policy from file
         var policyDocumentJson = loadFile("/iam-policy.json");
         if (policyDocumentJson != null) {
@@ -151,7 +162,7 @@ public class Ide extends Construct {
 
         // Create CloudFront prefix list lookup Lambda function
         var prefixListLookup = new Lambda(this, "PrefixListLookup",
-            "/lambda/cloudfront-prefix-lookup.py", Aws.STACK_NAME + "-cloudfront-prefix-lookup", Duration.minutes(3), lambdaRole);
+            "/lambda/cloudfront-prefix-lookup.py", "ide-cloudfront-prefix-lookup", Duration.minutes(3), lambdaRole);
         var prefixListFunction = prefixListLookup.getFunction();
 
         // Add EC2 permissions for prefix list lookup
@@ -357,7 +368,7 @@ public class Ide extends Construct {
 
         // Create instance launcher Lambda with multi-AZ and multi-instance-type failover
         var instanceLauncher = new Lambda(this, "InstanceLauncher",
-            "/lambda/ec2-launcher.py", Aws.STACK_NAME + "-ec2-launcher", Duration.minutes(5), lambdaRole);
+            "/lambda/ec2-launcher.py", "ide-ec2-launcher", Duration.minutes(5), lambdaRole);
         var instanceLauncherFunction = instanceLauncher.getFunction();
 
         // Create EC2 instance via Custom Resource with intelligent failover

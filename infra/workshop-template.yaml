@@ -245,6 +245,9 @@ Resources:
     Properties:
       PolicyDocument:
         Statement:
+          - Action: cloudformation:SignalResource
+            Effect: Allow
+            Resource: "*"
           - Action:
               - secretsmanager:DescribeSecret
               - secretsmanager:GetSecretValue
@@ -456,11 +459,7 @@ Resources:
                       responseData = {'Error': tb_err}
                   finally:
                       cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
-      FunctionName:
-        Fn::Join:
-          - ""
-          - - Ref: AWS::StackName
-            - -cloudfront-prefix-lookup
+      FunctionName: ide-cloudfront-prefix-lookup
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
@@ -697,11 +696,7 @@ Resources:
                   responseData = {'Error': tb_err}
 
               cfnresponse.send(event, context, status, responseData, physical_id)
-      FunctionName:
-        Fn::Join:
-          - ""
-          - - Ref: AWS::StackName
-            - -ec2-launcher
+      FunctionName: ide-ec2-launcher
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
@@ -719,6 +714,30 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeIdeSecurityGroup5C503C8A
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeIdeInternalSecurityGroupD5D3B421
+                - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
+            - ","
+            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeIdeInstanceProfile8BD997EA
+          - Arn
+      InstanceName: ide
       InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       UserData:
         Fn::Base64:
@@ -838,30 +857,6 @@ Resources:
                     /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
                     exit 1
                 fi
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeIdeSecurityGroup5C503C8A
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeIdeInternalSecurityGroupD5D3B421
-                - GroupId
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
-            - ","
-            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeIdeInstanceProfile8BD997EA
-          - Arn
-      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1334,12 +1329,12 @@ Resources:
       Description: base-setup build complete
       EventPattern:
         detail:
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1377,7 +1372,7 @@ Resources:
           - Arn
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
-      ContentHash: "1765687186152"
+      ContentHash: "1765688217799"
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D
