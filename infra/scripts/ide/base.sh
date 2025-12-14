@@ -35,7 +35,12 @@ retry_critical() {
     else
         local tool_name="$1"
         shift
-        eval "$*" || { echo "💥 FATAL: $tool_name failed"; exit 1; }
+        if eval "$*"; then
+            echo "✅ Success: $tool_name"
+        else
+            echo "💥 FATAL: $tool_name failed"
+            exit 1
+        fi
     fi
 }
 retry_optional() {
@@ -44,7 +49,11 @@ retry_optional() {
     else
         local tool_name="$1"
         shift
-        eval "$*" || echo "⚠️  Warning: $tool_name failed (continuing)"
+        if eval "$*"; then
+            echo "✅ Success: $tool_name"
+        else
+            echo "⚠️  Warning: $tool_name failed (continuing)"
+        fi
     fi
 }
 

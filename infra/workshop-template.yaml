@@ -714,6 +714,23 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      VolumeSize: "50"
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
+            - ","
+            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeIdeSecurityGroup5C503C8A
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeIdeInternalSecurityGroupD5D3B421
+                - GroupId
       ImageId:
         Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
       UserData:
@@ -856,23 +873,6 @@ Resources:
         Fn::GetAtt:
           - IdeIdeInstanceProfile8BD997EA
           - Arn
-      VolumeSize: "50"
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
-            - ","
-            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeIdeSecurityGroup5C503C8A
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeIdeInternalSecurityGroupD5D3B421
-                - GroupId
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1242,12 +1242,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: base
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: new-ws-infra
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: base
           - Name: STACK_NAME
             Type: PLAINTEXT
             Value:
@@ -1495,13 +1495,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ContentHash: "1765694156364"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
+      ContentHash: "1765694864050"
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D
