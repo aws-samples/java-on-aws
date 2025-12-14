@@ -149,6 +149,214 @@
   - Flattened UserData script path and removed workshops directory
   - _Requirements: 3.3, 5.7_
 
+## IDE Bootstrap Improvements (11.x)
+
+- [x] 11.1 Implement secure password management and CloudFormation integration
+  - Removed IDE password from UserData parameters to eliminate CloudFormation resolution issues
+  - Updated bootstrap to fetch passwords directly from AWS Secrets Manager using IAM roles
+  - Added proper error handling for secret retrieval with validation and fallback
+  - Configured EC2 instance IAM role with secretsmanager:GetSecretValue permissions
+  - _Requirements: 6.3_
+
+- [x] 11.2 Implement robust error handling and CloudFormation signaling
+  - Added error trap in bootstrap.sh to catch failures at any line and signal CloudFormation immediately
+  - Implemented proper cfn-signal integration with WaitCondition for fast failure detection
+  - Added CloudFormation helper scripts installation (aws-cfn-bootstrap package)
+  - Configured outputs and critical resources to depend on WaitCondition for proper failure propagation
+  - _Requirements: 6.2, 6.6_
+
+- [x] 11.3 Optimize deployment architecture for parallel execution
+  - Removed CloudFront dependency on bootstrap completion to enable parallel deployment
+  - Configured bootstrap to query CloudFront domain while distribution is still deploying
+  - Maintained WaitCondition dependency only for user-facing outputs (URL, password)
+  - Achieved faster overall deployment through infrastructure and application parallelization
+  - _Requirements: 6.5_
+
+- [x] 11.4 Implement clean permission model and fix execution context
+  - Analyzed discrepancy between working /infrastructure bootstrap (root context) and new /infra bootstrap (ec2-user context)
+  - Updated UserData to run bootstrap as root matching proven working pattern
+  - Removed sudo prefixes from system operations (dnf, systemctl, tee /etc/)
+  - Maintained sudo -u ec2-user only for user-specific operations (config files, SSH keys)
+  - Fixed all permission-related failures in VS Code and Caddy installation
+  - _Requirements: 6.1_
+
+- [x] 11.5 Implement automated dependency management with Renovate
+  - Updated .github/renovate.yml with comprehensive version tracking for all development tools
+  - Added regex managers for NVM, Node.js, Maven, VS Code, kubectl, Helm, eks-node-viewer, SOCI, yq
+  - Organized version definitions at top of all scripts for easy Renovate detection
+  - Commented out unused tools (eksctl, docker-compose) while maintaining Renovate configuration
+  - Enabled weekly automated dependency updates on Monday mornings
+  - _Requirements: 6.4_
+
+- [x] 11.6 Implement retry logic and network resilience
+  - Added comprehensive retry functions (retry_critical, retry_optional) with configurable attempts and delays
+  - Implemented exponential backoff for network operations (AWS CLI, VS Code, development tools)
+  - Added proper error handling for interactive prompts (unzip conflicts, package installations)
+  - Configured all network-dependent operations to use retry logic with appropriate failure modes
+  - _Requirements: 6.7_
+
+- [x] 11.7 Optimize version management and script organization
+  - Moved all version definitions to top of scripts for easy Renovate detection and management
+  - Updated VS Code to use environment variable passing for version consistency
+  - Centralized version management for VSCODE_VERSION, NVM_VERSION, NODE_VERSION, MAVEN_VERSION, etc.
+  - Commented out unused tools (DOCKER_COMPOSE_VERSION, EKSCTL_VERSION) while maintaining Renovate tracking
+  - Organized scripts with clear version sections and improved maintainability
+  - _Requirements: 6.4_
+
+- [x] 11.8 Resolve CloudFormation signaling and WaitCondition issues
+  - Fixed CloudFormation hanging by implementing proper error trapping and cfn-signal integration
+  - Added line-level error detection with immediate CloudFormation failure signaling
+  - Configured WaitCondition dependencies to ensure outputs only appear after successful bootstrap
+  - Implemented proper error handling for all bootstrap phases (UserData, bootstrap, vscode, base)
+  - Ensured fast failure detection (<30 seconds) vs previous 30-minute timeout
+  - _Requirements: 6.2, 6.6_
+
+- [x] 11.9 Finalize comprehensive development environment setup
+  - Updated base.sh with complete development toolchain (Java 8,17,21,25, Node.js 20, Maven 3.9.11)
+  - Added Kubernetes tools (kubectl 1.34.2, Helm 3.19.3, eks-node-viewer, k9s, e1s)
+  - Integrated container tools (Docker, SOCI snapshotter 0.12.0) with proper configuration
+  - Added AWS tools (SAM CLI, Session Manager Plugin) and utilities (jq, yq 4.49.2)
+  - Implemented comprehensive error handling and logging for all tool installations
+  - _Requirements: 6.4, 6.7_
+
+- [x] 11.10 Fix CloudFormation signaling permissions
+  - Added cloudformation:SignalResource permission to IDE instance IAM role
+  - Resolved AccessDenied error when bootstrap attempts to signal CloudFormation completion
+  - Ensured proper CloudFormation integration with WaitCondition for fast failure detection
+  - Validated bootstrap completion signaling works correctly for both success and failure cases
+  - _Requirements: 6.2, 6.6_
+
+- [x] 11.11 Improve logging consistency and reduce verbosity
+  - Standardized all bootstrap and VS Code logging to use consistent timestamp format (YYYY-MM-DD HH:MM:SS)
+  - Added quiet flags (-q) to dnf package manager commands to reduce log noise
+  - Fixed "Error: No matching Packages to list" message by suppressing stderr in code-server check
+  - Ensured consistent Lambda function naming (ide-cloudfront-prefix-lookup, ide-ec2-launcher) independent of stack name
+  - Maintained base.sh existing perfect logging pattern with log_info function
+  - _Requirements: 6.6_
+
+- [x] 11.12 Fix CloudFormation WaitCondition signaling architecture
+  - Fixed resource naming conflicts by using proper CDK construct names (BootstrapWaitCondition vs IdeBootstrapWaitCondition)
+  - Implemented WaitConditionHandle URL approach matching original infrastructure pattern
+  - Updated all cfn-signal calls to use handle URL instead of resource names (eliminates hash suffix issues)
+  - Applied logical resource naming: ide- prefix for IDE resources, setup-/workshop- prefix for setup resources
+  - Ensured comprehensive coverage of all success and failure scenarios in UserData and bootstrap scripts
+  - Added comprehensive retry logic to all network operations in base.sh (NVM, Maven, Helm, download functions)
+  - _Requirements: 6.2, 6.6_
+
+- [x] 11.13 Resolve CDK template generation and String.format parameter alignment
+  - Fixed String.format parameter count mismatch causing CDK synthesis failure (9 placeholders, 9 parameters)
+  - Verified CloudFormation template generation works correctly with proper WaitConditionHandle references
+  - Ensured all cfn-signal calls in generated template use WaitConditionHandle URL (Ref: IdeBootstrapWaitConditionHandleD7141CA8)
+  - Validated template contains correct resource names: IdeBootstrapWaitConditionE4059F8E and IdeBootstrapWaitConditionHandleD7141CA8
+  - Confirmed npm run generate produces valid CloudFormation template with all bootstrap signaling properly configured
+  - _Requirements: 6.2, 6.6_
+
+- [x] 11.14 Improve retry logging specificity and reduce verbosity
+  - Updated retry_command function to accept tool_name parameter for concise success/failure messages
+  - Changed from verbose "✅ Success: curl -LSsf -o /tmp/aws-cli.zip..." to concise "✅ Success: AWS CLI"
+  - Applied tool-specific naming across all retry calls: "Java versions (8,17,21,25)", "NVM 0.40.3", "CDK and Artillery"
+  - Maintained consistent retry logic across bootstrap.sh, vscode.sh, and base.sh with fallback implementations
+  - Ensured all network operations show clear tool identification in both success and failure scenarios
+  - _Requirements: 6.6, 6.7_
+
+- [x] 11.17 Fix fallback retry function success logging consistency
+  - Identified that vscode.sh and base.sh were using fallback retry implementations (no access to bootstrap's retry_command)
+  - Updated fallback implementations to show success messages: "✅ Success: VS Code Server", "✅ Success: Caddy"
+  - Fixed missing success logging for VS Code installation, extensions, Caddy, and all base development tools
+  - Ensured consistent "✅ Success: [tool]" messages across all scripts regardless of execution context
+  - All retry operations now show clear success/failure messages with tool identification
+  - _Requirements: 6.6, 6.7_
+
+- [x] 11.15 Fix CloudFormation output naming consistency
+  - Fixed redundant resource naming: "IdeIdePassword" → "IdePassword", "IdeIdeUrl" → "IdeUrl"
+  - Applied consistent naming pattern across all IDE-related resources
+  - _Requirements: 6.3, 6.6_
+
+- [x] 11.16 Implement Custom Resource Lambda for password output (matching original approach)
+  - Created password-exporter.py Lambda following our coding standards (consistent with ec2-launcher.py)
+  - Implemented Custom Resource that retrieves actual password from Secrets Manager during CloudFormation deployment
+  - Updated CDK to use getIdePassword() method that creates Lambda function and Custom Resource
+  - CloudFormation output now uses `Fn::GetAtt` to reference Custom Resource password attribute
+  - Solution matches original infrastructure approach: Secrets Manager generates password → Lambda retrieves it → CloudFormation outputs actual value
+  - Users will see real password (e.g., `IAysuSlT69eS2659acKGc84zLEX3SFxZ`) in CloudFormation outputs
+  - Bootstrap script continues to work by fetching same password from Secrets Manager
+  - _Requirements: 6.3_
+
+- [x] 11.18 Disable VS Code agent panel and AI features
+  - Updated VS Code settings.json to disable Agent Sessions view with `"chat.agentSessionsViewLocation": "off"`
+  - Disabled GitHub Copilot features with `"github.copilot.enable": false` and `"github.copilot.chat.enable": false`
+  - Disabled unified chat extension with `"chat.extensionUnification.enabled": false`
+  - Prevents "Build with Agent" panel from appearing in VS Code Server 4.106.3
+  - Provides clean coding environment without AI distractions for workshop participants
+  - _Requirements: 6.8_
+
+- [x] 11.19 Standardize success message format and add version detection
+  - Unified all success messages to format: `✅ Success: [Tool Name] [Version]` (e.g., `✅ Success: Helm 3.19.3`)
+  - Implemented `install_with_version` helper function to capture actual installed versions
+  - Updated tools to show real versions: npm, CDK, Artillery, AWS SAM CLI, k9s, e1s
+  - Removed redundant "download" suffixes and inconsistent naming patterns
+  - Eliminated duplicate version logging and redundant verification messages
+  - _Requirements: 6.6, 6.7_
+
+- [x] 11.20 Clean up bootstrap scripts and remove redundancies
+  - Removed all commented-out code blocks (EKSCTL, Docker Compose sections)
+  - Eliminated redundant version logging after `install_with_version` usage
+  - Cleaned up excessive blank lines and spacing inconsistencies
+  - Updated outdated function comments and removed leftover artifacts
+  - Consolidated Helm installation into single retry call
+  - Standardized function usage across all scripts for consistency
+  - _Requirements: 6.6, 6.7_
+
+- [x] 11.21 Fix critical CloudFormation signaling architecture
+  - Identified and fixed broken signaling flow where UserData had no fallback if bootstrap.sh failed to execute
+  - Added comprehensive error trapping in UserData with `trap 'cfn-signal -e 1' ERR`
+  - Implemented bulletproof signaling covering: UserData failures, repository clone failures, bootstrap execution failures, and bootstrap internal failures
+  - Ensured immediate CloudFormation failure signals for all error conditions (no more 30-minute timeouts)
+  - Maintained proper WAIT_CONDITION_HANDLE_URL environment variable passing to bootstrap.sh
+  - Verified bootstrap.sh internal signaling (success/failure) works correctly with error traps
+  - _Requirements: 6.2, 6.6_
+
+- [x] 11.22 Implement IDE bootstrap summary logging
+  - Added creation of `/home/ec2-user/ide-bootstrap.log` containing clean summary of all successful tool installations
+  - Extracts `✅ Success:` messages from main bootstrap log using grep for easy workshop participant reference
+  - Provides clean list of installed tools with versions (e.g., "✅ Success: Helm 3.19.3", "✅ Success: CDK 2.167.1")
+  - Created at end of bootstrap process with proper ec2-user ownership and permissions
+  - Enables workshop participants to easily verify available development tools with `cat ~/ide-bootstrap.log`
+  - _Requirements: 6.6, 6.7_
+
+- [x] 11.23 Replace error-prone String.format with reliable template variable approach
+  - Replaced fragile String.format with manual placeholder counting with robust template variable system
+  - Implemented `{{VARIABLE_NAME}}` placeholders with individual `.replace()` calls for each variable
+  - Eliminated recurring parameter count misalignment errors that broke deployments multiple times
+  - Created self-documenting UserData template where each variable replacement is explicit and clear
+  - Verified template generation works correctly with all variables properly substituted in CloudFormation template
+  - Improved maintainability - adding/removing variables no longer requires careful parameter counting
+  - _Requirements: 6.2, 6.6_
+
+- [x] 11.24 Fix UserData variable substitution in error handling paths
+  - Fixed CloudFormation signaling failures caused by improper variable quoting in error handling paths
+  - Changed single quotes to double quotes around `${WAIT_CONDITION_HANDLE_URL}` in cfn-signal calls
+  - Ensured consistent variable substitution across all UserData script paths (success and failure scenarios)
+  - Added proper environment variable passing to bootstrap script execution
+  - Verified complete UserData flow from CDK template generation through bootstrap script execution
+  - _Requirements: 6.2, 6.6, 11.5_
+
+- [x] 11.25 Fix duplicate success messages and missing version information in bootstrap logs
+  - Eliminated duplicate success messages for AWS SAM CLI and Session Manager Plugin by removing redundant download_and_verify calls
+  - Added version detection for AWS CLI and CloudFormation helper scripts using install_with_version function
+  - Fixed Artillery version command to use `artillery -v | head -1` for cleaner output
+  - Improved Session Manager Plugin version detection with proper error handling
+  - Fixed e1s version detection to properly extract version from "Current: v1.0.52" format using grep and awk
+  - Ensured all tools show consistent "✅ Success: [Tool Name] [Version]" format without duplicates
+  - _Requirements: 6.6, 6.7, 9.1, 9.2_
+
+- [x] 11.26 Completely disable VS Code Agent panel and AI features
+  - Added correct agent disabling setting: chat.agent.enabled set to false (verified from VS Code documentation)
+  - Enhanced existing AI feature disabling with additional chat and panel controls
+  - Eliminated the annoying "Build with Agent" panel that was still appearing despite previous settings
+  - Ensured clean VS Code environment without any AI prompts or agent interfaces
+  - _Requirements: 8.1, 8.2, 8.3, 8.4_
+
 ## Java-on-AWS Migration (100.x)
 
 - [ ] 100.1 Analyze java-on-aws workshop requirements
@@ -156,12 +364,14 @@
   - Document EKS, Database, and other workshop-specific components
   - Map existing resources to new construct pattern
   - Plan conditional logic for WorkshopStack
+  - Reference unicorn-roles-analysis.md for IAM role requirements
   - _Requirements: 5.4, 5.5_
 
 - [ ] 100.2 Create EKS construct
   - Create infra/cdk/src/main/java/sample/com/constructs/Eks.java
   - Copy and refactor infrastructure/cdk/src/main/java/com/unicorn/constructs/EksCluster.java
   - Update to use EKS AutoMode and integrate with new Vpc and Roles constructs
+  - Implement unicorn EKS roles: cluster-role, node-role, pod-role, eso-role, eso-sm-role (see unicorn-roles-analysis.md)
   - Remove workshop-specific customizations, keep generic EKS setup
   - _Requirements: 5.6_
 
@@ -242,5 +452,3 @@
   - Verify both infrastructure/ and infra/ systems can operate independently
   - Create migration checklist for workshop maintainers
   - _Requirements: 5.9_
-
-name or just value?

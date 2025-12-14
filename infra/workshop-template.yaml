@@ -714,10 +714,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeIdeInstanceProfile8BD997EA
-          - Arn
       InstanceName: ide
       InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       UserData:
@@ -876,6 +872,10 @@ Resources:
             - ","
             - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
       VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeIdeInstanceProfile8BD997EA
+          - Arn
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1498,7 +1498,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ContentHash: "1765701300529"
+      ContentHash: "1765701341165"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
