@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-# Ensure we always signal CloudFormation, even on failure
-trap 'echo "Bootstrap failed at line $LINENO"; /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION" 2>/dev/null || true; exit 1' ERR
-
 # Full bootstrap script - called by minimal UserData
 # Parameters: GIT_BRANCH STACK_NAME TEMPLATE_TYPE
 
@@ -59,7 +56,7 @@ echo "Installing jq (required for secret parsing)..."
 sudo dnf install -y jq
 
 echo "Installing AWS CLI..."
-retry_critical "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && unzip -q -d /tmp /tmp/aws-cli.zip && /tmp/aws/install --update && rm -rf /tmp/aws*"
+retry_critical "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && rm -rf /tmp/aws && unzip -q -d /tmp /tmp/aws-cli.zip && sudo /tmp/aws/install --update && rm -rf /tmp/aws*"
 
 echo "Fetching IDE password from Secrets Manager..."
 IDE_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "ide-password" --query SecretString --output text | jq -r .password)
@@ -73,6 +70,10 @@ echo "Setting profile variables..."
 # Set some useful variables
 export TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F\" '{print $4}')
+
+# Now that we have AWS_REGION, set up error trap for CloudFormation signaling
+trap 'echo "Bootstrap failed at line $LINENO"; /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION" 2>/dev/null || true; exit 1' ERR
+
 export EC2_PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/local-ipv4)
 export EC2_DOMAIN=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/public-hostname)
 export EC2_URL="http://$EC2_DOMAIN"
