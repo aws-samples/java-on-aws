@@ -20,44 +20,21 @@ log_info "Region: $REGION, Account: $ACCOUNT_ID"
 log_info "Waiting for EKS cluster to be ready..."
 wait_for_eks_cluster "$CLUSTER_NAME"
 
-# Update kubeconfig
+# Update kubeconfig with infinite retry (like original)
 log_info "Updating kubeconfig for cluster $CLUSTER_NAME..."
-retry_count=0
-max_retries=5
-while [ $retry_count -lt $max_retries ]; do
-    if aws eks --region "$REGION" update-kubeconfig --name "$CLUSTER_NAME"; then
-        log_success "Successfully updated kubeconfig"
-        break
-    else
-        retry_count=$((retry_count + 1))
-        log_warning "Failed to update kubeconfig (attempt $retry_count/$max_retries). Retrying in 10 seconds..."
-        sleep 10
-    fi
+while ! aws eks --region "$REGION" update-kubeconfig --name "$CLUSTER_NAME"; do
+    log_warning "Failed to update kubeconfig. Retrying in 10 seconds..."
+    sleep 10
 done
+log_success "Successfully updated kubeconfig"
 
-if [ $retry_count -eq $max_retries ]; then
-    log_error "Failed to update kubeconfig after $max_retries attempts"
-    exit 1
-fi
-
-# Verify kubectl connectivity
+# Verify kubectl connectivity with infinite retry (like original)
 log_info "Verifying kubectl connectivity..."
-retry_count=0
-while [ $retry_count -lt $max_retries ]; do
-    if kubectl get ns >/dev/null 2>&1; then
-        log_success "kubectl connectivity verified"
-        break
-    else
-        retry_count=$((retry_count + 1))
-        log_warning "kubectl connectivity failed (attempt $retry_count/$max_retries). Retrying in 10 seconds..."
-        sleep 10
-    fi
+while ! kubectl get ns >/dev/null 2>&1; do
+    log_warning "kubectl connectivity failed. Retrying in 10 seconds..."
+    sleep 10
 done
-
-if [ $retry_count -eq $max_retries ]; then
-    log_error "kubectl connectivity failed after $max_retries attempts"
-    exit 1
-fi
+log_success "kubectl connectivity verified"
 
 # Deploy GP3 StorageClass (encrypted, default)
 log_info "Deploying GP3 StorageClass..."

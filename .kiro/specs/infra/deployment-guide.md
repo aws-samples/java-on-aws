@@ -13,7 +13,7 @@ aws cloudformation deploy \
   --template-file cfn/java-on-aws-stack.yaml \
   --stack-name workshop-stack \
   --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
-  --s3-bucket workshop-cfn-templates-1765640257
+  --s3-bucket workshop-cfn-templates-192330716364
 ```
 
 ## Architecture Fix Applied

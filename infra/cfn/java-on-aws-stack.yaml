@@ -734,6 +734,11 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeIdeInstanceProfile8BD997EA
+          - Arn
+      VolumeSize: "50"
       SubnetIds:
         Fn::Join:
           - ""
@@ -887,11 +892,6 @@ Resources:
                 fi
       InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeIdeInstanceProfile8BD997EA
-          - Arn
-      VolumeSize: "50"
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1509,13 +1509,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
-      ContentHash: "1765715399417"
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1765718860840"
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D
@@ -1552,11 +1552,9 @@ Resources:
       GroupDescription: WorkshopStack/Database/DatabaseSG
       GroupName: workshop-db-sg
       SecurityGroupEgress:
-        - CidrIp: 255.255.255.255/32
-          Description: Disallow all traffic
-          FromPort: 252
-          IpProtocol: icmp
-          ToPort: 86
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
       SecurityGroupIngress:
         - CidrIp: 10.0.0.0/16
           Description: Allow Database Traffic from local network

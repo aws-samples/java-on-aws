@@ -58,7 +58,7 @@ public class Database extends Construct {
         // Create database security group
         databaseSecurityGroup = SecurityGroup.Builder.create(this, "DatabaseSG")
             .securityGroupName("workshop-db-sg")
-            .allowAllOutbound(false)
+            .allowAllOutbound(true)
             .vpc(vpc)
             .build();
 
