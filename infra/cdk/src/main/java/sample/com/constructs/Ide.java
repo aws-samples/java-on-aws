@@ -332,8 +332,8 @@ public class Ide extends Construct {
                 sudo -u ec2-user chmod +x /home/ec2-user/java-on-aws/infra/scripts/ide/*.sh
 
                 echo "Executing full bootstrap script..."
-                # Run bootstrap script as ec2-user from their home directory
-                if sudo -u ec2-user bash -c "cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
+                # Run bootstrap script as root from the cloned directory
+                if bash -c "cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
                     echo "Bootstrap completed successfully"
                     /opt/aws/bin/cfn-signal -e 0 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
                 else

@@ -50,13 +50,16 @@ retry_critical() { retry_command 5 5 "FAIL" "$@"; }
 retry_optional() { retry_command 5 5 "LOG" "$@"; }
 
 echo "Updating system packages..."
-sudo dnf update -y
+dnf update -y
 
 echo "Installing jq (required for secret parsing)..."
-sudo dnf install -y jq
+dnf install -y jq
 
 echo "Installing AWS CLI..."
-retry_critical "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && rm -rf /tmp/aws && unzip -q -d /tmp /tmp/aws-cli.zip && sudo /tmp/aws/install --update && rm -rf /tmp/aws*"
+retry_critical "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && rm -rf /tmp/aws && unzip -q -d /tmp /tmp/aws-cli.zip && /tmp/aws/install --update && rm -rf /tmp/aws*"
+
+echo "Installing CloudFormation helper scripts..."
+retry_critical "dnf install -y aws-cfn-bootstrap"
 
 echo "Fetching IDE password from Secrets Manager..."
 IDE_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "ide-password" --query SecretString --output text | jq -r .password)
@@ -85,7 +88,7 @@ if ! IDE_DOMAIN=$(aws cloudfront list-distributions --query "DistributionList.It
 fi
 export IDE_DOMAIN
 
-sudo tee /etc/profile.d/workshop.sh <<EOF
+tee /etc/profile.d/workshop.sh <<EOF
 export AWS_REGION="$AWS_REGION"
 export AWS_DEFAULT_REGION="$AWS_REGION"
 export EC2_PRIVATE_IP="$EC2_PRIVATE_IP"
@@ -101,11 +104,11 @@ EOF
 
 source /etc/profile.d/workshop.sh
 
-echo "export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)" | sudo tee -a /etc/profile.d/workshop.sh
+echo "export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)" | tee -a /etc/profile.d/workshop.sh
 source /etc/profile.d/workshop.sh
 
 echo "Setting PS1..."
-sudo tee /etc/profile.d/custom_prompt.sh <<EOF
+tee /etc/profile.d/custom_prompt.sh <<EOF
 #!/bin/sh
 export PROMPT_COMMAND='export PS1="\u:\w:$ "'
 EOF

@@ -824,8 +824,8 @@ Resources:
                     sudo -u ec2-user chmod +x /home/ec2-user/java-on-aws/infra/scripts/ide/*.sh
 
                     echo "Executing full bootstrap script..."
-                    # Run bootstrap script as ec2-user from their home directory
-                    if sudo -u ec2-user bash -c "cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
+                    # Run bootstrap script as root from the cloned directory
+                    if bash -c "cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
                         echo "Bootstrap completed successfully"
                         /opt/aws/bin/cfn-signal -e 0 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
                     else
@@ -1371,13 +1371,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ContentHash: "1765686098739"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1765687186152"
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D
