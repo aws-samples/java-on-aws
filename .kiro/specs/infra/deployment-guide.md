@@ -8,12 +8,12 @@ TEMPLATE_TYPE=java-on-aws npm run generate
 
 ## Deploy Stack
 ```bash
+# Deploy stack (uses existing S3 bucket for large templates)
 aws cloudformation deploy \
   --template-file cfn/java-on-aws-stack.yaml \
   --stack-name workshop-stack \
-  --capabilities CAPABILITY_IAM \
-  --parameter-overrides \
-    ParameterKey=ParameterName,ParameterValue=Value
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+  --s3-bucket workshop-cfn-templates-1765640257
 ```
 
 ## Test & Debug

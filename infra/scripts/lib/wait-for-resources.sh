@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Resource readiness checking utilities
-source "$(dirname "$0")/common.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 # Wait for CloudFormation stack to be in CREATE_COMPLETE or UPDATE_COMPLETE state
 wait_for_stack() {
