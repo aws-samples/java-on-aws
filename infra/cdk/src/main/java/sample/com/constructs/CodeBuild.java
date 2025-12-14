@@ -131,12 +131,12 @@ public class CodeBuild extends Construct {
 
         // Create start build Lambda function
         var startLambda = new Lambda(this, "StartLambda",
-            "/lambda/codebuild-start.py", "setup-codebuild-start", Duration.minutes(2), lambdaRole);
+            "/lambda/codebuild-start.py", "workshop-codebuild-start", Duration.minutes(2), lambdaRole);
         Function startBuildFunction = startLambda.getFunction();
 
         // Create report build Lambda function
         var reportLambda = new Lambda(this, "ReportLambda",
-            "/lambda/codebuild-report.py", "setup-codebuild-report", Duration.minutes(2), lambdaRole);
+            "/lambda/codebuild-report.py", "workshop-codebuild-report", Duration.minutes(2), lambdaRole);
         Function reportBuildFunction = reportLambda.getFunction();
 
         // Create EventBridge rule for build completion

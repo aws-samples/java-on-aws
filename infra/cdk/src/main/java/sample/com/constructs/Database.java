@@ -114,7 +114,7 @@ public class Database extends Construct {
             .code(Code.fromInline(loadFile("/lambda/database-setup.py")))
             .handler("index.lambda_handler")
             .runtime(Runtime.PYTHON_3_13)
-            .functionName("workshop-db-setup")
+            .functionName("workshop-database-setup")
             .timeout(Duration.minutes(3))
             .vpc(vpc)
             .securityGroups(List.of(databaseSecurityGroup))

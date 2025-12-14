@@ -102,6 +102,32 @@ All CDK constructs follow a consistent naming pattern to ensure clean CloudForma
 
 This convention eliminates CloudFormation logical ID duplication and ensures maintainable resource naming.
 
+#### AWS Resource Naming Convention
+
+All AWS resources follow a consistent "workshop-" prefix pattern for operational clarity:
+
+**Lambda Functions:**
+- `workshop-codebuild-start` - CodeBuild start trigger
+- `workshop-codebuild-report` - CodeBuild completion handler
+- `workshop-ide-prefixlist` - CloudFront prefix list lookup
+- `workshop-ide-launcher` - EC2 instance launcher with failover
+- `workshop-ide-password` - Password retrieval from Secrets Manager
+- `workshop-database-setup` - Database schema initialization
+
+**CodeBuild Projects:**
+- `workshop-setup` - Workshop environment setup and service-linked role creation
+
+**CloudWatch Log Groups:**
+- `workshop-ide-bootstrap-{timestamp}` - IDE bootstrap logs with unique timestamps
+- `/aws/lambda/workshop-*` - All Lambda function logs grouped by prefix
+- `/aws/codebuild/workshop-setup` - CodeBuild execution logs
+
+This naming convention enables:
+- **Easy filtering** in AWS Console and CLI using `workshop-*` patterns
+- **Operational management** through consistent resource identification
+- **Cost tracking** and monitoring of workshop-related resources
+- **Automated cleanup** and maintenance scripts
+
 ### Lambda Function Architecture
 
 #### Design Rationale

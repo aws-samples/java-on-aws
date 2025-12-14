@@ -11,7 +11,7 @@ export TEMPLATE_TYPE="${TEMPLATE_TYPE}"
 export WAIT_CONDITION_HANDLE_URL="${WAIT_CONDITION_HANDLE_URL}"
 
 # Setup logging
-LOG_GROUP_NAME="ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
+LOG_GROUP_NAME="workshop-ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
 echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
 
 # Install CloudWatch agent for logging

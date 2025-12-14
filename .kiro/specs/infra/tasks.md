@@ -373,6 +373,16 @@
   - Applied consistent naming convention: construct name + resource type (e.g., Ide + PasswordSecret = IdePasswordSecret)
   - _Requirements: 1.1, 5.6_
 
+- [x] 11.28 Implement consistent "workshop-" naming convention for all AWS resources
+  - Updated Lambda function names to use "workshop-" prefix: "setup-codebuild-start" → "workshop-codebuild-start", "ide-ec2-launcher" → "workshop-ide-launcher"
+  - Updated CodeBuild project name: "workshop-codebuild" → "workshop-setup" for consistency
+  - Updated Database Lambda: "workshop-db-setup" → "workshop-database-setup" for clarity
+  - Updated IDE Lambda functions: "ide-cloudfront-prefix-lookup" → "workshop-ide-prefixlist", dynamic password function → "workshop-ide-password"
+  - Updated bootstrap log group: "ide-bootstrap-{timestamp}" → "workshop-ide-bootstrap-{timestamp}" for consistent grouping
+  - Applied universal "workshop-{component}-{function}" naming pattern across all AWS resources
+  - Enabled easy filtering and management of workshop resources in AWS console and CLI
+  - _Requirements: 21.1, 21.2, 21.3, 21.4, 21.5_
+
 ## Java-on-AWS Migration (100.x)
 
 - [x] 100.1 Analyze java-on-aws workshop requirements

@@ -24,6 +24,7 @@ This document specifies the requirements for creating a new AWS workshop infrast
 - **Modular_Scripts**: Architecture where bootstrap functionality is separated into focused scripts (UserData → bootstrap → vscode → base)
 - **CDK_Naming_Convention**: Consistent pattern for CDK construct resource naming that produces clean CloudFormation logical IDs following {ConstructName}{ResourceType} format
 - **EKS_IDE_Integration**: Architecture pattern where EKS cluster shares security groups and IAM roles with IDE environment for seamless kubectl access
+- **Workshop_Naming_Convention**: Consistent resource naming pattern using "workshop-" prefix followed by component and function names for operational clarity and management
 
 ## Requirements
 
@@ -281,4 +282,16 @@ This document specifies the requirements for creating a new AWS workshop infrast
 3. WHEN CloudFormation templates are generated, THE system SHALL produce logical IDs without redundant naming patterns
 4. WHEN EKS cluster integrates with IDE, THE system SHALL share security groups and IAM roles through proper construct interfaces
 5. WHEN construct naming is applied consistently, THE system SHALL ensure all resources follow the same naming convention across VPC, IDE, Database, EKS, and CodeBuild constructs
+
+### Requirement 21
+
+**User Story:** As a workshop developer, I want consistent logging and resource naming with a universal "workshop-" prefix, so that all workshop-related resources are easily identifiable, filterable, and manageable in AWS services.
+
+#### Acceptance Criteria
+
+1. WHEN Lambda functions are created, THE system SHALL use "workshop-" prefix followed by component and function name (e.g., "workshop-ide-launcher", "workshop-database-setup")
+2. WHEN CodeBuild projects are created, THE system SHALL use "workshop-" prefix for project names (e.g., "workshop-setup")
+3. WHEN CloudWatch log groups are created, THE system SHALL use "workshop-" prefix for consistent grouping and filtering
+4. WHEN bootstrap logging is configured, THE system SHALL use "workshop-ide-bootstrap-{timestamp}" pattern for unique log group names
+5. WHEN AWS resources are named, THE system SHALL follow the pattern "workshop-{component}-{function}" for operational consistency
 

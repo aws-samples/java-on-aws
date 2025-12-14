@@ -170,7 +170,7 @@ public class Ide extends Construct {
 
         // Create CloudFront prefix list lookup Lambda function
         var prefixListLookup = new Lambda(this, "PrefixListLookup",
-            "/lambda/cloudfront-prefix-lookup.py", "ide-cloudfront-prefix-lookup", Duration.minutes(3), lambdaRole);
+            "/lambda/cloudfront-prefix-lookup.py", "workshop-ide-prefixlist", Duration.minutes(3), lambdaRole);
         var prefixListFunction = prefixListLookup.getFunction();
 
         // Add EC2 permissions for prefix list lookup
@@ -269,7 +269,7 @@ public class Ide extends Construct {
 
         // Create instance launcher Lambda with multi-AZ and multi-instance-type failover
         var instanceLauncher = new Lambda(this, "InstanceLauncher",
-            "/lambda/ec2-launcher.py", "ide-ec2-launcher", Duration.minutes(5), lambdaRole);
+            "/lambda/ec2-launcher.py", "workshop-ide-launcher", Duration.minutes(5), lambdaRole);
         var instanceLauncherFunction = instanceLauncher.getFunction();
 
         // Create EC2 instance via Custom Resource with intelligent failover
@@ -378,7 +378,7 @@ public class Ide extends Construct {
                 .handler("index.lambda_handler")
                 .runtime(Runtime.PYTHON_3_13)
                 .timeout(Duration.minutes(3))
-                .functionName(instanceName + "-password-exporter")
+                .functionName("workshop-ide-password")
                 .build();
 
             ideSecretsManagerPassword.grantRead(passwordFunction);

@@ -479,7 +479,7 @@ Resources:
                       responseData = {'Error': tb_err}
                   finally:
                       cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
-      FunctionName: ide-cloudfront-prefix-lookup
+      FunctionName: workshop-ide-prefixlist
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
@@ -716,7 +716,7 @@ Resources:
                   responseData = {'Error': tb_err}
 
               cfnresponse.send(event, context, status, responseData, physical_id)
-      FunctionName: ide-ec2-launcher
+      FunctionName: workshop-ide-launcher
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
@@ -734,6 +734,30 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      InstanceName: ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      VolumeSize: "50"
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -759,7 +783,7 @@ Resources:
                 "
 
                 # Setup logging
-                LOG_GROUP_NAME="ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
+                LOG_GROUP_NAME="workshop-ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
                 echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
 
                 # Install CloudWatch agent for logging
@@ -867,30 +891,6 @@ Resources:
                 "
                     exit 1
                 fi
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      InstanceName: ide
       InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
@@ -1062,7 +1062,7 @@ Resources:
                   responseData = {'Error': tb_err}
 
               cfnresponse.send(event, context, status, responseData, physical_id)
-      FunctionName: ide-password-exporter
+      FunctionName: workshop-ide-password
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
@@ -1271,7 +1271,7 @@ Resources:
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
         Type: LINUX_CONTAINER
-      Name: workshop-codebuild
+      Name: workshop-setup
       ServiceRole:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
@@ -1389,7 +1389,7 @@ Resources:
                   responseData = {'Error': tb_err}
 
               cfnresponse.send(event, context, status, responseData, physical_id)
-      FunctionName: setup-codebuild-start
+      FunctionName: workshop-codebuild-start
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
@@ -1455,7 +1455,7 @@ Resources:
                           'error': str(e)
                       })
                   }
-      FunctionName: setup-codebuild-report
+      FunctionName: workshop-codebuild-report
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
@@ -1469,7 +1469,7 @@ Resources:
   CodeBuildCompleteRuleEE9277E8:
     Type: AWS::Events::Rule
     Properties:
-      Description: workshop-codebuild build complete
+      Description: workshop-setup build complete
       EventPattern:
         detail:
           project-name:
@@ -1509,13 +1509,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
-      ContentHash: "1765724686777"
+      ContentHash: "1765725424912"
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1900,7 +1900,7 @@ Resources:
                   responseData = {'Error': tb_err}
               finally:
                   cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
-      FunctionName: workshop-db-setup
+      FunctionName: workshop-database-setup
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
@@ -1930,9 +1930,6 @@ Resources:
         Fn::GetAtt:
           - DatabaseSetupFunction6A2230B7
           - Arn
-      SqlStatements: |-
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -1963,6 +1960,9 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: DatabaseSecret3B817195
+      SqlStatements: |-
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - DatabaseClusterDatabaseWriterF4C0B9A6
       - DatabaseCluster5B53A178
