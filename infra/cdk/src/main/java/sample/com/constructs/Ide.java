@@ -248,7 +248,6 @@ public class Ide extends Construct {
 
             # Configuration from CDK
             GIT_BRANCH="%s"
-            IDE_PASSWORD="%s"
             STACK_NAME="%s"
             AWS_REGION="%s"
             TEMPLATE_TYPE="%s"
@@ -334,7 +333,7 @@ public class Ide extends Construct {
 
                 echo "Executing full bootstrap script..."
                 # Run bootstrap script as ec2-user from their home directory
-                if sudo -u ec2-user bash -c "cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh '$IDE_PASSWORD' '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
+                if sudo -u ec2-user bash -c "cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
                     echo "Bootstrap completed successfully"
                     /opt/aws/bin/cfn-signal -e 0 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
                 else
@@ -349,7 +348,6 @@ public class Ide extends Construct {
             fi
             """,
             gitBranch,
-            ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap(),
             Aws.STACK_NAME,
             Aws.REGION,
             templateType

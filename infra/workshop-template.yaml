@@ -757,10 +757,6 @@ Resources:
 
                 # Configuration from CDK
                 GIT_BRANCH="new-ws-infra"
-                IDE_PASSWORD="{{resolve:secretsmanager:
-              - Ref: IdeIdePasswordSecretF3482811
-              - |-
-                :SecretString:password::}}"
                 STACK_NAME="
               - Ref: AWS::StackName
               - |-
@@ -852,7 +848,7 @@ Resources:
 
                     echo "Executing full bootstrap script..."
                     # Run bootstrap script as ec2-user from their home directory
-                    if sudo -u ec2-user bash -c "cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh '$IDE_PASSWORD' '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
+                    if sudo -u ec2-user bash -c "cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
                         echo "Bootstrap completed successfully"
                         /opt/aws/bin/cfn-signal -e 0 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
                     else
@@ -1381,7 +1377,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
-      ContentHash: "1765683254677"
+      ContentHash: "1765684594106"
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D

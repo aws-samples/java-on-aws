@@ -1,19 +1,19 @@
 #!/bin/bash
 set -e
 
+# Ensure we always signal CloudFormation, even on failure
+trap 'echo "Bootstrap failed at line $LINENO"; /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION" 2>/dev/null || true; exit 1' ERR
+
 # Full bootstrap script - called by minimal UserData
-# Parameters: IDE_PASSWORD GIT_BRANCH STACK_NAME TEMPLATE_TYPE
+# Parameters: GIT_BRANCH STACK_NAME TEMPLATE_TYPE
 
 # Parse parameters
-IDE_PASSWORD="$1"
-GIT_BRANCH="$2"
-STACK_NAME="$3"
-TEMPLATE_TYPE="$4"
+GIT_BRANCH="$1"
+STACK_NAME="$2"
+TEMPLATE_TYPE="$3"
 
 echo "Full bootstrap started at $(date)"
 echo "Parameters: GIT_BRANCH=$GIT_BRANCH, TEMPLATE_TYPE=$TEMPLATE_TYPE"
-
-# CloudWatch logging is already set up by UserData script
 
 # Retry utility function
 # Usage: retry_command <attempts> <delay> <fail_mode> <command...>
@@ -52,8 +52,22 @@ retry_command() {
 retry_critical() { retry_command 5 5 "FAIL" "$@"; }
 retry_optional() { retry_command 5 5 "LOG" "$@"; }
 
-echo "Setting IDE password..."
-export IDE_PASSWORD="$IDE_PASSWORD"
+echo "Updating system packages..."
+dnf update -y
+
+echo "Installing jq (required for secret parsing)..."
+dnf install -y jq
+
+echo "Installing AWS CLI..."
+retry_critical "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && unzip -q -d /tmp /tmp/aws-cli.zip && /tmp/aws/install --update && rm -rf /tmp/aws*"
+
+echo "Fetching IDE password from Secrets Manager..."
+IDE_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "ide-password" --query SecretString --output text | jq -r .password)
+if [ -z "$IDE_PASSWORD" ] || [ "$IDE_PASSWORD" = "null" ]; then
+    echo "ERROR: Failed to retrieve IDE password from Secrets Manager"
+    exit 1
+fi
+export IDE_PASSWORD
 
 echo "Setting profile variables..."
 # Set some useful variables
@@ -70,7 +84,7 @@ if ! IDE_DOMAIN=$(aws cloudfront list-distributions --query "DistributionList.It
 fi
 export IDE_DOMAIN
 
-tee /etc/profile.d/workshop.sh <<EOF
+sudo tee /etc/profile.d/workshop.sh <<EOF
 export AWS_REGION="$AWS_REGION"
 export AWS_DEFAULT_REGION="$AWS_REGION"
 export EC2_PRIVATE_IP="$EC2_PRIVATE_IP"
@@ -86,8 +100,11 @@ EOF
 
 source /etc/profile.d/workshop.sh
 
+echo "export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)" | sudo tee -a /etc/profile.d/workshop.sh
+source /etc/profile.d/workshop.sh
+
 echo "Setting PS1..."
-tee /etc/profile.d/custom_prompt.sh <<EOF
+sudo tee /etc/profile.d/custom_prompt.sh <<EOF
 #!/bin/sh
 export PROMPT_COMMAND='export PS1="\u:\w:$ "'
 EOF
@@ -95,19 +112,7 @@ EOF
 echo "Generating SSH key..."
 sudo -u ec2-user bash -c "ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa -m pem <<< y"
 
-echo "Updating system packages..."
-dnf update -y
 
-echo "Installing AWS CLI..."
-retry_critical "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && unzip -q -d /tmp /tmp/aws-cli.zip && /tmp/aws/install --update && rm -rf /tmp/aws*"
-
-echo "export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)" | sudo tee -a /etc/profile.d/workshop.sh
-source /etc/profile.d/workshop.sh
-
-# Git is already installed by UserData
-
-# Repository is already cloned to /home/ec2-user/workshop-setup by UserData
-# We're running from that directory, so no need to clone again
 echo "Bootstrap script running from: $(pwd)"
 echo "Using git branch: $GIT_BRANCH"
 
@@ -117,12 +122,9 @@ if [ ! -f "infra/scripts/ide/bootstrap.sh" ]; then
     exit 1
 fi
 
-# Scripts are already made executable by UserData
 
-# Run VS Code setup
+
 echo "Running VS Code setup..."
-export VSCODE_EXTENSIONS="$VSCODE_EXTENSIONS"
-export IDE_PASSWORD="$IDE_PASSWORD"
 bash infra/scripts/ide/vscode.sh
 
 echo "Running setup for template type: $TEMPLATE_TYPE"
