@@ -53,10 +53,10 @@ retry_critical() { retry_command 5 5 "FAIL" "$@"; }
 retry_optional() { retry_command 5 5 "LOG" "$@"; }
 
 echo "Updating system packages..."
-dnf update -y
+sudo dnf update -y
 
 echo "Installing jq (required for secret parsing)..."
-dnf install -y jq
+sudo dnf install -y jq
 
 echo "Installing AWS CLI..."
 retry_critical "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && unzip -q -d /tmp /tmp/aws-cli.zip && /tmp/aws/install --update && rm -rf /tmp/aws*"

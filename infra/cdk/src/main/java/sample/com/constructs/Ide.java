@@ -422,18 +422,22 @@ public class Ide extends Construct {
             .build();
         waitCondition.getNode().addDependency(ec2InstanceResource);
 
-        // Outputs
-        CfnOutput.Builder.create(this, "IdeUrl")
+        // CloudFront doesn't need to wait for bootstrap - it's just infrastructure
+
+        // Outputs - these should only be created if bootstrap succeeds
+        var ideUrlOutput = CfnOutput.Builder.create(this, "IdeUrl")
             .value("https://" + distribution.getDistributionDomainName())
             .description("Workshop IDE Url")
             .exportName(instanceName + "-url")
             .build();
+        ideUrlOutput.getNode().addDependency(waitCondition);
 
-        CfnOutput.Builder.create(this, "IdePassword")
+        var idePasswordOutput = CfnOutput.Builder.create(this, "IdePassword")
             .value(ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap())
             .description("Workshop IDE Password")
             .exportName(instanceName + "-password")
             .build();
+        idePasswordOutput.getNode().addDependency(waitCondition);
     }
 
     public SecurityGroup getIdeSecurityGroup() {
