@@ -82,10 +82,10 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing jq (required for secret parsing)
 dnf install -y -q jq
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing AWS CLI..."
-retry_critical "AWS CLI 2.x" "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && rm -rf /tmp/aws && unzip -q -d /tmp /tmp/aws-cli.zip && /tmp/aws/install --update && rm -rf /tmp/aws*"
+install_with_version "AWS CLI" "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && rm -rf /tmp/aws && unzip -q -d /tmp /tmp/aws-cli.zip && /tmp/aws/install --update && rm -rf /tmp/aws*" "aws --version | awk '{print \$1\" \"\$2}'"
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing CloudFormation helper scripts..."
-retry_critical "CloudFormation helper scripts" "dnf install -y aws-cfn-bootstrap"
+install_with_version "CloudFormation helper scripts" "dnf install -y aws-cfn-bootstrap" "rpm -q aws-cfn-bootstrap --queryformat '%{VERSION}'"
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Fetching IDE password from Secrets Manager..."
 IDE_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "ide-password" --query SecretString --output text | jq -r .password)

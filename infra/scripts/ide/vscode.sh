@@ -81,10 +81,9 @@ setup_user_file "/home/ec2-user/.local/share/code-server/User/settings.json" '{
   "task.allowAutomaticTasks": "on",
   "telemetry.telemetryLevel": "off",
   "update.mode": "none",
-  "chat.agentSessionsViewLocation": "off",
   "github.copilot.enable": false,
   "github.copilot.chat.enable": false,
-  "chat.extensionUnification.enabled": false
+  "chat.agent.enabled": false
 }'
 
 echo "Configuring VS Code keybindings..."

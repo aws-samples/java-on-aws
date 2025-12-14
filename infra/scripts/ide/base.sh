@@ -147,7 +147,7 @@ install_nodejs() {
 
     # Install CDK and Artillery separately to get individual versions
     install_with_version "CDK" "npm install -g aws-cdk" "cdk version"
-    install_with_version "Artillery" "npm install -g artillery" "artillery -v"
+    install_with_version "Artillery" "npm install -g artillery" "artillery -v | head -1"
 }
 
 install_nodejs
@@ -173,15 +173,15 @@ install_maven
 # AWS Tools
 install_aws_tools() {
     log_info "Installing AWS SAM CLI..."
-    download_and_verify "https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip" "aws-sam-cli-linux-x86_64.zip" "AWS SAM CLI"
+    curl -sS -L "https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip" -o "aws-sam-cli-linux-x86_64.zip"
 
     unzip -q aws-sam-cli-linux-x86_64.zip -d sam-installation
     install_with_version "AWS SAM CLI" "sudo ./sam-installation/install --update" "/usr/local/bin/sam --version | awk '{print \$4}'"
     rm -rf ./sam-installation/ aws-sam-cli-linux-x86_64.zip
 
     log_info "Installing Session Manager Plugin..."
-    download_and_verify "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" "session-manager-plugin.rpm" "Session Manager Plugin"
-    retry_critical "Session Manager Plugin" "sudo dnf -q install -y session-manager-plugin.rpm"
+    curl -sS -L "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o "session-manager-plugin.rpm"
+    install_with_version "Session Manager Plugin" "sudo dnf -q install -y session-manager-plugin.rpm" "session-manager-plugin --version 2>/dev/null | head -1"
     rm session-manager-plugin.rpm
 }
 
@@ -212,7 +212,7 @@ install_kubernetes_tools() {
     install_with_version "k9s" "curl -sS https://webinstall.dev/k9s | bash" "k9s version --short 2>/dev/null | grep Version | awk '{print \$2}'" "LOG"
 
     log_info "Installing e1s..."
-    install_with_version "e1s" "curl -sL https://raw.githubusercontent.com/keidarcy/e1s-install/master/cloudshell-install.sh | bash" "e1s --version 2>/dev/null | awk '{print \$3}'" "LOG"
+    install_with_version "e1s" "curl -sL https://raw.githubusercontent.com/keidarcy/e1s-install/master/cloudshell-install.sh | bash" "e1s --version 2>/dev/null | grep 'Current:' | awk '{print \$2}'" "LOG"
 }
 
 install_kubernetes_tools
