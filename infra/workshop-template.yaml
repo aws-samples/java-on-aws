@@ -714,7 +714,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      InstanceName: ide
       InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       UserData:
         Fn::Base64:
@@ -745,7 +744,7 @@ Resources:
                 "
 
                 # Setup logging
-                LOG_GROUP_NAME="ide-bootstrap-$(date +%%Y%%m%%d-%%H%%M%%S)"
+                LOG_GROUP_NAME="ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
                 echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
 
                 # Install CloudWatch agent for logging
@@ -831,23 +830,26 @@ Resources:
 
                     echo "Executing full bootstrap script..."
                     # Run bootstrap script as root from the cloned directory
-                    if cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh "$GIT_BRANCH" "$STACK_NAME" "$TEMPLATE_TYPE"; then
+                    if cd /home/ec2-user/java-on-aws && WAIT_CONDITION_HANDLE_URL="
+              - Ref: IdeBootstrapWaitConditionHandleD7141CA8
+              - |-
+                " infra/scripts/ide/bootstrap.sh "$GIT_BRANCH" "$STACK_NAME" "$TEMPLATE_TYPE"; then
                         echo "Bootstrap completed successfully"
                         # Bootstrap script already signaled success
                     else
                         echo "FATAL: Bootstrap script failed"
-                        /opt/aws/bin/cfn-signal -e 1 '
+                        /opt/aws/bin/cfn-signal -e 1 "
               - Ref: IdeBootstrapWaitConditionHandleD7141CA8
               - |-
-                '
+                "
                         exit 1
                     fi
                 else
                     echo "FATAL: Could not clone repository"
-                    /opt/aws/bin/cfn-signal -e 1 '
+                    /opt/aws/bin/cfn-signal -e 1 "
               - Ref: IdeBootstrapWaitConditionHandleD7141CA8
-              - |
-                '
+              - |-
+                "
                     exit 1
                 fi
       ImageId:
@@ -873,6 +875,7 @@ Resources:
         Fn::GetAtt:
           - IdeIdeInstanceProfile8BD997EA
           - Arn
+      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1495,7 +1498,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ContentHash: "1765698307266"
+      ContentHash: "1765699629707"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
