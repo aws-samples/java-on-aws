@@ -83,7 +83,11 @@ setup_user_file "/home/ec2-user/.local/share/code-server/User/settings.json" '{
   "update.mode": "none",
   "github.copilot.enable": false,
   "github.copilot.chat.enable": false,
-  "chat.agent.enabled": false
+  "chat.agent.enabled": false,
+  "chat.commandCenter.enabled": false,
+  "workbench.settings.showAISearchToggle": false,
+  "chat.disableAIFeatures": true,
+  "chat.extensionUnification.enabled": false
 }'
 
 echo "Configuring VS Code keybindings..."

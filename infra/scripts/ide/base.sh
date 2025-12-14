@@ -147,7 +147,7 @@ install_nodejs() {
 
     # Install CDK and Artillery separately to get individual versions
     install_with_version "CDK" "npm install -g aws-cdk" "cdk version"
-    install_with_version "Artillery" "npm install -g artillery" "artillery -v | head -1"
+    install_with_version "Artillery" "npm install -g artillery" "artillery --version | grep 'Artillery:' | awk '{print \$2}'"
 }
 
 install_nodejs

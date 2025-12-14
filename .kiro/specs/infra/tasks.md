@@ -352,8 +352,12 @@
 
 - [x] 11.26 Completely disable VS Code Agent panel and AI features
   - Added correct agent disabling setting: chat.agent.enabled set to false (verified from VS Code documentation)
+  - Added chat.commandCenter.enabled: false to remove Chat menu from VS Code title bar (proven working)
+  - Added workbench.settings.showAISearchToggle: false to disable AI search in settings (proven working)
+  - Added chat.disableAIFeatures: true to disable and hide all built-in AI features provided by GitHub Copilot
+  - Added chat.extensionUnification.enabled: false to disable experimental chat extension unification
   - Enhanced existing AI feature disabling with additional chat and panel controls
-  - Eliminated the annoying "Build with Agent" panel that was still appearing despite previous settings
+  - Eliminated the annoying "Ask about your code" panel that was still appearing despite previous settings
   - Ensured clean VS Code environment without any AI prompts or agent interfaces
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
