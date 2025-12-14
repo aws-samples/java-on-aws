@@ -25,7 +25,7 @@ public class Eks extends Construct {
 
         // Create EKS cluster with Auto Mode (default)
         cluster = Cluster.Builder.create(this, "Cluster")
-            .clusterName("workshop-cluster")
+            .clusterName("workshop-eks")
             .version(KubernetesVersion.V1_34)
             .vpc(props.getVpc())
             .build();
@@ -41,7 +41,7 @@ public class Eks extends Construct {
         // AWS Secrets Store CSI Driver
         Addon.Builder.create(this, "SecretsStoreCsiDriver")
             .cluster(cluster)
-            .addonName("aws-secrets-store-csi-driver")
+            .addonName("aws-secrets-store-csi-driver-provider")
             .build();
 
         // AWS Mountpoint S3 CSI Driver
@@ -66,15 +66,14 @@ public class Eks extends Construct {
                 .build()
         );
 
-        // WSParticipantRole Access Entry
-        String wsParticipantRoleArn = String.format("arn:aws:iam::%s:role/WSParticipantRole", Aws.ACCOUNT_ID);
-
-        AccessEntry.Builder.create(this, "WSParticipantAccessEntry")
-            .cluster(cluster)
-            .principal(wsParticipantRoleArn)
-            .accessEntryType(AccessEntryType.STANDARD)
-            .accessPolicies(List.of(clusterAdminPolicy))
-            .build();
+        // WSParticipantRole Access Entry - TEMPORARILY COMMENTED OUT FOR TESTING
+        // String wsParticipantRoleArn = String.format("arn:aws:iam::%s:role/WSParticipantRole", Aws.ACCOUNT_ID);
+        // AccessEntry.Builder.create(this, "WSParticipantAccessEntry")
+        //     .cluster(cluster)
+        //     .principal(wsParticipantRoleArn)
+        //     .accessEntryType(AccessEntryType.STANDARD)
+        //     .accessPolicies(List.of(clusterAdminPolicy))
+        //     .build();
 
         // IDE Instance Role Access Entry (if provided)
         if (props.getIdeInstanceRole() != null) {

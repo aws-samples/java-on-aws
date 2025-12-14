@@ -184,7 +184,7 @@ This document specifies the requirements for creating a new AWS workshop infrast
 #### Acceptance Criteria
 
 1. WHEN EKS cluster is created, THE system SHALL use the EKS v2 developer preview construct from package "software.amazon.awscdk.services.eks.v2.alpha" for native CloudFormation resource support
-2. WHEN EKS cluster is created, THE system SHALL name it "workshop-cluster" for universal identification across workshop types
+2. WHEN EKS cluster is created, THE system SHALL name it "workshop-eks" for universal identification across workshop types
 3. WHEN EKS cluster is configured, THE system SHALL use version 1.34 for current Kubernetes features and security updates
 4. WHEN EKS cluster deploys, THE system SHALL enable Auto Mode with "system" and "general-purpose" node pools for automatic node management
 5. WHEN EKS cluster networking is configured, THE system SHALL place cluster in private subnets with public and private API access for security and flexibility

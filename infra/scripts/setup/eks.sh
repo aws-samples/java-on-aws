@@ -9,7 +9,7 @@ source "$SCRIPT_DIR/../lib/common.sh"
 source "$SCRIPT_DIR/../lib/wait-for-resources.sh"
 
 # Configuration
-CLUSTER_NAME="workshop-cluster"
+CLUSTER_NAME="workshop-eks"
 REGION=${AWS_REGION:-$(aws configure get region)}
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 

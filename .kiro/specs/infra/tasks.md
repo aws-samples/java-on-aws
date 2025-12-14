@@ -374,7 +374,7 @@
 
 - [ ] 100.2 Create EKS construct using EKS v2 with Auto Mode
   - Create infra/cdk/src/main/java/sample/com/constructs/Eks.java using software.amazon.awscdk.services.eks.v2.alpha
-  - Configure workshop-cluster with Auto Mode, version 1.34, system+general-purpose node pools
+  - Configure workshop-eks with Auto Mode, version 1.34, system+general-purpose node pools
   - Add 3 EKS add-ons: AWS Secrets Store CSI Driver, AWS Mountpoint S3 CSI Driver, EKS Pod Identity Agent
   - Create Access Entry for WSParticipantRole AND IDE instance role with cluster admin permissions
   - Use Access Entries authentication mode instead of ConfigMap-based authentication
@@ -408,7 +408,7 @@
   - Use infra/scripts/lib/common.sh for consistent emoji-based logging and error handling
   - Use infra/scripts/lib/wait-for-resources.sh wait_for_eks_cluster() function for cluster readiness
   - Check cluster status and wait until kubectl get ns works successfully before proceeding
-  - Update kubeconfig and add workshop-cluster to kubectl context
+  - Update kubeconfig and add workshop-eks to kubectl context
   - Deploy GP3 StorageClass (encrypted, default) since EKS Auto Mode doesn't provide encrypted GP3 by default
   - Deploy ALB IngressClass + IngressClassParams for Application Load Balancer integration
   - Create SecretProviderClass for database secrets (workshop-db-secret, workshop-db-password-secret, workshop-db-connection-string)

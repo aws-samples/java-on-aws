@@ -47,16 +47,19 @@ public class WorkshopStack extends Stack {
 
         // Core infrastructure (always created)
         Vpc vpc = new Vpc(this, "Vpc");
-        Ide ide = new Ide(this, "Ide", IdeProps.builder()
+
+        // Create IDE props and get role for parallel resource creation
+        IdeProps ideProps = IdeProps.builder()
             .vpc(vpc.getVpc())
             .gitBranch(gitBranch)
             .templateType(templateType)
-            .build());
+            .build();
+        Ide ide = new Ide(this, "Ide", ideProps);
 
         // CodeBuild for workshop setup
         CodeBuild codeBuild = new CodeBuild(this, "CodeBuild",
             CodeBuild.CodeBuildProps.builder()
-                .projectName("workshop-setup")
+                .projectName("workshop-codebuild")
                 .vpc(vpc.getVpc())
                 .environmentVariables(Map.of(
                     "TEMPLATE_TYPE", templateType,
@@ -73,7 +76,7 @@ public class WorkshopStack extends Stack {
             if (!"java-ai-agents".equals(templateType)) {
                 Eks eks = new Eks(this, "Eks", Eks.EksProps.builder()
                     .vpc(vpc.getVpc())
-                    .ideInstanceRole(ide.getIdeRole())
+                    .ideInstanceRole(ideProps.getIdeRole())
                     .build());
             }
         }

@@ -54,6 +54,7 @@ public class Ide extends Construct {
         private int bootstrapTimeoutMinutes = 30;
         private String gitBranch = "main";
         private String templateType = "base";
+        private Role ideRole;
 
         public static IdeProps.Builder builder() { return new Builder(); }
 
@@ -69,6 +70,7 @@ public class Ide extends Construct {
             public Builder bootstrapTimeoutMinutes(int bootstrapTimeoutMinutes) { props.bootstrapTimeoutMinutes = bootstrapTimeoutMinutes; return this; }
             public Builder gitBranch(String gitBranch) { props.gitBranch = gitBranch; return this; }
             public Builder templateType(String templateType) { props.templateType = templateType; return this; }
+            public Builder ideRole(Role ideRole) { props.ideRole = ideRole; return this; }
             public IdeProps build() { return props; }
         }
 
@@ -82,6 +84,7 @@ public class Ide extends Construct {
         public int getBootstrapTimeoutMinutes() { return bootstrapTimeoutMinutes; }
         public String getGitBranch() { return gitBranch; }
         public String getTemplateType() { return templateType; }
+        public Role getIdeRole() { return ideRole; }
     }
 
     public Ide(final Construct scope, final String id, final IVpc vpc) {
@@ -95,16 +98,19 @@ public class Ide extends Construct {
 
         String instanceName = props.getInstanceName();
 
-        // Create workshop role for IDE instances
-        this.ideRole = Role.Builder.create(this, "IdeRole")
-            .roleName("ide-user")
-            .assumedBy(ServicePrincipal.Builder.create("ec2.amazonaws.com").build())
-            .managedPolicies(List.of(
-                ManagedPolicy.fromAwsManagedPolicyName("ReadOnlyAccess"),
-                ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"),
-                ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy")
-            ))
-            .build();
+        // Create workshop role for IDE instances if not provided
+        if (props.getIdeRole() == null) {
+            props.ideRole = Role.Builder.create(this, "IdeRole")
+                .roleName("ide-user")
+                .assumedBy(ServicePrincipal.Builder.create("ec2.amazonaws.com").build())
+                .managedPolicies(List.of(
+                    ManagedPolicy.fromAwsManagedPolicyName("ReadOnlyAccess"),
+                    ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"),
+                    ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy")
+                ))
+                .build();
+        }
+        this.ideRole = props.getIdeRole();
 
         // Add CloudFormation signaling permissions
         PolicyStatement cfnSignalPermissions = PolicyStatement.Builder.create()
@@ -115,7 +121,7 @@ public class Ide extends Construct {
             .resources(List.of("*"))
             .build();
 
-        ideRole.addToPolicy(cfnSignalPermissions);
+        this.ideRole.addToPolicy(cfnSignalPermissions);
 
         // Load additional IAM policy from file
         var policyDocumentJson = loadFile("/iam-policy.json");
@@ -124,7 +130,7 @@ public class Ide extends Construct {
             var policy = ManagedPolicy.Builder.create(this, "WorkshopIdeUserPolicy")
                 .document(policyDocument)
                 .build();
-            ideRole.addManagedPolicy(policy);
+            this.ideRole.addManagedPolicy(policy);
         }
 
         // Create Lambda role for IDE Lambda functions
@@ -210,8 +216,8 @@ public class Ide extends Construct {
 
         // Create instance profile
         var instanceProfile = InstanceProfile.Builder.create(this, "IdeInstanceProfile")
-            .role(ideRole)
-            .instanceProfileName(ideRole.getRoleName())
+            .role(this.ideRole)
+            .instanceProfileName(this.ideRole.getRoleName())
             .build();
 
         // Create Elastic IP
@@ -244,7 +250,7 @@ public class Ide extends Construct {
             .removalPolicy(RemovalPolicy.DESTROY)
             .build();
 
-        ideSecretsManagerPassword.grantRead(ideRole);
+        ideSecretsManagerPassword.grantRead(this.ideRole);
 
         // Create User Data for bootstrap with CloudWatch logging
         var userData = UserData.forLinux();

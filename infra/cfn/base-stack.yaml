@@ -714,7 +714,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      InstanceName: ide
       IamInstanceProfileArn:
         Fn::GetAtt:
           - IdeIdeInstanceProfile8BD997EA
@@ -872,6 +871,7 @@ Resources:
                     exit 1
                 fi
       InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
+      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1251,7 +1251,7 @@ Resources:
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
         Type: LINUX_CONTAINER
-      Name: workshop-setup
+      Name: workshop-codebuild
       ServiceRole:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
@@ -1449,7 +1449,7 @@ Resources:
   CodeBuildBuildCompleteRule06AAF17D:
     Type: AWS::Events::Rule
     Properties:
-      Description: workshop-setup build complete
+      Description: workshop-codebuild build complete
       EventPattern:
         detail:
           project-name:
@@ -1495,7 +1495,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
-      ContentHash: "1765718855273"
+      ContentHash: "1765721378904"
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D

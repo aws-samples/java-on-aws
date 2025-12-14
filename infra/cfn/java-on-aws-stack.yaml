@@ -734,29 +734,19 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeIdeInstanceProfile8BD997EA
-          - Arn
-      VolumeSize: "50"
       SubnetIds:
         Fn::Join:
           - ""
           - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
             - ","
             - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeIdeSecurityGroup5C503C8A
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeIdeInternalSecurityGroupD5D3B421
-                - GroupId
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeIdeInstanceProfile8BD997EA
+          - Arn
+      InstanceName: ide
+      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -890,8 +880,18 @@ Resources:
                 "
                     exit 1
                 fi
-      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
-      InstanceName: ide
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeIdeSecurityGroup5C503C8A
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeIdeInternalSecurityGroupD5D3B421
+                - GroupId
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1261,17 +1261,17 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: new-ws-infra
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-on-aws
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: new-ws-infra
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
         Type: LINUX_CONTAINER
-      Name: workshop-setup
+      Name: workshop-codebuild
       ServiceRole:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
@@ -1469,15 +1469,15 @@ Resources:
   CodeBuildBuildCompleteRule06AAF17D:
     Type: AWS::Events::Rule
     Properties:
-      Description: workshop-setup build complete
+      Description: workshop-codebuild build complete
       EventPattern:
         detail:
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1511,11 +1511,11 @@ Resources:
           - Arn
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1765721384954"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
-      ContentHash: "1765718860840"
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D
@@ -1930,9 +1930,6 @@ Resources:
         Fn::GetAtt:
           - DatabaseDatabaseSetupFunction04FDCEBB
           - Arn
-      SqlStatements: |-
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -1963,6 +1960,9 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: DatabaseDatabaseSecret487264A7
+      SqlStatements: |-
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - DatabaseDatabaseClusterDatabaseWriter0EEAA63C
       - DatabaseDatabaseCluster0C7C993F
@@ -2056,7 +2056,7 @@ Resources:
         ElasticLoadBalancing:
           Enabled: true
         IpFamily: ipv4
-      Name: workshop-cluster
+      Name: workshop-eks
       ResourcesVpcConfig:
         EndpointPrivateAccess: true
         EndpointPublicAccess: true
@@ -2109,7 +2109,7 @@ Resources:
   EksSecretsStoreCsiDriver71D43AE4:
     Type: AWS::EKS::Addon
     Properties:
-      AddonName: aws-secrets-store-csi-driver
+      AddonName: aws-secrets-store-csi-driver-provider
       ClusterName:
         Ref: EksClusterB2BDED5B
   EksMountpointS3CsiDriver883C78F3:
@@ -2124,27 +2124,6 @@ Resources:
       AddonName: eks-pod-identity-agent
       ClusterName:
         Ref: EksClusterB2BDED5B
-  EksWSParticipantAccessEntry684161BF:
-    Type: AWS::EKS::AccessEntry
-    Properties:
-      AccessPolicies:
-        - AccessScope:
-            Type: cluster
-          PolicyArn:
-            Fn::Join:
-              - ""
-              - - "arn:"
-                - Ref: AWS::Partition
-                - :eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
-      ClusterName:
-        Ref: EksClusterB2BDED5B
-      PrincipalArn:
-        Fn::Join:
-          - ""
-          - - "arn:aws:iam::"
-            - Ref: AWS::AccountId
-            - :role/WSParticipantRole
-      Type: STANDARD
   EksIdeInstanceAccessEntry69EA0EE2:
     Type: AWS::EKS::AccessEntry
     Properties:

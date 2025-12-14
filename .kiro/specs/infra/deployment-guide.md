@@ -13,11 +13,12 @@ aws cloudformation deploy \
   --template-file cfn/java-on-aws-stack.yaml \
   --stack-name workshop-stack \
   --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
-  --s3-bucket workshop-cfn-templates-192330716364
+  --s3-bucket workshop-cfn-templates-973079160866
 ```
 
-## Architecture Fix Applied
-**Fixed bootstrap failure rollback issue**: Removed WaitCondition dependencies from critical outputs to match original working architecture. Stack will still fail if bootstrap fails, but will rollback cleanly without orphaned resources.
+## Architecture Fixes Applied
+1. **Fixed bootstrap failure rollback issue**: Removed WaitCondition dependencies from critical outputs to match original working architecture. Stack will still fail if bootstrap fails, but will rollback cleanly without orphaned resources.
+2. **Fixed EKS startup delay**: Refactored role creation to match original architecture - role is created in props and shared between IDE and EKS, eliminating CloudFormation dependency that delayed EKS cluster creation.
 
 ## Test & Debug
 
@@ -43,7 +44,7 @@ aws logs get-log-events \
 ### Check EKS Cluster
 ```bash
 source .env
-aws eks describe-cluster --name workshop-cluster
+aws eks describe-cluster --name workshop-eks
 kubectl get nodes
 kubectl get pods -A
 ```
