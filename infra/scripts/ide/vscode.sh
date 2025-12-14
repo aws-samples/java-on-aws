@@ -59,7 +59,7 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing code-server..."
 codeServer=$(dnf list installed code-server 2>/dev/null | wc -l)
 if [ "$codeServer" -eq "0" ]; then
   # Install as ec2-user with retry logic - pass version as environment variable
-  retry_critical "VS Code Server" "sudo -u ec2-user bash -c 'curl -fsSL https://code-server.dev/install.sh | sh -s -- --version $VSCODE_VERSION'"
+  retry_critical "VS Code Server ${VSCODE_VERSION}" "sudo -u ec2-user bash -c 'curl -fsSL https://code-server.dev/install.sh | sh -s -- --version $VSCODE_VERSION'"
   retry_critical "VS Code Server service" "systemctl enable --now code-server@ec2-user"
 fi
 
@@ -80,7 +80,11 @@ setup_user_file "/home/ec2-user/.local/share/code-server/User/settings.json" '{
   "workbench.startupEditor": "terminal",
   "task.allowAutomaticTasks": "on",
   "telemetry.telemetryLevel": "off",
-  "update.mode": "none"
+  "update.mode": "none",
+  "chat.agentSessionsViewLocation": "off",
+  "github.copilot.enable": false,
+  "github.copilot.chat.enable": false,
+  "chat.extensionUnification.enabled": false
 }'
 
 echo "Configuring VS Code keybindings..."

@@ -305,6 +305,9 @@ public class Ide extends Construct {
 
             echo "UserData started at $(date) - Logging to $LOG_GROUP_NAME"
 
+            # Set up error trap for UserData failures (before bootstrap.sh takes over)
+            trap 'echo "UserData failed at line $LINENO"; /opt/aws/bin/cfn-signal -e 1 "%s" 2>/dev/null || true; exit 1' ERR
+
             # Install git (required for cloning repository)
             echo "Installing git..."
             dnf install -y git
@@ -349,9 +352,9 @@ public class Ide extends Construct {
 
                 echo "Executing full bootstrap script..."
                 # Run bootstrap script as root from the cloned directory
-                if bash -c "cd /home/ec2-user/java-on-aws && WAIT_CONDITION_HANDLE_URL='%s' infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
+                if cd /home/ec2-user/java-on-aws && WAIT_CONDITION_HANDLE_URL='%s' infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'; then
                     echo "Bootstrap completed successfully"
-                    /opt/aws/bin/cfn-signal -e 0 '%s'
+                    # Bootstrap script already signaled success
                 else
                     echo "FATAL: Bootstrap script failed"
                     /opt/aws/bin/cfn-signal -e 1 '%s'

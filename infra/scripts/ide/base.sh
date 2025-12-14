@@ -16,11 +16,9 @@ MAVEN_VERSION="3.9.11"
 # Kubernetes tools
 KUBECTL_VERSION="1.34.2"
 HELM_VERSION="3.19.3"
-# EKSCTL_VERSION="0.220.0"
 EKS_NODE_VIEWER_VERSION="0.7.4"
 
 # Container tools
-# DOCKER_COMPOSE_VERSION="2.40.2"
 SOCI_VERSION="0.12.0"
 
 # Utilities
@@ -57,6 +55,32 @@ retry_optional() {
     fi
 }
 
+# Helper function to install and get version
+install_with_version() {
+    local tool_name="$1"
+    local install_cmd="$2"
+    local version_cmd="$3"
+    local fail_mode="${4:-FAIL}"
+
+    if eval "$install_cmd"; then
+        if [ -n "$version_cmd" ]; then
+            local version=$(eval "$version_cmd" 2>/dev/null | head -1 || echo "unknown")
+            echo "✅ Success: $tool_name $version"
+        else
+            echo "✅ Success: $tool_name"
+        fi
+        return 0
+    else
+        if [ "$fail_mode" = "FAIL" ]; then
+            echo "💥 FATAL: $tool_name failed"
+            exit 1
+        else
+            echo "⚠️  WARNING: $tool_name failed (continuing)"
+            return 1
+        fi
+    fi
+}
+
 # Helper function for consistent logging
 log_info() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
@@ -75,7 +99,7 @@ download_and_verify() {
     local description="$3"
 
     log_info "Downloading $description..."
-    retry_critical "$description download" "wget -q '$url' -O '$output'"
+    retry_critical "$description" "wget -q '$url' -O '$output'"
 }
 
 cd /tmp
@@ -117,14 +141,13 @@ install_nodejs() {
 
     # Install Node.js and tools
     retry_critical "Node.js ${NODE_VERSION}" "nvm install ${NODE_VERSION}"
-    retry_critical "npm (latest)" "nvm install-latest-npm"
-    retry_critical "CDK and Artillery" "npm install -g aws-cdk artillery"
 
-    # Verify installations
-    log_info "Node.js version: $(node -v)"
-    log_info "npm version: $(npm -v)"
-    log_info "CDK version: $(cdk version)"
-    log_info "Artillery version: $(artillery -v)"
+    # Install npm and get version
+    install_with_version "npm" "nvm install-latest-npm" "npm --version"
+
+    # Install CDK and Artillery separately to get individual versions
+    install_with_version "CDK" "npm install -g aws-cdk" "cdk version"
+    install_with_version "Artillery" "npm install -g artillery" "artillery -v"
 }
 
 install_nodejs
@@ -143,8 +166,6 @@ install_maven() {
     echo "export M2_HOME=/usr/lib/maven" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
     echo "export PATH=\${PATH}:\${M2_HOME}/bin" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
     sudo ln -s /usr/lib/maven/bin/mvn /usr/local/bin
-
-    log_info "Maven version: $(mvn --version | head -1)"
 }
 
 install_maven
@@ -155,10 +176,8 @@ install_aws_tools() {
     download_and_verify "https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip" "aws-sam-cli-linux-x86_64.zip" "AWS SAM CLI"
 
     unzip -q aws-sam-cli-linux-x86_64.zip -d sam-installation
-    retry_critical "SAM CLI installation" "sudo ./sam-installation/install --update"
+    install_with_version "AWS SAM CLI" "sudo ./sam-installation/install --update" "/usr/local/bin/sam --version | awk '{print \$4}'"
     rm -rf ./sam-installation/ aws-sam-cli-linux-x86_64.zip
-
-    log_info "SAM CLI version: $(/usr/local/bin/sam --version)"
 
     log_info "Installing Session Manager Plugin..."
     download_and_verify "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" "session-manager-plugin.rpm" "Session Manager Plugin"
@@ -170,7 +189,7 @@ install_aws_tools
 
 install_kubernetes_tools() {
     log_info "Installing kubectl ${KUBECTL_VERSION}..."
-    download_and_verify "https://s3.us-west-2.amazonaws.com/amazon-eks/${KUBECTL_VERSION}/2025-11-13/bin/linux/amd64/kubectl" "kubectl" "kubectl"
+    download_and_verify "https://s3.us-west-2.amazonaws.com/amazon-eks/${KUBECTL_VERSION}/2025-11-13/bin/linux/amd64/kubectl" "kubectl" "kubectl ${KUBECTL_VERSION}"
 
     chmod +x ./kubectl
     mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
@@ -179,31 +198,21 @@ install_kubernetes_tools() {
     echo "alias k=kubectl" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
     echo "complete -F __start_kubectl k" >> ~/.bashrc
 
-    log_info "kubectl version: $(kubectl version --client --short 2>/dev/null || echo 'installed')"
-
-    # log_info "Installing eksctl ${EKSCTL_VERSION}..."
-    # download_and_verify "https://github.com/weaveworks/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_Linux_amd64.tar.gz" "eksctl_Linux_amd64.tar.gz" "eksctl"
-    # tar -xzf eksctl_Linux_amd64.tar.gz -C /tmp && rm eksctl_Linux_amd64.tar.gz
-    # sudo mv /tmp/eksctl /usr/local/bin
-    # log_info "eksctl version: $(eksctl version)"
-
     log_info "Installing Helm ${HELM_VERSION}..."
-    retry_critical "Helm ${HELM_VERSION}" "curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3"
-    chmod 700 get_helm.sh
-    ./get_helm.sh --version v${HELM_VERSION}
+    retry_critical "Helm ${HELM_VERSION}" "curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && chmod 700 get_helm.sh && ./get_helm.sh --version v${HELM_VERSION}"
     helm completion bash >> ~/.bash_completion
-    log_info "Helm version: $(helm version --short)"
 
     log_info "Installing eks-node-viewer ${EKS_NODE_VIEWER_VERSION}..."
-    download_and_verify "https://github.com/awslabs/eks-node-viewer/releases/download/v${EKS_NODE_VIEWER_VERSION}/eks-node-viewer_Linux_x86_64" "eks-node-viewer" "eks-node-viewer"
+    download_and_verify "https://github.com/awslabs/eks-node-viewer/releases/download/v${EKS_NODE_VIEWER_VERSION}/eks-node-viewer_Linux_x86_64" "eks-node-viewer" "eks-node-viewer ${EKS_NODE_VIEWER_VERSION}"
     chmod +x eks-node-viewer
     sudo mv eks-node-viewer /usr/local/bin
 
     log_info "Installing k9s..."
-    retry_optional "k9s" "curl -sS https://webinstall.dev/k9s | bash"
+    export PATH="$HOME/.local/bin:$PATH"  # k9s installs to ~/.local/bin
+    install_with_version "k9s" "curl -sS https://webinstall.dev/k9s | bash" "k9s version --short 2>/dev/null | grep Version | awk '{print \$2}'" "LOG"
 
     log_info "Installing e1s..."
-    retry_optional "e1s" "curl -sL https://raw.githubusercontent.com/keidarcy/e1s-install/master/cloudshell-install.sh | bash"
+    install_with_version "e1s" "curl -sL https://raw.githubusercontent.com/keidarcy/e1s-install/master/cloudshell-install.sh | bash" "e1s --version 2>/dev/null | awk '{print \$3}'" "LOG"
 }
 
 install_kubernetes_tools
@@ -215,15 +224,8 @@ install_container_tools() {
     sudo service docker start
     sudo usermod -aG docker ec2-user
 
-    # log_info "Installing Docker Compose ${DOCKER_COMPOSE_VERSION}..."
-    # DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-    # mkdir -p $DOCKER_CONFIG/cli-plugins
-    # download_and_verify "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-linux-x86_64" "$DOCKER_CONFIG/cli-plugins/docker-compose" "Docker Compose"
-    # chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
-    # log_info "Docker Compose version: $(docker compose version)"
-
     log_info "Installing SOCI snapshotter ${SOCI_VERSION}..."
-    download_and_verify "https://github.com/awslabs/soci-snapshotter/releases/download/v$SOCI_VERSION/soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz" "soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz" "SOCI snapshotter"
+    download_and_verify "https://github.com/awslabs/soci-snapshotter/releases/download/v$SOCI_VERSION/soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz" "soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz" "SOCI snapshotter ${SOCI_VERSION}"
     sudo tar -C /usr/local/bin -xf soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz soci soci-snapshotter-grpc
     rm soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz
 
@@ -246,13 +248,11 @@ install_container_tools
 install_utilities() {
     log_info "Installing jq..."
     sudo dnf install -y -q jq >/dev/null
-    log_info "jq version: $(jq --version)"
 
     log_info "Installing yq ${YQ_VERSION}..."
-    download_and_verify "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64.tar.gz" "yq_linux_amd64.tar.gz" "yq"
+    download_and_verify "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64.tar.gz" "yq_linux_amd64.tar.gz" "yq ${YQ_VERSION}"
     tar xzf yq_linux_amd64.tar.gz && sudo mv yq_linux_amd64 /usr/bin/yq
     rm yq_linux_amd64.tar.gz
-    log_info "yq version: $(yq --version)"
 }
 
 install_utilities

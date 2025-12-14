@@ -45,6 +45,32 @@ retry_command() {
     fi
 }
 
+# Helper function to install and get version
+install_with_version() {
+    local tool_name="$1"
+    local install_cmd="$2"
+    local version_cmd="$3"
+    local fail_mode="${4:-FAIL}"
+
+    if eval "$install_cmd"; then
+        if [ -n "$version_cmd" ]; then
+            local version=$(eval "$version_cmd" 2>/dev/null | head -1 || echo "unknown")
+            echo "✅ Success: $tool_name $version"
+        else
+            echo "✅ Success: $tool_name"
+        fi
+        return 0
+    else
+        if [ "$fail_mode" = "FAIL" ]; then
+            echo "💥 FATAL: $tool_name failed"
+            exit 1
+        else
+            echo "⚠️  WARNING: $tool_name failed (continuing)"
+            return 1
+        fi
+    fi
+}
+
 # Convenience functions for different retry policies
 retry_critical() { retry_command 5 5 "FAIL" "$@"; }
 retry_optional() { retry_command 5 5 "LOG" "$@"; }
@@ -56,7 +82,7 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing jq (required for secret parsing)
 dnf install -y -q jq
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing AWS CLI..."
-retry_critical "AWS CLI" "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && rm -rf /tmp/aws && unzip -q -d /tmp /tmp/aws-cli.zip && /tmp/aws/install --update && rm -rf /tmp/aws*"
+retry_critical "AWS CLI 2.x" "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && rm -rf /tmp/aws && unzip -q -d /tmp /tmp/aws-cli.zip && /tmp/aws/install --update && rm -rf /tmp/aws*"
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing CloudFormation helper scripts..."
 retry_critical "CloudFormation helper scripts" "dnf install -y aws-cfn-bootstrap"
@@ -116,7 +142,6 @@ EOF
 echo "Generating SSH key..."
 sudo -u ec2-user bash -c "ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa -m pem <<< y"
 
-
 echo "Bootstrap script running from: $(pwd)"
 echo "Using git branch: $GIT_BRANCH"
 
@@ -125,8 +150,6 @@ if [ ! -f "infra/scripts/ide/bootstrap.sh" ]; then
     echo "ERROR: Not in the correct repository directory"
     exit 1
 fi
-
-
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Running VS Code setup..."
 bash infra/scripts/ide/vscode.sh

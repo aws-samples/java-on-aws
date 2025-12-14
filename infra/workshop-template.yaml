@@ -714,6 +714,12 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
+      InstanceName: ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeIdeInstanceProfile8BD997EA
+          - Arn
       VolumeSize: "50"
       SubnetIds:
         Fn::Join:
@@ -798,6 +804,12 @@ Resources:
 
                 echo "UserData started at $(date) - Logging to $LOG_GROUP_NAME"
 
+                # Set up error trap for UserData failures (before bootstrap.sh takes over)
+                trap 'echo "UserData failed at line $LINENO"; /opt/aws/bin/cfn-signal -e 1 "
+              - Ref: IdeBootstrapWaitConditionHandleD7141CA8
+              - |-
+                " 2>/dev/null || true; exit 1' ERR
+
                 # Install git (required for cloning repository)
                 echo "Installing git..."
                 dnf install -y git
@@ -842,15 +854,12 @@ Resources:
 
                     echo "Executing full bootstrap script..."
                     # Run bootstrap script as root from the cloned directory
-                    if bash -c "cd /home/ec2-user/java-on-aws && WAIT_CONDITION_HANDLE_URL='
+                    if cd /home/ec2-user/java-on-aws && WAIT_CONDITION_HANDLE_URL='
               - Ref: IdeBootstrapWaitConditionHandleD7141CA8
               - |-
-                ' infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
+                ' infra/scripts/ide/bootstrap.sh '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'; then
                         echo "Bootstrap completed successfully"
-                        /opt/aws/bin/cfn-signal -e 0 '
-              - Ref: IdeBootstrapWaitConditionHandleD7141CA8
-              - |-
-                '
+                        # Bootstrap script already signaled success
                     else
                         echo "FATAL: Bootstrap script failed"
                         /opt/aws/bin/cfn-signal -e 1 '
@@ -867,12 +876,6 @@ Resources:
                 '
                     exit 1
                 fi
-      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
-      InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeIdeInstanceProfile8BD997EA
-          - Arn
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1242,12 +1245,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: new-ws-infra
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: base
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: new-ws-infra
           - Name: STACK_NAME
             Type: PLAINTEXT
             Value:
@@ -1458,12 +1461,12 @@ Resources:
       Description: workshop-setup build complete
       EventPattern:
         detail:
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1495,13 +1498,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
+      ContentHash: "1765697286720"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
-      ContentHash: "1765694864050"
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D
