@@ -20,7 +20,7 @@ fi
 
 # Phase 2: EKS cluster configuration
 log_info "Phase 2: Configuring EKS cluster..."
-if "$SCRIPT_DIR/../setup/eks.sh"; then
+if bash "$SCRIPT_DIR/../setup/eks.sh"; then
     log_success "EKS cluster configuration completed"
 else
     log_error "EKS cluster configuration failed"

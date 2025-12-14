@@ -157,7 +157,7 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Running setup for template type: $TEMPLATE_
 
 # Run template-specific setup script
 if [ -f "infra/scripts/ide/${TEMPLATE_TYPE}.sh" ]; then
-    sudo -u ec2-user bash "infra/scripts/ide/${TEMPLATE_TYPE}.sh"
+    sudo -H -i -u ec2-user bash -c "$(pwd)/infra/scripts/ide/${TEMPLATE_TYPE}.sh"
 else
     echo "ERROR: Template script infra/scripts/ide/${TEMPLATE_TYPE}.sh not found"
     exit 1
