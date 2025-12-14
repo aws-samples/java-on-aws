@@ -67,9 +67,10 @@ public class WorkshopStack extends Stack {
                 .buildSpec(buildSpec)
                 .build());
 
-        // Custom roles only for non-base templates
+        // Custom roles and database only for non-base templates
         if (!"base".equals(templateType)) {
             Roles roles = new Roles(this, "Roles");
+            Database database = new Database(this, "Database", vpc.getVpc());
         }
     }
 }

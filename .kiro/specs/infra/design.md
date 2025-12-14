@@ -69,9 +69,10 @@ public class WorkshopStack extends Stack {
         var vpc = new Vpc(this, "Vpc");
         var ide = new Ide(this, "Ide", vpc.getVpc());
 
-        // Custom roles only for non-base templates
+        // Custom roles and database only for non-base templates
         if (!"base".equals(templateType)) {
             var roles = new Roles(this, "Roles");
+            var database = new Database(this, "Database", vpc.getVpc());
         }
 
         // CodeBuild for service-linked role creation
@@ -86,7 +87,7 @@ public class WorkshopStack extends Stack {
 **Vpc**: Creates VPC with appropriate subnets and networking configuration
 **Ide**: Creates VS Code IDE environment with necessary permissions
 **Eks**: Creates EKS cluster with AutoMode
-**Database**: Configures RDS instances and database schemas
+**Database**: Configures RDS Aurora PostgreSQL cluster with universal "workshop-" naming convention
 **CodeBuild**: Creates CodeBuild project for AWS service-linked role creation
 **Roles**: Creates IAM roles and policies for workshop resources
 
@@ -430,6 +431,10 @@ public class BuildConfig {
 ### Property 17: Lambda Function Modularity
 *For any* modular Lambda function, it should provide equivalent functionality to original functions while maintaining CloudFormation template compatibility through inline Python source code
 **Validates: Requirements 5.8**
+
+### Property 18: Database Naming Consistency
+*For any* database resource created, it should use the "workshop-" prefix instead of workshop-specific naming
+**Validates: Requirements 12.1, 12.2, 12.3, 12.4, 12.5, 12.6**
 
 ## Error Handling
 

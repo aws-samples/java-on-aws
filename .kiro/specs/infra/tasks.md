@@ -379,16 +379,22 @@
   - Remove workshop-specific customizations, keep generic EKS setup
   - _Requirements: 5.6_
 
-- [ ] 100.3 Create Database construct
+- [ ] 100.3 Create Database construct with universal naming
   - Create infra/cdk/src/main/java/sample/com/constructs/Database.java
   - Copy and refactor database setup from infrastructure/cdk/src/main/java/com/unicorn/core/DatabaseSetup.java
+  - Update all database resource names to use "workshop-" prefix: cluster, writer, security group, subnet group
+  - Change database name from "unicorns" to "workshop"
+  - Update secrets names: "workshop-db-secret", "workshop-db-password-secret"
+  - Update parameter store name: "workshop-db-connection-string"
+  - Update IAM policy name: "workshop-db-secret-policy"
+  - Update Lambda function name: "workshop-db-setup-lambda"
   - Integrate with new Vpc construct for proper subnet placement
   - Consolidate RDS and database schema setup into single construct
-  - _Requirements: 5.6_
+  - _Requirements: 5.6, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
 
 - [ ] 100.4 Update WorkshopStack for java-on-aws
-  - Add conditional EKS creation: if (!"ide".equals(workshopType) && !"java-ai-agents".equals(workshopType))
-  - Add conditional Database creation: if (!"ide".equals(workshopType))
+  - Add conditional EKS creation: if (!"base".equals(workshopType) && !"java-ai-agents".equals(workshopType))
+  - Database already conditionally created for non-base templates (same as Roles)
   - Test WORKSHOP_TYPE=java-on-aws generates template with all required resources
   - Validate generated template matches existing unicornstore-stack.yaml functionality
   - _Requirements: 1.2, 5.5_
@@ -426,8 +432,9 @@
 ## Java-AI-Agents Migration (300.x)
 
 - [ ] 300.1 Analyze and migrate java-ai-agents workshop
-  - Review infrastructure/cfn/java-ai-agents-stack.yaml (no EKS, includes Bedrock permissions)
-  - Verify EKS exclusion logic: if (!"java-ai-agents".equals(workshopType))
+  - Review infrastructure/cfn/java-ai-agents-stack.yaml (no EKS, includes Bedrock permissions, has database)
+  - Verify EKS exclusion logic: if (!"base".equals(workshopType) && !"java-ai-agents".equals(workshopType))
+  - Database will be included automatically (non-base template)
   - Create infra/scripts/setup/ai-agents.sh for AI-specific setup
   - Create infra/scripts/workshops/java-ai-agents.sh orchestration script
   - _Requirements: 5.4, 5.5_

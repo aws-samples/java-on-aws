@@ -15,6 +15,7 @@ This document specifies the requirements for creating a new AWS workshop infrast
 - **CodeBuild_Resource**: AWS service that executes workshop setup scripts in the cloud
 - **Migration_Process**: The systematic transition from the current infrastructure/ directory to the new infra/ directory
 - **Bootstrap_Script**: Modular shell script system that configures IDE and development environments with proper error handling and CloudFormation integration
+- **Database_Naming**: Universal naming convention for database resources using "workshop-" prefix instead of workshop-specific names
 - **WaitCondition**: CloudFormation resource that waits for bootstrap completion signals before allowing dependent resources to be created
 - **Permission_Model**: Architecture pattern where system operations run as root and user-specific operations use sudo -u ec2-user for clean separation of concerns
 - **Renovate**: Automated dependency management tool that monitors version definitions in scripts and creates pull requests for updates
@@ -162,4 +163,17 @@ This document specifies the requirements for creating a new AWS workshop infrast
 3. WHEN new variables are added to UserData, THE system SHALL not require manual parameter counting or alignment
 4. WHEN CloudFormation templates are generated, THE system SHALL verify all template variables are properly substituted with no unreplaced placeholders
 5. WHEN UserData scripts are modified, THE system SHALL maintain self-documenting code where variable replacements are explicit and clear
+
+### Requirement 12
+
+**User Story:** As a workshop developer, I want universal database naming conventions, so that database resources can be reused across different workshop types without workshop-specific identifiers.
+
+#### Acceptance Criteria
+
+1. WHEN database resources are created, THE system SHALL use "workshop-" prefix instead of workshop-specific names like "unicornstore-"
+2. WHEN database cluster is created, THE system SHALL name it "workshop-db-cluster" for universal identification
+3. WHEN database instance is created, THE system SHALL name it "workshop-db-writer" for consistent naming
+4. WHEN database secrets are created, THE system SHALL use names "workshop-db-secret" and "workshop-db-password-secret"
+5. WHEN database parameters are stored, THE system SHALL use "workshop-db-connection-string" in Parameter Store
+6. WHEN database name is specified, THE system SHALL use "workshop" as the database name instead of workshop-specific names
 
