@@ -49,19 +49,19 @@ retry_command() {
 retry_critical() { retry_command 5 5 "FAIL" "$@"; }
 retry_optional() { retry_command 5 5 "LOG" "$@"; }
 
-echo "Updating system packages..."
-dnf update -y
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Updating system packages..."
+dnf update -y -q
 
-echo "Installing jq (required for secret parsing)..."
-dnf install -y jq
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing jq (required for secret parsing)..."
+dnf install -y -q jq
 
-echo "Installing AWS CLI..."
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing AWS CLI..."
 retry_critical "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && rm -rf /tmp/aws && unzip -q -d /tmp /tmp/aws-cli.zip && /tmp/aws/install --update && rm -rf /tmp/aws*"
 
-echo "Installing CloudFormation helper scripts..."
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing CloudFormation helper scripts..."
 retry_critical "dnf install -y aws-cfn-bootstrap"
 
-echo "Fetching IDE password from Secrets Manager..."
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Fetching IDE password from Secrets Manager..."
 IDE_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "ide-password" --query SecretString --output text | jq -r .password)
 if [ -z "$IDE_PASSWORD" ] || [ "$IDE_PASSWORD" = "null" ]; then
     echo "ERROR: Failed to retrieve IDE password from Secrets Manager"
@@ -128,10 +128,10 @@ fi
 
 
 
-echo "Running VS Code setup..."
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Running VS Code setup..."
 bash infra/scripts/ide/vscode.sh
 
-echo "Running setup for template type: $TEMPLATE_TYPE"
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Running setup for template type: $TEMPLATE_TYPE"
 
 # Run template-specific setup script
 if [ -f "infra/scripts/ide/${TEMPLATE_TYPE}.sh" ]; then
@@ -140,7 +140,7 @@ else
     echo "Warning: Template script infra/scripts/ide/${TEMPLATE_TYPE}.sh not found, skipping setup"
 fi
 
-echo "Bootstrap completed successfully at $(date)"
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Bootstrap completed successfully"
 
 # Signal CloudFormation completion
 /opt/aws/bin/cfn-signal -e $? --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"

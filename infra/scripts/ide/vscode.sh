@@ -42,7 +42,7 @@ run_as_user() {
     sudo -u ec2-user bash -c "$1"
 }
 
-echo "Installing code-server..."
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing code-server..."
 codeServer=$(dnf list installed code-server 2>/dev/null | wc -l)
 if [ "$codeServer" -eq "0" ]; then
   # Install as ec2-user with retry logic - pass version as environment variable
@@ -56,10 +56,10 @@ auth: password
 password: \"$IDE_PASSWORD\"
 bind-addr: 127.0.0.1:8889"
 
-echo "Creating ~/environment folder..."
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Creating ~/environment folder..."
 run_as_user 'mkdir -p ~/environment'
 
-echo "Configuring VS Code settings..."
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Configuring VS Code settings..."
 setup_user_file "/home/ec2-user/.local/share/code-server/User/settings.json" '{
   "extensions.autoUpdate": false,
   "extensions.autoCheckUpdates": false,
@@ -83,7 +83,7 @@ if [ ! -f "/home/ec2-user/.local/share/code-server/coder.json" ]; then
   setup_user_file "/home/ec2-user/.local/share/code-server/coder.json" '{ "query": { "folder": "/home/ec2-user/environment" } }'
 fi
 
-echo "Installing VS Code extensions..."
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing VS Code extensions..."
 
 if [ ! -z "$EXTENSIONS" ]; then
     IFS=',' read -ra extension_array <<< "$EXTENSIONS"
@@ -104,7 +104,7 @@ fi
 echo "Restarting code-server..."
 systemctl restart code-server@ec2-user
 
-echo "Installing Caddy..."
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing Caddy..."
 retry_critical "dnf copr enable -y -q @caddy/caddy epel-9-x86_64"
 retry_critical "dnf install -y -q caddy"
 retry_critical "systemctl enable --now caddy"
@@ -120,4 +120,4 @@ EOF
 echo "Restarting caddy..."
 systemctl restart caddy
 
-echo "VS Code IDE setup completed successfully at $(date)"
+echo "$(date '+%Y-%m-%d %H:%M:%S') - VS Code IDE setup completed successfully"

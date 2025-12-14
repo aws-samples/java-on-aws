@@ -714,8 +714,18 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      InstanceName: ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeIdeInstanceProfile8BD997EA
+          - Arn
+      VolumeSize: "50"
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
+            - ","
+            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
       SecurityGroupIds:
         Fn::Join:
           - ""
@@ -726,19 +736,8 @@ Resources:
             - Fn::GetAtt:
                 - IdeIdeInternalSecurityGroupD5D3B421
                 - GroupId
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
-            - ","
-            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeIdeInstanceProfile8BD997EA
-          - Arn
-      InstanceName: ide
-      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -857,6 +856,7 @@ Resources:
                     /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
                     exit 1
                 fi
+      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1105,12 +1105,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: new-ws-infra
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: base
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: new-ws-infra
           - Name: STACK_NAME
             Type: PLAINTEXT
             Value:
@@ -1366,13 +1366,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
-      ContentHash: "1765688217799"
+      ContentHash: "1765688713844"
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D
