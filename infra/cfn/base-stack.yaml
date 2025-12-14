@@ -714,25 +714,7 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      VolumeSize: "50"
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
-            - ","
-            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeIdeSecurityGroup5C503C8A
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeIdeInternalSecurityGroupD5D3B421
-                - GroupId
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -866,12 +848,30 @@ Resources:
                 "
                     exit 1
                 fi
-      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
-      InstanceName: ide
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeIdeSecurityGroup5C503C8A
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeIdeInternalSecurityGroupD5D3B421
+                - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
+            - ","
+            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
+      VolumeSize: "50"
       IamInstanceProfileArn:
         Fn::GetAtt:
           - IdeIdeInstanceProfile8BD997EA
           - Arn
+      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeIdeEipAssociation6C6C215D:
@@ -1241,12 +1241,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: new-ws-infra
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: base
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: new-ws-infra
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1489,13 +1489,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1765715394125"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
-      ContentHash: "1765710511221"
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D

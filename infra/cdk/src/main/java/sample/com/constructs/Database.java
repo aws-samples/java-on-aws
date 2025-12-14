@@ -4,7 +4,6 @@ import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.SecretValue;
 import software.amazon.awscdk.SecretsManagerSecretOptions;
-import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.services.ec2.IVpc;
 import software.amazon.awscdk.services.ec2.Port;
@@ -115,7 +114,7 @@ public class Database extends Construct {
             .code(Code.fromInline(loadFile("/lambda/database-setup.py")))
             .handler("index.lambda_handler")
             .runtime(Runtime.PYTHON_3_13)
-            .functionName("workshop-db-setup-lambda")
+            .functionName("workshop-db-setup")
             .timeout(Duration.minutes(3))
             .vpc(vpc)
             .securityGroups(List.of(databaseSecurityGroup))

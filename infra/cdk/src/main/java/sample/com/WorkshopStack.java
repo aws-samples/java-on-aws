@@ -2,7 +2,6 @@ package sample.com;
 
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
-import software.amazon.awscdk.Aws;
 import software.constructs.Construct;
 import sample.com.constructs.*;
 import sample.com.constructs.Ide.IdeProps;

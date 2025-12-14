@@ -16,6 +16,9 @@ aws cloudformation deploy \
   --s3-bucket workshop-cfn-templates-1765640257
 ```
 
+## Architecture Fix Applied
+**Fixed bootstrap failure rollback issue**: Removed WaitCondition dependencies from critical outputs to match original working architecture. Stack will still fail if bootstrap fails, but will rollback cleanly without orphaned resources.
+
 ## Test & Debug
 
 ### Get Stack Outputs

@@ -1,6 +1,5 @@
 package sample.com.constructs;
 
-import software.amazon.awscdk.Aws;
 import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.services.codebuild.*;
@@ -8,7 +7,6 @@ import software.amazon.awscdk.services.events.*;
 import software.amazon.awscdk.services.events.targets.LambdaFunction;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.*;
-import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.ec2.IVpc;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
