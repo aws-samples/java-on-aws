@@ -255,7 +255,6 @@ public class Ide extends Construct {
         String userDataTemplate = loadFile("/userdata.sh");
         String userDataContent = userDataTemplate
             .replace("${GIT_BRANCH}", gitBranch)
-            .replace("${STACK_NAME}", Aws.STACK_NAME)
             .replace("${AWS_REGION}", Aws.REGION)
             .replace("${TEMPLATE_TYPE}", templateType)
             .replace("${WAIT_CONDITION_HANDLE_URL}", waitHandle.getRef());

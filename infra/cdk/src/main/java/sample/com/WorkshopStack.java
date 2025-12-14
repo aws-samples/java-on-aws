@@ -20,7 +20,6 @@ public class WorkshopStack extends Stack {
               - |
                 aws --version
                 echo "Environment Variables:"
-                echo "STACK_NAME: $STACK_NAME"
                 echo "TEMPLATE_TYPE: $TEMPLATE_TYPE"
                 echo "GIT_BRANCH: $GIT_BRANCH"
           build:
@@ -61,7 +60,6 @@ public class WorkshopStack extends Stack {
                 .projectName("workshop-setup")
                 .vpc(vpc.getVpc())
                 .environmentVariables(Map.of(
-                    "STACK_NAME", Aws.STACK_NAME,
                     "TEMPLATE_TYPE", templateType,
                     "GIT_BRANCH", gitBranch))
                 .buildSpec(buildSpec)

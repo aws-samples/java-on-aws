@@ -2,12 +2,11 @@
 set -e
 
 # Full bootstrap script - called by minimal UserData
-# Parameters: GIT_BRANCH STACK_NAME TEMPLATE_TYPE
+# Parameters: GIT_BRANCH TEMPLATE_TYPE
 
 # Parse parameters
 GIT_BRANCH="$1"
-STACK_NAME="$2"
-TEMPLATE_TYPE="$3"
+TEMPLATE_TYPE="$2"
 
 echo "Full bootstrap started at $(date)"
 echo "Parameters: GIT_BRANCH=$GIT_BRANCH, TEMPLATE_TYPE=$TEMPLATE_TYPE"

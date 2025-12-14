@@ -6,7 +6,6 @@ set -e
 
 # Configuration from CDK
 export GIT_BRANCH="${GIT_BRANCH}"
-export STACK_NAME="${STACK_NAME}"
 export AWS_REGION="${AWS_REGION}"
 export TEMPLATE_TYPE="${TEMPLATE_TYPE}"
 export WAIT_CONDITION_HANDLE_URL="${WAIT_CONDITION_HANDLE_URL}"
@@ -95,7 +94,7 @@ if clone_repository; then
 
     echo "Executing full bootstrap script..."
     # Run bootstrap script as root from the cloned directory
-    if cd /home/ec2-user/java-on-aws && WAIT_CONDITION_HANDLE_URL="${WAIT_CONDITION_HANDLE_URL}" infra/scripts/ide/bootstrap.sh "$GIT_BRANCH" "$STACK_NAME" "$TEMPLATE_TYPE"; then
+    if cd /home/ec2-user/java-on-aws && WAIT_CONDITION_HANDLE_URL="${WAIT_CONDITION_HANDLE_URL}" infra/scripts/ide/bootstrap.sh "$GIT_BRANCH" "$TEMPLATE_TYPE"; then
         echo "Bootstrap completed successfully"
         # Bootstrap script already signaled success
     else
