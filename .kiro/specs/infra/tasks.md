@@ -216,8 +216,9 @@
   - Added Kubernetes tools (kubectl 1.34.2, Helm 3.19.3, eks-node-viewer, k9s, e1s)
   - Integrated container tools (Docker, SOCI snapshotter 0.12.0) with proper configuration
   - Added AWS tools (SAM CLI, Session Manager Plugin) and utilities (jq, yq 4.49.2)
+  - Added kubectl alias 'k' for convenience in base.sh
   - Implemented comprehensive error handling and logging for all tool installations
-  - _Requirements: 6.4, 6.7_
+  - _Requirements: 6.4, 6.7, 18.5_
 
 - [x] 11.10 Fix CloudFormation signaling permissions
   - Added cloudformation:SignalResource permission to IDE instance IAM role
@@ -371,15 +372,17 @@
   - Reference unicorn-roles-analysis.md for IAM role requirements
   - _Requirements: 5.4, 5.5_
 
-- [ ] 100.2 Create EKS construct
-  - Create infra/cdk/src/main/java/sample/com/constructs/Eks.java
-  - Copy and refactor infrastructure/cdk/src/main/java/com/unicorn/constructs/EksCluster.java
-  - Update to use EKS AutoMode and integrate with new Vpc and Roles constructs
-  - Implement unicorn EKS roles: cluster-role, node-role, pod-role, eso-role, eso-sm-role (see unicorn-roles-analysis.md)
-  - Remove workshop-specific customizations, keep generic EKS setup
-  - _Requirements: 5.6_
+- [ ] 100.2 Create EKS construct using EKS v2 with Auto Mode
+  - Create infra/cdk/src/main/java/sample/com/constructs/Eks.java using software.amazon.awscdk.services.eks.v2.alpha
+  - Configure workshop-cluster with Auto Mode, version 1.34, system+general-purpose node pools
+  - Add 3 EKS add-ons: AWS Secrets Store CSI Driver, AWS Mountpoint S3 CSI Driver, EKS Pod Identity Agent
+  - Create Access Entry for WSParticipantRole AND IDE instance role with cluster admin permissions
+  - Use Access Entries authentication mode instead of ConfigMap-based authentication
+  - Enable all log types (api, audit, authenticator, controllerManager, scheduler) for comprehensive monitoring
+  - EKS cluster should depend only on VPC for parallel deployment with Database
+  - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.7, 13.8, 15.3, 15.5, 15.6, 19.1_
 
-- [ ] 100.3 Create Database construct with universal naming
+- [x] 100.3 Create Database construct with universal naming
   - Create infra/cdk/src/main/java/sample/com/constructs/Database.java
   - Copy and refactor database setup from infrastructure/cdk/src/main/java/com/unicorn/core/DatabaseSetup.java
   - Update all database resource names to use "workshop-" prefix: cluster, writer, security group, subnet group
@@ -392,33 +395,56 @@
   - Consolidate RDS and database schema setup into single construct
   - _Requirements: 5.6, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
 
-- [ ] 100.4 Update WorkshopStack for java-on-aws
-  - Add conditional EKS creation: if (!"base".equals(workshopType) && !"java-ai-agents".equals(workshopType))
-  - Database already conditionally created for non-base templates (same as Roles)
-  - Test WORKSHOP_TYPE=java-on-aws generates template with all required resources
-  - Validate generated template matches existing unicornstore-stack.yaml functionality
-  - _Requirements: 1.2, 5.5_
+- [x] 100.4 Update WorkshopStack for java-on-aws with EKS integration (Database part complete)
+  - Database already conditionally created for non-base templates (same as Roles) ✅
+  - Need to add conditional EKS creation: if (!"base".equals(workshopType) && !"java-ai-agents".equals(workshopType))
+  - Test TEMPLATE_TYPE=java-on-aws generates template with VPC, IDE, CodeBuild, Roles, Database, and EKS resources
+  - Validate generated template includes all EKS add-ons and Access Entries configuration
+  - Ensure template supports both java-on-aws and base templates from same codebase
+  - _Requirements: 1.2, 1.3, 13.1, 16.1_
 
-- [ ] 100.5 Migrate java-on-aws setup scripts
-  - Copy and refactor infrastructure/scripts/setup/eks.sh to infra/scripts/setup/eks.sh
-  - Copy and refactor infrastructure/scripts/setup/app.sh to infra/scripts/setup/app.sh
-  - Copy and refactor infrastructure/scripts/setup/monitoring.sh to infra/scripts/setup/monitoring.sh
-  - Update all scripts with emoji-based logging and consistent error handling
-  - _Requirements: 3.3, 5.7_
+- [ ] 100.5 Create EKS post-deployment setup script
+  - Create infra/scripts/setup/eks.sh for EKS cluster configuration (based on original infrastructure/scripts/setup/eks.sh)
+  - Check cluster status and wait until kubectl get ns works successfully before proceeding
+  - Update kubeconfig and add workshop-cluster to kubectl context
+  - Deploy GP3 StorageClass (encrypted, default) since EKS Auto Mode doesn't provide encrypted GP3 by default
+  - Deploy ALB IngressClass + IngressClassParams for Application Load Balancer integration
+  - Create SecretProviderClass for database secrets (workshop-db-secret, workshop-db-password-secret, workshop-db-connection-string)
+  - Configure EKS Pod Identity with AWSSecretsManagerClientReadOnlyAccess managed policy
+  - Verify all three add-ons are installed and functional before completing
+  - Update script with emoji-based logging and consistent error handling
+  - _Requirements: 15.1, 15.2, 14.2, 14.3, 14.4, 15.7, 18.1, 18.2, 18.3, 18.4_
 
 - [ ] 100.6 Create java-on-aws workshop orchestration script
-  - Create infra/scripts/workshops/java-on-aws.sh
-  - Orchestrate: base.sh, eks.sh, app.sh, monitoring.sh
-  - Implement proper error handling and progress feedback
+  - Create infra/scripts/ide/java-on-aws.sh that executes base.sh and EKS implementation
+  - Script should call base.sh first for foundational development tools
+  - Then execute EKS-specific setup (cluster configuration, add-ons, storage classes)
+  - Implement proper error handling and progress feedback between base and EKS phases
   - Test script execution and validate all setup steps complete successfully
   - _Requirements: 3.1, 3.2_
 
-- [ ] 100.7 Validate java-on-aws migration
-  - Generate template and compare with existing unicornstore-stack.yaml
-  - Verify all required resources are present and properly configured
-  - Test workshop deployment end-to-end (optional, can be done manually)
-  - Document any differences and ensure they are acceptable
-  - _Requirements: 5.5_
+- [ ]* 100.7 Write property test for EKS Access Entry configuration
+  - **Property 19: EKS Access Entry Configuration**
+  - **Validates: Requirements 13.8**
+
+- [ ]* 100.8 Write property test for workshop script orchestration
+  - **Property 20: Workshop Script Orchestration**
+  - **Validates: Requirements 17.1, 17.2**
+
+- [ ]* 100.9 Write property test for workshop error handling
+  - **Property 21: Workshop Error Handling**
+  - **Validates: Requirements 17.3**
+
+- [ ]* 100.10 Write property test for workshop verification
+  - **Property 22: Workshop Verification**
+  - **Validates: Requirements 17.4**
+
+- [ ] 100.11 Validate java-on-aws migration
+  - Generate template with TEMPLATE_TYPE=java-on-aws and verify all EKS resources are present
+  - Test template generation for both base and java-on-aws from same codebase
+  - Verify EKS add-ons, Access Entries, and database resources are properly configured
+  - Document template differences and ensure they provide equivalent functionality
+  - _Requirements: 1.2, 1.3, 16.1_
 
 ## Java-on-EKS Migration (200.x)
 

@@ -177,3 +177,93 @@ This document specifies the requirements for creating a new AWS workshop infrast
 5. WHEN database parameters are stored, THE system SHALL use "workshop-db-connection-string" in Parameter Store
 6. WHEN database name is specified, THE system SHALL use "workshop" as the database name instead of workshop-specific names
 
+### Requirement 13
+
+**User Story:** As a workshop developer, I want a standardized EKS cluster with universal naming and modern configuration using the latest CDK constructs, so that Kubernetes-based workshops have consistent infrastructure with current best practices and native CloudFormation resources.
+
+#### Acceptance Criteria
+
+1. WHEN EKS cluster is created, THE system SHALL use the EKS v2 developer preview construct from package "software.amazon.awscdk.services.eks.v2.alpha" for native CloudFormation resource support
+2. WHEN EKS cluster is created, THE system SHALL name it "workshop-cluster" for universal identification across workshop types
+3. WHEN EKS cluster is configured, THE system SHALL use version 1.34 for current Kubernetes features and security updates
+4. WHEN EKS cluster deploys, THE system SHALL enable Auto Mode with "system" and "general-purpose" node pools for automatic node management
+5. WHEN EKS cluster networking is configured, THE system SHALL place cluster in private subnets with public and private API access for security and flexibility
+6. WHEN EKS cluster logging is enabled, THE system SHALL activate all log types (api, audit, authenticator, controllerManager, scheduler) for comprehensive monitoring
+7. WHEN EKS cluster permissions are configured, THE system SHALL use Access Entries authentication mode instead of deprecated ConfigMap-based authentication
+8. WHEN EKS cluster access is configured, THE system SHALL create Access Entry for WSParticipantRole and IDE instance role with cluster admin permissions for workshop participant access
+
+### Requirement 14
+
+**User Story:** As a workshop developer, I want database secrets mounted as environment variables in Kubernetes pods using the AWS Secrets Store CSI Driver, so that applications can securely access database credentials without hardcoding them and without requiring External Secrets Operator.
+
+#### Acceptance Criteria
+
+1. WHEN EKS cluster is configured for secrets management, THE system SHALL use AWS Secrets Store CSI Driver add-on instead of External Secrets Operator for mounting secrets
+2. WHEN database secrets are mounted, THE system SHALL mount "workshop-db-secret" as environment variables in pods for database connection credentials
+3. WHEN database password is mounted, THE system SHALL mount "workshop-db-password-secret" as environment variables in pods for database authentication
+4. WHEN database connection string is mounted, THE system SHALL mount "workshop-db-connection-string" from Parameter Store as environment variables in pods for application configuration
+5. WHEN secrets access is configured, THE system SHALL use EKS Pod Identity with AWSSecretsManagerClientReadOnlyAccess managed policy for secure secrets retrieval
+6. WHEN SecretProviderClass is created, THE system SHALL define which secrets and parameters to mount as files and expose as environment variables in Kubernetes workloads
+
+### Requirement 15
+
+**User Story:** As a workshop developer, I want essential EKS add-ons and configurations for workshop functionality, so that participants have access to storage, ingress, S3 mounting, and proper workshop permissions without manual setup.
+
+#### Acceptance Criteria
+
+1. WHEN EKS cluster is configured for storage, THE system SHALL create GP3 StorageClass as default with encryption enabled for persistent volume claims since EKS Auto Mode does not provide encrypted GP3 by default
+2. WHEN EKS cluster is configured for ingress, THE system SHALL create ALB IngressClass and IngressClassParams resources for Application Load Balancer integration since EKS Auto Mode requires explicit IngressClass configuration
+3. WHEN EKS cluster is configured for secrets management, THE system SHALL install AWS Secrets Store CSI Driver add-on for mounting database secrets as environment variables
+4. WHEN EKS cluster is configured for S3 access, THE system SHALL install AWS Mountpoint S3 CSI driver add-on for S3 bucket mounting capabilities
+5. WHEN EKS cluster is configured for authentication, THE system SHALL install EKS Pod Identity Agent add-on for modern IAM authentication with AWS services
+6. WHEN EKS cluster is configured for workshop access, THE system SHALL grant WSParticipantRole cluster admin permissions via Access Entries for workshop participant access
+7. WHEN EKS cluster setup is complete, THE system SHALL verify all three add-ons (Secrets Store CSI Driver, Mountpoint S3 CSI Driver, Pod Identity Agent) are installed and functional before marking deployment as successful
+
+### Requirement 16
+
+**User Story:** As a workshop developer, I want a complete EKS add-on based architecture that eliminates Helm chart dependencies, so that the infrastructure uses only AWS-native managed services for simplified operations and maintenance.
+
+#### Acceptance Criteria
+
+1. WHEN EKS infrastructure is deployed, THE system SHALL use only EKS add-ons and eliminate all Helm chart installations for a fully AWS-native setup
+2. WHEN comparing to original infrastructure, THE system SHALL reduce Helm charts from 2 to 0 by converting External Secrets Operator and Mountpoint S3 CSI Driver to EKS add-ons
+3. WHEN EKS add-ons are installed, THE system SHALL configure AWS Secrets Store CSI Driver add-on to replace External Secrets Operator functionality
+4. WHEN EKS add-ons are installed, THE system SHALL configure AWS Mountpoint S3 CSI Driver add-on to replace Helm chart installation
+5. WHEN EKS add-ons are installed, THE system SHALL configure EKS Pod Identity Agent add-on to provide modern IAM authentication for other add-ons
+6. WHEN add-on architecture is complete, THE system SHALL provide equivalent functionality to original setup while using only AWS-managed components
+
+### Requirement 17
+
+**User Story:** As a workshop developer, I want a complete workshop orchestration system that executes foundational and workshop-specific setup in sequence, so that participants have a fully configured development environment with all necessary tools and services.
+
+#### Acceptance Criteria
+
+1. WHEN java-on-aws workshop setup executes, THE system SHALL first run base.sh for foundational development tools installation
+2. WHEN base setup completes successfully, THE system SHALL proceed to EKS-specific implementation including cluster configuration and add-ons
+3. WHEN workshop orchestration encounters errors, THE system SHALL halt execution and provide clear error messages indicating which phase failed
+4. WHEN all setup phases complete, THE system SHALL verify that both base tools and EKS services are operational
+5. WHEN workshop script executes, THE system SHALL provide progress feedback for each major phase (base setup, EKS setup, verification)
+
+### Requirement 18
+
+**User Story:** As a workshop developer, I want EKS cluster setup scripts that wait for cluster readiness and configure kubectl context, so that subsequent operations can reliably interact with the cluster and participants have proper access.
+
+#### Acceptance Criteria
+
+1. WHEN EKS setup script executes, THE system SHALL check cluster status and wait until kubectl get ns command works successfully
+2. WHEN cluster is ready, THE system SHALL update kubeconfig and add cluster to kubectl context
+3. WHEN kubectl context is configured, THE system SHALL deploy GP3 StorageClass, ALB IngressClass, and SecretProviderClass resources
+4. WHEN setup script completes, THE system SHALL verify all deployed resources are functional
+5. WHEN base development tools are installed, THE system SHALL include kubectl alias 'k' for convenience
+
+### Requirement 19
+
+**User Story:** As a workshop developer, I want EKS cluster and database to deploy in parallel for optimal deployment time, so that infrastructure provisioning is as fast as possible.
+
+#### Acceptance Criteria
+
+1. WHEN EKS cluster is created, THE system SHALL depend only on VPC and deploy in parallel with other resources
+2. WHEN database is created, THE system SHALL depend only on VPC and deploy in parallel with EKS cluster
+3. WHEN both EKS and database are deploying, THE system SHALL not create unnecessary dependencies between them
+4. WHEN parallel deployment completes, THE system SHALL ensure both resources are available for workshop setup scripts
+

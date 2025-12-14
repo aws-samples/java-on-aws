@@ -86,7 +86,7 @@ public class WorkshopStack extends Stack {
 
 **Vpc**: Creates VPC with appropriate subnets and networking configuration
 **Ide**: Creates VS Code IDE environment with necessary permissions
-**Eks**: Creates EKS cluster with AutoMode
+**Eks**: Creates EKS cluster with Auto Mode, v1.34, native add-ons (Secrets Store CSI, Mountpoint S3 CSI, Pod Identity Agent), and Access Entries
 **Database**: Configures RDS Aurora PostgreSQL cluster with universal "workshop-" naming convention
 **CodeBuild**: Creates CodeBuild project for AWS service-linked role creation
 **Roles**: Creates IAM roles and policies for workshop resources
@@ -199,7 +199,15 @@ Where:
 - `bootstrap.sh`: Full system setup, CloudWatch, environment variables, git clone, calls vscode.sh and template script
 - `vscode.sh`: Complete VS Code IDE setup (code-server, Caddy, configuration)
 - `base.sh`: Base development tools (for base template type)
+- `java-on-aws.sh`: Calls base.sh + EKS implementation (cluster setup, add-ons, storage classes)
 - Future template scripts will be added to `/ide` folder as needed
+
+#### Workshop Orchestration Pattern
+Workshop scripts follow a layered approach:
+1. **Base Layer**: `base.sh` provides foundational development tools (Java, Node.js, kubectl, Helm, etc.)
+2. **Workshop Layer**: Workshop-specific scripts (e.g., `java-on-aws.sh`) call base.sh then add specialized setup
+3. **Error Handling**: Each layer implements proper error handling and progress feedback
+4. **Verification**: Final verification ensures all tools and services are operational
 
 #### Configuration
 - **Template Type**: Configurable via `TEMPLATE_TYPE` environment variable (defaults to `base`)
@@ -435,6 +443,34 @@ public class BuildConfig {
 ### Property 18: Database Naming Consistency
 *For any* database resource created, it should use the "workshop-" prefix instead of workshop-specific naming
 **Validates: Requirements 12.1, 12.2, 12.3, 12.4, 12.5, 12.6**
+
+### Property 19: EKS Access Entry Configuration
+*For any* EKS cluster created, it should include Access Entry for WSParticipantRole with cluster admin permissions
+**Validates: Requirements 13.8**
+
+### Property 20: Workshop Script Orchestration
+*For any* java-on-aws workshop execution, it should first execute base.sh successfully before proceeding to EKS implementation
+**Validates: Requirements 17.1, 17.2**
+
+### Property 21: Workshop Error Handling
+*For any* workshop orchestration error, the system should halt execution and provide clear error messages indicating which phase failed
+**Validates: Requirements 17.3**
+
+### Property 22: Workshop Verification
+*For any* completed workshop setup, both base tools and EKS services should be verified as operational
+**Validates: Requirements 17.4**
+
+### Property 23: EKS Cluster Readiness Check
+*For any* EKS setup script execution, it should wait until kubectl get ns command works successfully before proceeding with resource deployment
+**Validates: Requirements 18.1**
+
+### Property 24: Kubectl Context Configuration
+*For any* EKS cluster setup, the system should update kubeconfig and add cluster to kubectl context
+**Validates: Requirements 18.2**
+
+### Property 25: Parallel Deployment Independence
+*For any* EKS cluster and database creation, they should depend only on VPC and deploy in parallel without unnecessary dependencies
+**Validates: Requirements 19.1, 19.2, 19.3**
 
 ## Error Handling
 
