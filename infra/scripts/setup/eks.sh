@@ -124,7 +124,7 @@ fi
 log_info "Verifying EKS add-ons..."
 
 # Check AWS Secrets Store CSI Driver
-if kubectl get daemonset -n kube-system secrets-store-csi-driver >/dev/null 2>&1; then
+if kubectl get daemonset -n aws-secrets-manager secrets-store-csi-driver >/dev/null 2>&1; then
     log_success "AWS Secrets Store CSI Driver is installed"
 else
     log_warning "AWS Secrets Store CSI Driver not found"
