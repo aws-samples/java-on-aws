@@ -104,8 +104,7 @@ retry_critical "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awsc
 echo "export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)" | sudo tee -a /etc/profile.d/workshop.sh
 source /etc/profile.d/workshop.sh
 
-echo "Installing git..."
-retry_critical "dnf install -y -q git >/dev/null"
+# Git is already installed by UserData
 
 # Repository is already cloned to /home/ec2-user/workshop-setup by UserData
 # We're running from that directory, so no need to clone again

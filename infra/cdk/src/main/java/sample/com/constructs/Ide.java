@@ -290,6 +290,10 @@ public class Ide extends Construct {
 
             echo "UserData started at $(date) - Logging to $LOG_GROUP_NAME"
 
+            # Install git (required for cloning repository)
+            echo "Installing git..."
+            dnf install -y git
+
             # Clone repository to ec2-user home directory
             clone_repository() {
                 local max_attempts=5
