@@ -13,22 +13,22 @@ echo "Full bootstrap started at $(date)"
 echo "Parameters: GIT_BRANCH=$GIT_BRANCH, TEMPLATE_TYPE=$TEMPLATE_TYPE"
 
 # Retry utility function
-# Usage: retry_command <attempts> <delay> <fail_mode> <command...>
+# Usage: retry_command <attempts> <delay> <fail_mode> <tool_name> <command...>
 # fail_mode: "FAIL" (exit on failure), "LOG" (log and continue)
 retry_command() {
     local max_attempts="$1"
     local delay="$2"
     local fail_mode="$3"
-    shift 3
+    local tool_name="$4"
+    shift 4
     local cmd="$*"
 
     for attempt in $(seq 1 $max_attempts); do
-        echo "Attempt $attempt/$max_attempts: $cmd"
         if eval "$cmd"; then
-            echo "✅ Success on attempt $attempt"
+            echo "✅ Success: $tool_name"
             return 0
         fi
-        echo "❌ Failed on attempt $attempt"
+        echo "❌ Failed attempt $attempt/$max_attempts: $tool_name"
 
         if [ $attempt -lt $max_attempts ]; then
             echo "Waiting ${delay}s before retry..."
@@ -37,10 +37,10 @@ retry_command() {
     done
 
     if [ "$fail_mode" = "FAIL" ]; then
-        echo "💥 FATAL: Command failed after $max_attempts attempts: $cmd"
+        echo "💥 FATAL: $tool_name failed after $max_attempts attempts"
         exit 1
     else
-        echo "⚠️  WARNING: Command failed after $max_attempts attempts (continuing): $cmd"
+        echo "⚠️  WARNING: $tool_name failed after $max_attempts attempts (continuing)"
         return 1
     fi
 }
@@ -56,10 +56,10 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing jq (required for secret parsing)
 dnf install -y -q jq
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing AWS CLI..."
-retry_critical "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && rm -rf /tmp/aws && unzip -q -d /tmp /tmp/aws-cli.zip && /tmp/aws/install --update && rm -rf /tmp/aws*"
+retry_critical "AWS CLI" "curl -LSsf -o /tmp/aws-cli.zip https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip && rm -rf /tmp/aws && unzip -q -d /tmp /tmp/aws-cli.zip && /tmp/aws/install --update && rm -rf /tmp/aws*"
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing CloudFormation helper scripts..."
-retry_critical "dnf install -y aws-cfn-bootstrap"
+retry_critical "CloudFormation helper scripts" "dnf install -y aws-cfn-bootstrap"
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Fetching IDE password from Secrets Manager..."
 IDE_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "ide-password" --query SecretString --output text | jq -r .password)

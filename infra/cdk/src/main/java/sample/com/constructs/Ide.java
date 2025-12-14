@@ -8,6 +8,7 @@ import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Fn;
 import software.amazon.awscdk.RemovalPolicy;
+import software.amazon.awscdk.SecretValue;
 import software.amazon.awscdk.services.cloudfront.AllowedMethods;
 import software.amazon.awscdk.services.cloudfront.BehaviorOptions;
 import software.amazon.awscdk.services.cloudfront.CachePolicy;
@@ -20,7 +21,9 @@ import software.amazon.awscdk.services.cloudfront.origins.HttpOrigin;
 import software.amazon.awscdk.services.cloudfront.origins.HttpOriginProps;
 import software.amazon.awscdk.services.ec2.*;
 import software.amazon.awscdk.services.iam.*;
-
+import software.amazon.awscdk.services.lambda.Code;
+import software.amazon.awscdk.services.lambda.Function;
+import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.secretsmanager.Secret;
 import software.amazon.awscdk.services.secretsmanager.SecretStringGenerator;
 import software.constructs.Construct;
@@ -41,6 +44,7 @@ public class Ide extends Construct {
     private final Secret ideSecretsManagerPassword;
     private final Role workshopRole;
     private final Role lambdaRole;
+    private CustomResource passwordResource;
 
     public static class IdeProps {
         private String instanceName = "ide";
@@ -442,15 +446,15 @@ public class Ide extends Construct {
         // CloudFront doesn't need to wait for bootstrap - it's just infrastructure
 
         // Outputs - these should only be created if bootstrap succeeds
-        var ideUrlOutput = CfnOutput.Builder.create(this, "IdeUrl")
+        var ideUrlOutput = CfnOutput.Builder.create(this, "Url")
             .value("https://" + distribution.getDistributionDomainName())
             .description("Workshop IDE Url")
             .exportName(instanceName + "-url")
             .build();
         ideUrlOutput.getNode().addDependency(waitCondition);
 
-        var idePasswordOutput = CfnOutput.Builder.create(this, "IdePassword")
-            .value(ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap())
+        var idePasswordOutput = CfnOutput.Builder.create(this, "Password")
+            .value(getIdePassword(instanceName))
             .description("Workshop IDE Password")
             .exportName(instanceName + "-password")
             .build();
@@ -474,5 +478,28 @@ public class Ide extends Construct {
         } catch (IOException e) {
             throw new RuntimeException("Failed to load file " + filePath, e);
         }
+    }
+
+    private String getIdePassword(String instanceName) {
+        if (passwordResource == null) {
+            Function passwordFunction = Function.Builder.create(this, "PasswordExporterFunction")
+                .code(Code.fromInline(loadFile("/lambda/password-exporter.py")))
+                .handler("index.lambda_handler")
+                .runtime(Runtime.PYTHON_3_13)
+                .timeout(Duration.minutes(3))
+                .functionName(instanceName + "-password-exporter")
+                .build();
+
+            ideSecretsManagerPassword.grantRead(passwordFunction);
+
+            passwordResource = CustomResource.Builder.create(this, "PasswordExporter")
+                .serviceToken(passwordFunction.getFunctionArn())
+                .properties(Map.of(
+                    "PasswordName", this.ideSecretsManagerPassword.getSecretName()
+                ))
+                .build();
+        }
+
+        return passwordResource.getAttString("password");
     }
 }

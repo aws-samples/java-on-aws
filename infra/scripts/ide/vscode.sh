@@ -18,14 +18,18 @@ retry_critical() {
     if command -v retry_command >/dev/null 2>&1; then
         retry_command 5 5 "FAIL" "$@"
     else
-        eval "$*"
+        local tool_name="$1"
+        shift
+        eval "$*" || { echo "💥 FATAL: $tool_name failed"; exit 1; }
     fi
 }
 retry_optional() {
     if command -v retry_command >/dev/null 2>&1; then
         retry_command 5 5 "LOG" "$@"
     else
-        eval "$*" || echo "⚠️  Warning: $* failed (continuing)"
+        local tool_name="$1"
+        shift
+        eval "$*" || echo "⚠️  Warning: $tool_name failed (continuing)"
     fi
 }
 
@@ -46,8 +50,8 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing code-server..."
 codeServer=$(dnf list installed code-server 2>/dev/null | wc -l)
 if [ "$codeServer" -eq "0" ]; then
   # Install as ec2-user with retry logic - pass version as environment variable
-  retry_critical "sudo -u ec2-user bash -c 'curl -fsSL https://code-server.dev/install.sh | sh -s -- --version $VSCODE_VERSION'"
-  retry_critical "systemctl enable --now code-server@ec2-user"
+  retry_critical "VS Code Server" "sudo -u ec2-user bash -c 'curl -fsSL https://code-server.dev/install.sh | sh -s -- --version $VSCODE_VERSION'"
+  retry_critical "VS Code Server service" "systemctl enable --now code-server@ec2-user"
 fi
 
 # Configure code-server
@@ -94,7 +98,7 @@ if [ ! -z "$EXTENSIONS" ]; then
         extension=$(echo "$extension" | xargs)
         if [ ! -z "$extension" ]; then
             echo "Installing extension: $extension"
-            retry_optional "run_as_user 'code-server --install-extension $extension --force'"
+            retry_optional "VS Code extension $extension" "run_as_user 'code-server --install-extension $extension --force'"
         fi
     done
 else
@@ -105,9 +109,9 @@ echo "Restarting code-server..."
 systemctl restart code-server@ec2-user
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing Caddy..."
-retry_critical "dnf copr enable -y -q @caddy/caddy epel-9-x86_64"
-retry_critical "dnf install -y -q caddy"
-retry_critical "systemctl enable --now caddy"
+retry_critical "Caddy repository" "dnf copr enable -y -q @caddy/caddy epel-9-x86_64"
+retry_critical "Caddy" "dnf install -y -q caddy"
+retry_critical "Caddy service" "systemctl enable --now caddy"
 
 tee /etc/caddy/Caddyfile <<EOF
 :80 {

@@ -33,14 +33,18 @@ retry_critical() {
     if command -v retry_command >/dev/null 2>&1; then
         retry_command 5 5 "FAIL" "$@"
     else
-        eval "$*"
+        local tool_name="$1"
+        shift
+        eval "$*" || { echo "💥 FATAL: $tool_name failed"; exit 1; }
     fi
 }
 retry_optional() {
     if command -v retry_command >/dev/null 2>&1; then
         retry_command 5 5 "LOG" "$@"
     else
-        eval "$*" || echo "⚠️  Warning: $* failed (continuing)"
+        local tool_name="$1"
+        shift
+        eval "$*" || echo "⚠️  Warning: $tool_name failed (continuing)"
     fi
 }
 
@@ -62,7 +66,7 @@ download_and_verify() {
     local description="$3"
 
     log_info "Downloading $description..."
-    retry_critical "wget -q '$url' -O '$output'"
+    retry_critical "$description download" "wget -q '$url' -O '$output'"
 }
 
 cd /tmp
@@ -75,7 +79,7 @@ install_java() {
     log_info "Installing Java versions 8, 17, 21, 25 and setting ${JAVA_VERSION} as default..."
 
     # Install all Java versions
-    retry_critical "sudo dnf install -y -q java-1.8.0-amazon-corretto-devel java-17-amazon-corretto-devel java-21-amazon-corretto-devel java-25-amazon-corretto-devel >/dev/null"
+    retry_critical "Java versions (8,17,21,25)" "sudo dnf install -y -q java-1.8.0-amazon-corretto-devel java-17-amazon-corretto-devel java-21-amazon-corretto-devel java-25-amazon-corretto-devel >/dev/null"
 
     # Set default Java version
     sudo update-alternatives --set java /usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto.x86_64/bin/java
@@ -95,7 +99,7 @@ install_nodejs() {
     log_info "Installing Node.js ${NODE_VERSION} and tools..."
 
     # Install NVM
-    retry_critical "curl -sS -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash"
+    retry_critical "NVM ${NVM_VERSION}" "curl -sS -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash"
 
     # Setup NVM environment
     export NVM_DIR="$HOME/.nvm"
@@ -103,9 +107,9 @@ install_nodejs() {
     [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
     # Install Node.js and tools
-    nvm install ${NODE_VERSION}
-    nvm install-latest-npm
-    npm install -g aws-cdk artillery
+    retry_critical "Node.js ${NODE_VERSION}" "nvm install ${NODE_VERSION}"
+    retry_critical "npm (latest)" "nvm install-latest-npm"
+    retry_critical "CDK and Artillery" "npm install -g aws-cdk artillery"
 
     # Verify installations
     log_info "Node.js version: $(node -v)"
@@ -124,7 +128,7 @@ install_maven() {
     local mvn_filename=apache-maven-${MAVEN_VERSION}-bin.tar.gz
     local mvn_url="https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/${mvn_filename}"
 
-    retry_critical "curl -sS -4 -L '$mvn_url' | tar -xz"
+    retry_critical "Maven ${MAVEN_VERSION}" "curl -sS -4 -L '$mvn_url' | tar -xz"
 
     sudo mv "$mvn_foldername" /usr/lib/maven
     echo "export M2_HOME=/usr/lib/maven" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
@@ -142,14 +146,14 @@ install_aws_tools() {
     download_and_verify "https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip" "aws-sam-cli-linux-x86_64.zip" "AWS SAM CLI"
 
     unzip -q aws-sam-cli-linux-x86_64.zip -d sam-installation
-    sudo ./sam-installation/install --update
+    retry_critical "SAM CLI installation" "sudo ./sam-installation/install --update"
     rm -rf ./sam-installation/ aws-sam-cli-linux-x86_64.zip
 
     log_info "SAM CLI version: $(/usr/local/bin/sam --version)"
 
     log_info "Installing Session Manager Plugin..."
     download_and_verify "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" "session-manager-plugin.rpm" "Session Manager Plugin"
-    sudo dnf -q install -y session-manager-plugin.rpm
+    retry_critical "Session Manager Plugin" "sudo dnf -q install -y session-manager-plugin.rpm"
     rm session-manager-plugin.rpm
 }
 
@@ -175,7 +179,7 @@ install_kubernetes_tools() {
     # log_info "eksctl version: $(eksctl version)"
 
     log_info "Installing Helm ${HELM_VERSION}..."
-    retry_critical "curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3"
+    retry_critical "Helm ${HELM_VERSION}" "curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3"
     chmod 700 get_helm.sh
     ./get_helm.sh --version v${HELM_VERSION}
     helm completion bash >> ~/.bash_completion
@@ -187,10 +191,10 @@ install_kubernetes_tools() {
     sudo mv eks-node-viewer /usr/local/bin
 
     log_info "Installing k9s..."
-    retry_optional "curl -sS https://webinstall.dev/k9s | bash"
+    retry_optional "k9s" "curl -sS https://webinstall.dev/k9s | bash"
 
     log_info "Installing e1s..."
-    retry_optional "curl -sL https://raw.githubusercontent.com/keidarcy/e1s-install/master/cloudshell-install.sh | bash"
+    retry_optional "e1s" "curl -sL https://raw.githubusercontent.com/keidarcy/e1s-install/master/cloudshell-install.sh | bash"
 }
 
 install_kubernetes_tools
