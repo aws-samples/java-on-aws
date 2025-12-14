@@ -1,6 +1,33 @@
 #!/bin/bash
 set -e
 
+# =============================================================================
+# VERSION DEFINITIONS (managed by Renovate)
+# =============================================================================
+
+# Default Java version
+JAVA_VERSION="25"
+
+# Development tools
+NVM_VERSION="0.40.3"
+NODE_VERSION="20"
+MAVEN_VERSION="3.9.11"
+
+# Kubernetes tools
+KUBECTL_VERSION="1.34.2"
+HELM_VERSION="3.19.3"
+# EKSCTL_VERSION="0.220.0"
+EKS_NODE_VIEWER_VERSION="0.7.4"
+
+# Container tools
+# DOCKER_COMPOSE_VERSION="2.40.2"
+SOCI_VERSION="0.12.0"
+
+# Utilities
+YQ_VERSION="4.49.2"
+
+# =============================================================================
+
 # Import retry functions from bootstrap (if available, fallback to direct execution)
 retry_critical() {
     if command -v retry_command >/dev/null 2>&1; then
@@ -39,28 +66,6 @@ download_and_verify() {
         handle_error "Failed to download $description from $url"
     fi
 }
-
-# Default Java version
-JAVA_VERSION="25"
-
-# Tool versions (managed by Renovate)
-# Development tools
-NVM_VERSION="0.40.3"
-NODE_VERSION="20"
-MAVEN_VERSION="3.9.11"
-
-# Kubernetes tools
-KUBECTL_VERSION="1.34.2"
-HELM_VERSION="3.19.3"
-EKSCTL_VERSION="0.220.0"
-EKS_NODE_VIEWER_VERSION="0.7.4"
-
-# Container tools
-DOCKER_COMPOSE_VERSION="2.40.2"
-SOCI_VERSION="0.12.0"
-
-# Utilities
-YQ_VERSION="4.49.2"
 
 cd /tmp
 
@@ -169,11 +174,11 @@ install_kubernetes_tools() {
 
     log_info "kubectl version: $(kubectl version --client --short 2>/dev/null || echo 'installed')"
 
-    log_info "Installing eksctl ${EKSCTL_VERSION}..."
-    download_and_verify "https://github.com/weaveworks/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_Linux_amd64.tar.gz" "eksctl_Linux_amd64.tar.gz" "eksctl"
-    tar -xzf eksctl_Linux_amd64.tar.gz -C /tmp && rm eksctl_Linux_amd64.tar.gz
-    sudo mv /tmp/eksctl /usr/local/bin
-    log_info "eksctl version: $(eksctl version)"
+    # log_info "Installing eksctl ${EKSCTL_VERSION}..."
+    # download_and_verify "https://github.com/weaveworks/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_Linux_amd64.tar.gz" "eksctl_Linux_amd64.tar.gz" "eksctl"
+    # tar -xzf eksctl_Linux_amd64.tar.gz -C /tmp && rm eksctl_Linux_amd64.tar.gz
+    # sudo mv /tmp/eksctl /usr/local/bin
+    # log_info "eksctl version: $(eksctl version)"
 
     log_info "Installing Helm ${HELM_VERSION}..."
     if ! curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3; then
@@ -209,12 +214,12 @@ install_container_tools() {
     sudo service docker start
     sudo usermod -aG docker ec2-user
 
-    log_info "Installing Docker Compose ${DOCKER_COMPOSE_VERSION}..."
-    DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-    mkdir -p $DOCKER_CONFIG/cli-plugins
-    download_and_verify "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-linux-x86_64" "$DOCKER_CONFIG/cli-plugins/docker-compose" "Docker Compose"
-    chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
-    log_info "Docker Compose version: $(docker compose version)"
+    # log_info "Installing Docker Compose ${DOCKER_COMPOSE_VERSION}..."
+    # DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+    # mkdir -p $DOCKER_CONFIG/cli-plugins
+    # download_and_verify "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-linux-x86_64" "$DOCKER_CONFIG/cli-plugins/docker-compose" "Docker Compose"
+    # chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+    # log_info "Docker Compose version: $(docker compose version)"
 
     log_info "Installing SOCI snapshotter ${SOCI_VERSION}..."
     download_and_verify "https://github.com/awslabs/soci-snapshotter/releases/download/v$SOCI_VERSION/soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz" "soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz" "SOCI snapshotter"

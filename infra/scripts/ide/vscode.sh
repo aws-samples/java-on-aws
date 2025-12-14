@@ -1,6 +1,18 @@
 #!/bin/bash
 set -e
 
+# =============================================================================
+# VERSION DEFINITIONS (managed by Renovate)
+# =============================================================================
+
+# VS Code Server version
+VSCODE_VERSION="4.104.3"
+
+# VS Code Extensions
+EXTENSIONS="shardulm94.trailing-spaces,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker"
+
+# =============================================================================
+
 # Import retry functions from bootstrap (if available, fallback to direct execution)
 retry_critical() {
     if command -v retry_command >/dev/null 2>&1; then
@@ -31,10 +43,10 @@ run_as_user() {
 }
 
 echo "Installing code-server..."
-VSCODE_VERSION="${VSCODE_VERSION:-latest}"
-codeServer=$(dnf list installed code-server 2>/dev/null | wc -l)
+codeServer=$(dnf list installed code-server | wc -l)
 if [ "$codeServer" -eq "0" ]; then
-  retry_critical "run_as_user 'curl -fsSL https://code-server.dev/install.sh | sh -s -- --version $VSCODE_VERSION'"
+  # Install as ec2-user with retry logic - pass version as environment variable
+  retry_critical "sudo -u ec2-user bash -c 'curl -fsSL https://code-server.dev/install.sh | sh -s -- --version $VSCODE_VERSION'"
   retry_critical "systemctl enable --now code-server@ec2-user"
 fi
 
@@ -72,8 +84,6 @@ if [ ! -f "/home/ec2-user/.local/share/code-server/coder.json" ]; then
 fi
 
 echo "Installing VS Code extensions..."
-# Extensions passed as environment variable (comma-separated)
-EXTENSIONS="${VSCODE_EXTENSIONS:-}"
 
 if [ ! -z "$EXTENSIONS" ]; then
     IFS=',' read -ra extension_array <<< "$EXTENSIONS"

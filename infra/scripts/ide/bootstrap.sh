@@ -2,17 +2,16 @@
 set -e
 
 # Full bootstrap script - called by minimal UserData
-# Parameters: IDE_PASSWORD GIT_BRANCH STACK_NAME AWS_REGION TEMPLATE_TYPE
+# Parameters: IDE_PASSWORD GIT_BRANCH STACK_NAME TEMPLATE_TYPE
 
 # Parse parameters
 IDE_PASSWORD="$1"
 GIT_BRANCH="$2"
 STACK_NAME="$3"
-AWS_REGION="$4"
-TEMPLATE_TYPE="$5"
+TEMPLATE_TYPE="$4"
 
 echo "Full bootstrap started at $(date)"
-echo "Parameters: GIT_BRANCH=$GIT_BRANCH, TEMPLATE_TYPE=$TEMPLATE_TYPE, AWS_REGION=$AWS_REGION"
+echo "Parameters: GIT_BRANCH=$GIT_BRANCH, TEMPLATE_TYPE=$TEMPLATE_TYPE"
 
 # CloudWatch logging is already set up by UserData script
 
@@ -108,19 +107,23 @@ source /etc/profile.d/workshop.sh
 echo "Installing git..."
 retry_critical "dnf install -y -q git >/dev/null"
 
-# Clone workshop setup scripts
-echo "Cloning workshop setup scripts..."
-cd /tmp
-retry_critical "git clone https://github.com/aws-samples/java-on-aws.git workshop-setup"
-cd workshop-setup
-retry_critical "git checkout ${GIT_BRANCH:-main}"
+# Repository is already cloned to /home/ec2-user/workshop-setup by UserData
+# We're running from that directory, so no need to clone again
+echo "Bootstrap script running from: $(pwd)"
+echo "Using git branch: $GIT_BRANCH"
 
-# Make scripts executable
-chmod +x infra/scripts/ide/*.sh
+# Ensure we're in the right directory
+if [ ! -f "infra/scripts/ide/bootstrap.sh" ]; then
+    echo "ERROR: Not in the correct repository directory"
+    exit 1
+fi
+
+# Scripts are already made executable by UserData
 
 # Run VS Code setup
 echo "Running VS Code setup..."
 export VSCODE_EXTENSIONS="$VSCODE_EXTENSIONS"
+export IDE_PASSWORD="$IDE_PASSWORD"
 bash infra/scripts/ide/vscode.sh
 
 echo "Running setup for template type: $TEMPLATE_TYPE"

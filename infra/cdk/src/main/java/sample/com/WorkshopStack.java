@@ -2,8 +2,6 @@ package sample.com;
 
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
-import software.amazon.awscdk.CfnOutput;
-import software.amazon.awscdk.CfnParameter;
 import software.amazon.awscdk.Aws;
 import software.constructs.Construct;
 import sample.com.constructs.*;
@@ -57,11 +55,6 @@ public class WorkshopStack extends Stack {
             .templateType(templateType)
             .build());
 
-        // Custom roles only for non-base templates
-        if (!"base".equals(templateType)) {
-            Roles roles = new Roles(this, "Roles");
-        }
-
         // CodeBuild for workshop setup
         CodeBuild codeBuild = new CodeBuild(this, "CodeBuild",
             CodeBuild.CodeBuildProps.builder()
@@ -73,5 +66,10 @@ public class WorkshopStack extends Stack {
                     "GIT_BRANCH", gitBranch))
                 .buildSpec(buildSpec)
                 .build());
+
+        // Custom roles only for non-base templates
+        if (!"base".equals(templateType)) {
+            Roles roles = new Roles(this, "Roles");
+        }
     }
 }

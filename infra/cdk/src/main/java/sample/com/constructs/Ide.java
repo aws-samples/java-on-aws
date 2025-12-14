@@ -49,12 +49,7 @@ public class Ide extends Construct {
         private IMachineImage machineImage = MachineImage.latestAmazonLinux2023();
         private List<String> instanceTypes = Arrays.asList("m5.xlarge", "m6i.xlarge", "t3.xlarge");
         private List<ISecurityGroup> additionalSecurityGroups = new ArrayList<>();
-        private int bootstrapTimeoutMinutes = 10;
-        private List<String> vscodeExtensions = Arrays.asList(
-            "shardulm94.trailing-spaces",
-            "ms-kubernetes-tools.vscode-kubernetes-tools",
-            "ms-azuretools.vscode-docker"
-        );
+        private int bootstrapTimeoutMinutes = 30;
         private String gitBranch = "main";
         private String templateType = "base";
 
@@ -70,10 +65,8 @@ public class Ide extends Construct {
             public Builder instanceTypes(List<String> instanceTypes) { props.instanceTypes = instanceTypes; return this; }
             public Builder additionalSecurityGroups(List<ISecurityGroup> additionalSecurityGroups) { props.additionalSecurityGroups = additionalSecurityGroups; return this; }
             public Builder bootstrapTimeoutMinutes(int bootstrapTimeoutMinutes) { props.bootstrapTimeoutMinutes = bootstrapTimeoutMinutes; return this; }
-            public Builder vscodeExtensions(List<String> vscodeExtensions) { props.vscodeExtensions = vscodeExtensions; return this; }
             public Builder gitBranch(String gitBranch) { props.gitBranch = gitBranch; return this; }
             public Builder templateType(String templateType) { props.templateType = templateType; return this; }
-
             public IdeProps build() { return props; }
         }
 
@@ -85,7 +78,6 @@ public class Ide extends Construct {
         public List<String> getInstanceTypes() { return instanceTypes; }
         public List<ISecurityGroup> getAdditionalSecurityGroups() { return additionalSecurityGroups; }
         public int getBootstrapTimeoutMinutes() { return bootstrapTimeoutMinutes; }
-        public List<String> getVscodeExtensions() { return vscodeExtensions; }
         public String getGitBranch() { return gitBranch; }
         public String getTemplateType() { return templateType; }
     }
@@ -243,11 +235,10 @@ public class Ide extends Construct {
 
         // Create User Data for bootstrap with CloudWatch logging
         var userData = UserData.forLinux();
-        String extensionsString = String.join(",", props.getVscodeExtensions());
         String gitBranch = props.getGitBranch();
         String templateType = props.getTemplateType();
 
-        // Build UserData content with proper substitutions
+        // Build UserData content with substitutions
         String userDataContent = String.format("""
             #!/bin/bash
             set -e
@@ -261,7 +252,6 @@ public class Ide extends Construct {
             STACK_NAME="%s"
             AWS_REGION="%s"
             TEMPLATE_TYPE="%s"
-            VSCODE_EXTENSIONS="%s"
 
             # Setup logging
             LOG_GROUP_NAME="ide-bootstrap-$(date +%%Y%%m%%d-%%H%%M%%S)"
@@ -300,42 +290,47 @@ public class Ide extends Construct {
 
             echo "UserData started at $(date) - Logging to $LOG_GROUP_NAME"
 
-            # Download and run full bootstrap script with retry logic
-            download_bootstrap() {
-                local urls=(
-                    "https://raw.githubusercontent.com/aws-samples/java-on-aws/${GIT_BRANCH}/infra/scripts/ide/bootstrap.sh"
-                    "https://github.com/aws-samples/java-on-aws/raw/${GIT_BRANCH}/infra/scripts/ide/bootstrap.sh"
-                )
+            # Clone repository to ec2-user home directory
+            clone_repository() {
                 local max_attempts=5
                 local delay=5
 
                 for attempt in $(seq 1 $max_attempts); do
-                    echo "Download attempt $attempt of $max_attempts"
+                    echo "Clone attempt $attempt of $max_attempts"
 
-                    for url in "${urls[@]}"; do
-                        echo "Trying to download bootstrap from: $url"
-                        if curl -fsSL --connect-timeout 30 --max-time 60 "$url" -o /tmp/bootstrap.sh; then
-                            echo "Successfully downloaded bootstrap script on attempt $attempt"
+                    # Remove existing directory if it exists
+                    sudo -u ec2-user rm -rf /home/ec2-user/java-on-aws
+
+                    # Clone as ec2-user to their home directory
+                    if sudo -u ec2-user git clone https://github.com/aws-samples/java-on-aws.git /home/ec2-user/java-on-aws; then
+                        # Checkout the correct branch as ec2-user
+                        if sudo -u ec2-user bash -c "cd /home/ec2-user/java-on-aws && git checkout $GIT_BRANCH"; then
+                            echo "Successfully cloned repository and checked out branch $GIT_BRANCH on attempt $attempt"
                             return 0
+                        else
+                            echo "Failed to checkout branch $GIT_BRANCH on attempt $attempt"
                         fi
-                        echo "Failed to download from: $url"
-                    done
+                    else
+                        echo "Failed to clone repository on attempt $attempt"
+                    fi
 
                     if [ $attempt -lt $max_attempts ]; then
-                        echo "All URLs failed on attempt $attempt, waiting ${delay}s before retry..."
+                        echo "Clone failed on attempt $attempt, waiting ${delay}s before retry..."
                         sleep $delay
                     fi
                 done
 
-                echo "All download attempts failed after $max_attempts tries"
+                echo "All clone attempts failed after $max_attempts tries"
                 return 1
             }
 
-            if download_bootstrap; then
-                chmod +x /tmp/bootstrap.sh
+            if clone_repository; then
+                # Make scripts executable
+                sudo -u ec2-user chmod +x /home/ec2-user/java-on-aws/infra/scripts/ide/*.sh
+
                 echo "Executing full bootstrap script..."
-                export VSCODE_EXTENSIONS="$VSCODE_EXTENSIONS"
-                if /tmp/bootstrap.sh "$IDE_PASSWORD" "$GIT_BRANCH" "$STACK_NAME" "$AWS_REGION" "$TEMPLATE_TYPE"; then
+                # Run bootstrap script as ec2-user from their home directory
+                if sudo -u ec2-user bash -c "cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh '$IDE_PASSWORD' '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
                     echo "Bootstrap completed successfully"
                     /opt/aws/bin/cfn-signal -e 0 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
                 else
@@ -344,7 +339,7 @@ public class Ide extends Construct {
                     exit 1
                 fi
             else
-                echo "FATAL: Could not download bootstrap script from any source"
+                echo "FATAL: Could not clone repository"
                 /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
                 exit 1
             fi
@@ -353,8 +348,7 @@ public class Ide extends Construct {
             ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap(),
             Aws.STACK_NAME,
             Aws.REGION,
-            templateType,
-            extensionsString
+            templateType
         );
 
         userData.addCommands(userDataContent);

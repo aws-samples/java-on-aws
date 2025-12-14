@@ -14,9 +14,7 @@ public class WorkshopApp {
 
         new WorkshopStack(app, "WorkshopStack", StackProps.builder()
             .synthesizer(new DefaultStackSynthesizer(DefaultStackSynthesizerProps.builder()
-                .generateBootstrapVersionRule(false)
-                .fileAssetsBucketName("unused-bucket")  // Force inline assets
-                .bucketPrefix("unused-prefix")
+                .generateBootstrapVersionRule(false) // This disables the bootstrap version parameter
                 .build()))
             .build());
 

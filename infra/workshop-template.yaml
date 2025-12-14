@@ -747,7 +747,6 @@ Resources:
               - |
                 "
                 TEMPLATE_TYPE="base"
-                VSCODE_EXTENSIONS="shardulm94.trailing-spaces,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker"
 
                 # Setup logging
                 LOG_GROUP_NAME="ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
@@ -786,42 +785,47 @@ Resources:
 
                 echo "UserData started at $(date) - Logging to $LOG_GROUP_NAME"
 
-                # Download and run full bootstrap script with retry logic
-                download_bootstrap() {
-                    local urls=(
-                        "https://raw.githubusercontent.com/aws-samples/java-on-aws/${GIT_BRANCH}/infra/scripts/ide/bootstrap.sh"
-                        "https://github.com/aws-samples/java-on-aws/raw/${GIT_BRANCH}/infra/scripts/ide/bootstrap.sh"
-                    )
+                # Clone repository to ec2-user home directory
+                clone_repository() {
                     local max_attempts=5
                     local delay=5
 
                     for attempt in $(seq 1 $max_attempts); do
-                        echo "Download attempt $attempt of $max_attempts"
+                        echo "Clone attempt $attempt of $max_attempts"
 
-                        for url in "${urls[@]}"; do
-                            echo "Trying to download bootstrap from: $url"
-                            if curl -fsSL --connect-timeout 30 --max-time 60 "$url" -o /tmp/bootstrap.sh; then
-                                echo "Successfully downloaded bootstrap script on attempt $attempt"
+                        # Remove existing directory if it exists
+                        sudo -u ec2-user rm -rf /home/ec2-user/java-on-aws
+
+                        # Clone as ec2-user to their home directory
+                        if sudo -u ec2-user git clone https://github.com/aws-samples/java-on-aws.git /home/ec2-user/java-on-aws; then
+                            # Checkout the correct branch as ec2-user
+                            if sudo -u ec2-user bash -c "cd /home/ec2-user/java-on-aws && git checkout $GIT_BRANCH"; then
+                                echo "Successfully cloned repository and checked out branch $GIT_BRANCH on attempt $attempt"
                                 return 0
+                            else
+                                echo "Failed to checkout branch $GIT_BRANCH on attempt $attempt"
                             fi
-                            echo "Failed to download from: $url"
-                        done
+                        else
+                            echo "Failed to clone repository on attempt $attempt"
+                        fi
 
                         if [ $attempt -lt $max_attempts ]; then
-                            echo "All URLs failed on attempt $attempt, waiting ${delay}s before retry..."
+                            echo "Clone failed on attempt $attempt, waiting ${delay}s before retry..."
                             sleep $delay
                         fi
                     done
 
-                    echo "All download attempts failed after $max_attempts tries"
+                    echo "All clone attempts failed after $max_attempts tries"
                     return 1
                 }
 
-                if download_bootstrap; then
-                    chmod +x /tmp/bootstrap.sh
+                if clone_repository; then
+                    # Make scripts executable
+                    sudo -u ec2-user chmod +x /home/ec2-user/java-on-aws/infra/scripts/ide/*.sh
+
                     echo "Executing full bootstrap script..."
-                    export VSCODE_EXTENSIONS="$VSCODE_EXTENSIONS"
-                    if /tmp/bootstrap.sh "$IDE_PASSWORD" "$GIT_BRANCH" "$STACK_NAME" "$AWS_REGION" "$TEMPLATE_TYPE"; then
+                    # Run bootstrap script as ec2-user from their home directory
+                    if sudo -u ec2-user bash -c "cd /home/ec2-user/java-on-aws && infra/scripts/ide/bootstrap.sh '$IDE_PASSWORD' '$GIT_BRANCH' '$STACK_NAME' '$TEMPLATE_TYPE'"; then
                         echo "Bootstrap completed successfully"
                         /opt/aws/bin/cfn-signal -e 0 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
                     else
@@ -830,7 +834,7 @@ Resources:
                         exit 1
                     fi
                 else
-                    echo "FATAL: Could not download bootstrap script from any source"
+                    echo "FATAL: Could not clone repository"
                     /opt/aws/bin/cfn-signal -e 1 --stack "$STACK_NAME" --resource IdeBootstrapWaitCondition --region "$AWS_REGION"
                     exit 1
                 fi
@@ -945,7 +949,7 @@ Resources:
       Count: 1
       Handle:
         Ref: IdeIdeBootstrapWaitConditionHandleEA0A1D15
-      Timeout: "600"
+      Timeout: "1800"
     DependsOn:
       - IdeIdeEC2InstanceResource17A0C9F7
   CodeBuildCodeBuildRoleBA9C6D5C:
@@ -1147,7 +1151,7 @@ Resources:
                   aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com 2>/dev/null || true
                   aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
         Type: NO_SOURCE
-      TimeoutInMinutes: 60
+      TimeoutInMinutes: 30
       VpcConfig:
         SecurityGroupIds:
           - Fn::GetAtt:
@@ -1367,13 +1371,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ContentHash: "1765654075204"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildCodeBuildRoleBA9C6D5C
           - Arn
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1765682125492"
     DependsOn:
       - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
       - CodeBuildBuildCompleteRule06AAF17D

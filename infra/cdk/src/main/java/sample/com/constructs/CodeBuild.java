@@ -30,7 +30,7 @@ public class CodeBuild extends Construct {
         private String projectName = "workshop-setup";
         private IBuildImage buildImage = LinuxBuildImage.AMAZON_LINUX_2_5;
         private ComputeType computeType = ComputeType.MEDIUM;
-        private Duration timeout = Duration.minutes(60);
+        private Duration timeout = Duration.minutes(30);
         private Boolean privilegedMode = false;
         private IVpc vpc;
         private Map<String, String> environmentVariables;
