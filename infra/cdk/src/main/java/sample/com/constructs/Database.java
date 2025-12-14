@@ -50,13 +50,13 @@ public class Database extends Construct {
 
         // Create database secret with universal naming
         databaseSecret = DatabaseSecret.Builder
-            .create(this, "DatabaseSecret")
+            .create(this, "Secret")
             .secretName("workshop-db-secret")
             .username("postgres")
             .build();
 
         // Create database security group
-        databaseSecurityGroup = SecurityGroup.Builder.create(this, "DatabaseSG")
+        databaseSecurityGroup = SecurityGroup.Builder.create(this, "SG")
             .securityGroupName("workshop-db-sg")
             .allowAllOutbound(true)
             .vpc(vpc)
@@ -70,7 +70,7 @@ public class Database extends Construct {
 
 
         // Create Aurora PostgreSQL cluster with universal naming
-        database = DatabaseCluster.Builder.create(this, "DatabaseCluster")
+        database = DatabaseCluster.Builder.create(this, "Cluster")
             .engine(DatabaseClusterEngine.auroraPostgres(
                 AuroraPostgresClusterEngineProps.builder()
                     .version(AuroraPostgresEngineVersion.VER_16_4)
@@ -94,14 +94,14 @@ public class Database extends Construct {
             .build();
 
         // Create separate password secret for services that need plain password
-        secretPassword = Secret.Builder.create(this, "DatabasePasswordSecret")
+        secretPassword = Secret.Builder.create(this, "PasswordSecret")
             .secretName("workshop-db-password-secret")
             .secretStringValue(SecretValue.secretsManager(databaseSecret.getSecretName(),
                 SecretsManagerSecretOptions.builder().jsonField("password").build()))
             .build();
 
         // Create parameter store entry for connection string
-        paramDBConnectionString = StringParameter.Builder.create(this, "DatabaseConnectionString")
+        paramDBConnectionString = StringParameter.Builder.create(this, "ConnectionString")
             .allowedPattern(".*")
             .description("Database Connection String")
             .parameterName("workshop-db-connection-string")
@@ -110,7 +110,7 @@ public class Database extends Construct {
             .build();
 
         // Create database setup Lambda function
-        Function databaseSetupFunction = Function.Builder.create(this, "DatabaseSetupFunction")
+        Function databaseSetupFunction = Function.Builder.create(this, "SetupFunction")
             .code(Code.fromInline(loadFile("/lambda/database-setup.py")))
             .handler("index.lambda_handler")
             .runtime(Runtime.PYTHON_3_13)
@@ -125,7 +125,7 @@ public class Database extends Construct {
         database.grantDataApiAccess(databaseSetupFunction);
 
         // Create custom resource for database setup
-        databaseSetupResource = CustomResource.Builder.create(this, "DatabaseSetupResource")
+        databaseSetupResource = CustomResource.Builder.create(this, "SetupResource")
             .serviceToken(databaseSetupFunction.getFunctionArn())
             .properties(Map.of(
                 "SecretName", databaseSecret.getSecretName(),

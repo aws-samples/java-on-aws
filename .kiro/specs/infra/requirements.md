@@ -22,6 +22,8 @@ This document specifies the requirements for creating a new AWS workshop infrast
 - **Version_Centralization**: Pattern where all tool versions are defined at the top of scripts for easy maintenance and automated detection
 - **Retry_Logic**: Network resilience pattern using exponential backoff and configurable attempts for handling transient failures
 - **Modular_Scripts**: Architecture where bootstrap functionality is separated into focused scripts (UserData → bootstrap → vscode → base)
+- **CDK_Naming_Convention**: Consistent pattern for CDK construct resource naming that produces clean CloudFormation logical IDs following {ConstructName}{ResourceType} format
+- **EKS_IDE_Integration**: Architecture pattern where EKS cluster shares security groups and IAM roles with IDE environment for seamless kubectl access
 
 ## Requirements
 
@@ -267,4 +269,16 @@ This document specifies the requirements for creating a new AWS workshop infrast
 2. WHEN database is created, THE system SHALL depend only on VPC and deploy in parallel with EKS cluster
 3. WHEN both EKS and database are deploying, THE system SHALL not create unnecessary dependencies between them
 4. WHEN parallel deployment completes, THE system SHALL ensure both resources are available for workshop setup scripts
+
+### Requirement 20
+
+**User Story:** As a workshop developer, I want consistent CDK construct naming conventions that produce clean CloudFormation logical IDs, so that infrastructure resources are easily identifiable and maintainable without naming duplication.
+
+#### Acceptance Criteria
+
+1. WHEN CDK constructs create resources, THE system SHALL follow the pattern {ConstructName}{ResourceType} for CloudFormation logical IDs
+2. WHEN resource names are defined within constructs, THE system SHALL avoid repeating the construct type to prevent duplication like "IdeIdePasswordSecret"
+3. WHEN CloudFormation templates are generated, THE system SHALL produce logical IDs without redundant naming patterns
+4. WHEN EKS cluster integrates with IDE, THE system SHALL share security groups and IAM roles through proper construct interfaces
+5. WHEN construct naming is applied consistently, THE system SHALL ensure all resources follow the same naming convention across VPC, IDE, Database, EKS, and CodeBuild constructs
 

@@ -77,6 +77,7 @@ public class WorkshopStack extends Stack {
                 Eks eks = new Eks(this, "Eks", Eks.EksProps.builder()
                     .vpc(vpc.getVpc())
                     .ideInstanceRole(ideProps.getIdeRole())
+                    .ideInternalSecurityGroup(ide.getIdeInternalSecurityGroup())
                     .build());
             }
         }

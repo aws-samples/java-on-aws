@@ -100,7 +100,7 @@ public class Ide extends Construct {
 
         // Create workshop role for IDE instances if not provided
         if (props.getIdeRole() == null) {
-            props.ideRole = Role.Builder.create(this, "IdeRole")
+            props.ideRole = Role.Builder.create(this, "Role")
                 .roleName("ide-user")
                 .assumedBy(ServicePrincipal.Builder.create("ec2.amazonaws.com").build())
                 .managedPolicies(List.of(
@@ -127,14 +127,14 @@ public class Ide extends Construct {
         var policyDocumentJson = loadFile("/iam-policy.json");
         if (policyDocumentJson != null) {
             var policyDocument = PolicyDocument.fromJson(new JSONObject(policyDocumentJson).toMap());
-            var policy = ManagedPolicy.Builder.create(this, "WorkshopIdeUserPolicy")
+            var policy = ManagedPolicy.Builder.create(this, "UserPolicy")
                 .document(policyDocument)
                 .build();
             this.ideRole.addManagedPolicy(policy);
         }
 
         // Create Lambda role for IDE Lambda functions
-        this.lambdaRole = Role.Builder.create(this, "IdeLambdaRole")
+        this.lambdaRole = Role.Builder.create(this, "LambdaRole")
             .assumedBy(ServicePrincipal.Builder.create("lambda.amazonaws.com").build())
             .managedPolicies(List.of(
                 ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")
@@ -165,7 +165,7 @@ public class Ide extends Construct {
         lambdaRole.addToPolicy(lambdaPermissions);
 
         // Set up wait condition handle for bootstrap completion (needed for User Data)
-        var waitHandle = CfnWaitConditionHandle.Builder.create(this, "BootstrapWaitConditionHandle")
+        var waitHandle = CfnWaitConditionHandle.Builder.create(this, "WaitConditionHandle")
             .build();
 
         // Create CloudFront prefix list lookup Lambda function
@@ -188,7 +188,7 @@ public class Ide extends Construct {
             .build();
 
         // Create security group for IDE access (CloudFront only)
-        this.ideSecurityGroup = SecurityGroup.Builder.create(this, "IdeSecurityGroup")
+        this.ideSecurityGroup = SecurityGroup.Builder.create(this, "SecurityGroup")
             .vpc(props.getVpc())
             .allowAllOutbound(true)
             .securityGroupName(instanceName + "-cloudfront-ide-sg")
@@ -202,7 +202,7 @@ public class Ide extends Construct {
         );
 
         // Internal security group for VPC communication
-        this.ideInternalSecurityGroup = SecurityGroup.Builder.create(this, "IdeInternalSecurityGroup")
+        this.ideInternalSecurityGroup = SecurityGroup.Builder.create(this, "InternalSecurityGroup")
             .vpc(props.getVpc())
             .allowAllOutbound(false)
             .securityGroupName(instanceName + "-internal-sg")
@@ -215,13 +215,13 @@ public class Ide extends Construct {
         );
 
         // Create instance profile
-        var instanceProfile = InstanceProfile.Builder.create(this, "IdeInstanceProfile")
+        var instanceProfile = InstanceProfile.Builder.create(this, "InstanceProfile")
             .role(this.ideRole)
             .instanceProfileName(this.ideRole.getRoleName())
             .build();
 
         // Create Elastic IP
-        var elasticIP = CfnEIP.Builder.create(this, "IdeElasticIP")
+        var elasticIP = CfnEIP.Builder.create(this, "ElasticIP")
             .domain("vpc")
             .build();
 
@@ -237,7 +237,7 @@ public class Ide extends Construct {
         props.getAdditionalSecurityGroups().forEach(sg -> securityGroupIds.add(sg.getSecurityGroupId()));
 
         // Create password secret
-        this.ideSecretsManagerPassword = Secret.Builder.create(this, "IdePasswordSecret")
+        this.ideSecretsManagerPassword = Secret.Builder.create(this, "PasswordSecret")
             .generateSecretString(SecretStringGenerator.builder()
                 .excludePunctuation(true)
                 .passwordLength(32)
@@ -273,7 +273,7 @@ public class Ide extends Construct {
         var instanceLauncherFunction = instanceLauncher.getFunction();
 
         // Create EC2 instance via Custom Resource with intelligent failover
-        var ec2InstanceResource = CustomResource.Builder.create(this, "IdeEC2InstanceResource")
+        var ec2InstanceResource = CustomResource.Builder.create(this, "EC2InstanceResource")
             .serviceToken(instanceLauncherFunction.getFunctionArn())
             .properties(Map.of(
                 "SubnetIds", String.join(",", publicSubnets.getSubnetIds()),
@@ -290,7 +290,7 @@ public class Ide extends Construct {
         String instanceId = ec2InstanceResource.getAttString("InstanceId");
 
         // Associate Elastic IP with the instance
-        var ipAssociation = CfnEIPAssociation.Builder.create(this, "IdeEipAssociation")
+        var ipAssociation = CfnEIPAssociation.Builder.create(this, "EipAssociation")
             .allocationId(elasticIP.getAttrAllocationId())
             .instanceId(instanceId)
             .build();
@@ -309,7 +309,7 @@ public class Ide extends Construct {
         ));
 
         // Create CloudFront distribution
-        var distribution = Distribution.Builder.create(this, "IdeDistribution")
+        var distribution = Distribution.Builder.create(this, "Distribution")
             .defaultBehavior(BehaviorOptions.builder()
                 .origin(new HttpOrigin(publicDnsName,
                     HttpOriginProps.builder()
@@ -327,7 +327,7 @@ public class Ide extends Construct {
         distribution.applyRemovalPolicy(RemovalPolicy.DESTROY);
         distribution.getNode().addDependency(ipAssociation);
 
-        var waitCondition = CfnWaitCondition.Builder.create(this, "BootstrapWaitCondition")
+        var waitCondition = CfnWaitCondition.Builder.create(this, "WaitCondition")
             .count(1)
             .handle(waitHandle.getRef())
             .timeout(String.valueOf(props.getBootstrapTimeoutMinutes() * 60))
@@ -373,7 +373,7 @@ public class Ide extends Construct {
 
     private String getIdePassword(String instanceName) {
         if (passwordResource == null) {
-            Function passwordFunction = Function.Builder.create(this, "PasswordExporterFunction")
+            Function passwordFunction = Function.Builder.create(this, "PasswordFunction")
                 .code(Code.fromInline(loadFile("/lambda/password-exporter.py")))
                 .handler("index.lambda_handler")
                 .runtime(Runtime.PYTHON_3_13)
@@ -383,7 +383,7 @@ public class Ide extends Construct {
 
             ideSecretsManagerPassword.grantRead(passwordFunction);
 
-            passwordResource = CustomResource.Builder.create(this, "PasswordExporter")
+            passwordResource = CustomResource.Builder.create(this, "PasswordResource")
                 .serviceToken(passwordFunction.getFunctionArn())
                 .properties(Map.of(
                     "PasswordName", this.ideSecretsManagerPassword.getSecretName()

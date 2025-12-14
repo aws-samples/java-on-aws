@@ -362,24 +362,35 @@
   - Ensured clean VS Code environment without any AI prompts or agent interfaces
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
+- [x] 11.27 Fix CDK construct naming to eliminate CloudFormation logical ID duplication
+  - Fixed redundant CloudFormation logical IDs caused by duplicate naming patterns in CDK constructs
+  - Updated Database construct: "DatabaseSecret" → "Secret", "DatabasePasswordSecret" → "PasswordSecret", "DatabaseCluster" → "Cluster"
+  - Updated IDE construct: "IdePasswordSecret" → "PasswordSecret", "IdeRole" → "Role", "IdeSecurityGroup" → "SecurityGroup"
+  - Updated EKS construct: "IdeInstanceAccessEntry" → "InstanceAccessEntry", "SecretsStoreCsiDriver" → "SecretsStoreDriver"
+  - Updated CodeBuild and VPC constructs with consistent naming patterns
+  - Eliminated problematic CloudFormation logical IDs: "IdeIdePasswordSecret" → "IdePasswordSecret", "DatabaseDatabaseSecret" → "DatabaseSecret"
+  - Verified template generation produces clean logical IDs without duplication patterns
+  - Applied consistent naming convention: construct name + resource type (e.g., Ide + PasswordSecret = IdePasswordSecret)
+  - _Requirements: 1.1, 5.6_
+
 ## Java-on-AWS Migration (100.x)
 
-- [ ] 100.1 Analyze java-on-aws workshop requirements
-  - Review infrastructure/cfn/unicornstore-stack.yaml to identify required resources
-  - Document EKS, Database, and other workshop-specific components
-  - Map existing resources to new construct pattern
-  - Plan conditional logic for WorkshopStack
-  - Reference unicorn-roles-analysis.md for IAM role requirements
+- [x] 100.1 Analyze java-on-aws workshop requirements
+  - Reviewed infrastructure/cfn/unicornstore-stack.yaml and identified required resources ✅
+  - Documented EKS, Database, and other workshop-specific components ✅
+  - Mapped existing resources to new construct pattern ✅
+  - Planned conditional logic for WorkshopStack ✅
+  - Referenced unicorn-roles-analysis.md for IAM role requirements ✅
   - _Requirements: 5.4, 5.5_
 
-- [ ] 100.2 Create EKS construct using EKS v2 with Auto Mode
-  - Create infra/cdk/src/main/java/sample/com/constructs/Eks.java using software.amazon.awscdk.services.eks.v2.alpha
-  - Configure workshop-eks with Auto Mode, version 1.34, system+general-purpose node pools
-  - Add 3 EKS add-ons: AWS Secrets Store CSI Driver, AWS Mountpoint S3 CSI Driver, EKS Pod Identity Agent
-  - Create Access Entry for WSParticipantRole AND IDE instance role with cluster admin permissions
-  - Use Access Entries authentication mode instead of ConfigMap-based authentication
-  - Enable all log types (api, audit, authenticator, controllerManager, scheduler) for comprehensive monitoring
-  - EKS cluster should depend only on VPC for parallel deployment with Database
+- [x] 100.2 Create EKS construct using EKS v2 with Auto Mode
+  - Created infra/cdk/src/main/java/sample/com/constructs/Eks.java using software.amazon.awscdk.services.eks.v2.alpha ✅
+  - Configured workshop-eks with Auto Mode, version 1.34, system+general-purpose node pools ✅
+  - Added 3 EKS add-ons: AWS Secrets Store CSI Driver, AWS Mountpoint S3 CSI Driver, EKS Pod Identity Agent ✅
+  - Created Access Entry for WSParticipantRole AND IDE instance role with cluster admin permissions ✅
+  - Used Access Entries authentication mode instead of ConfigMap-based authentication ✅
+  - Enabled all log types (api, audit, authenticator, controllerManager, scheduler) for comprehensive monitoring ✅
+  - EKS cluster depends only on VPC for parallel deployment with Database ✅
   - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.7, 13.8, 15.3, 15.5, 15.6, 19.1_
 
 - [x] 100.3 Create Database construct with universal naming
@@ -395,33 +406,35 @@
   - Consolidate RDS and database schema setup into single construct
   - _Requirements: 5.6, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
 
-- [x] 100.4 Update WorkshopStack for java-on-aws with EKS integration (Database part complete)
+- [x] 100.4 Update WorkshopStack for java-on-aws with EKS integration
   - Database already conditionally created for non-base templates (same as Roles) ✅
-  - Need to add conditional EKS creation: if (!"base".equals(workshopType) && !"java-ai-agents".equals(workshopType))
-  - Test TEMPLATE_TYPE=java-on-aws generates template with VPC, IDE, CodeBuild, Roles, Database, and EKS resources
-  - Validate generated template includes all EKS add-ons and Access Entries configuration
-  - Ensure template supports both java-on-aws and base templates from same codebase
+  - Added conditional EKS creation: if (!"base".equals(templateType) && !"java-ai-agents".equals(templateType)) ✅
+  - Integrated EKS with IDE security group: eks.ideInternalSecurityGroup(ide.getIdeInternalSecurityGroup()) ✅
+  - Integrated EKS with IDE instance role: eks.ideInstanceRole(ideProps.getIdeRole()) ✅
+  - Tested TEMPLATE_TYPE=java-on-aws generates template with VPC, IDE, CodeBuild, Roles, Database, and EKS resources ✅
+  - Validated generated template includes all EKS add-ons and Access Entries configuration ✅
+  - Ensured template supports both java-on-aws and base templates from same codebase ✅
   - _Requirements: 1.2, 1.3, 13.1, 16.1_
 
-- [ ] 100.5 Create EKS post-deployment setup script
-  - Create infra/scripts/setup/eks.sh for EKS cluster configuration (based on original infrastructure/scripts/setup/eks.sh)
-  - Use infra/scripts/lib/common.sh for consistent emoji-based logging and error handling
-  - Use infra/scripts/lib/wait-for-resources.sh wait_for_eks_cluster() function for cluster readiness
-  - Check cluster status and wait until kubectl get ns works successfully before proceeding
-  - Update kubeconfig and add workshop-eks to kubectl context
-  - Deploy GP3 StorageClass (encrypted, default) since EKS Auto Mode doesn't provide encrypted GP3 by default
-  - Deploy ALB IngressClass + IngressClassParams for Application Load Balancer integration
-  - Create SecretProviderClass for database secrets (workshop-db-secret, workshop-db-password-secret, workshop-db-connection-string)
-  - Configure EKS Pod Identity with AWSSecretsManagerClientReadOnlyAccess managed policy
-  - Verify all three add-ons are installed and functional before completing
+- [x] 100.5 Create EKS post-deployment setup script
+  - Created infra/scripts/setup/eks.sh for EKS cluster configuration (based on original infrastructure/scripts/setup/eks.sh) ✅
+  - Used infra/scripts/lib/common.sh for consistent emoji-based logging and error handling ✅
+  - Used infra/scripts/lib/wait-for-resources.sh wait_for_eks_cluster() function for cluster readiness ✅
+  - Checked cluster status and wait until kubectl get ns works successfully before proceeding ✅
+  - Updated kubeconfig and add workshop-eks to kubectl context ✅
+  - Deployed GP3 StorageClass (encrypted, default) since EKS Auto Mode doesn't provide encrypted GP3 by default ✅
+  - Deployed ALB IngressClass + IngressClassParams for Application Load Balancer integration ✅
+  - Created SecretProviderClass for database secrets (workshop-db-secret, workshop-db-password-secret, workshop-db-connection-string) ✅
+  - Configured EKS Pod Identity with AWSSecretsManagerClientReadOnlyAccess managed policy ✅
+  - Verified all three add-ons are installed and functional before completing ✅
   - _Requirements: 15.1, 15.2, 14.2, 14.3, 14.4, 15.7, 18.1, 18.2, 18.3, 18.4, 18.6_
 
-- [ ] 100.6 Create java-on-aws workshop orchestration script
-  - Create infra/scripts/ide/java-on-aws.sh that executes base.sh and EKS implementation
-  - Script should call base.sh first for foundational development tools
-  - Then execute EKS-specific setup (cluster configuration, add-ons, storage classes)
-  - Implement proper error handling and progress feedback between base and EKS phases
-  - Test script execution and validate all setup steps complete successfully
+- [x] 100.6 Create java-on-aws workshop orchestration script
+  - Created infra/scripts/ide/java-on-aws.sh that executes base.sh and EKS implementation ✅
+  - Script calls base.sh first for foundational development tools ✅
+  - Then executes EKS-specific setup (cluster configuration, add-ons, storage classes) ✅
+  - Implemented proper error handling and progress feedback between base and EKS phases ✅
+  - Tested script execution and validated all setup steps complete successfully ✅
   - _Requirements: 3.1, 3.2_
 
 - [ ]* 100.7 Write property test for EKS Access Entry configuration
@@ -440,11 +453,11 @@
   - **Property 22: Workshop Verification**
   - **Validates: Requirements 17.4**
 
-- [ ] 100.11 Validate java-on-aws migration
-  - Generate template with TEMPLATE_TYPE=java-on-aws and verify all EKS resources are present
-  - Test template generation for both base and java-on-aws from same codebase
-  - Verify EKS add-ons, Access Entries, and database resources are properly configured
-  - Document template differences and ensure they provide equivalent functionality
+- [x] 100.11 Validate java-on-aws migration
+  - Generated template with TEMPLATE_TYPE=java-on-aws and verified all EKS resources are present ✅
+  - Tested template generation for both base and java-on-aws from same codebase ✅
+  - Verified EKS add-ons, Access Entries, and database resources are properly configured ✅
+  - Documented template differences and ensured they provide equivalent functionality ✅
   - _Requirements: 1.2, 1.3, 16.1_
 
 ## Java-on-EKS Migration (200.x)

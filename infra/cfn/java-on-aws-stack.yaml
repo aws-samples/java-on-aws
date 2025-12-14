@@ -1,5 +1,5 @@
 Resources:
-  VpcWorkshopVpcAB7D061C:
+  VpcC3027511:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 10.0.0.0/16
@@ -9,7 +9,7 @@ Resources:
       Tags:
         - Key: Name
           Value: workshop-vpc
-  VpcWorkshopVpcPublicSubnet1SubnetBCB45C45:
+  VpcPublicSubnet1Subnet8E8DEDC0:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone:
@@ -26,37 +26,37 @@ Resources:
         - Key: kubernetes.io/role/elb
           Value: "1"
         - Key: Name
-          Value: WorkshopStack/Vpc/WorkshopVpc/PublicSubnet1
+          Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
-  VpcWorkshopVpcPublicSubnet1RouteTable36F1AD0E:
+        Ref: VpcC3027511
+  VpcPublicSubnet1RouteTable431DD755:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
         - Key: kubernetes.io/role/elb
           Value: "1"
         - Key: Name
-          Value: WorkshopStack/Vpc/WorkshopVpc/PublicSubnet1
+          Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
-  VpcWorkshopVpcPublicSubnet1RouteTableAssociationCF5FEF9E:
+        Ref: VpcC3027511
+  VpcPublicSubnet1RouteTableAssociationBBCB7AA1:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId:
-        Ref: VpcWorkshopVpcPublicSubnet1RouteTable36F1AD0E
+        Ref: VpcPublicSubnet1RouteTable431DD755
       SubnetId:
-        Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
-  VpcWorkshopVpcPublicSubnet1DefaultRouteF815C2F3:
+        Ref: VpcPublicSubnet1Subnet8E8DEDC0
+  VpcPublicSubnet1DefaultRoute0F5C6C43:
     Type: AWS::EC2::Route
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId:
-        Ref: VpcWorkshopVpcIGW19681F96
+        Ref: VpcIGW488B0FEB
       RouteTableId:
-        Ref: VpcWorkshopVpcPublicSubnet1RouteTable36F1AD0E
+        Ref: VpcPublicSubnet1RouteTable431DD755
     DependsOn:
-      - VpcWorkshopVpcVPCGWBF8004A5
-  VpcWorkshopVpcPublicSubnet1EIP1EDF2EDC:
+      - VpcVPCGW42EC8516
+  VpcPublicSubnet1EIP2293BAA3:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -64,25 +64,25 @@ Resources:
         - Key: kubernetes.io/role/elb
           Value: "1"
         - Key: Name
-          Value: WorkshopStack/Vpc/WorkshopVpc/PublicSubnet1
-  VpcWorkshopVpcPublicSubnet1NATGatewayB7F27960:
+          Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+  VpcPublicSubnet1NATGateway8185E366:
     Type: AWS::EC2::NatGateway
     Properties:
       AllocationId:
         Fn::GetAtt:
-          - VpcWorkshopVpcPublicSubnet1EIP1EDF2EDC
+          - VpcPublicSubnet1EIP2293BAA3
           - AllocationId
       SubnetId:
-        Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
+        Ref: VpcPublicSubnet1Subnet8E8DEDC0
       Tags:
         - Key: kubernetes.io/role/elb
           Value: "1"
         - Key: Name
-          Value: WorkshopStack/Vpc/WorkshopVpc/PublicSubnet1
+          Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
     DependsOn:
-      - VpcWorkshopVpcPublicSubnet1DefaultRouteF815C2F3
-      - VpcWorkshopVpcPublicSubnet1RouteTableAssociationCF5FEF9E
-  VpcWorkshopVpcPublicSubnet2SubnetF8F9426F:
+      - VpcPublicSubnet1DefaultRoute0F5C6C43
+      - VpcPublicSubnet1RouteTableAssociationBBCB7AA1
+  VpcPublicSubnet2SubnetA811849C:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone:
@@ -99,37 +99,37 @@ Resources:
         - Key: kubernetes.io/role/elb
           Value: "1"
         - Key: Name
-          Value: WorkshopStack/Vpc/WorkshopVpc/PublicSubnet2
+          Value: WorkshopStack/Vpc/Vpc/PublicSubnet2
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
-  VpcWorkshopVpcPublicSubnet2RouteTableB1955E1B:
+        Ref: VpcC3027511
+  VpcPublicSubnet2RouteTable77FB35FC:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
         - Key: kubernetes.io/role/elb
           Value: "1"
         - Key: Name
-          Value: WorkshopStack/Vpc/WorkshopVpc/PublicSubnet2
+          Value: WorkshopStack/Vpc/Vpc/PublicSubnet2
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
-  VpcWorkshopVpcPublicSubnet2RouteTableAssociationF80852AE:
+        Ref: VpcC3027511
+  VpcPublicSubnet2RouteTableAssociation3AFE92E6:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId:
-        Ref: VpcWorkshopVpcPublicSubnet2RouteTableB1955E1B
+        Ref: VpcPublicSubnet2RouteTable77FB35FC
       SubnetId:
-        Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
-  VpcWorkshopVpcPublicSubnet2DefaultRouteF7AAC1E0:
+        Ref: VpcPublicSubnet2SubnetA811849C
+  VpcPublicSubnet2DefaultRouteD629179A:
     Type: AWS::EC2::Route
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId:
-        Ref: VpcWorkshopVpcIGW19681F96
+        Ref: VpcIGW488B0FEB
       RouteTableId:
-        Ref: VpcWorkshopVpcPublicSubnet2RouteTableB1955E1B
+        Ref: VpcPublicSubnet2RouteTable77FB35FC
     DependsOn:
-      - VpcWorkshopVpcVPCGWBF8004A5
-  VpcWorkshopVpcPrivateSubnet1SubnetCE870430:
+      - VpcVPCGW42EC8516
+  VpcPrivateSubnet1Subnet67A4DBCB:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone:
@@ -146,35 +146,35 @@ Resources:
         - Key: kubernetes.io/role/internal-elb
           Value: "1"
         - Key: Name
-          Value: WorkshopStack/Vpc/WorkshopVpc/PrivateSubnet1
+          Value: WorkshopStack/Vpc/Vpc/PrivateSubnet1
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
-  VpcWorkshopVpcPrivateSubnet1RouteTable554DA77D:
+        Ref: VpcC3027511
+  VpcPrivateSubnet1RouteTable901BAEEE:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
         - Key: kubernetes.io/role/internal-elb
           Value: "1"
         - Key: Name
-          Value: WorkshopStack/Vpc/WorkshopVpc/PrivateSubnet1
+          Value: WorkshopStack/Vpc/Vpc/PrivateSubnet1
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
-  VpcWorkshopVpcPrivateSubnet1RouteTableAssociation6440BC71:
+        Ref: VpcC3027511
+  VpcPrivateSubnet1RouteTableAssociation2BC202CB:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId:
-        Ref: VpcWorkshopVpcPrivateSubnet1RouteTable554DA77D
+        Ref: VpcPrivateSubnet1RouteTable901BAEEE
       SubnetId:
-        Ref: VpcWorkshopVpcPrivateSubnet1SubnetCE870430
-  VpcWorkshopVpcPrivateSubnet1DefaultRouteDAFC9A0B:
+        Ref: VpcPrivateSubnet1Subnet67A4DBCB
+  VpcPrivateSubnet1DefaultRouteF704DE9F:
     Type: AWS::EC2::Route
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId:
-        Ref: VpcWorkshopVpcPublicSubnet1NATGatewayB7F27960
+        Ref: VpcPublicSubnet1NATGateway8185E366
       RouteTableId:
-        Ref: VpcWorkshopVpcPrivateSubnet1RouteTable554DA77D
-  VpcWorkshopVpcPrivateSubnet2SubnetA1F06CF5:
+        Ref: VpcPrivateSubnet1RouteTable901BAEEE
+  VpcPrivateSubnet2SubnetC8EB537D:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone:
@@ -191,48 +191,48 @@ Resources:
         - Key: kubernetes.io/role/internal-elb
           Value: "1"
         - Key: Name
-          Value: WorkshopStack/Vpc/WorkshopVpc/PrivateSubnet2
+          Value: WorkshopStack/Vpc/Vpc/PrivateSubnet2
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
-  VpcWorkshopVpcPrivateSubnet2RouteTable9C677543:
+        Ref: VpcC3027511
+  VpcPrivateSubnet2RouteTable1EA00C9D:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
         - Key: kubernetes.io/role/internal-elb
           Value: "1"
         - Key: Name
-          Value: WorkshopStack/Vpc/WorkshopVpc/PrivateSubnet2
+          Value: WorkshopStack/Vpc/Vpc/PrivateSubnet2
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
-  VpcWorkshopVpcPrivateSubnet2RouteTableAssociation541BD7CF:
+        Ref: VpcC3027511
+  VpcPrivateSubnet2RouteTableAssociationFA51927B:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId:
-        Ref: VpcWorkshopVpcPrivateSubnet2RouteTable9C677543
+        Ref: VpcPrivateSubnet2RouteTable1EA00C9D
       SubnetId:
-        Ref: VpcWorkshopVpcPrivateSubnet2SubnetA1F06CF5
-  VpcWorkshopVpcPrivateSubnet2DefaultRoute7F56E125:
+        Ref: VpcPrivateSubnet2SubnetC8EB537D
+  VpcPrivateSubnet2DefaultRoute5FAC9901:
     Type: AWS::EC2::Route
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId:
-        Ref: VpcWorkshopVpcPublicSubnet1NATGatewayB7F27960
+        Ref: VpcPublicSubnet1NATGateway8185E366
       RouteTableId:
-        Ref: VpcWorkshopVpcPrivateSubnet2RouteTable9C677543
-  VpcWorkshopVpcIGW19681F96:
+        Ref: VpcPrivateSubnet2RouteTable1EA00C9D
+  VpcIGW488B0FEB:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
           Value: workshop-vpc
-  VpcWorkshopVpcVPCGWBF8004A5:
+  VpcVPCGW42EC8516:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       InternetGatewayId:
-        Ref: VpcWorkshopVpcIGW19681F96
+        Ref: VpcIGW488B0FEB
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
-  IdeIdeRoleD654ADD4:
+        Ref: VpcC3027511
+  IdeRole4650E22E:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -258,9 +258,9 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/CloudWatchAgentServerPolicy
-        - Ref: IdeWorkshopIdeUserPolicy137B5BDB
+        - Ref: IdeUserPolicy2460FC7D
       RoleName: ide-user
-  IdeIdeRoleDefaultPolicyB84B17D1:
+  IdeRoleDefaultPolicyFD4BDE67:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -273,12 +273,12 @@ Resources:
               - secretsmanager:GetSecretValue
             Effect: Allow
             Resource:
-              Ref: IdeIdePasswordSecretF3482811
+              Ref: IdePasswordSecretF907B9F2
         Version: "2012-10-17"
-      PolicyName: IdeIdeRoleDefaultPolicyB84B17D1
+      PolicyName: IdeRoleDefaultPolicyFD4BDE67
       Roles:
-        - Ref: IdeIdeRoleD654ADD4
-  IdeWorkshopIdeUserPolicy137B5BDB:
+        - Ref: IdeRole4650E22E
+  IdeUserPolicy2460FC7D:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: ""
@@ -396,7 +396,7 @@ Resources:
             Resource: "*"
             Sid: DenyReservations
         Version: "2012-10-17"
-  IdeIdeLambdaRoleCC8748CC:
+  IdeLambdaRole82392143:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -412,7 +412,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  IdeIdeLambdaRoleDefaultPolicy6F800745:
+  IdeLambdaRoleDefaultPolicy099093D2:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -434,10 +434,10 @@ Resources:
             Effect: Allow
             Resource: "*"
         Version: "2012-10-17"
-      PolicyName: IdeIdeLambdaRoleDefaultPolicy6F800745
+      PolicyName: IdeLambdaRoleDefaultPolicy099093D2
       Roles:
-        - Ref: IdeIdeLambdaRoleCC8748CC
-  IdeBootstrapWaitConditionHandleD7141CA8:
+        - Ref: IdeLambdaRole82392143
+  IdeWaitConditionHandleE8345861:
     Type: AWS::CloudFormation::WaitConditionHandle
   IdePrefixListLookupFunction9E5A63DE:
     Type: AWS::Lambda::Function
@@ -483,13 +483,13 @@ Resources:
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - IdeIdeLambdaRoleCC8748CC
+          - IdeLambdaRole82392143
           - Arn
       Runtime: python3.13
       Timeout: 180
     DependsOn:
-      - IdeIdeLambdaRoleDefaultPolicy6F800745
-      - IdeIdeLambdaRoleCC8748CC
+      - IdeLambdaRoleDefaultPolicy099093D2
+      - IdeLambdaRole82392143
   IdePrefixListResourceD2EAC007:
     Type: AWS::CloudFormation::CustomResource
     Properties:
@@ -499,7 +499,7 @@ Resources:
           - Arn
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  IdeIdeSecurityGroup5C503C8A:
+  IdeSecurityGroup73B02454:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: IDE security group
@@ -509,15 +509,15 @@ Resources:
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
-  IdeIdeSecurityGroupfromIndirectPeer802BA7B90C:
+        Ref: VpcC3027511
+  IdeSecurityGroupfromIndirectPeer80C006C8A1:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: HTTP from CloudFront only
       FromPort: 80
       GroupId:
         Fn::GetAtt:
-          - IdeIdeSecurityGroup5C503C8A
+          - IdeSecurityGroup73B02454
           - GroupId
       IpProtocol: tcp
       SourcePrefixListId:
@@ -525,51 +525,51 @@ Resources:
           - IdePrefixListResourceD2EAC007
           - PrefixListId
       ToPort: 80
-  IdeIdeInternalSecurityGroupD5D3B421:
+  IdeInternalSecurityGroupB0A5D76B:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: IDE internal security group
       GroupName: ide-internal-sg
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
-  IdeIdeInternalSecurityGroupfromWorkshopStackIdeIdeInternalSecurityGroup236BB241ALLTRAFFIC024019C0:
+        Ref: VpcC3027511
+  IdeInternalSecurityGroupfromWorkshopStackIdeInternalSecurityGroup2A6A3A7DALLTRAFFIC101F9997:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: Allow all internal traffic
       GroupId:
         Fn::GetAtt:
-          - IdeIdeInternalSecurityGroupD5D3B421
+          - IdeInternalSecurityGroupB0A5D76B
           - GroupId
       IpProtocol: "-1"
       SourceSecurityGroupId:
         Fn::GetAtt:
-          - IdeIdeInternalSecurityGroupD5D3B421
+          - IdeInternalSecurityGroupB0A5D76B
           - GroupId
-  IdeIdeInternalSecurityGrouptoWorkshopStackIdeIdeInternalSecurityGroup236BB241ALLTRAFFIC65445F6E:
+  IdeInternalSecurityGrouptoWorkshopStackIdeInternalSecurityGroup2A6A3A7DALLTRAFFICCB660737:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
       Description: Allow all internal traffic
       DestinationSecurityGroupId:
         Fn::GetAtt:
-          - IdeIdeInternalSecurityGroupD5D3B421
+          - IdeInternalSecurityGroupB0A5D76B
           - GroupId
       GroupId:
         Fn::GetAtt:
-          - IdeIdeInternalSecurityGroupD5D3B421
+          - IdeInternalSecurityGroupB0A5D76B
           - GroupId
       IpProtocol: "-1"
-  IdeIdeInstanceProfile8BD997EA:
+  IdeInstanceProfile61B92038:
     Type: AWS::IAM::InstanceProfile
     Properties:
       InstanceProfileName:
-        Ref: IdeIdeRoleD654ADD4
+        Ref: IdeRole4650E22E
       Roles:
-        - Ref: IdeIdeRoleD654ADD4
-  IdeIdeElasticIP8B8439E1:
+        - Ref: IdeRole4650E22E
+  IdeElasticIP3327A0B5:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
-  IdeIdePasswordSecretF3482811:
+  IdePasswordSecretF907B9F2:
     Type: AWS::SecretsManager::Secret
     Properties:
       GenerateSecretString:
@@ -720,33 +720,20 @@ Resources:
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - IdeIdeLambdaRoleCC8748CC
+          - IdeLambdaRole82392143
           - Arn
       Runtime: python3.13
       Timeout: 300
     DependsOn:
-      - IdeIdeLambdaRoleDefaultPolicy6F800745
-      - IdeIdeLambdaRoleCC8748CC
-  IdeIdeEC2InstanceResource17A0C9F7:
+      - IdeLambdaRoleDefaultPolicy099093D2
+      - IdeLambdaRole82392143
+  IdeEC2InstanceResource438B3605:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
-            - ","
-            - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeIdeInstanceProfile8BD997EA
-          - Arn
-      InstanceName: ide
-      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -767,7 +754,7 @@ Resources:
                 "
                 export TEMPLATE_TYPE="java-on-aws"
                 export WAIT_CONDITION_HANDLE_URL="
-              - Ref: IdeBootstrapWaitConditionHandleD7141CA8
+              - Ref: IdeWaitConditionHandleE8345861
               - |-
                 "
 
@@ -810,7 +797,7 @@ Resources:
 
                 # Set up error trap for UserData failures (before bootstrap.sh takes over)
                 trap 'echo "UserData failed at line $LINENO"; /opt/aws/bin/cfn-signal -e 1 "
-              - Ref: IdeBootstrapWaitConditionHandleD7141CA8
+              - Ref: IdeWaitConditionHandleE8345861
               - |-
                 " 2>/dev/null || true; exit 1' ERR
 
@@ -859,7 +846,7 @@ Resources:
                     echo "Executing full bootstrap script..."
                     # Run bootstrap script as root from the cloned directory
                     if cd /home/ec2-user/java-on-aws && WAIT_CONDITION_HANDLE_URL="
-              - Ref: IdeBootstrapWaitConditionHandleD7141CA8
+              - Ref: IdeWaitConditionHandleE8345861
               - |-
                 " infra/scripts/ide/bootstrap.sh "$GIT_BRANCH" "$TEMPLATE_TYPE"; then
                         echo "Bootstrap completed successfully"
@@ -867,7 +854,7 @@ Resources:
                     else
                         echo "FATAL: Bootstrap script failed"
                         /opt/aws/bin/cfn-signal -e 1 "
-              - Ref: IdeBootstrapWaitConditionHandleD7141CA8
+              - Ref: IdeWaitConditionHandleE8345861
               - |-
                 "
                         exit 1
@@ -875,7 +862,7 @@ Resources:
                 else
                     echo "FATAL: Could not clone repository"
                     /opt/aws/bin/cfn-signal -e 1 "
-              - Ref: IdeBootstrapWaitConditionHandleD7141CA8
+              - Ref: IdeWaitConditionHandleE8345861
               - |-
                 "
                     exit 1
@@ -886,26 +873,39 @@ Resources:
         Fn::Join:
           - ""
           - - Fn::GetAtt:
-                - IdeIdeSecurityGroup5C503C8A
+                - IdeSecurityGroup73B02454
                 - GroupId
             - ","
             - Fn::GetAtt:
-                - IdeIdeInternalSecurityGroupD5D3B421
+                - IdeInternalSecurityGroupB0A5D76B
                 - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      InstanceName: ide
+      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  IdeIdeEipAssociation6C6C215D:
+  IdeEipAssociationDFF81215:
     Type: AWS::EC2::EIPAssociation
     Properties:
       AllocationId:
         Fn::GetAtt:
-          - IdeIdeElasticIP8B8439E1
+          - IdeElasticIP3327A0B5
           - AllocationId
       InstanceId:
         Fn::GetAtt:
-          - IdeIdeEC2InstanceResource17A0C9F7
+          - IdeEC2InstanceResource438B3605
           - InstanceId
-  IdeIdeDistribution02808462:
+  IdeDistribution042A6660:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
@@ -921,7 +921,7 @@ Resources:
           CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
           Compress: true
           OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
-          TargetOriginId: WorkshopStackIdeIdeDistributionOrigin15FF53642
+          TargetOriginId: WorkshopStackIdeDistributionOrigin10FECA386
           ViewerProtocolPolicy: allow-all
         Enabled: true
         HttpVersion: http2
@@ -941,7 +941,7 @@ Resources:
                       - Fn::Split:
                           - "."
                           - Fn::GetAtt:
-                              - IdeIdeElasticIP8B8439E1
+                              - IdeElasticIP3327A0B5
                               - PublicIp
                   - "-"
                   - Fn::Select:
@@ -949,7 +949,7 @@ Resources:
                       - Fn::Split:
                           - "."
                           - Fn::GetAtt:
-                              - IdeIdeElasticIP8B8439E1
+                              - IdeElasticIP3327A0B5
                               - PublicIp
                   - "-"
                   - Fn::Select:
@@ -957,7 +957,7 @@ Resources:
                       - Fn::Split:
                           - "."
                           - Fn::GetAtt:
-                              - IdeIdeElasticIP8B8439E1
+                              - IdeElasticIP3327A0B5
                               - PublicIp
                   - "-"
                   - Fn::Select:
@@ -965,24 +965,24 @@ Resources:
                       - Fn::Split:
                           - "."
                           - Fn::GetAtt:
-                              - IdeIdeElasticIP8B8439E1
+                              - IdeElasticIP3327A0B5
                               - PublicIp
                   - .compute-1.amazonaws.com
-            Id: WorkshopStackIdeIdeDistributionOrigin15FF53642
+            Id: WorkshopStackIdeDistributionOrigin10FECA386
     DependsOn:
-      - IdeIdeEipAssociation6C6C215D
+      - IdeEipAssociationDFF81215
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  IdeBootstrapWaitConditionE4059F8E:
+  IdeWaitConditionCC35C186:
     Type: AWS::CloudFormation::WaitCondition
     Properties:
       Count: 1
       Handle:
-        Ref: IdeBootstrapWaitConditionHandleD7141CA8
+        Ref: IdeWaitConditionHandleE8345861
       Timeout: "1800"
     DependsOn:
-      - IdeIdeEC2InstanceResource17A0C9F7
-  IdePasswordExporterFunctionServiceRoleF3434827:
+      - IdeEC2InstanceResource438B3605
+  IdePasswordFunctionServiceRole971421B6:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -998,7 +998,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  IdePasswordExporterFunctionServiceRoleDefaultPolicy889A47B8:
+  IdePasswordFunctionServiceRoleDefaultPolicy282A360C:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -1008,12 +1008,12 @@ Resources:
               - secretsmanager:GetSecretValue
             Effect: Allow
             Resource:
-              Ref: IdeIdePasswordSecretF3482811
+              Ref: IdePasswordSecretF907B9F2
         Version: "2012-10-17"
-      PolicyName: IdePasswordExporterFunctionServiceRoleDefaultPolicy889A47B8
+      PolicyName: IdePasswordFunctionServiceRoleDefaultPolicy282A360C
       Roles:
-        - Ref: IdePasswordExporterFunctionServiceRoleF3434827
-  IdePasswordExporterFunctionB6A36A86:
+        - Ref: IdePasswordFunctionServiceRole971421B6
+  IdePasswordFunctionFD1F967F:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -1066,19 +1066,19 @@ Resources:
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - IdePasswordExporterFunctionServiceRoleF3434827
+          - IdePasswordFunctionServiceRole971421B6
           - Arn
       Runtime: python3.13
       Timeout: 180
     DependsOn:
-      - IdePasswordExporterFunctionServiceRoleDefaultPolicy889A47B8
-      - IdePasswordExporterFunctionServiceRoleF3434827
-  IdePasswordExporter82DA4047:
+      - IdePasswordFunctionServiceRoleDefaultPolicy282A360C
+      - IdePasswordFunctionServiceRole971421B6
+  IdePasswordResource07883F17:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken:
         Fn::GetAtt:
-          - IdePasswordExporterFunctionB6A36A86
+          - IdePasswordFunctionFD1F967F
           - Arn
       PasswordName:
         Fn::Join:
@@ -1091,7 +1091,7 @@ Resources:
                         - 6
                         - Fn::Split:
                             - ":"
-                            - Ref: IdeIdePasswordSecretF3482811
+                            - Ref: IdePasswordSecretF907B9F2
             - Fn::Select:
                 - 1
                 - Fn::Split:
@@ -1100,10 +1100,10 @@ Resources:
                         - 6
                         - Fn::Split:
                             - ":"
-                            - Ref: IdeIdePasswordSecretF3482811
+                            - Ref: IdePasswordSecretF907B9F2
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  CodeBuildCodeBuildRoleBA9C6D5C:
+  CodeBuildRoleE9A44575:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1119,7 +1119,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/PowerUserAccess
-  CodeBuildCodeBuildRoleDefaultPolicyB26F3F0B:
+  CodeBuildRoleDefaultPolicy196BAF24:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -1137,7 +1137,7 @@ Resources:
                         - ":"
                         - Ref: AWS::AccountId
                         - :subnet/
-                        - Ref: VpcWorkshopVpcPrivateSubnet1SubnetCE870430
+                        - Ref: VpcPrivateSubnet1Subnet67A4DBCB
                   - Fn::Join:
                       - ""
                       - - "arn:"
@@ -1147,7 +1147,7 @@ Resources:
                         - ":"
                         - Ref: AWS::AccountId
                         - :subnet/
-                        - Ref: VpcWorkshopVpcPrivateSubnet2SubnetA1F06CF5
+                        - Ref: VpcPrivateSubnet2SubnetC8EB537D
                 ec2:AuthorizedService: codebuild.amazonaws.com
             Effect: Allow
             Resource:
@@ -1207,10 +1207,10 @@ Resources:
                   - Ref: CodeBuildProjectA0FF5539
                   - -*
         Version: "2012-10-17"
-      PolicyName: CodeBuildCodeBuildRoleDefaultPolicyB26F3F0B
+      PolicyName: CodeBuildRoleDefaultPolicy196BAF24
       Roles:
-        - Ref: CodeBuildCodeBuildRoleBA9C6D5C
-  CodeBuildCodeBuildLambdaRole5FE3BA83:
+        - Ref: CodeBuildRoleE9A44575
+  CodeBuildLambdaRole655C06B4:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1226,7 +1226,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  CodeBuildCodeBuildLambdaRoleDefaultPolicyA5431D35:
+  CodeBuildLambdaRoleDefaultPolicyFB35F0AF:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -1237,9 +1237,9 @@ Resources:
             Effect: Allow
             Resource: "*"
         Version: "2012-10-17"
-      PolicyName: CodeBuildCodeBuildLambdaRoleDefaultPolicyA5431D35
+      PolicyName: CodeBuildLambdaRoleDefaultPolicyFB35F0AF
       Roles:
-        - Ref: CodeBuildCodeBuildLambdaRole5FE3BA83
+        - Ref: CodeBuildLambdaRole655C06B4
   CodeBuildProjectSecurityGroup7CE557B3:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -1249,7 +1249,7 @@ Resources:
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
+        Ref: VpcC3027511
   CodeBuildProjectA0FF5539:
     Type: AWS::CodeBuild::Project
     Properties:
@@ -1274,7 +1274,7 @@ Resources:
       Name: workshop-codebuild
       ServiceRole:
         Fn::GetAtt:
-          - CodeBuildCodeBuildRoleBA9C6D5C
+          - CodeBuildRoleE9A44575
           - Arn
       Source:
         BuildSpec: |
@@ -1304,10 +1304,10 @@ Resources:
               - CodeBuildProjectSecurityGroup7CE557B3
               - GroupId
         Subnets:
-          - Ref: VpcWorkshopVpcPrivateSubnet1SubnetCE870430
-          - Ref: VpcWorkshopVpcPrivateSubnet2SubnetA1F06CF5
+          - Ref: VpcPrivateSubnet1Subnet67A4DBCB
+          - Ref: VpcPrivateSubnet2SubnetC8EB537D
         VpcId:
-          Ref: VpcWorkshopVpcAB7D061C
+          Ref: VpcC3027511
     DependsOn:
       - CodeBuildProjectPolicyDocument567377F5
   CodeBuildProjectPolicyDocument567377F5:
@@ -1328,7 +1328,7 @@ Resources:
         Version: "2012-10-17"
       PolicyName: CodeBuildProjectPolicyDocument567377F5
       Roles:
-        - Ref: CodeBuildCodeBuildRoleBA9C6D5C
+        - Ref: CodeBuildRoleE9A44575
   CodeBuildStartLambdaFunction8349284F:
     Type: AWS::Lambda::Function
     Properties:
@@ -1393,13 +1393,13 @@ Resources:
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - CodeBuildCodeBuildLambdaRole5FE3BA83
+          - CodeBuildLambdaRole655C06B4
           - Arn
       Runtime: python3.13
       Timeout: 120
     DependsOn:
-      - CodeBuildCodeBuildLambdaRoleDefaultPolicyA5431D35
-      - CodeBuildCodeBuildLambdaRole5FE3BA83
+      - CodeBuildLambdaRoleDefaultPolicyFB35F0AF
+      - CodeBuildLambdaRole655C06B4
   CodeBuildReportLambdaFunctionA3C396F7:
     Type: AWS::Lambda::Function
     Properties:
@@ -1459,14 +1459,14 @@ Resources:
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - CodeBuildCodeBuildLambdaRole5FE3BA83
+          - CodeBuildLambdaRole655C06B4
           - Arn
       Runtime: python3.13
       Timeout: 120
     DependsOn:
-      - CodeBuildCodeBuildLambdaRoleDefaultPolicyA5431D35
-      - CodeBuildCodeBuildLambdaRole5FE3BA83
-  CodeBuildBuildCompleteRule06AAF17D:
+      - CodeBuildLambdaRoleDefaultPolicyFB35F0AF
+      - CodeBuildLambdaRole655C06B4
+  CodeBuildCompleteRuleEE9277E8:
     Type: AWS::Events::Rule
     Properties:
       Description: workshop-codebuild build complete
@@ -1489,7 +1489,7 @@ Resources:
               - CodeBuildReportLambdaFunctionA3C396F7
               - Arn
           Id: Target0
-  CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8:
+  CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
@@ -1500,29 +1500,29 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn:
         Fn::GetAtt:
-          - CodeBuildBuildCompleteRule06AAF17D
+          - CodeBuildCompleteRuleEE9277E8
           - Arn
-  CodeBuildBuildResource616F72E2:
+  CodeBuild2FDE9E35:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
-      ContentHash: "1765721384954"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
-          - CodeBuildCodeBuildRoleBA9C6D5C
+          - CodeBuildRoleE9A44575
           - Arn
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1765724686777"
     DependsOn:
-      - CodeBuildBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C6091DA4A4BD8
-      - CodeBuildBuildCompleteRule06AAF17D
+      - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
+      - CodeBuildCompleteRuleEE9277E8
       - CodeBuildReportLambdaFunctionA3C396F7
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  DatabaseDatabaseSecret487264A7:
+  DatabaseSecret3B817195:
     Type: AWS::SecretsManager::Secret
     Properties:
       Description:
@@ -1538,18 +1538,18 @@ Resources:
       Name: workshop-db-secret
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  DatabaseDatabaseSecretAttachment246FE93C:
+  DatabaseSecretAttachmentE5D1B020:
     Type: AWS::SecretsManager::SecretTargetAttachment
     Properties:
       SecretId:
-        Ref: DatabaseDatabaseSecret487264A7
+        Ref: DatabaseSecret3B817195
       TargetId:
-        Ref: DatabaseDatabaseCluster0C7C993F
+        Ref: DatabaseCluster5B53A178
       TargetType: AWS::RDS::DBCluster
-  DatabaseDatabaseSG58513219:
+  DatabaseSG562817C8:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: WorkshopStack/Database/DatabaseSG
+      GroupDescription: WorkshopStack/Database/SG
       GroupName: workshop-db-sg
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
@@ -1562,22 +1562,22 @@ Resources:
           IpProtocol: tcp
           ToPort: 5432
       VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
-  DatabaseDatabaseClusterSubnets510F513F:
+        Ref: VpcC3027511
+  DatabaseClusterSubnets5540150D:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
-      DBSubnetGroupDescription: Subnets for DatabaseCluster database
+      DBSubnetGroupDescription: Subnets for Cluster database
       SubnetIds:
-        - Ref: VpcWorkshopVpcPrivateSubnet1SubnetCE870430
-        - Ref: VpcWorkshopVpcPrivateSubnet2SubnetA1F06CF5
-  DatabaseDatabaseCluster0C7C993F:
+        - Ref: VpcPrivateSubnet1Subnet67A4DBCB
+        - Ref: VpcPrivateSubnet2SubnetC8EB537D
+  DatabaseCluster5B53A178:
     Type: AWS::RDS::DBCluster
     Properties:
       CopyTagsToSnapshot: true
       DBClusterIdentifier: workshop-db-cluster
       DBClusterParameterGroupName: default.aurora-postgresql16
       DBSubnetGroupName:
-        Ref: DatabaseDatabaseClusterSubnets510F513F
+        Ref: DatabaseClusterSubnets5540150D
       DatabaseName: workshop
       EnableHttpEndpoint: true
       Engine: aurora-postgresql
@@ -1586,13 +1586,13 @@ Resources:
         Fn::Join:
           - ""
           - - "{{resolve:secretsmanager:"
-            - Ref: DatabaseDatabaseSecret487264A7
+            - Ref: DatabaseSecret3B817195
             - :SecretString:password::}}
       MasterUsername:
         Fn::Join:
           - ""
           - - "{{resolve:secretsmanager:"
-            - Ref: DatabaseDatabaseSecret487264A7
+            - Ref: DatabaseSecret3B817195
             - :SecretString:username::}}
       Port: 5432
       ServerlessV2ScalingConfiguration:
@@ -1600,29 +1600,29 @@ Resources:
         MinCapacity: 0.5
       VpcSecurityGroupIds:
         - Fn::GetAtt:
-            - DatabaseDatabaseSG58513219
+            - DatabaseSG562817C8
             - GroupId
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  DatabaseDatabaseClusterDatabaseWriter0EEAA63C:
+  DatabaseClusterDatabaseWriterF4C0B9A6:
     Type: AWS::RDS::DBInstance
     Properties:
       AutoMinorVersionUpgrade: true
       DBClusterIdentifier:
-        Ref: DatabaseDatabaseCluster0C7C993F
+        Ref: DatabaseCluster5B53A178
       DBInstanceClass: db.serverless
       DBInstanceIdentifier: workshop-db-writer
       Engine: aurora-postgresql
       PromotionTier: 0
       PubliclyAccessible: false
     DependsOn:
-      - VpcWorkshopVpcPrivateSubnet1DefaultRouteDAFC9A0B
-      - VpcWorkshopVpcPrivateSubnet1RouteTableAssociation6440BC71
-      - VpcWorkshopVpcPrivateSubnet2DefaultRoute7F56E125
-      - VpcWorkshopVpcPrivateSubnet2RouteTableAssociation541BD7CF
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  DatabaseDatabasePasswordSecret8B18EF7D:
+  DatabasePasswordSecret2954D962:
     Type: AWS::SecretsManager::Secret
     Properties:
       Name: workshop-db-password-secret
@@ -1640,7 +1640,7 @@ Resources:
                               - 6
                               - Fn::Split:
                                   - ":"
-                                  - Ref: DatabaseDatabaseSecret487264A7
+                                  - Ref: DatabaseSecret3B817195
                   - Fn::Select:
                       - 1
                       - Fn::Split:
@@ -1649,7 +1649,7 @@ Resources:
                               - 6
                               - Fn::Split:
                                   - ":"
-                                  - Ref: DatabaseDatabaseSecret487264A7
+                                  - Ref: DatabaseSecret3B817195
                   - Fn::Select:
                       - 2
                       - Fn::Split:
@@ -1658,11 +1658,11 @@ Resources:
                               - 6
                               - Fn::Split:
                                   - ":"
-                                  - Ref: DatabaseDatabaseSecret487264A7
+                                  - Ref: DatabaseSecret3B817195
             - :SecretString:password::}}
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  DatabaseDatabaseConnectionString622327FD:
+  DatabaseConnectionString52D1E98E:
     Type: AWS::SSM::Parameter
     Properties:
       AllowedPattern: .*
@@ -1675,10 +1675,10 @@ Resources:
           - ""
           - - jdbc:postgresql://
             - Fn::GetAtt:
-                - DatabaseDatabaseCluster0C7C993F
+                - DatabaseCluster5B53A178
                 - Endpoint.Address
             - :5432/workshop
-  DatabaseDatabaseSetupFunctionServiceRoleC7815D9A:
+  DatabaseSetupFunctionServiceRole57BBB83B:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1700,11 +1700,11 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
     DependsOn:
-      - VpcWorkshopVpcPrivateSubnet1DefaultRouteDAFC9A0B
-      - VpcWorkshopVpcPrivateSubnet1RouteTableAssociation6440BC71
-      - VpcWorkshopVpcPrivateSubnet2DefaultRoute7F56E125
-      - VpcWorkshopVpcPrivateSubnet2RouteTableAssociation541BD7CF
-  DatabaseDatabaseSetupFunctionServiceRoleDefaultPolicyCFA5C3BC:
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+  DatabaseSetupFunctionServiceRoleDefaultPolicy1E8F72DD:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -1714,8 +1714,8 @@ Resources:
               - secretsmanager:GetSecretValue
             Effect: Allow
             Resource:
-              - Ref: DatabaseDatabaseSecret487264A7
-              - Ref: DatabaseDatabaseSecretAttachment246FE93C
+              - Ref: DatabaseSecret3B817195
+              - Ref: DatabaseSecretAttachmentE5D1B020
           - Action:
               - rds-data:BatchExecuteStatement
               - rds-data:BeginTransaction
@@ -1733,17 +1733,17 @@ Resources:
                   - ":"
                   - Ref: AWS::AccountId
                   - ":cluster:"
-                  - Ref: DatabaseDatabaseCluster0C7C993F
+                  - Ref: DatabaseCluster5B53A178
         Version: "2012-10-17"
-      PolicyName: DatabaseDatabaseSetupFunctionServiceRoleDefaultPolicyCFA5C3BC
+      PolicyName: DatabaseSetupFunctionServiceRoleDefaultPolicy1E8F72DD
       Roles:
-        - Ref: DatabaseDatabaseSetupFunctionServiceRoleC7815D9A
+        - Ref: DatabaseSetupFunctionServiceRole57BBB83B
     DependsOn:
-      - VpcWorkshopVpcPrivateSubnet1DefaultRouteDAFC9A0B
-      - VpcWorkshopVpcPrivateSubnet1RouteTableAssociation6440BC71
-      - VpcWorkshopVpcPrivateSubnet2DefaultRoute7F56E125
-      - VpcWorkshopVpcPrivateSubnet2RouteTableAssociation541BD7CF
-  DatabaseDatabaseSetupFunction04FDCEBB:
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+  DatabaseSetupFunction6A2230B7:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -1904,32 +1904,35 @@ Resources:
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - DatabaseDatabaseSetupFunctionServiceRoleC7815D9A
+          - DatabaseSetupFunctionServiceRole57BBB83B
           - Arn
       Runtime: python3.13
       Timeout: 180
       VpcConfig:
         SecurityGroupIds:
           - Fn::GetAtt:
-              - DatabaseDatabaseSG58513219
+              - DatabaseSG562817C8
               - GroupId
         SubnetIds:
-          - Ref: VpcWorkshopVpcPrivateSubnet1SubnetCE870430
-          - Ref: VpcWorkshopVpcPrivateSubnet2SubnetA1F06CF5
+          - Ref: VpcPrivateSubnet1Subnet67A4DBCB
+          - Ref: VpcPrivateSubnet2SubnetC8EB537D
     DependsOn:
-      - DatabaseDatabaseSetupFunctionServiceRoleDefaultPolicyCFA5C3BC
-      - DatabaseDatabaseSetupFunctionServiceRoleC7815D9A
-      - VpcWorkshopVpcPrivateSubnet1DefaultRouteDAFC9A0B
-      - VpcWorkshopVpcPrivateSubnet1RouteTableAssociation6440BC71
-      - VpcWorkshopVpcPrivateSubnet2DefaultRoute7F56E125
-      - VpcWorkshopVpcPrivateSubnet2RouteTableAssociation541BD7CF
-  DatabaseDatabaseSetupResource73C1AD79:
+      - DatabaseSetupFunctionServiceRoleDefaultPolicy1E8F72DD
+      - DatabaseSetupFunctionServiceRole57BBB83B
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+  DatabaseSetupResourceD3D46851:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken:
         Fn::GetAtt:
-          - DatabaseDatabaseSetupFunction04FDCEBB
+          - DatabaseSetupFunction6A2230B7
           - Arn
+      SqlStatements: |-
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -1941,7 +1944,7 @@ Resources:
                         - 6
                         - Fn::Split:
                             - ":"
-                            - Ref: DatabaseDatabaseSecret487264A7
+                            - Ref: DatabaseSecret3B817195
             - Fn::Select:
                 - 1
                 - Fn::Split:
@@ -1950,7 +1953,7 @@ Resources:
                         - 6
                         - Fn::Split:
                             - ":"
-                            - Ref: DatabaseDatabaseSecret487264A7
+                            - Ref: DatabaseSecret3B817195
             - Fn::Select:
                 - 2
                 - Fn::Split:
@@ -1959,14 +1962,11 @@ Resources:
                         - 6
                         - Fn::Split:
                             - ":"
-                            - Ref: DatabaseDatabaseSecret487264A7
-      SqlStatements: |-
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
+                            - Ref: DatabaseSecret3B817195
     DependsOn:
-      - DatabaseDatabaseClusterDatabaseWriter0EEAA63C
-      - DatabaseDatabaseCluster0C7C993F
-      - DatabaseDatabaseClusterSubnets510F513F
+      - DatabaseClusterDatabaseWriterF4C0B9A6
+      - DatabaseCluster5B53A178
+      - DatabaseClusterSubnets5540150D
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   EksClusterRoleD18DF32F:
@@ -2007,16 +2007,6 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonEKSNetworkingPolicy
-  EksClusterControlPlaneSecurityGroup342465A2:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: EKS Control Plane Security Group
-      SecurityGroupEgress:
-        - CidrIp: 0.0.0.0/0
-          Description: Allow all outbound traffic by default
-          IpProtocol: "-1"
-      VpcId:
-        Ref: VpcWorkshopVpcAB7D061C
   EksClusterClusternodePoolRoleE206FBFC:
     Type: AWS::IAM::Role
     Properties:
@@ -2062,13 +2052,13 @@ Resources:
         EndpointPublicAccess: true
         SecurityGroupIds:
           - Fn::GetAtt:
-              - EksClusterControlPlaneSecurityGroup342465A2
+              - IdeInternalSecurityGroupB0A5D76B
               - GroupId
         SubnetIds:
-          - Ref: VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
-          - Ref: VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
-          - Ref: VpcWorkshopVpcPrivateSubnet1SubnetCE870430
-          - Ref: VpcWorkshopVpcPrivateSubnet2SubnetA1F06CF5
+          - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+          - Ref: VpcPublicSubnet2SubnetA811849C
+          - Ref: VpcPrivateSubnet1Subnet67A4DBCB
+          - Ref: VpcPrivateSubnet2SubnetC8EB537D
       RoleArn:
         Fn::GetAtt:
           - EksClusterRoleD18DF32F
@@ -2078,27 +2068,27 @@ Resources:
           Enabled: true
       Version: "1.34"
     DependsOn:
-      - VpcWorkshopVpcIGW19681F96
-      - VpcWorkshopVpcPrivateSubnet1DefaultRouteDAFC9A0B
-      - VpcWorkshopVpcPrivateSubnet1RouteTable554DA77D
-      - VpcWorkshopVpcPrivateSubnet1RouteTableAssociation6440BC71
-      - VpcWorkshopVpcPrivateSubnet1SubnetCE870430
-      - VpcWorkshopVpcPrivateSubnet2DefaultRoute7F56E125
-      - VpcWorkshopVpcPrivateSubnet2RouteTable9C677543
-      - VpcWorkshopVpcPrivateSubnet2RouteTableAssociation541BD7CF
-      - VpcWorkshopVpcPrivateSubnet2SubnetA1F06CF5
-      - VpcWorkshopVpcPublicSubnet1DefaultRouteF815C2F3
-      - VpcWorkshopVpcPublicSubnet1EIP1EDF2EDC
-      - VpcWorkshopVpcPublicSubnet1NATGatewayB7F27960
-      - VpcWorkshopVpcPublicSubnet1RouteTable36F1AD0E
-      - VpcWorkshopVpcPublicSubnet1RouteTableAssociationCF5FEF9E
-      - VpcWorkshopVpcPublicSubnet1SubnetBCB45C45
-      - VpcWorkshopVpcPublicSubnet2DefaultRouteF7AAC1E0
-      - VpcWorkshopVpcPublicSubnet2RouteTableB1955E1B
-      - VpcWorkshopVpcPublicSubnet2RouteTableAssociationF80852AE
-      - VpcWorkshopVpcPublicSubnet2SubnetF8F9426F
-      - VpcWorkshopVpcAB7D061C
-      - VpcWorkshopVpcVPCGWBF8004A5
+      - VpcIGW488B0FEB
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTable901BAEEE
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet1Subnet67A4DBCB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTable1EA00C9D
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+      - VpcPrivateSubnet2SubnetC8EB537D
+      - VpcPublicSubnet1DefaultRoute0F5C6C43
+      - VpcPublicSubnet1EIP2293BAA3
+      - VpcPublicSubnet1NATGateway8185E366
+      - VpcPublicSubnet1RouteTable431DD755
+      - VpcPublicSubnet1RouteTableAssociationBBCB7AA1
+      - VpcPublicSubnet1Subnet8E8DEDC0
+      - VpcPublicSubnet2DefaultRouteD629179A
+      - VpcPublicSubnet2RouteTable77FB35FC
+      - VpcPublicSubnet2RouteTableAssociation3AFE92E6
+      - VpcPublicSubnet2SubnetA811849C
+      - VpcC3027511
+      - VpcVPCGW42EC8516
   EksClusterKubectlReadyBarrierA32D1E84:
     Type: AWS::SSM::Parameter
     Properties:
@@ -2106,13 +2096,13 @@ Resources:
       Value: aws:cdk:eks:kubectl-ready
     DependsOn:
       - EksClusterB2BDED5B
-  EksSecretsStoreCsiDriver71D43AE4:
+  EksSecretsStoreDriverA84665C0:
     Type: AWS::EKS::Addon
     Properties:
       AddonName: aws-secrets-store-csi-driver-provider
       ClusterName:
         Ref: EksClusterB2BDED5B
-  EksMountpointS3CsiDriver883C78F3:
+  EksMountpointS3DriverB7062BF9:
     Type: AWS::EKS::Addon
     Properties:
       AddonName: aws-mountpoint-s3-csi-driver
@@ -2124,7 +2114,7 @@ Resources:
       AddonName: eks-pod-identity-agent
       ClusterName:
         Ref: EksClusterB2BDED5B
-  EksIdeInstanceAccessEntry69EA0EE2:
+  EksInstanceAccessEntry1D317291:
     Type: AWS::EKS::AccessEntry
     Properties:
       AccessPolicies:
@@ -2140,7 +2130,7 @@ Resources:
         Ref: EksClusterB2BDED5B
       PrincipalArn:
         Fn::GetAtt:
-          - IdeIdeRoleD654ADD4
+          - IdeRole4650E22E
           - Arn
       Type: STANDARD
 Outputs:
@@ -2151,7 +2141,7 @@ Outputs:
         - ""
         - - https://
           - Fn::GetAtt:
-              - IdeIdeDistribution02808462
+              - IdeDistribution042A6660
               - DomainName
     Export:
       Name: ide-url
@@ -2159,7 +2149,7 @@ Outputs:
     Description: Workshop IDE Password
     Value:
       Fn::GetAtt:
-        - IdePasswordExporter82DA4047
+        - IdePasswordResource07883F17
         - password
     Export:
       Name: ide-password

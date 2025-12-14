@@ -10,7 +10,7 @@ public class Vpc extends Construct {
     public Vpc(final Construct scope, final String id) {
         super(scope, id);
 
-        this.vpc = software.amazon.awscdk.services.ec2.Vpc.Builder.create(this, "WorkshopVpc")
+        this.vpc = software.amazon.awscdk.services.ec2.Vpc.Builder.create(this, "Vpc")
             .vpcName("workshop-vpc")
             .ipAddresses(IpAddresses.cidr("10.0.0.0/16"))
             .enableDnsSupport(true)

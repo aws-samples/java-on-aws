@@ -85,11 +85,22 @@ public class WorkshopStack extends Stack {
 #### Reusable Constructs
 
 **Vpc**: Creates VPC with appropriate subnets and networking configuration
-**Ide**: Creates VS Code IDE environment with necessary permissions
-**Eks**: Creates EKS cluster with Auto Mode, v1.34, native add-ons (Secrets Store CSI, Mountpoint S3 CSI, Pod Identity Agent), and Access Entries
+**Ide**: Creates VS Code IDE environment with necessary permissions and security groups
+**Eks**: Creates EKS cluster with Auto Mode, v1.34, native add-ons (Secrets Store CSI, Mountpoint S3 CSI, Pod Identity Agent), Access Entries, and IDE security group integration
 **Database**: Configures RDS Aurora PostgreSQL cluster with universal "workshop-" naming convention
 **CodeBuild**: Creates CodeBuild project for AWS service-linked role creation
 **Roles**: Creates IAM roles and policies for workshop resources
+
+#### CDK Construct Naming Convention
+
+All CDK constructs follow a consistent naming pattern to ensure clean CloudFormation logical IDs:
+- **Pattern**: `{ConstructName}{ResourceType}` (e.g., `IdePasswordSecret`, `DatabaseCluster`)
+- **Avoid duplication**: Resource names within constructs should not repeat the construct type
+- **Examples**:
+  - ✅ `Secret.Builder.create(this, "PasswordSecret")` → `IdePasswordSecret`
+  - ❌ `Secret.Builder.create(this, "IdePasswordSecret")` → `IdeIdePasswordSecret`
+
+This convention eliminates CloudFormation logical ID duplication and ensures maintainable resource naming.
 
 ### Lambda Function Architecture
 
@@ -170,6 +181,27 @@ String bootstrapScript = loadFile("/ec2-userdata.sh")
     .replace("${idePassword}", ideSecretsManagerPassword.secretValueFromJson("password").unsafeUnwrap());
 userData.addCommands(bootstrapScript.split("\n"));
 ```
+
+### EKS-IDE Integration
+
+#### Security Group Sharing
+The EKS cluster integrates with the IDE environment through shared security groups and IAM roles:
+
+```java
+// In WorkshopStack.java
+Eks eks = new Eks(this, "Eks", Eks.EksProps.builder()
+    .vpc(vpc.getVpc())
+    .ideInstanceRole(ideProps.getIdeRole())           // Share IDE IAM role for kubectl access
+    .ideInternalSecurityGroup(ide.getIdeInternalSecurityGroup()) // Share security group for VPC communication
+    .build());
+```
+
+#### Access Control Integration
+- **IDE Instance Role**: The same IAM role used by the IDE instance is granted EKS cluster admin access via Access Entries
+- **Security Group**: The IDE's internal security group is used by the EKS cluster for VPC communication
+- **kubectl Context**: The IDE bootstrap scripts configure kubectl to access the EKS cluster using the shared credentials
+
+This integration ensures seamless access from the IDE to the EKS cluster without additional authentication setup.
 
 ### Script Organization
 

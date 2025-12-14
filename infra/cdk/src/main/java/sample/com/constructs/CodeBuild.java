@@ -74,7 +74,7 @@ public class CodeBuild extends Construct {
         super(scope, id);
 
         // Create CodeBuild service role
-        this.codeBuildRole = Role.Builder.create(this, "CodeBuildRole")
+        this.codeBuildRole = Role.Builder.create(this, "Role")
             .assumedBy(ServicePrincipal.Builder.create("codebuild.amazonaws.com").build())
             .managedPolicies(List.of(
                 ManagedPolicy.fromAwsManagedPolicyName("PowerUserAccess")
@@ -82,7 +82,7 @@ public class CodeBuild extends Construct {
             .build();
 
         // Create Lambda role for CodeBuild Lambda functions
-        this.lambdaRole = Role.Builder.create(this, "CodeBuildLambdaRole")
+        this.lambdaRole = Role.Builder.create(this, "LambdaRole")
             .assumedBy(ServicePrincipal.Builder.create("lambda.amazonaws.com").build())
             .managedPolicies(List.of(
                 ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")
@@ -140,7 +140,7 @@ public class CodeBuild extends Construct {
         Function reportBuildFunction = reportLambda.getFunction();
 
         // Create EventBridge rule for build completion
-        Rule buildCompleteRule = Rule.Builder.create(this, "BuildCompleteRule")
+        Rule buildCompleteRule = Rule.Builder.create(this, "CompleteRule")
             .description(props.getProjectName() + " build complete")
             .eventPattern(EventPattern.builder()
                 .source(Arrays.asList("aws.codebuild"))
@@ -154,7 +154,7 @@ public class CodeBuild extends Construct {
             .build();
 
         // Create custom resource to trigger the build
-        this.customResource = CustomResource.Builder.create(this, "BuildResource")
+        this.customResource = CustomResource.Builder.create(this, "Resource")
             .serviceToken(startBuildFunction.getFunctionArn())
             .properties(Map.of(
                 "ProjectName", this.codebuildProject.getProjectName(),

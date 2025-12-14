@@ -1,6 +1,7 @@
 package sample.com.constructs;
 
 import software.amazon.awscdk.services.ec2.IVpc;
+import software.amazon.awscdk.services.ec2.ISecurityGroup;
 import software.amazon.awscdk.services.iam.IRole;
 import software.amazon.awscdk.services.eks.v2.alpha.Cluster;
 import software.amazon.awscdk.services.eks.v2.alpha.KubernetesVersion;
@@ -11,7 +12,7 @@ import software.amazon.awscdk.services.eks.v2.alpha.IAccessPolicy;
 import software.amazon.awscdk.services.eks.v2.alpha.AccessPolicyNameOptions;
 import software.amazon.awscdk.services.eks.v2.alpha.AccessScopeType;
 import software.amazon.awscdk.services.eks.v2.alpha.Addon;
-import software.amazon.awscdk.Aws;
+
 import java.util.List;
 
 import software.constructs.Construct;
@@ -24,11 +25,17 @@ public class Eks extends Construct {
         super(scope, id);
 
         // Create EKS cluster with Auto Mode (default)
-        cluster = Cluster.Builder.create(this, "Cluster")
+        Cluster.Builder clusterBuilder = Cluster.Builder.create(this, "Cluster")
             .clusterName("workshop-eks")
             .version(KubernetesVersion.V1_34)
-            .vpc(props.getVpc())
-            .build();
+            .vpc(props.getVpc());
+
+        // Add security group if provided
+        if (props.getIdeInternalSecurityGroup() != null) {
+            clusterBuilder.securityGroup(props.getIdeInternalSecurityGroup());
+        }
+
+        cluster = clusterBuilder.build();
 
         // Add EKS add-ons
         createAddons();
@@ -39,13 +46,13 @@ public class Eks extends Construct {
 
     private void createAddons() {
         // AWS Secrets Store CSI Driver
-        Addon.Builder.create(this, "SecretsStoreCsiDriver")
+        Addon.Builder.create(this, "SecretsStoreDriver")
             .cluster(cluster)
             .addonName("aws-secrets-store-csi-driver-provider")
             .build();
 
         // AWS Mountpoint S3 CSI Driver
-        Addon.Builder.create(this, "MountpointS3CsiDriver")
+        Addon.Builder.create(this, "MountpointS3Driver")
             .cluster(cluster)
             .addonName("aws-mountpoint-s3-csi-driver")
             .build();
@@ -77,7 +84,7 @@ public class Eks extends Construct {
 
         // IDE Instance Role Access Entry (if provided)
         if (props.getIdeInstanceRole() != null) {
-            AccessEntry.Builder.create(this, "IdeInstanceAccessEntry")
+            AccessEntry.Builder.create(this, "InstanceAccessEntry")
                 .cluster(cluster)
                 .principal(props.getIdeInstanceRole().getRoleArn())
                 .accessEntryType(AccessEntryType.STANDARD)
@@ -103,10 +110,12 @@ public class Eks extends Construct {
     public static class EksProps {
         private final IVpc vpc;
         private final IRole ideInstanceRole;
+        private final ISecurityGroup ideInternalSecurityGroup;
 
         private EksProps(Builder builder) {
             this.vpc = builder.vpc;
             this.ideInstanceRole = builder.ideInstanceRole;
+            this.ideInternalSecurityGroup = builder.ideInternalSecurityGroup;
         }
 
         public static Builder builder() {
@@ -121,9 +130,14 @@ public class Eks extends Construct {
             return ideInstanceRole;
         }
 
+        public ISecurityGroup getIdeInternalSecurityGroup() {
+            return ideInternalSecurityGroup;
+        }
+
         public static class Builder {
             private IVpc vpc;
             private IRole ideInstanceRole;
+            private ISecurityGroup ideInternalSecurityGroup;
 
             public Builder vpc(IVpc vpc) {
                 this.vpc = vpc;
@@ -132,6 +146,11 @@ public class Eks extends Construct {
 
             public Builder ideInstanceRole(IRole ideInstanceRole) {
                 this.ideInstanceRole = ideInstanceRole;
+                return this;
+            }
+
+            public Builder ideInternalSecurityGroup(ISecurityGroup ideInternalSecurityGroup) {
+                this.ideInternalSecurityGroup = ideInternalSecurityGroup;
                 return this;
             }
 
