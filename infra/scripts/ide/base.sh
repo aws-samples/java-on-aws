@@ -195,8 +195,6 @@ install_kubernetes_tools() {
     mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
     echo "export PATH=\$PATH:\$HOME/bin" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
     kubectl completion bash >> ~/.bash_completion
-    echo "alias k=kubectl" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
-    echo "complete -F __start_kubectl k" >> ~/.bashrc
 
     log_info "Installing Helm ${HELM_VERSION}..."
     retry_critical "Helm ${HELM_VERSION}" "curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && chmod 700 get_helm.sh && ./get_helm.sh --version v${HELM_VERSION}"
@@ -261,5 +259,12 @@ install_utilities
 log_info "Configuring AWS CLI default region..."
 source /etc/profile.d/workshop.sh
 aws configure set default.region ${AWS_REGION}
+
+# Shell UX setup (zsh + oh-my-zsh + powerlevel10k + fzf)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "${SCRIPT_DIR}/shell.sh" ]; then
+    log_info "Setting up shell environment..."
+    sudo -u ec2-user bash "${SCRIPT_DIR}/shell.sh"
+fi
 
 log_info "Base development tools setup completed successfully at $(date)"
