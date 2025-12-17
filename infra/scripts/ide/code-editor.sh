@@ -134,6 +134,34 @@ configure_token_auth() {
     echo "✅ Token authentication configured"
 }
 
+configure_code_editor_settings() {
+    log_info "Configuring Code Editor settings..."
+
+    local settings_dir="/home/${CODE_EDITOR_USER}/.code-editor-server/data/User"
+    sudo -u $CODE_EDITOR_USER mkdir -p "$settings_dir"
+
+    sudo -u $CODE_EDITOR_USER tee "$settings_dir/settings.json" >/dev/null << 'EOF'
+{
+  "security.workspace.trust.enabled": false,
+  "workbench.startupEditor": "terminal",
+  "telemetry.telemetryLevel": "off",
+  "update.mode": "none",
+  "terminal.integrated.defaultProfile.linux": "zsh",
+  "aws.telemetry": false,
+  "aws.suppressPrompts": {
+    "codeWhispererNewWelcomeMessage": true,
+    "codeWhispererConnectionExpired": true,
+    "amazonQWelcomeMessage": true
+  },
+  "amazonQ.showWalkthrough": false,
+  "aws.codeWhisperer.shareCodeWhispererContentWithAWS": false,
+  "aws.cloudformation.telemetry": false
+}
+EOF
+
+    echo "✅ Code Editor settings configured"
+}
+
 install_caddy() {
     log_info "Installing Caddy..."
 
@@ -167,6 +195,9 @@ install_code_editor
 
 # Configure token authentication
 configure_token_auth
+
+# Configure Code Editor settings (disable workspace trust, open terminal on startup)
+configure_code_editor_settings
 
 # Configure systemd service
 configure_code_editor_service
