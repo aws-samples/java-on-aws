@@ -4,8 +4,8 @@ typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet
 # Left prompt: directory, git status, prompt symbol
 typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(dir vcs newline prompt_char)
 
-# Right prompt: status, duration, jobs, k8s context, aws profile, time
-typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(status command_execution_time background_jobs kubecontext aws time newline)
+# Right prompt: status, duration, jobs, java, k8s context, aws profile, time
+typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(status command_execution_time background_jobs java_version kubecontext aws time newline)
 
 # Visual style
 typeset -g POWERLEVEL9K_MODE=powerline
@@ -14,6 +14,7 @@ typeset -g POWERLEVEL9K_LEFT_SEGMENT_SEPARATOR='\uE0B0'
 typeset -g POWERLEVEL9K_RIGHT_SEGMENT_SEPARATOR='\uE0B2'
 typeset -g POWERLEVEL9K_LEFT_SUBSEGMENT_SEPARATOR='\uE0B1'
 typeset -g POWERLEVEL9K_RIGHT_SUBSEGMENT_SEPARATOR='\uE0B3'
+# Right frame decoration
 typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_SUFFIX='%240F─╮'
 typeset -g POWERLEVEL9K_MULTILINE_NEWLINE_PROMPT_SUFFIX='%240F─┤'
 typeset -g POWERLEVEL9K_MULTILINE_LAST_PROMPT_SUFFIX='%240F─╯'
@@ -43,8 +44,12 @@ typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_PRECISION=0
 typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_FOREGROUND=0
 typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_BACKGROUND=3
 
-# Kubernetes context: show only when using k8s commands
-typeset -g POWERLEVEL9K_KUBECONTEXT_SHOW_ON_COMMAND='kubectl|helm|kubens|kubectx|k9s|k'
+# Java version: always visible, show full version (Java workshop)
+typeset -g POWERLEVEL9K_JAVA_VERSION_FOREGROUND=1
+typeset -g POWERLEVEL9K_JAVA_VERSION_BACKGROUND=7
+typeset -g POWERLEVEL9K_JAVA_VERSION_FULL=true
+
+# Kubernetes context: always visible (EKS workshop)
 typeset -g POWERLEVEL9K_KUBECONTEXT_FOREGROUND=7
 typeset -g POWERLEVEL9K_KUBECONTEXT_BACKGROUND=5
 

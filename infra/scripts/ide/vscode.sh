@@ -87,7 +87,13 @@ setup_user_file "/home/ec2-user/.local/share/code-server/User/settings.json" '{
   "chat.commandCenter.enabled": false,
   "workbench.settings.showAISearchToggle": false,
   "chat.disableAIFeatures": true,
-  "chat.extensionUnification.enabled": false
+  "chat.extensionUnification.enabled": false,
+  "terminal.integrated.defaultProfile.linux": "zsh",
+  "terminal.integrated.showLinkHover": false,
+  "terminal.integrated.commandsToSkipShell": [],
+  "workbench.sideBar.location": "left",
+  "workbench.panel.defaultLocation": "bottom",
+  "workbench.auxiliaryBar.visible": false
 }'
 
 echo "Configuring VS Code keybindings..."
