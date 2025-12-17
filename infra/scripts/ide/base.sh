@@ -208,8 +208,14 @@ install_aws_tools() {
     install_with_version "AWS SAM CLI" "sudo ./sam-installation/install --update" "/usr/local/bin/sam --version | awk '{print \$4}'"
     rm -rf ./sam-installation/ aws-sam-cli-linux-${ARCH_SAM}.zip
 
-    log_info "Installing Session Manager Plugin..."
-    curl -sS -L "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o "session-manager-plugin.rpm"
+    log_info "Installing Session Manager Plugin for ${ARCH_UNAME}..."
+    # Session Manager Plugin uses linux_64bit for x86_64 and linux_arm64 for ARM64
+    if [ "$ARCH_UNAME" = "aarch64" ]; then
+        SSM_ARCH="linux_arm64"
+    else
+        SSM_ARCH="linux_64bit"
+    fi
+    curl -sS -L "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/${SSM_ARCH}/session-manager-plugin.rpm" -o "session-manager-plugin.rpm"
     install_with_version "Session Manager Plugin" "sudo dnf -q install -y session-manager-plugin.rpm" "session-manager-plugin --version 2>/dev/null | head -1"
     rm session-manager-plugin.rpm
 }
