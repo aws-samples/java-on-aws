@@ -56,17 +56,16 @@ This feature adds ARM64 (Graviton) architecture support to the workshop IDE infr
 
 ### Requirement 4: Extension Installation Enhancement
 
-**User Story:** As a workshop participant, I want the IDE to have all necessary extensions pre-installed, so that I can start coding immediately without manual setup.
+**User Story:** As a workshop participant, I want the IDE to have all necessary extensions pre-installed and unwanted pre-installed extensions removed, so that I can start coding immediately without distractions.
 
 #### Acceptance Criteria
 
-1. WHEN installing extensions THEN the System SHALL install AWS Toolkit extension (AmazonWebServices.aws-toolkit-vscode)
-2. WHEN installing extensions THEN the System SHALL install Java Extension Pack (vscjava.vscode-java-pack)
-3. WHEN installing extensions THEN the System SHALL install Docker extension (ms-azuretools.vscode-docker)
-4. WHEN installing extensions THEN the System SHALL install Kubernetes extension (ms-kubernetes-tools.vscode-kubernetes-tools)
-5. WHEN installing extensions THEN the System SHALL install Prettier extension (esbenp.prettier-vscode)
-6. WHEN installing extensions THEN the System SHALL install Trailing Spaces extension (shardulm94.trailing-spaces)
-7. WHEN extension installation fails THEN the System SHALL log the failure and continue with remaining extensions
+1. WHEN installing extensions THEN the System SHALL install Java Extension Pack (vscjava.vscode-java-pack)
+2. WHEN installing extensions THEN the System SHALL install Docker extension (ms-azuretools.vscode-docker)
+3. WHEN installing extensions THEN the System SHALL install Kubernetes extension (ms-kubernetes-tools.vscode-kubernetes-tools)
+4. WHEN extension installation fails THEN the System SHALL log the failure and continue with remaining extensions
+5. WHEN configuring Code Editor THEN the System SHALL uninstall pre-installed AWS Toolkit extension (AmazonWebServices.aws-toolkit-vscode)
+6. WHEN configuring Code Editor THEN the System SHALL uninstall pre-installed Amazon Q extension (AmazonWebServices.amazon-q-vscode)
 
 ### Requirement 5: Kiro CLI Installation
 
@@ -108,3 +107,4 @@ This feature adds ARM64 (Graviton) architecture support to the workshop IDE infr
 1. WHEN installing extensions THEN the System SHALL use a shared function that accepts the IDE binary path as parameter
 2. WHEN the shared function is called THEN the System SHALL use retry logic for resilience
 3. WHEN the shared function is called THEN the System SHALL support both code-server and code-editor-server binaries
+4. WHEN the shared function is called THEN the System SHALL first uninstall unwanted extensions before installing new ones

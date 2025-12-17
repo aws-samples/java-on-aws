@@ -217,17 +217,39 @@ Common settings shared by both IDEs:
 #!/bin/bash
 # Common IDE settings - sourced by vscode.sh and code-editor.sh
 
-# Extensions for Java workshops
-EXTENSIONS="AmazonWebServices.aws-toolkit-vscode,vscjava.vscode-java-pack,ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,esbenp.prettier-vscode,shardulm94.trailing-spaces"
+# Extensions to install
+EXTENSIONS="vscjava.vscode-java-pack,ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools"
+
+# Extensions to uninstall (pre-installed but unwanted)
+EXTENSIONS_UNINSTALL="AmazonWebServices.aws-toolkit-vscode,AmazonWebServices.amazon-q-vscode"
 
 # Default workspace folder
 DEFAULT_WORKSPACE="/home/ec2-user/environment"
+
+# Uninstall extensions using provided binary
+# Usage: uninstall_ide_extensions <binary_command> <user>
+uninstall_ide_extensions() {
+    local binary_cmd="$1"
+    local user="$2"
+
+    IFS=',' read -ra extension_array <<< "$EXTENSIONS_UNINSTALL"
+    for extension in "${extension_array[@]}"; do
+        extension=$(echo "$extension" | xargs)
+        if [ -n "$extension" ]; then
+            echo "Uninstalling extension: $extension"
+            sudo -u $user $binary_cmd --uninstall-extension $extension 2>/dev/null || true
+        fi
+    done
+}
 
 # Install extensions using provided binary
 # Usage: install_ide_extensions <binary_command> <user>
 install_ide_extensions() {
     local binary_cmd="$1"
     local user="$2"
+
+    # First uninstall unwanted extensions
+    uninstall_ide_extensions "$binary_cmd" "$user"
 
     IFS=',' read -ra extension_array <<< "$EXTENSIONS"
     for extension in "${extension_array[@]}"; do
@@ -280,15 +302,18 @@ configure_default_workspace "/home/ec2-user/.local/share/code-server/coder.json"
 
 **File:** `java-on-aws/infra/scripts/ide/code-editor.sh` (NEW)
 
-Minimal setup - use AWS Code Editor defaults, only configure:
+Setup includes:
 - Installation with checksum verification
 - Token auth
+- Settings.json (workspace trust disabled, terminal on startup, telemetry off, AWS Toolkit/Q popups suppressed)
 - Extensions (via shared function)
-- Default workspace (via shared function)
+- Default workspace folder (via shared function - coder.json)
 - Caddy proxy
 - Systemd service
 
-**No custom settings.json** - use Code Editor defaults initially.
+**Note:** Two separate configs control the startup experience:
+1. **coder.json** - sets which folder opens in the file explorer (`~/environment`)
+2. **settings.json** - sets what opens in the editor area (`"workbench.startupEditor": "terminal"`)
 
 ```bash
 #!/bin/bash
@@ -305,10 +330,22 @@ CODE_EDITOR_PORT="8889"
 sudo -u $CODE_EDITOR_USER mkdir -p "/home/${CODE_EDITOR_USER}/.code-editor-server/data"
 echo -n "$IDE_PASSWORD" > "/home/${CODE_EDITOR_USER}/.code-editor-server/data/token"
 
+# Settings.json - disable trust dialog, open terminal on startup, suppress popups
+sudo -u $CODE_EDITOR_USER tee "$settings_dir/settings.json" << 'EOF'
+{
+  "security.workspace.trust.enabled": false,
+  "workbench.startupEditor": "terminal",
+  "telemetry.telemetryLevel": "off",
+  "aws.telemetry": false,
+  "aws.suppressPrompts": { ... },
+  "amazonQ.showWalkthrough": false
+}
+EOF
+
 # Extensions
 install_ide_extensions "/home/${CODE_EDITOR_USER}/.local/bin/code-editor-server" "$CODE_EDITOR_USER"
 
-# Default workspace
+# Default workspace folder (coder.json)
 configure_default_workspace "/home/${CODE_EDITOR_USER}/.code-editor-server/data/coder.json" "$CODE_EDITOR_USER"
 
 # Caddy (same as vscode.sh)
