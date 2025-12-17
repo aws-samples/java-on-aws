@@ -151,11 +151,16 @@ configure_code_editor_settings() {
   "aws.suppressPrompts": {
     "codeWhispererNewWelcomeMessage": true,
     "codeWhispererConnectionExpired": true,
-    "amazonQWelcomeMessage": true
+    "amazonQWelcomeMessage": true,
+    "amazonQInstall": true,
+    "cloudformationTelemetry": true,
+    "telemetryToolkit": true
   },
   "amazonQ.showWalkthrough": false,
   "aws.codeWhisperer.shareCodeWhispererContentWithAWS": false,
-  "aws.cloudformation.telemetry": false
+  "aws.cloudformation.telemetry": false,
+  "aws.experiments": {},
+  "aws.toolkit.telemetry.metricOptOut": true
 }
 EOF
 
