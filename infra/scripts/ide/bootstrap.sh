@@ -113,6 +113,17 @@ if ! IDE_DOMAIN=$(aws cloudfront list-distributions --query "DistributionList.It
 fi
 export IDE_DOMAIN
 
+# IDE type - from CDK parameter via UserData, default to code-editor
+IDE_TYPE="${IDE_TYPE:-code-editor}"
+echo "IDE type: $IDE_TYPE"
+
+# Set code alias based on IDE type
+if [ "$IDE_TYPE" = "code-editor" ]; then
+    CODE_ALIAS='alias code="/home/ec2-user/.local/bin/code-editor-server"'
+else
+    CODE_ALIAS='alias code="code-server"'
+fi
+
 tee /etc/profile.d/workshop.sh <<EOF
 export AWS_REGION="$AWS_REGION"
 export AWS_DEFAULT_REGION="$AWS_REGION"
@@ -124,7 +135,7 @@ export IDE_DOMAIN="$IDE_DOMAIN"
 export IDE_URL="https://$IDE_DOMAIN"
 export IDE_PASSWORD="$IDE_PASSWORD"
 
-alias code="code-server"
+$CODE_ALIAS
 EOF
 
 source /etc/profile.d/workshop.sh
@@ -150,8 +161,8 @@ if [ ! -f "infra/scripts/ide/bootstrap.sh" ]; then
     exit 1
 fi
 
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Running VS Code setup..."
-bash infra/scripts/ide/vscode.sh
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Running IDE setup (${IDE_TYPE})..."
+bash infra/scripts/ide/${IDE_TYPE}.sh
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Running setup for template type: $TEMPLATE_TYPE"
 

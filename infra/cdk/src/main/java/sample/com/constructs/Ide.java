@@ -44,17 +44,61 @@ public class Ide extends Construct {
     private final Role lambdaRole;
     private CustomResource passwordResource;
 
+    /**
+     * Architecture enum for IDE instances.
+     * Determines instance types and AMI selection.
+     */
+    public enum IdeArch {
+        ARM64("arm64", "aarch64"),
+        X86_64("x86_64", "x86_64");
+
+        private final String awsValue;
+        private final String unameValue;
+
+        IdeArch(String awsValue, String unameValue) {
+            this.awsValue = awsValue;
+            this.unameValue = unameValue;
+        }
+
+        public String getAwsValue() { return awsValue; }
+        public String getUnameValue() { return unameValue; }
+    }
+
+    /**
+     * IDE type enum for selecting between code-server and AWS Code Editor.
+     */
+    public enum IdeType {
+        CODE_EDITOR("code-editor"),
+        VSCODE("vscode");
+
+        private final String scriptName;
+
+        IdeType(String scriptName) {
+            this.scriptName = scriptName;
+        }
+
+        public String getScriptName() { return scriptName; }
+    }
+
     public static class IdeProps {
         private String instanceName = "ide";
         private int diskSize = 50;
         private IVpc vpc;
-        private IMachineImage machineImage = MachineImage.latestAmazonLinux2023();
-        private List<String> instanceTypes = Arrays.asList("m7i-flex.xlarge", "m7a.xlarge", "m6i.xlarge", "m6a.xlarge", "m5.xlarge", "t3.xlarge");
+        private IdeArch ideArch = IdeArch.ARM64;
+        private IdeType ideType = IdeType.CODE_EDITOR;
         private List<ISecurityGroup> additionalSecurityGroups = new ArrayList<>();
         private int bootstrapTimeoutMinutes = 30;
         private String gitBranch = "main";
         private String templateType = "base";
         private Role ideRole;
+
+        // Architecture-specific instance type lists
+        private static final List<String> ARM64_INSTANCE_TYPES =
+            Arrays.asList("m7g.xlarge", "m6g.xlarge", "c7g.xlarge", "t4g.xlarge");
+        private static final List<String> X86_64_INSTANCE_TYPES =
+            Arrays.asList("m7i-flex.xlarge", "m7a.xlarge", "m6i.xlarge", "m6a.xlarge", "m5.xlarge", "t3.xlarge");
+        // Old instance list (x86_64) for reference:
+        // Arrays.asList("m7i-flex.xlarge", "m7a.xlarge", "m6i.xlarge", "m6a.xlarge", "m5.xlarge", "t3.xlarge");
 
         public static IdeProps.Builder builder() { return new Builder(); }
 
@@ -64,8 +108,8 @@ public class Ide extends Construct {
             public Builder instanceName(String instanceName) { props.instanceName = instanceName; return this; }
             public Builder diskSize(int diskSize) { props.diskSize = diskSize; return this; }
             public Builder vpc(IVpc vpc) { props.vpc = vpc; return this; }
-            public Builder machineImage(IMachineImage machineImage) { props.machineImage = machineImage; return this; }
-            public Builder instanceTypes(List<String> instanceTypes) { props.instanceTypes = instanceTypes; return this; }
+            public Builder ideArch(IdeArch ideArch) { props.ideArch = ideArch; return this; }
+            public Builder ideType(IdeType ideType) { props.ideType = ideType; return this; }
             public Builder additionalSecurityGroups(List<ISecurityGroup> additionalSecurityGroups) { props.additionalSecurityGroups = additionalSecurityGroups; return this; }
             public Builder bootstrapTimeoutMinutes(int bootstrapTimeoutMinutes) { props.bootstrapTimeoutMinutes = bootstrapTimeoutMinutes; return this; }
             public Builder gitBranch(String gitBranch) { props.gitBranch = gitBranch; return this; }
@@ -78,8 +122,20 @@ public class Ide extends Construct {
         public String getInstanceName() { return instanceName; }
         public int getDiskSize() { return diskSize; }
         public IVpc getVpc() { return vpc; }
-        public IMachineImage getMachineImage() { return machineImage; }
-        public List<String> getInstanceTypes() { return instanceTypes; }
+        public IdeArch getIdeArch() { return ideArch; }
+        public IdeType getIdeType() { return ideType; }
+
+        public IMachineImage getMachineImage() {
+            return ideArch == IdeArch.ARM64
+                ? MachineImage.latestAmazonLinux2023(AmazonLinux2023ImageSsmParameterProps.builder()
+                    .cpuType(AmazonLinuxCpuType.ARM_64).build())
+                : MachineImage.latestAmazonLinux2023();
+        }
+
+        public List<String> getInstanceTypes() {
+            return ideArch == IdeArch.ARM64 ? ARM64_INSTANCE_TYPES : X86_64_INSTANCE_TYPES;
+        }
+
         public List<ISecurityGroup> getAdditionalSecurityGroups() { return additionalSecurityGroups; }
         public int getBootstrapTimeoutMinutes() { return bootstrapTimeoutMinutes; }
         public String getGitBranch() { return gitBranch; }
@@ -263,6 +319,8 @@ public class Ide extends Construct {
             .replace("${GIT_BRANCH}", gitBranch)
             .replace("${AWS_REGION}", Aws.REGION)
             .replace("${TEMPLATE_TYPE}", templateType)
+            .replace("${ARCH}", props.getIdeArch().getUnameValue())
+            .replace("${IDE_TYPE}", props.getIdeType().getScriptName())
             .replace("${WAIT_CONDITION_HANDLE_URL}", waitHandle.getRef());
 
         userData.addCommands(userDataContent);
@@ -334,8 +392,19 @@ public class Ide extends Construct {
             .build();
         waitCondition.getNode().addDependency(ec2InstanceResource);
 
-        var ideUrlOutput = CfnOutput.Builder.create(this, "Url")
-            .value("https://" + distribution.getDistributionDomainName())
+        // Build URL based on IDE type
+        String ideUrl;
+        if (props.getIdeType() == IdeType.CODE_EDITOR) {
+            // Token-based URL for Code Editor (seamless Workshop Studio access)
+            ideUrl = "https://" + distribution.getDistributionDomainName() +
+                     "/?folder=/home/ec2-user/environment&tkn=" + getIdePassword(instanceName);
+        } else {
+            // Standard URL for code-server (password entered via login page)
+            ideUrl = "https://" + distribution.getDistributionDomainName();
+        }
+
+        CfnOutput.Builder.create(this, "Url")
+            .value(ideUrl)
             .description("Workshop IDE Url")
             .exportName(instanceName + "-url")
             .build();

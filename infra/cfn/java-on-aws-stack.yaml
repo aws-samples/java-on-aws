@@ -23,6 +23,8 @@ Resources:
           Value: Public
         - Key: aws-cdk:subnet-type
           Value: Public
+        - Key: kubernetes.io/role/elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
       VpcId:
@@ -31,6 +33,8 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
+        - Key: kubernetes.io/role/elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
       VpcId:
@@ -57,6 +61,8 @@ Resources:
     Properties:
       Domain: vpc
       Tags:
+        - Key: kubernetes.io/role/elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
   VpcPublicSubnet1NATGateway8185E366:
@@ -69,6 +75,8 @@ Resources:
       SubnetId:
         Ref: VpcPublicSubnet1Subnet8E8DEDC0
       Tags:
+        - Key: kubernetes.io/role/elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
     DependsOn:
@@ -88,6 +96,8 @@ Resources:
           Value: Public
         - Key: aws-cdk:subnet-type
           Value: Public
+        - Key: kubernetes.io/role/elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet2
       VpcId:
@@ -96,6 +106,8 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
+        - Key: kubernetes.io/role/elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet2
       VpcId:
@@ -131,6 +143,8 @@ Resources:
           Value: Private
         - Key: aws-cdk:subnet-type
           Value: Private
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PrivateSubnet1
       VpcId:
@@ -139,6 +153,8 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PrivateSubnet1
       VpcId:
@@ -172,6 +188,8 @@ Resources:
           Value: Private
         - Key: aws-cdk:subnet-type
           Value: Private
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PrivateSubnet2
       VpcId:
@@ -180,6 +198,8 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       Tags:
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PrivateSubnet2
       VpcId:
@@ -713,19 +733,31 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
+      InstanceName: ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      VolumeSize: "50"
       SubnetIds:
         Fn::Join:
           - ""
           - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
             - ","
             - Ref: VpcPublicSubnet2SubnetA811849C
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      InstanceName: ide
-      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -744,7 +776,7 @@ Resources:
               - Ref: AWS::Region
               - |-
                 "
-                export TEMPLATE_TYPE="base"
+                export TEMPLATE_TYPE="java-on-aws"
                 export ARCH="aarch64"
                 export IDE_TYPE="code-editor"
                 export WAIT_CONDITION_HANDLE_URL="
@@ -861,18 +893,6 @@ Resources:
                 "
                     exit 1
                 fi
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1251,12 +1271,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: base
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: new-ws-infra
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-on-aws
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1499,9 +1519,9 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
+      ContentHash: "1765978906504"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
-      ContentHash: "1765978900817"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
@@ -1512,6 +1532,617 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
+  DatabaseSecret3B817195:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description:
+        Fn::Join:
+          - ""
+          - - "Generated by the CDK for stack: "
+            - Ref: AWS::StackName
+      GenerateSecretString:
+        ExcludeCharacters: " %+~`#$&*()|[]{}:;<>?!'/@\"\\"
+        GenerateStringKey: password
+        PasswordLength: 30
+        SecretStringTemplate: '{"username":"postgres"}'
+      Name: workshop-db-secret
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  DatabaseSecretAttachmentE5D1B020:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId:
+        Ref: DatabaseSecret3B817195
+      TargetId:
+        Ref: DatabaseCluster5B53A178
+      TargetType: AWS::RDS::DBCluster
+  DatabaseSG562817C8:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: WorkshopStack/Database/SG
+      GroupName: workshop-db-sg
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: 10.0.0.0/16
+          Description: Allow Database Traffic from local network
+          FromPort: 5432
+          IpProtocol: tcp
+          ToPort: 5432
+      VpcId:
+        Ref: VpcC3027511
+  DatabaseClusterSubnets5540150D:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets for Cluster database
+      SubnetIds:
+        - Ref: VpcPrivateSubnet1Subnet67A4DBCB
+        - Ref: VpcPrivateSubnet2SubnetC8EB537D
+  DatabaseCluster5B53A178:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      CopyTagsToSnapshot: true
+      DBClusterIdentifier: workshop-db-cluster
+      DBClusterParameterGroupName: default.aurora-postgresql16
+      DBSubnetGroupName:
+        Ref: DatabaseClusterSubnets5540150D
+      DatabaseName: workshop
+      EnableHttpEndpoint: true
+      Engine: aurora-postgresql
+      EngineVersion: "16.4"
+      MasterUserPassword:
+        Fn::Join:
+          - ""
+          - - "{{resolve:secretsmanager:"
+            - Ref: DatabaseSecret3B817195
+            - :SecretString:password::}}
+      MasterUsername:
+        Fn::Join:
+          - ""
+          - - "{{resolve:secretsmanager:"
+            - Ref: DatabaseSecret3B817195
+            - :SecretString:username::}}
+      Port: 5432
+      ServerlessV2ScalingConfiguration:
+        MaxCapacity: 4
+        MinCapacity: 0.5
+      VpcSecurityGroupIds:
+        - Fn::GetAtt:
+            - DatabaseSG562817C8
+            - GroupId
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  DatabaseClusterDatabaseWriterF4C0B9A6:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AutoMinorVersionUpgrade: true
+      DBClusterIdentifier:
+        Ref: DatabaseCluster5B53A178
+      DBInstanceClass: db.serverless
+      DBInstanceIdentifier: workshop-db-writer
+      Engine: aurora-postgresql
+      PromotionTier: 0
+      PubliclyAccessible: false
+    DependsOn:
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  DatabasePasswordSecret2954D962:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: workshop-db-password-secret
+      SecretString:
+        Fn::Join:
+          - ""
+          - - "{{resolve:secretsmanager:"
+            - Fn::Join:
+                - "-"
+                - - Fn::Select:
+                      - 0
+                      - Fn::Split:
+                          - "-"
+                          - Fn::Select:
+                              - 6
+                              - Fn::Split:
+                                  - ":"
+                                  - Ref: DatabaseSecret3B817195
+                  - Fn::Select:
+                      - 1
+                      - Fn::Split:
+                          - "-"
+                          - Fn::Select:
+                              - 6
+                              - Fn::Split:
+                                  - ":"
+                                  - Ref: DatabaseSecret3B817195
+                  - Fn::Select:
+                      - 2
+                      - Fn::Split:
+                          - "-"
+                          - Fn::Select:
+                              - 6
+                              - Fn::Split:
+                                  - ":"
+                                  - Ref: DatabaseSecret3B817195
+            - :SecretString:password::}}
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  DatabaseConnectionString52D1E98E:
+    Type: AWS::SSM::Parameter
+    Properties:
+      AllowedPattern: .*
+      Description: Database Connection String
+      Name: workshop-db-connection-string
+      Tier: Standard
+      Type: String
+      Value:
+        Fn::Join:
+          - ""
+          - - jdbc:postgresql://
+            - Fn::GetAtt:
+                - DatabaseCluster5B53A178
+                - Endpoint.Address
+            - :5432/workshop
+  DatabaseSetupFunctionServiceRole57BBB83B:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+    DependsOn:
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+  DatabaseSetupFunctionServiceRoleDefaultPolicy1E8F72DD:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - secretsmanager:DescribeSecret
+              - secretsmanager:GetSecretValue
+            Effect: Allow
+            Resource:
+              - Ref: DatabaseSecret3B817195
+              - Ref: DatabaseSecretAttachmentE5D1B020
+          - Action:
+              - rds-data:BatchExecuteStatement
+              - rds-data:BeginTransaction
+              - rds-data:CommitTransaction
+              - rds-data:ExecuteStatement
+              - rds-data:RollbackTransaction
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":rds:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - ":cluster:"
+                  - Ref: DatabaseCluster5B53A178
+        Version: "2012-10-17"
+      PolicyName: DatabaseSetupFunctionServiceRoleDefaultPolicy1E8F72DD
+      Roles:
+        - Ref: DatabaseSetupFunctionServiceRole57BBB83B
+    DependsOn:
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+  DatabaseSetupFunction6A2230B7:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |-
+          import traceback
+          import cfnresponse
+          import boto3
+          import json
+          import time
+          from botocore.exceptions import ClientError
+
+          def get_cluster_arn(cluster_id, region, account_id):
+              return f"arn:aws:rds:{region}:{account_id}:cluster:{cluster_id}"
+
+          def wait_for_database_availability(rds_data, cluster_arn, secret_arn, database, max_attempts=10, delay=5):
+              """Wait for the database to become available"""
+              for attempt in range(1, max_attempts + 1):
+                  try:
+                      print(f"Checking database availability (attempt {attempt}/{max_attempts})...")
+                      rds_data.execute_statement(
+                          resourceArn=cluster_arn,
+                          secretArn=secret_arn,
+                          database=database,
+                          sql="SELECT 1"
+                      )
+                      print("Database is available!")
+                      return True
+                  except Exception as e:
+                      print(f"Database not yet available: {str(e)}. Retrying in {delay} seconds...")
+                      time.sleep(delay)
+
+              print(f"Database did not become available after {max_attempts} attempts")
+              return False
+
+          def execute_sql_with_retry(rds_data, cluster_arn, secret_arn, database, sql, max_retries=5, backoff_factor=2):
+              """Execute SQL with exponential backoff retry logic"""
+              retry_count = 0
+
+              while retry_count <= max_retries:
+                  try:
+                      response = rds_data.execute_statement(
+                          resourceArn=cluster_arn,
+                          secretArn=secret_arn,
+                          database=database,
+                          sql=sql
+                      )
+                      print(f"Executed SQL: {sql}")
+                      return response
+                  except ClientError as e:
+                      error_code = e.response.get('Error', {}).get('Code', '')
+                      error_message = str(e)
+
+                      # Check if this is a retryable error
+                      if "InternalServerErrorException" in error_code or "ServiceUnavailable" in error_code:
+                          retry_count += 1
+                          if retry_count <= max_retries:
+                              wait_time = backoff_factor ** retry_count
+                              print(f"Retryable error: {error_message}. Retrying in {wait_time} seconds...")
+                              time.sleep(wait_time)
+                          else:
+                              print(f"Max retries reached for SQL: {sql}")
+                              raise
+                      else:
+                          # Non-retryable error
+                          print(f"Non-retryable error: {error_message}")
+                          raise
+
+          def lambda_handler(event, context):
+              print('Event: {}'.format(event))
+              print('context: {}'.format(context))
+              responseData = {}
+              status = cfnresponse.SUCCESS
+
+              if event['RequestType'] == 'Delete':
+                  cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+                  return
+
+              try:
+                  # Get secret name and SQL from resource properties
+                  secret_name = event['ResourceProperties']['SecretName']
+                  sql_statements = event['ResourceProperties']['SqlStatements']
+
+                  # Get AWS account ID and region
+                  sts = boto3.client('sts')
+                  caller_identity = sts.get_caller_identity()
+                  account_id = caller_identity['Account']
+                  region = boto3.session.Session().region_name
+                  caller_arn = caller_identity['Arn']
+                  print(f"Account ID: {account_id}, Region: {region}")
+                  print(f"Caller ARN: {caller_arn}")
+
+                  # Get the secret
+                  secretsmanager = boto3.client('secretsmanager')
+                  try:
+                      secret_details = secretsmanager.describe_secret(
+                          SecretId=secret_name
+                      )
+                      secret_arn = secret_details['ARN']
+                      print(f"Secret ARN: {secret_arn}")
+                  except ClientError as e:
+                      print(f"Error retrieving secret details: {str(e)}")
+                      raise
+
+                  try:
+                      secret_response = secretsmanager.get_secret_value(
+                          SecretId=secret_name
+                      )
+                      secret = json.loads(secret_response['SecretString'])
+                  except ClientError as e:
+                      print(f"Error retrieving secret value: {str(e)}")
+                      raise
+                  except json.JSONDecodeError as e:
+                      print(f"Error parsing secret JSON: {str(e)}")
+                      raise
+
+                  # Construct cluster ARN
+                  cluster_arn = get_cluster_arn(
+                      secret['dbClusterIdentifier'],
+                      region,
+                      account_id
+                  )
+                  print(f"Cluster ARN: {cluster_arn}")
+
+                  # Initialize RDS Data API client
+                  rds_data = boto3.client('rds-data')
+
+                  # Wait for database to be available
+                  if not wait_for_database_availability(rds_data, cluster_arn, secret_arn, secret['dbname']):
+                      raise Exception("Database is not available after maximum wait time")
+
+                  # Process SQL statements
+                  statements = [stmt.strip() for stmt in sql_statements.split(';') if stmt.strip()]
+
+                  for sql in statements:
+                      try:
+                          execute_sql_with_retry(
+                              rds_data,
+                              cluster_arn,
+                              secret_arn,
+                              secret['dbname'],
+                              sql
+                          )
+                      except Exception as sql_error:
+                          print(f"Error executing SQL: {sql}")
+                          print(f"Error: {str(sql_error)}")
+                          raise sql_error
+
+                  responseData = {'Success': 'Finished database setup.'}
+
+              except Exception as e:
+                  status = cfnresponse.FAILED
+                  tb_err = traceback.format_exc()
+                  print(tb_err)
+                  responseData = {'Error': tb_err}
+              finally:
+                  cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+      FunctionName: workshop-database-setup
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - DatabaseSetupFunctionServiceRole57BBB83B
+          - Arn
+      Runtime: python3.13
+      Timeout: 180
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::GetAtt:
+              - DatabaseSG562817C8
+              - GroupId
+        SubnetIds:
+          - Ref: VpcPrivateSubnet1Subnet67A4DBCB
+          - Ref: VpcPrivateSubnet2SubnetC8EB537D
+    DependsOn:
+      - DatabaseSetupFunctionServiceRoleDefaultPolicy1E8F72DD
+      - DatabaseSetupFunctionServiceRole57BBB83B
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+  DatabaseSetupResourceD3D46851:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - DatabaseSetupFunction6A2230B7
+          - Arn
+      SecretName:
+        Fn::Join:
+          - "-"
+          - - Fn::Select:
+                - 0
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: DatabaseSecret3B817195
+            - Fn::Select:
+                - 1
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: DatabaseSecret3B817195
+            - Fn::Select:
+                - 2
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: DatabaseSecret3B817195
+      SqlStatements: |-
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
+    DependsOn:
+      - DatabaseClusterDatabaseWriterF4C0B9A6
+      - DatabaseCluster5B53A178
+      - DatabaseClusterSubnets5540150D
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  EksClusterRoleD18DF32F:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+              - sts:TagSession
+            Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSClusterPolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSComputePolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSBlockStoragePolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSLoadBalancingPolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSNetworkingPolicy
+  EksClusterClusternodePoolRoleE206FBFC:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+  EksClusterB2BDED5B:
+    Type: AWS::EKS::Cluster
+    Properties:
+      AccessConfig:
+        AuthenticationMode: API
+      ComputeConfig:
+        Enabled: true
+        NodePools:
+          - system
+          - general-purpose
+        NodeRoleArn:
+          Fn::GetAtt:
+            - EksClusterClusternodePoolRoleE206FBFC
+            - Arn
+      KubernetesNetworkConfig:
+        ElasticLoadBalancing:
+          Enabled: true
+        IpFamily: ipv4
+      Name: workshop-eks
+      ResourcesVpcConfig:
+        EndpointPrivateAccess: true
+        EndpointPublicAccess: true
+        SecurityGroupIds:
+          - Fn::GetAtt:
+              - IdeInternalSecurityGroupB0A5D76B
+              - GroupId
+        SubnetIds:
+          - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+          - Ref: VpcPublicSubnet2SubnetA811849C
+          - Ref: VpcPrivateSubnet1Subnet67A4DBCB
+          - Ref: VpcPrivateSubnet2SubnetC8EB537D
+      RoleArn:
+        Fn::GetAtt:
+          - EksClusterRoleD18DF32F
+          - Arn
+      StorageConfig:
+        BlockStorage:
+          Enabled: true
+      Version: "1.34"
+    DependsOn:
+      - VpcIGW488B0FEB
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTable901BAEEE
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet1Subnet67A4DBCB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTable1EA00C9D
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+      - VpcPrivateSubnet2SubnetC8EB537D
+      - VpcPublicSubnet1DefaultRoute0F5C6C43
+      - VpcPublicSubnet1EIP2293BAA3
+      - VpcPublicSubnet1NATGateway8185E366
+      - VpcPublicSubnet1RouteTable431DD755
+      - VpcPublicSubnet1RouteTableAssociationBBCB7AA1
+      - VpcPublicSubnet1Subnet8E8DEDC0
+      - VpcPublicSubnet2DefaultRouteD629179A
+      - VpcPublicSubnet2RouteTable77FB35FC
+      - VpcPublicSubnet2RouteTableAssociation3AFE92E6
+      - VpcPublicSubnet2SubnetA811849C
+      - VpcC3027511
+      - VpcVPCGW42EC8516
+  EksClusterKubectlReadyBarrierA32D1E84:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: aws:cdk:eks:kubectl-ready
+    DependsOn:
+      - EksClusterB2BDED5B
+  EksSecretsStoreDriverA84665C0:
+    Type: AWS::EKS::Addon
+    Properties:
+      AddonName: aws-secrets-store-csi-driver-provider
+      ClusterName:
+        Ref: EksClusterB2BDED5B
+  EksMountpointS3DriverB7062BF9:
+    Type: AWS::EKS::Addon
+    Properties:
+      AddonName: aws-mountpoint-s3-csi-driver
+      ClusterName:
+        Ref: EksClusterB2BDED5B
+  EksPodIdentityAgent31D8BD3D:
+    Type: AWS::EKS::Addon
+    Properties:
+      AddonName: eks-pod-identity-agent
+      ClusterName:
+        Ref: EksClusterB2BDED5B
+  EksInstanceAccessEntry1D317291:
+    Type: AWS::EKS::AccessEntry
+    Properties:
+      AccessPolicies:
+        - AccessScope:
+            Type: cluster
+          PolicyArn:
+            Fn::Join:
+              - ""
+              - - "arn:"
+                - Ref: AWS::Partition
+                - :eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+      ClusterName:
+        Ref: EksClusterB2BDED5B
+      PrincipalArn:
+        Fn::GetAtt:
+          - IdeRole4650E22E
+          - Arn
+      Type: STANDARD
 Outputs:
   IdeUrl45274C27:
     Description: Workshop IDE Url

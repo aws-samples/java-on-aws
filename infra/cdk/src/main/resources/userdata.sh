@@ -8,6 +8,8 @@ set -e
 export GIT_BRANCH="${GIT_BRANCH}"
 export AWS_REGION="${AWS_REGION}"
 export TEMPLATE_TYPE="${TEMPLATE_TYPE}"
+export ARCH="${ARCH}"
+export IDE_TYPE="${IDE_TYPE}"
 export WAIT_CONDITION_HANDLE_URL="${WAIT_CONDITION_HANDLE_URL}"
 
 # Setup logging

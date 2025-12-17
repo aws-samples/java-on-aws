@@ -60,7 +60,13 @@ source $ZSH/oh-my-zsh.sh
 # Basic aliases
 alias ll='ls -la'
 alias k=kubectl
-alias code=/usr/lib/code-server/bin/code-server
+
+# Dynamic code alias - detect installed IDE
+if [ -x "/home/ec2-user/.local/bin/code-editor-server" ]; then
+    alias code="/home/ec2-user/.local/bin/code-editor-server"
+elif command -v code-server &>/dev/null; then
+    alias code=/usr/lib/code-server/bin/code-server
+fi
 
 # kubectl completion
 source <(kubectl completion zsh)
@@ -78,12 +84,18 @@ log_info "Copying .p10k.zsh..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cp "${SCRIPT_DIR}/p10k.zsh" ~/.p10k.zsh
 
-log_info "Configuring code-server to use zsh..."
-if [ -f ~/.local/share/code-server/User/settings.json ]; then
-    # Add zsh as default terminal if settings.json exists
-    jq '. + {"terminal.integrated.defaultProfile.linux": "zsh"}' \
-        ~/.local/share/code-server/User/settings.json > /tmp/settings.json \
-        && mv /tmp/settings.json ~/.local/share/code-server/User/settings.json
-fi
+log_info "Configuring IDE to use zsh..."
+# Check both code-server and code-editor settings.json paths
+for settings_path in \
+    "$HOME/.local/share/code-server/User/settings.json" \
+    "$HOME/.code-editor-server/data/User/settings.json"; do
+    if [ -f "$settings_path" ]; then
+        log_info "Updating $settings_path for zsh terminal..."
+        jq '. + {"terminal.integrated.defaultProfile.linux": "zsh"}' \
+            "$settings_path" > /tmp/settings.json \
+            && mv /tmp/settings.json "$settings_path"
+        break
+    fi
+done
 
 log_info "Shell setup completed successfully"

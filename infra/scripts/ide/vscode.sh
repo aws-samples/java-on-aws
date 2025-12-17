@@ -8,8 +8,11 @@ set -e
 # VS Code Server version
 VSCODE_VERSION="4.106.3"
 
-# VS Code Extensions
-EXTENSIONS="shardulm94.trailing-spaces,ms-kubernetes-tools.vscode-kubernetes-tools,ms-azuretools.vscode-docker"
+# =============================================================================
+
+# Source common IDE settings (extensions, workspace config)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/ide-settings.sh"
 
 # =============================================================================
 
@@ -106,27 +109,13 @@ setup_user_file "/home/ec2-user/.local/share/code-server/User/keybindings.json" 
 ]'
 
 echo "Setting default workspace..."
-if [ ! -f "/home/ec2-user/.local/share/code-server/coder.json" ]; then
-  setup_user_file "/home/ec2-user/.local/share/code-server/coder.json" '{ "query": { "folder": "/home/ec2-user/environment" } }'
-fi
+# Use shared workspace configuration function
+configure_default_workspace "/home/ec2-user/.local/share/code-server/coder.json" "ec2-user"
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing VS Code extensions..."
 
-if [ ! -z "$EXTENSIONS" ]; then
-    IFS=',' read -ra extension_array <<< "$EXTENSIONS"
-
-    # Install extensions with retry logic (5×5s LOG mode - continue on failure)
-    for extension in "${extension_array[@]}"; do
-        # Trim whitespace
-        extension=$(echo "$extension" | xargs)
-        if [ ! -z "$extension" ]; then
-            echo "Installing extension: $extension"
-            retry_optional "VS Code extension $extension" "run_as_user 'code-server --install-extension $extension --force'"
-        fi
-    done
-else
-    echo "No VS Code extensions specified, skipping extension installation"
-fi
+# Use shared extension installation function
+install_ide_extensions "code-server" "ec2-user"
 
 echo "Restarting code-server..."
 systemctl restart code-server@ec2-user

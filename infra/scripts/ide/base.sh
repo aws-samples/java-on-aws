@@ -2,6 +2,34 @@
 set -e
 
 # =============================================================================
+# ARCHITECTURE DETECTION
+# =============================================================================
+# Use CDK-provided ARCH value or detect from system
+if [ -z "$ARCH" ]; then
+    ARCH=$(uname -m)
+fi
+
+# Normalize architecture names for different tools
+case $ARCH in
+    aarch64|ARM64|arm64)
+        ARCH_UNAME="aarch64"
+        ARCH_K8S="arm64"
+        ARCH_SAM="arm64"
+        ARCH_GENERIC="arm64"
+        ARCH_YQ="arm64"
+        ;;
+    *)
+        ARCH_UNAME="x86_64"
+        ARCH_K8S="amd64"
+        ARCH_SAM="x86_64"
+        ARCH_GENERIC="x86_64"
+        ARCH_YQ="amd64"
+        ;;
+esac
+
+echo "Architecture detected: ARCH=$ARCH, ARCH_UNAME=$ARCH_UNAME, ARCH_K8S=$ARCH_K8S"
+
+# =============================================================================
 # VERSION DEFINITIONS (managed by Renovate)
 # =============================================================================
 
@@ -114,12 +142,13 @@ install_java() {
     # Install all Java versions
     retry_critical "Java versions (8,17,21,25)" "sudo dnf install -y -q java-1.8.0-amazon-corretto-devel java-17-amazon-corretto-devel java-21-amazon-corretto-devel java-25-amazon-corretto-devel >/dev/null"
 
-    # Set default Java version
-    sudo update-alternatives --set java /usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto.x86_64/bin/java
-    sudo update-alternatives --set javac /usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto.x86_64/bin/javac
+    # Set default Java version (path differs by architecture)
+    JAVA_ARCH_PATH="java-${JAVA_VERSION}-amazon-corretto.${ARCH_UNAME}"
+    sudo update-alternatives --set java /usr/lib/jvm/${JAVA_ARCH_PATH}/bin/java
+    sudo update-alternatives --set javac /usr/lib/jvm/${JAVA_ARCH_PATH}/bin/javac
 
     # Set JAVA_HOME
-    JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto.x86_64
+    JAVA_HOME=/usr/lib/jvm/${JAVA_ARCH_PATH}
     echo "export JAVA_HOME=${JAVA_HOME}" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
 
     # Verify installation
@@ -172,12 +201,12 @@ install_maven
 
 # AWS Tools
 install_aws_tools() {
-    log_info "Installing AWS SAM CLI..."
-    curl -sS -L "https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip" -o "aws-sam-cli-linux-x86_64.zip"
+    log_info "Installing AWS SAM CLI for ${ARCH_SAM}..."
+    curl -sS -L "https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-${ARCH_SAM}.zip" -o "aws-sam-cli-linux-${ARCH_SAM}.zip"
 
-    unzip -q aws-sam-cli-linux-x86_64.zip -d sam-installation
+    unzip -q aws-sam-cli-linux-${ARCH_SAM}.zip -d sam-installation
     install_with_version "AWS SAM CLI" "sudo ./sam-installation/install --update" "/usr/local/bin/sam --version | awk '{print \$4}'"
-    rm -rf ./sam-installation/ aws-sam-cli-linux-x86_64.zip
+    rm -rf ./sam-installation/ aws-sam-cli-linux-${ARCH_SAM}.zip
 
     log_info "Installing Session Manager Plugin..."
     curl -sS -L "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o "session-manager-plugin.rpm"
@@ -188,8 +217,8 @@ install_aws_tools() {
 install_aws_tools
 
 install_kubernetes_tools() {
-    log_info "Installing kubectl ${KUBECTL_VERSION}..."
-    download_and_verify "https://s3.us-west-2.amazonaws.com/amazon-eks/${KUBECTL_VERSION}/2025-11-13/bin/linux/amd64/kubectl" "kubectl" "kubectl ${KUBECTL_VERSION}"
+    log_info "Installing kubectl ${KUBECTL_VERSION} for ${ARCH_K8S}..."
+    download_and_verify "https://s3.us-west-2.amazonaws.com/amazon-eks/${KUBECTL_VERSION}/2025-11-13/bin/linux/${ARCH_K8S}/kubectl" "kubectl" "kubectl ${KUBECTL_VERSION}"
 
     chmod +x ./kubectl
     mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
@@ -200,8 +229,8 @@ install_kubernetes_tools() {
     retry_critical "Helm ${HELM_VERSION}" "curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && chmod 700 get_helm.sh && ./get_helm.sh --version v${HELM_VERSION}"
     helm completion bash >> ~/.bash_completion
 
-    log_info "Installing eks-node-viewer ${EKS_NODE_VIEWER_VERSION}..."
-    download_and_verify "https://github.com/awslabs/eks-node-viewer/releases/download/v${EKS_NODE_VIEWER_VERSION}/eks-node-viewer_Linux_x86_64" "eks-node-viewer" "eks-node-viewer ${EKS_NODE_VIEWER_VERSION}"
+    log_info "Installing eks-node-viewer ${EKS_NODE_VIEWER_VERSION} for ${ARCH_GENERIC}..."
+    download_and_verify "https://github.com/awslabs/eks-node-viewer/releases/download/v${EKS_NODE_VIEWER_VERSION}/eks-node-viewer_Linux_${ARCH_GENERIC}" "eks-node-viewer" "eks-node-viewer ${EKS_NODE_VIEWER_VERSION}"
     chmod +x eks-node-viewer
     sudo mv eks-node-viewer /usr/local/bin
 
@@ -222,10 +251,10 @@ install_container_tools() {
     sudo service docker start
     sudo usermod -aG docker ec2-user
 
-    log_info "Installing SOCI snapshotter ${SOCI_VERSION}..."
-    download_and_verify "https://github.com/awslabs/soci-snapshotter/releases/download/v$SOCI_VERSION/soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz" "soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz" "SOCI snapshotter ${SOCI_VERSION}"
-    sudo tar -C /usr/local/bin -xf soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz soci soci-snapshotter-grpc
-    rm soci-snapshotter-$SOCI_VERSION-linux-amd64.tar.gz
+    log_info "Installing SOCI snapshotter ${SOCI_VERSION} for ${ARCH_K8S}..."
+    download_and_verify "https://github.com/awslabs/soci-snapshotter/releases/download/v$SOCI_VERSION/soci-snapshotter-$SOCI_VERSION-linux-${ARCH_K8S}.tar.gz" "soci-snapshotter-$SOCI_VERSION-linux-${ARCH_K8S}.tar.gz" "SOCI snapshotter ${SOCI_VERSION}"
+    sudo tar -C /usr/local/bin -xf soci-snapshotter-$SOCI_VERSION-linux-${ARCH_K8S}.tar.gz soci soci-snapshotter-grpc
+    rm soci-snapshotter-$SOCI_VERSION-linux-${ARCH_K8S}.tar.gz
 
     # Configure Docker for SOCI
     sudo tee /etc/docker/daemon.json >/dev/null << EOF
@@ -247,10 +276,10 @@ install_utilities() {
     log_info "Installing jq..."
     sudo dnf install -y -q jq >/dev/null
 
-    log_info "Installing yq ${YQ_VERSION}..."
-    download_and_verify "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64.tar.gz" "yq_linux_amd64.tar.gz" "yq ${YQ_VERSION}"
-    tar xzf yq_linux_amd64.tar.gz && sudo mv yq_linux_amd64 /usr/bin/yq
-    rm yq_linux_amd64.tar.gz
+    log_info "Installing yq ${YQ_VERSION} for ${ARCH_YQ}..."
+    download_and_verify "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_${ARCH_YQ}.tar.gz" "yq_linux_${ARCH_YQ}.tar.gz" "yq ${YQ_VERSION}"
+    tar xzf yq_linux_${ARCH_YQ}.tar.gz && sudo mv yq_linux_${ARCH_YQ} /usr/bin/yq
+    rm yq_linux_${ARCH_YQ}.tar.gz
 }
 
 install_utilities
@@ -259,6 +288,23 @@ install_utilities
 log_info "Configuring AWS CLI default region..."
 source /etc/profile.d/workshop.sh
 aws configure set default.region ${AWS_REGION}
+
+# Kiro CLI installation
+install_kiro_cli() {
+    log_info "Installing Kiro CLI..."
+    retry_optional "Kiro CLI" \
+        "sudo -u ec2-user bash -c 'curl -fsSL https://cli.kiro.dev/install -o /tmp/kiro_cli_install.sh && bash /tmp/kiro_cli_install.sh'"
+
+    # Verify installation
+    if sudo -u ec2-user /home/ec2-user/.local/bin/kiro --version >/dev/null 2>&1; then
+        local version=$(sudo -u ec2-user /home/ec2-user/.local/bin/kiro --version 2>/dev/null | head -1)
+        echo "✅ Success: Kiro CLI $version"
+    else
+        echo "⚠️  Warning: Kiro CLI installation could not be verified"
+    fi
+}
+
+install_kiro_cli
 
 # Shell UX setup (zsh + oh-my-zsh + powerlevel10k + fzf)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
