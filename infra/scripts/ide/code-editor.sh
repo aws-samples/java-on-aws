@@ -144,23 +144,8 @@ configure_code_editor_settings() {
 {
   "security.workspace.trust.enabled": false,
   "workbench.startupEditor": "terminal",
-  "telemetry.telemetryLevel": "off",
   "update.mode": "none",
-  "terminal.integrated.defaultProfile.linux": "zsh",
-  "aws.telemetry": false,
-  "aws.suppressPrompts": {
-    "codeWhispererNewWelcomeMessage": true,
-    "codeWhispererConnectionExpired": true,
-    "amazonQWelcomeMessage": true,
-    "amazonQInstall": true,
-    "cloudformationTelemetry": true,
-    "telemetryToolkit": true
-  },
-  "amazonQ.showWalkthrough": false,
-  "aws.codeWhisperer.shareCodeWhispererContentWithAWS": false,
-  "aws.cloudformation.telemetry": false,
-  "aws.experiments": {},
-  "aws.toolkit.telemetry.metricOptOut": true
+  "terminal.integrated.defaultProfile.linux": "zsh"
 }
 EOF
 

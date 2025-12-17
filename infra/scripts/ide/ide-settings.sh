@@ -3,8 +3,9 @@
 # Common IDE settings - sourced by vscode.sh and code-editor.sh
 # =============================================================================
 
-# Extensions for Java workshops
-EXTENSIONS="AmazonWebServices.aws-toolkit-vscode,vscjava.vscode-java-pack,ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,esbenp.prettier-vscode,shardulm94.trailing-spaces"
+# Extensions
+EXTENSIONS="vscjava.vscode-java-pack,ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools"
+# EXTENSIONS="AmazonWebServices.aws-toolkit-vscode,vscjava.vscode-java-pack,ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,esbenp.prettier-vscode,shardulm94.trailing-spaces"
 
 # Default workspace folder
 DEFAULT_WORKSPACE="/home/ec2-user/environment"
