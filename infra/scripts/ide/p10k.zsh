@@ -4,8 +4,8 @@ typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet
 # Left prompt: directory, git status, prompt symbol
 typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(dir vcs newline prompt_char)
 
-# Right prompt: status, duration, jobs, java, k8s context, aws profile, time
-typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(status command_execution_time background_jobs java_version kubecontext aws time newline)
+# Right prompt: status, duration, jobs, k8s context, aws profile
+typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(status command_execution_time background_jobs kubecontext aws newline)
 
 # Visual style
 typeset -g POWERLEVEL9K_MODE=powerline
@@ -44,11 +44,6 @@ typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_PRECISION=0
 typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_FOREGROUND=0
 typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_BACKGROUND=3
 
-# Java version: always visible, show full version (Java workshop)
-typeset -g POWERLEVEL9K_JAVA_VERSION_FOREGROUND=1
-typeset -g POWERLEVEL9K_JAVA_VERSION_BACKGROUND=7
-typeset -g POWERLEVEL9K_JAVA_VERSION_FULL=true
-
 # Kubernetes context: always visible (EKS workshop)
 typeset -g POWERLEVEL9K_KUBECONTEXT_FOREGROUND=7
 typeset -g POWERLEVEL9K_KUBECONTEXT_BACKGROUND=5
@@ -57,11 +52,6 @@ typeset -g POWERLEVEL9K_KUBECONTEXT_BACKGROUND=5
 typeset -g POWERLEVEL9K_AWS_SHOW_ON_COMMAND='aws|terraform|cdk|sam'
 typeset -g POWERLEVEL9K_AWS_FOREGROUND=7
 typeset -g POWERLEVEL9K_AWS_BACKGROUND=208
-
-# Time: 24-hour format
-typeset -g POWERLEVEL9K_TIME_FOREGROUND=0
-typeset -g POWERLEVEL9K_TIME_BACKGROUND=7
-typeset -g POWERLEVEL9K_TIME_FORMAT='%D{%H:%M}'
 
 # Status: show only on error
 typeset -g POWERLEVEL9K_STATUS_OK=false

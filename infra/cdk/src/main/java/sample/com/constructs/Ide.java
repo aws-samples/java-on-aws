@@ -49,7 +49,7 @@ public class Ide extends Construct {
         private int diskSize = 50;
         private IVpc vpc;
         private IMachineImage machineImage = MachineImage.latestAmazonLinux2023();
-        private List<String> instanceTypes = Arrays.asList("m5.xlarge", "m6i.xlarge", "t3.xlarge");
+        private List<String> instanceTypes = Arrays.asList("m7i-flex.xlarge", "m7a.xlarge", "m6i.xlarge", "m6a.xlarge", "m5.xlarge", "t3.xlarge");
         private List<ISecurityGroup> additionalSecurityGroups = new ArrayList<>();
         private int bootstrapTimeoutMinutes = 30;
         private String gitBranch = "main";

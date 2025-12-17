@@ -1,0 +1,163 @@
+# Implementation Plan
+
+- [ ] 1. Add IdeArch and IdeType support to CDK Ide construct
+  - [ ] 1.1 Create IdeArch enum in Ide.java
+    - Add enum with ARM64 and X86_64 values
+    - Include helper methods for AWS and uname values
+    - _Requirements: 1.1_
+  - [ ] 1.2 Create IdeType enum in Ide.java
+    - Add enum with CODE_EDITOR and VSCODE values
+    - Include scriptName helper method
+    - _Requirements: 3.1_
+  - [ ] 1.3 Add ideArch and ideType properties to IdeProps
+    - Add ideArch field with ARM64 default
+    - Add ideType field with CODE_EDITOR default
+    - Create static instance type lists for each architecture
+    - Update getInstanceTypes() to return ideArch-specific list
+    - Update getMachineImage() to return ideArch-specific AMI
+    - Add builder methods for ideArch and ideType
+    - Comment out old instance type list for reference
+    - _Requirements: 1.2, 1.3, 1.5, 7.1, 7.2_
+  - [ ] 1.4 Update UserData to export ARCH and IDE_TYPE
+    - Modify userdata.sh template to include ARCH and IDE_TYPE exports
+    - Pass ideArch and ideType values from CDK to UserData
+    - _Requirements: 1.4, 2.1_
+  - [ ] 1.5 Write property test for ideArch → instance types mapping
+    - **Property 1: Architecture determines instance types**
+    - **Validates: Requirements 1.2, 1.3, 7.1, 7.2**
+
+- [ ] 2. Add architecture detection to base.sh
+  - [ ] 2.1 Add architecture detection and normalization
+    - Read ARCH from environment or detect via uname
+    - Create ARCH_K8S, ARCH_SAM, ARCH_GENERIC, ARCH_YQ variables
+    - _Requirements: 2.1_
+  - [ ] 2.2 Update kubectl download URL
+    - Use ARCH_K8S variable in download URL
+    - _Requirements: 2.2_
+  - [ ] 2.3 Update SAM CLI download URL
+    - Use ARCH_SAM variable in download URL
+    - _Requirements: 2.3_
+  - [ ] 2.4 Update eks-node-viewer download URL
+    - Use ARCH_GENERIC variable in download URL
+    - _Requirements: 2.4_
+  - [ ] 2.5 Update SOCI snapshotter download URL
+    - Use ARCH_K8S variable (amd64/arm64) in download URL
+    - _Requirements: 2.5_
+  - [ ] 2.6 Update yq download URL
+    - Use ARCH_YQ variable in download URL
+    - _Requirements: 2.6_
+  - [ ] 2.7 Update Java path for ARM64
+    - Handle different Java paths for aarch64 vs x86_64
+    - _Requirements: 2.1_
+
+- [ ] 3. Checkpoint - Verify architecture detection works
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 4. Create ide-settings.sh with common IDE configuration
+  - [ ] 4.1 Create ide-settings.sh file
+    - Define EXTENSIONS variable with full list
+    - Define DEFAULT_WORKSPACE variable
+    - _Requirements: 4.1-4.6_
+  - [ ] 4.2 Add install_ide_extensions function
+    - Accept binary command and user as parameters
+    - Loop through extensions with retry logic
+    - _Requirements: 4.7, 8.1, 8.2, 8.3_
+  - [ ] 4.3 Add configure_default_workspace function
+    - Accept coder.json path and user as parameters
+    - Create workspace config if not exists
+    - _Requirements: 4.1_
+
+- [ ] 5. Create code-editor.sh for AWS Code Editor
+  - [ ] 5.1 Add code-editor installation function
+    - Download manifest from code-editor.amazonaws.com
+    - Support ARM64 and x64 architectures
+    - _Requirements: 3.1_
+  - [ ] 5.2 Add checksum verification
+    - Verify SHA256 checksum against manifest
+    - Fail with clear error on mismatch
+    - _Requirements: 3.2_
+  - [ ] 5.3 Add installation to user's .local directory
+    - Extract to ~/.local/lib/code-editor-VERSION/
+    - Create symlink in ~/.local/bin/
+    - _Requirements: 3.3_
+  - [ ] 5.4 Add systemd service configuration
+    - Create code-editor@.service unit file
+    - Configure for port 8889
+    - Accept server license terms
+    - _Requirements: 3.4, 3.5_
+  - [ ] 5.5 Add token authentication setup
+    - Create ~/.code-editor-server/data/token file
+    - Write IDE_PASSWORD to token file
+    - _Requirements: 6.1_
+  - [ ] 5.6 Add Caddy proxy configuration
+    - Configure Caddy to proxy port 8889
+    - Same config as vscode.sh
+    - _Requirements: 3.6_
+  - [ ] 5.7 Source ide-settings.sh and call shared functions
+    - Call install_ide_extensions with code-editor-server
+    - Call configure_default_workspace
+    - _Requirements: 4.1-4.7_
+
+- [ ] 6. Update vscode.sh to use shared settings
+  - [ ] 6.1 Source ide-settings.sh
+    - Remove inline EXTENSIONS variable
+    - Source ide-settings.sh at top of file
+    - _Requirements: 4.1-4.6_
+  - [ ] 6.2 Use install_ide_extensions function
+    - Replace inline extension loop with function call
+    - Pass "code-server" and "ec2-user"
+    - _Requirements: 4.7_
+  - [ ] 6.3 Use configure_default_workspace function
+    - Replace inline coder.json creation with function call
+    - _Requirements: 4.1_
+
+- [ ] 7. Update bootstrap.sh for IDE selection
+  - [ ] 7.1 Read IDE_TYPE from environment
+    - Use IDE_TYPE from UserData (set by CDK)
+    - Default to "code-editor" if not set
+    - _Requirements: 3.1_
+  - [ ] 7.2 Add dynamic code alias to workshop.sh
+    - Set alias based on IDE_TYPE
+    - code-editor: /home/ec2-user/.local/bin/code-editor-server
+    - vscode: code-server
+    - _Requirements: 3.4_
+  - [ ] 7.3 Update IDE setup call
+    - Change from hardcoded vscode.sh to ${IDE_TYPE}.sh
+    - _Requirements: 3.1_
+
+- [ ] 8. Update shell.sh for both IDEs
+  - [ ] 8.1 Update .zshrc code alias
+    - Add dynamic alias that detects installed IDE
+    - Check for code-editor-server first, then code-server
+    - _Requirements: 3.4_
+  - [ ] 8.2 Update settings.json zsh configuration
+    - Check both code-server and code-editor settings.json paths
+    - Update whichever exists
+    - _Requirements: 3.4_
+
+- [ ] 9. Add Kiro CLI installation to base.sh
+  - [ ] 9.1 Add install_kiro_cli function
+    - Download and run Kiro CLI installer
+    - Use retry_optional for resilience
+    - _Requirements: 5.1_
+  - [ ] 9.2 Add version verification
+    - Check kiro-cli --version after install
+    - Log warning if verification fails
+    - _Requirements: 5.2, 5.3_
+  - [ ] 9.3 Call install_kiro_cli in base.sh
+    - Add to end of base.sh before shell setup
+    - _Requirements: 5.1_
+
+- [ ] 10. Checkpoint - Test full bootstrap
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 11. Update CDK URL output for conditional token-based access
+  - [ ] 11.1 Modify Ide.java URL output based on IdeType
+    - For CODE_EDITOR: Include ?folder= and ?tkn= parameters
+    - Format: https://domain/?folder=/home/ec2-user/environment&tkn=PASSWORD
+    - For VSCODE: Standard URL without token (password via login page)
+    - Format: https://domain/
+    - _Requirements: 6.2, 6.3_
+
+- [ ] 12. Final Checkpoint - Verify complete setup
+  - Ensure all tests pass, ask the user if questions arise.

@@ -870,7 +870,7 @@ Resources:
                 "
                     exit 1
                 fi
-      InstanceTypes: m5.xlarge,m6i.xlarge,t3.xlarge
+      InstanceTypes: m7i-flex.xlarge,m7a.xlarge,m6i.xlarge,m6a.xlarge,m5.xlarge,t3.xlarge
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1503,7 +1503,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1765735498510"
+      ContentHash: "1765969925813"
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8

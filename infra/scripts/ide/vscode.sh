@@ -93,7 +93,8 @@ setup_user_file "/home/ec2-user/.local/share/code-server/User/settings.json" '{
   "terminal.integrated.commandsToSkipShell": [],
   "workbench.sideBar.location": "left",
   "workbench.panel.defaultLocation": "bottom",
-  "workbench.auxiliaryBar.visible": false
+  "workbench.auxiliaryBar.visible": false,
+  "workbench.secondarySideBar.defaultVisibility": "hidden"
 }'
 
 echo "Configuring VS Code keybindings..."
