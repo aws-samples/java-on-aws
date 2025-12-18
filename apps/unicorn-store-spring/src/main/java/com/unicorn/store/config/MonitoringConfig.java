@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.config.MeterFilter;
-import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
-import org.springframework.context.annotation.Bean;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.File;
@@ -25,44 +25,45 @@ public class MonitoringConfig {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final File NAMESPACE_FILE = new File("/var/run/secrets/kubernetes.io/serviceaccount/namespace");
 
-    @Bean
-    public MeterRegistryCustomizer<MeterRegistry> meterRegistryCustomizer() {
-        return registry -> {
-            String clusterType = System.getenv("ECS_CONTAINER_METADATA_URI_V4") != null ? "ecs" : "eks";
-            String cluster = clusterType.equals("ecs") ? extractClusterNameFromMetadata().orElse("unknown") : Optional.ofNullable(System.getenv("CLUSTER")).orElse("unknown");
-            String containerName = "unicorn-store-spring";
-            String taskOrPodId = extractTaskOrPodId().orElse("unknown");
-            String namespace = clusterType.equals("eks") ? readNamespaceFile().orElse("default") : "";
+    @Autowired
+    private MeterRegistry meterRegistry;
 
-            // Get the container/pod IP address
-            String ipAddress = getContainerOrPodIp().orElse("unknown");
+    @PostConstruct
+    public void configureMeterRegistry() {
+        String clusterType = System.getenv("ECS_CONTAINER_METADATA_URI_V4") != null ? "ecs" : "eks";
+        String cluster = clusterType.equals("ecs") ? extractClusterNameFromMetadata().orElse("unknown") : Optional.ofNullable(System.getenv("CLUSTER")).orElse("unknown");
+        String containerName = "unicorn-store-spring";
+        String taskOrPodId = extractTaskOrPodId().orElse("unknown");
+        String namespace = clusterType.equals("eks") ? readNamespaceFile().orElse("default") : "";
 
-            registry.config().commonTags(
-                    "cluster", cluster,
-                    "cluster_type", clusterType,
-                    "container_name", containerName,
-                    "task_pod_id", taskOrPodId,
-                    "instance", ipAddress,       // Keep this for backward compatibility
-                    "container_ip", ipAddress    // Add this new tag that won't be overwritten
-            );
+        // Get the container/pod IP address
+        String ipAddress = getContainerOrPodIp().orElse("unknown");
 
-            if (!namespace.isEmpty()) {
-                registry.config().commonTags("namespace", namespace);
-            } else {
-                registry.config().commonTags("namespace", "<no namespace>");
-            }
+        meterRegistry.config().commonTags(
+                "cluster", cluster,
+                "cluster_type", clusterType,
+                "container_name", containerName,
+                "task_pod_id", taskOrPodId,
+                "instance", ipAddress,       // Keep this for backward compatibility
+                "container_ip", ipAddress    // Add this new tag that won't be overwritten
+        );
 
-            registry.config().meterFilter(
-                    MeterFilter.deny(id ->
-                            id.getName().equals("jvm.gc.pause") &&
-                                    !id.getTags().stream().allMatch(tag ->
-                                            tag.getKey().equals("action") ||
-                                                    tag.getKey().equals("cause") ||
-                                                    tag.getKey().equals("gc")
-                                    )
-                    )
-            );
-        };
+        if (!namespace.isEmpty()) {
+            meterRegistry.config().commonTags("namespace", namespace);
+        } else {
+            meterRegistry.config().commonTags("namespace", "<no namespace>");
+        }
+
+        meterRegistry.config().meterFilter(
+                MeterFilter.deny(id ->
+                        id.getName().equals("jvm.gc.pause") &&
+                                !id.getTags().stream().allMatch(tag ->
+                                        tag.getKey().equals("action") ||
+                                                tag.getKey().equals("cause") ||
+                                                tag.getKey().equals("gc")
+                                )
+                )
+        );
     }
 
     private Optional<String> extractTaskOrPodId() {

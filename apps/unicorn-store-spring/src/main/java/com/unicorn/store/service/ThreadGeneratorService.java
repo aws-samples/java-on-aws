@@ -23,13 +23,13 @@ public class ThreadGeneratorService {
         logger.info("Starting {} threads", threadCount);
 
         for (int i = 0; i < threadCount; i++) {
-            Thread thread = new Thread(new DummyWorkload(running));
-            thread.setName("DummyThread-" + i);
+            var thread = Thread.ofVirtual()
+                    .name("DummyThread-" + i)
+                    .start(new DummyWorkload(running));
             activeThreads.add(thread);
-            thread.start();
         }
 
-        logger.info("Started {} threads", threadCount);
+        logger.info("Started {} virtual threads", threadCount);
     }
 
     public synchronized void stopThreads() {
@@ -43,9 +43,10 @@ public class ThreadGeneratorService {
         // Wait for all threads to complete
         activeThreads.forEach(thread -> {
             try {
-                thread.join(5000); // Wait up to 5 seconds for each thread
+                thread.join(java.time.Duration.ofSeconds(5));
             } catch (InterruptedException e) {
                 logger.warn("Interrupted while waiting for thread {} to stop", thread.getName());
+                Thread.currentThread().interrupt();
             }
         });
 
@@ -57,24 +58,17 @@ public class ThreadGeneratorService {
         return activeThreads.size();
     }
 
-    private static class DummyWorkload implements Runnable {
-        private final AtomicBoolean running;
-
-        public DummyWorkload(AtomicBoolean running) {
-            this.running = running;
-        }
-
+    private record DummyWorkload(AtomicBoolean running) implements Runnable {
         @Override
         public void run() {
             while (running.get()) {
-                // Simulate some work
                 try {
                     // Calculate some dummy values to keep CPU busy
-                    double result = 0;
+                    var result = 0.0;
                     for (int i = 0; i < 1000; i++) {
                         result += Math.sqrt(i) * Math.random();
                     }
-                    Thread.sleep(100); // Sleep to prevent excessive CPU usage
+                    Thread.sleep(java.time.Duration.ofMillis(100));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;

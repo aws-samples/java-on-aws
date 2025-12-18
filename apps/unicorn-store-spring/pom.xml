@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.8</version>
+        <version>4.0.0</version>
         <relativePath/>
         <!-- lookup parent from repository -->
     </parent>
@@ -17,18 +17,48 @@
     <name>store</name>
     <description>Unicorn storage service</description>
     <properties>
-        <java.version>21</java.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <java.version>25</java.version>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
+        <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <testcontainers.version>1.20.4</testcontainers.version>
     </properties>
+    
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerArgs>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>
+                <configuration>
+                    <argLine>
+                        --add-opens java.base/java.lang=ALL-UNNAMED
+                        --add-opens java.base/java.util=ALL-UNNAMED
+                        --add-opens java.base/java.lang.reflect=ALL-UNNAMED
+                        --add-opens java.base/java.text=ALL-UNNAMED
+                        --add-opens java.desktop/java.awt.font=ALL-UNNAMED
+                    </argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+    
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>bom</artifactId>
-                <version>2.39.2</version>
+                <version>2.33.4</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -57,6 +87,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- Jackson dependencies -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.micrometer/micrometer-registry-prometheus -->
         <dependency>
@@ -107,6 +142,11 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-testcontainers</artifactId>
             <scope>test</scope>
         </dependency>
@@ -115,23 +155,26 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>localstack</artifactId>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
 
-        <!-- Rest assured dependencies -->
+        <!-- Test dependencies -->
         <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -161,17 +204,17 @@
                 <dependency>
                     <groupId>io.opentelemetry.instrumentation</groupId>
                     <artifactId>opentelemetry-aws-sdk-2.2</artifactId>
-                    <version>2.15.0-alpha</version>
+                    <version>2.22.0-alpha</version>
                 </dependency>
                 <dependency>
                     <groupId>io.opentelemetry.contrib</groupId>
                     <artifactId>opentelemetry-aws-xray</artifactId>
-                    <version>1.46.0</version>
+                    <version>1.52.0</version>
                 </dependency>
                 <dependency>
                     <groupId>io.opentelemetry.contrib</groupId>
                     <artifactId>opentelemetry-aws-xray-propagator</artifactId>
-                    <version>1.46.0-alpha</version>
+                    <version>1.52.0-alpha</version>
                 </dependency>
             </dependencies>
         </profile>
@@ -204,7 +247,7 @@
                             <metadataRepository>
                                 <enabled>true</enabled>
                             </metadataRepository>
-                            <requiredVersion>21</requiredVersion><!-- Spring Boot parent defines 22.3 -->
+                            <requiredVersion>25</requiredVersion><!-- Spring Boot parent defines 22.3 -->
                             <buildArgs>
                                 <arg>--verbose</arg>
                                 <arg>
@@ -250,16 +293,16 @@
                             <image>
                                 <name>unicorn-store-spring:latest</name>
                                 <buildpacks>
-                                    <buildpack>paketobuildpacks/amazon-corretto:9.0.1</buildpack>
-                                    <buildpack>paketobuildpacks/java:17.6.0</buildpack>
-                                    <buildpack>paketobuildpacks/syft:2.7.0</buildpack>
-                                    <buildpack>paketobuildpacks/spring-boot:5.32.0</buildpack>
-                                    <buildpack>paketobuildpacks/executable-jar:6.12.0</buildpack>
+                                    <buildpack>paketobuildpacks/amazon-corretto:9.3.2</buildpack>
+                                    <buildpack>paketobuildpacks/java:20.2.0</buildpack>
+                                    <buildpack>paketobuildpacks/syft:2.24.0</buildpack>
+                                    <buildpack>paketobuildpacks/spring-boot:5.33.5</buildpack>
+                                    <buildpack>paketobuildpacks/executable-jar:6.13.4</buildpack>
                                 </buildpacks>
                                 <env>
                                     <SPRING_DATASOURCE_URL>${env.SPRING_DATASOURCE_URL}</SPRING_DATASOURCE_URL>
                                     <SPRING_DATASOURCE_PASSWORD>${env.SPRING_DATASOURCE_PASSWORD}</SPRING_DATASOURCE_PASSWORD>
-                                    <BP_JVM_VERSION>21</BP_JVM_VERSION>
+                                    <BP_JVM_VERSION>25</BP_JVM_VERSION>
                                     <BP_JVM_CDS_ENABLED>true</BP_JVM_CDS_ENABLED>
                                     <BP_SPRING_AOT_ENABLED>true</BP_SPRING_AOT_ENABLED>
                                 </env>
@@ -296,7 +339,7 @@
                         <version>3.5.1</version>
                         <configuration>
                             <from>
-                                <image>public.ecr.aws/docker/library/amazoncorretto:21-alpine</image>
+                                <image>public.ecr.aws/docker/library/amazoncorretto:25-alpine</image>
                             </from>
                             <container>
                                 <user>1000</user>

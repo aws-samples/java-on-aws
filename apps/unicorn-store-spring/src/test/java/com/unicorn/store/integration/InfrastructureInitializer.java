@@ -10,17 +10,18 @@ import org.testcontainers.utility.DockerImageName;
 
 public class InfrastructureInitializer implements BeforeAllCallback {
     private static final Logger logger = LoggerFactory.getLogger(InfrastructureInitializer.class);
-	
-	private static final DockerImageName LOCALSTACK_IMAGE = DockerImageName.parse("localstack/localstack:latest");
-	@SuppressWarnings("resource")
-	private static final LocalStackContainer localStackContainer = new LocalStackContainer(LOCALSTACK_IMAGE)
-		.withServices(LocalStackContainer.EnabledService.named("events"));
 
+    private static final DockerImageName LOCALSTACK_IMAGE = DockerImageName.parse("localstack/localstack:latest");
+    
     @SuppressWarnings("resource")
-	private static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>("postgres:16.4")
+    private static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>("postgres:16.4")
         .withDatabaseName("unicorns")
         .withUsername("postgres")
         .withPassword("postgres");
+
+    @SuppressWarnings("resource")
+    private static final LocalStackContainer localStackContainer = new LocalStackContainer(LOCALSTACK_IMAGE)
+            .withServices(LocalStackContainer.Service.S3, LocalStackContainer.Service.DYNAMODB);
 
 	@Override
 	public void beforeAll(final ExtensionContext context) {

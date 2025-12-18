@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 @Service
@@ -28,30 +27,29 @@ public class UnicornService {
     @Transactional
     public Unicorn createUnicorn(Unicorn unicorn) {
         logger.debug("Creating unicorn: {}", unicorn);
-        if (unicorn.getId() == null) {
-            unicorn.setId(UUID.randomUUID().toString());
-        }
-        validateUnicorn(unicorn);
-
-        var savedUnicorn = unicornRepository.save(unicorn);
+        
+        var unicornWithId = unicorn.id() == null 
+            ? unicorn.withId(UUID.randomUUID().toString())
+            : unicorn;
+            
+        validateUnicorn(unicornWithId);
+        var savedUnicorn = unicornRepository.save(unicornWithId);
         publishUnicornEvent(savedUnicorn, UnicornEventType.UNICORN_CREATED);
 
-        logger.debug("Created unicorn with ID: {}", savedUnicorn.getId());
+        logger.debug("Created unicorn with ID: {}", savedUnicorn.id());
         return savedUnicorn;
     }
 
     public List<Unicorn> getAllUnicorns() {
         logger.debug("Retrieving all unicorns");
-        return StreamSupport
-                .stream(unicornRepository.findAll().spliterator(), false)
-                .collect(Collectors.toList());
+        return StreamSupport.stream(unicornRepository.findAll().spliterator(), false).toList();
     }
 
     @Transactional
     public List<Unicorn> createUnicorns(List<Unicorn> unicorns) {
         return unicorns.stream()
                 .map(this::createUnicorn)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional
@@ -62,8 +60,8 @@ public class UnicornService {
         // Verify existence
         getUnicorn(unicornId);
 
-        unicorn.setId(unicornId);
-        var savedUnicorn = unicornRepository.save(unicorn);
+        var updatedUnicorn = unicorn.withId(unicornId);
+        var savedUnicorn = unicornRepository.save(updatedUnicorn);
         publishUnicornEvent(savedUnicorn, UnicornEventType.UNICORN_UPDATED);
 
         logger.debug("Updated unicorn with ID: {}", unicornId);
@@ -74,7 +72,7 @@ public class UnicornService {
         logger.debug("Retrieving unicorn with ID: {}", unicornId);
         return unicornRepository.findById(unicornId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Unicorn not found with ID: %s", unicornId)));
+                        "Unicorn not found with ID: " + unicornId));
     }
 
     @Transactional
@@ -89,10 +87,14 @@ public class UnicornService {
     }
 
     private void validateUnicorn(Unicorn unicorn) {
-        if (unicorn == null) {
-            throw new IllegalArgumentException("Unicorn cannot be null");
+        switch (unicorn) {
+            case null -> throw new IllegalArgumentException("Unicorn cannot be null");
+            case Unicorn u when u.name() == null || u.name().isBlank() -> 
+                throw new IllegalArgumentException("Unicorn name cannot be null or blank");
+            case Unicorn u when u.type() == null || u.type().isBlank() -> 
+                throw new IllegalArgumentException("Unicorn type cannot be null or blank");
+            default -> { /* Valid unicorn */ }
         }
-        // Add additional validation rules as needed
     }
 
     private void publishUnicornEvent(Unicorn unicorn, UnicornEventType eventType) {
@@ -100,8 +102,7 @@ public class UnicornService {
             unicornPublisher.publish(unicorn, eventType).get();
         } catch (Exception e) {
             logger.error("Failed to publish {} event for unicorn ID: {}",
-                    eventType, unicorn.getId(), e);
-            // Consider if you want to throw an exception here or just log the error
+                    eventType, unicorn.id(), e);
         }
     }
 }

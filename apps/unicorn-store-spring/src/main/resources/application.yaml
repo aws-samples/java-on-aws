@@ -1,0 +1,52 @@
+spring:
+  sql:
+    init:
+      mode: always
+  datasource:
+    username: postgres
+    hikari:
+      initialization-fail-timeout: 0
+      maximum-pool-size: 1
+      allow-pool-suspension: true
+      data-source-properties:
+        prepared-statement-cache-queries: 0
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+    properties:
+      hibernate:
+        temp:
+          use_jdbc_metadata_defaults: false
+    hibernate:
+      ddl-auto: none
+  jmx:
+    enabled: true
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  error:
+    include-message: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: threaddump,prometheus,health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState
+    prometheus:
+      access: unrestricted
+  metrics:
+    enable:
+      all: true
+    tags:
+      application: unicorn-store-jmx
