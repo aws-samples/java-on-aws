@@ -440,12 +440,72 @@
   - _Requirements: 15.1, 15.2, 14.2, 14.3, 14.4, 15.7, 18.1, 18.2, 18.3, 18.4, 18.6_
 
 - [x] 100.6 Create java-on-aws workshop orchestration script
-  - Created infra/scripts/ide/java-on-aws.sh that executes base.sh and EKS implementation ✅
+  - Created infra/scripts/ide/java-on-aws.sh that executes base.sh and workshop-specific setup ✅
   - Script calls base.sh first for foundational development tools ✅
   - Then executes EKS-specific setup (cluster configuration, add-ons, storage classes) ✅
-  - Implemented proper error handling and progress feedback between base and EKS phases ✅
-  - Tested script execution and validated all setup steps complete successfully ✅
+  - Added Phase 3: Monitoring stack (Prometheus + Grafana) via monitoring.sh ✅
+  - Added Phase 4: Analysis (thread dump + profiling) via analysis.sh ✅
+  - Implemented proper error handling and progress feedback between all phases ✅
   - _Requirements: 3.1, 3.2_
+
+- [x] 100.17 Create monitoring stack setup script
+  - Created infra/scripts/setup/monitoring.sh for Prometheus + Grafana deployment ✅
+  - Deploys Prometheus with 24h retention and 15s scrape interval ✅
+  - Deploys Grafana with LoadBalancer service and persistent storage ✅
+  - Configures Prometheus datasource automatically via ConfigMap sidecar ✅
+  - Uses workshop-ide-password from Secrets Manager for Grafana admin credentials ✅
+  - _Requirements: 5.6_
+
+- [x] 100.20 Consolidate analysis scripts into single analysis.sh
+  - Merged analysis-thread.sh and analysis-profiling.sh into infra/scripts/setup/analysis.sh ✅
+  - Use single shared folder "Workshop Dashboards" for all dashboards ✅
+  - SECTION 1 - Thread Analysis:
+    - Build and deploy thread-dump-lambda ✅
+    - Create JVM Metrics dashboard (thread count, memory usage) ✅
+    - Create "lambda-webhook" contact point ✅
+    - Create "High JVM Threads" alert rule (>200 threshold) ✅
+    - Test Bedrock model access ✅
+  - SECTION 2 - Profiling Analysis:
+    - Create HTTP Metrics dashboard (POST request rate) ✅
+    - Create "jvm-analysis-webhook" contact point ✅
+    - Create "High HTTP POST Request Rate" alert rule (>20 req/s threshold) ✅
+  - Configure single notification policy with nested routes for both contact points ✅
+  - Deleted old analysis-thread.sh and analysis-profiling.sh files ✅
+  - Updated java-on-aws.sh to call analysis.sh instead of two separate scripts ✅
+  - _Requirements: 5.6_
+
+- [x] 100.21 Restructure scripts into ide/ and templates/ directories
+  - Renamed base.sh to tools.sh and kept in ide/ folder ✅
+  - Renamed ide-settings.sh to settings.sh (removed redundant ide- prefix) ✅
+  - Updated bootstrap.sh to call tools.sh as part of default IDE setup (after vscode/code-editor) ✅
+  - Created templates/ directory for workshop-specific post-deploy scripts ✅
+  - Created templates/base.sh as empty placeholder with comment ✅
+  - Moved java-on-aws.sh to templates/java-on-aws.sh ✅
+  - Updated java-on-aws.sh to NOT call base (tools already installed by bootstrap) ✅
+  - Updated bootstrap.sh to look for template scripts in templates/ folder ✅
+  - Updated vscode.sh and code-editor.sh to use settings.sh ✅
+  - Final structure:
+    - ide/bootstrap.sh → ide/{IDE_TYPE}.sh → ide/tools.sh (IDE setup complete)
+    - ide/bootstrap.sh → templates/{TEMPLATE_TYPE}.sh (workshop post-deploy)
+  - _Requirements: 3.1, 5.7_
+
+- [x] 100.22 Rename p10k.zsh to shell-p10k.zsh for clarity
+  - Renamed infra/scripts/ide/p10k.zsh to shell-p10k.zsh ✅
+  - Updated shell.sh to reference shell-p10k.zsh instead of p10k.zsh ✅
+  - Naming convention indicates p10k config is associated with shell.sh ✅
+  - _Requirements: 5.7_
+
+- [x] 100.23 Standardize logging and improve script reliability
+  - Updated monitoring.sh to use lib/common.sh for consistent logging (log_info, log_success, log_error) ✅
+  - Updated analysis.sh to use lib/common.sh for consistent logging ✅
+  - Fixed analysis.sh cd issue by using subshell: (cd "$BUILD_DIR/package" && zip ...) ✅
+  - Added port-forward cleanup trap in monitoring.sh to prevent zombie processes ✅
+  - Added "✅ Success:" summary lines at end of major components for bootstrap summary capture:
+    - eks.sh: "✅ Success: EKS cluster (workshop-eks)" ✅
+    - monitoring.sh: "✅ Success: Monitoring (Prometheus + Grafana)" ✅
+    - analysis.sh: "✅ Success: Analysis (Thread + Profiling dashboards)" ✅
+    - java-on-aws.sh: "✅ Success: Java-on-AWS workshop template" ✅
+  - _Requirements: 3.3, 3.7, 6.6_
 
 - [ ]* 100.7 Write property test for EKS Access Entry configuration
   - **Property 19: EKS Access Entry Configuration**
@@ -470,14 +530,59 @@
   - Documented template differences and ensured they provide equivalent functionality ✅
   - _Requirements: 1.2, 1.3, 16.1_
 
-## Java-on-EKS Migration (200.x)
+- [x] 100.12 Create PerformanceAnalysis construct with shared resources
+  - Created infra/cdk/src/main/java/sample/com/constructs/PerformanceAnalysis.java ✅
+  - Implemented shared S3 bucket (workshop-{account}-{region}-{timestamp}) for thread dumps and profiling data ✅
+  - Created SSM parameter (workshop-analysis-bucket-name) for bucket name discovery ✅
+  - Created Lambda Bedrock role (workshop-analysis-lambda-role) with EKS + ECS access permissions ✅
+  - Added Bedrock InvokeModel permissions for AI-powered analysis ✅
+  - _Requirements: 5.6_
 
-- [ ] 200.1 Analyze and migrate java-on-eks workshop
-  - Review infrastructure/cfn/java-on-eks-stack.yaml for specific requirements
-  - Identify differences from java-on-aws (likely minimal, both use EKS)
-  - Update WorkshopStack conditional logic if needed
-  - Create infra/scripts/workshops/java-on-eks.sh orchestration script
-  - _Requirements: 5.4, 5.5_
+- [x] 100.13 Add ThreadAnalysis sub-construct
+  - Implemented Thread Dump Lambda (workshop-thread-dump-lambda) with VPC placement ✅
+  - Created Lambda Security Group (workshop-analysis-lambda-sg) with VPC CIDR ingress ✅
+  - Created Private API Gateway (workshop-thread-dump-api) with VPC endpoint ✅
+  - Added EKS Access Entry for Lambda role with cluster admin policy ✅
+  - Created CloudWatch Log Group (/aws/lambda/workshop-thread-dump-lambda) with 7-day retention ✅
+  - Configured security group rules for Lambda to access EKS cluster API ✅
+  - _Requirements: 5.6_
+
+- [x] 100.14 Add ProfilingAnalysis sub-construct
+  - Created ECR repository (jvm-analysis-service) for async-profiler analysis service ✅
+  - Created Pod Identity role (jvm-analysis-service-eks-pod-role) for EKS workloads ✅
+  - Added AmazonBedrockLimitedAccess managed policy for AI analysis ✅
+  - Configured S3 permissions for profiling data (ListBucket, GetObject, PutObject) ✅
+  - Both ThreadAnalysis and ProfilingAnalysis enabled by default ✅
+  - _Requirements: 5.6_
+
+- [x] 100.15 Integrate PerformanceAnalysis into WorkshopStack
+  - Added conditional PerformanceAnalysis creation for java-on-aws template type ✅
+  - Passed EKS cluster reference for Access Entry creation ✅
+  - Passed VPC reference for Lambda VPC placement ✅
+  - Tested template generation with PerformanceAnalysis resources ✅
+  - Verified all resources present in generated java-on-aws-stack.yaml ✅
+  - _Requirements: 1.2, 1.3_
+
+- [ ] 100.16 Create thread-dump-lambda.py implementation
+  - Create infra/cdk/src/main/resources/lambda/thread-dump-lambda.py
+  - Implement EKS pod discovery and thread dump collection
+  - Add Bedrock integration for AI-powered thread analysis
+  - Store results in S3 bucket with proper prefixes
+  - _Requirements: 5.6_
+
+- [x] 100.24 Create Unicorn construct with ECR and Roles
+  - Created infra/cdk/src/main/java/sample/com/constructs/Unicorn.java ✅
+  - Uses "unicorn*" naming for workshop content compatibility ✅
+  - ECR repository: `unicorn-store-spring` ✅
+  - EKS Roles (conditional):
+    - `unicornstore-eks-pod-role` - EKS Pod Identity (X-Ray, CloudWatch, Bedrock, S3, DB secrets) ✅
+  - ECS Roles (conditional):
+    - `unicornstore-ecs-task-role` - ECS task role (X-Ray, CloudWatch, SSM, DB secrets) ✅
+    - `unicornstore-ecs-task-execution-role` - ECS execution role ✅
+  - Accepts Database and S3 bucket references for permission grants ✅
+  - Integrated into WorkshopStack for non-base templates ✅
+  - Note: ESO roles not needed - replaced by AWS Secrets Store CSI Driver add-on
+  - _Requirements: 5.6_
 
 ## Java-AI-Agents Migration (300.x)
 

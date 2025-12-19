@@ -12,7 +12,7 @@ VSCODE_VERSION="4.106.3"
 
 # Source common IDE settings (extensions, workspace config)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/ide-settings.sh"
+source "${SCRIPT_DIR}/settings.sh"
 
 # =============================================================================
 

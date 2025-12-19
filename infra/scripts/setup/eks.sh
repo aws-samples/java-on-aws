@@ -156,3 +156,6 @@ kubectl get nodes
 kubectl get pods -A | head -10
 
 log_success "EKS cluster setup is complete and ready for workshop use!"
+
+# Emit for bootstrap summary
+echo "✅ Success: EKS cluster ($CLUSTER_NAME)"

@@ -2,23 +2,21 @@
 	"Version": "2012-10-17",
 	"Statement": [
 		{
+			"Sid": "MarketplaceSubscribe_Claude45Opus_Claude45Sonnet_Claude4Sonnet",
             "Effect": "Allow",
             "Action": [
                 "aws-marketplace:Subscribe"
             ],
             "Resource": "*",
             "Condition": {
-                    "Null": {
-                       "aws-marketplace:ProductId": "false"
+                "Null": {
+                    "aws-marketplace:ProductId": "false"
                 },
                 "ForAllValues:StringEquals": {
                     "aws-marketplace:ProductId": [
-						"prod-4pmewlybdftbs",
-                        "prod-4dlfvry4v5hbi",
-                        "prod-cx7ovbu5wex7g",
-                        "prod-5oba7y7jpji56",
-						"b7568428-a1ab-46d8-bab3-37def50f6f6a",
-						"38e55671-c3fe-4a44-9783-3584906e7cad"
+						"prod-jhuafngbly644",
+						"prod-mxcfnwvpd6kb4",
+						"prod-4pmewlybdftbs"
                     ]
                 }
             }
@@ -33,79 +31,43 @@
             "Resource": "*"
         },
 		{
-			"Sid": "AllowedServicesEKS",
+			"Sid": "AllowedServices",
+			"Effect": "Allow",
 			"Action": [
+				"apigateway:*",
+				"application-signals:*",
+				"cloudformation:*",
 				"cloudwatch:*",
 				"codewhisperer:*",
+				"ec2:*",
 				"ecr:*",
+				"ecs:*",
 				"eks:*",
-				"iam:CreateOpenIDConnectProvider",
-				"iam:TagOpenIDConnectProvider",
+				"elasticloadbalancing:*",
 				"events:*",
+				"lambda:*",
+				"logs:*",
 				"q:*",
+				"rds:*",
+				"s3:*",
 				"secretsmanager:*",
 				"ssm:*",
-				"sts:*"
+				"sts:*",
+				"tag:*",
+				"xray:*"
 			],
-			"Resource": "*",
-			"Effect": "Allow"
+			"Resource": "*"
 		},
 		{
-			"Sid": "PassRoleEKS",
+			"Sid": "PassRole",
+			"Effect": "Allow",
 			"Action": [
 				"iam:PassRole"
 			],
 			"Resource": [
 				"arn:aws:iam::{{.AccountId}}:role/unicorn*",
 				"arn:aws:iam::{{.AccountId}}:role/jvm-analysis-service*"
-			],
-			"Effect": "Allow"
-		},
-		{
-			"Sid": "IamLimitedAccessForUnicorns",
-			"Effect": "Allow",
-			"Action": [
-				"iam:CreateRole",
-				"iam:TagRole",
-				"iam:DeleteRole",
-				"iam:CreatePolicy",
-				"iam:CreatePolicyVersion",
-				"iam:DeletePolicy",
-				"iam:DeletePolicyVersion",
-				"iam:AttachRolePolicy",
-				"iam:DetachRolePolicy",
-				"iam:PutRolePolicy",
-				"iam:DeleteRolePolicy",
-				"iam:PassRole"
-			],
-			"Resource": [
-				"arn:aws:iam::{{.AccountId}}:role/*unicorn*",
-				"arn:aws:iam::{{.AccountId}}:policy/*unicorn*",
-				"arn:aws:iam::{{.AccountId}}:role/*Unicorn*",
-				"arn:aws:iam::{{.AccountId}}:policy/*Unicorn*",
-				"arn:aws:iam::{{.AccountId}}:policy/*AWSLambdaTracerAccessExecutionRole*",
-				"arn:aws:iam::{{.AccountId}}:role/jvm-analysis-service*"
 			]
-		},
-		{
-			"Sid": "AllowedServicesOthers",
-			"Effect": "Allow",
-			"Action": [
-				"cloudformation:*",
-				"codeartifact:*",
-				"apprunner:*",
-				"ec2:*",
-				"ecs:*",
-				"elasticloadbalancing:*",
-				"xray:*",
-				"logs:*",
-				"lambda:*",
-				"dynamodb:*",
-				"s3:*",
-				"tag:*",
-				"application-signals:*"
-			],
-			"Resource": "*"
 		},
 		{
 			"Sid": "DenyXXLInstances",

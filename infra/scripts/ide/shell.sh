@@ -82,7 +82,7 @@ EOF
 
 log_info "Copying .p10k.zsh..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cp "${SCRIPT_DIR}/p10k.zsh" ~/.p10k.zsh
+cp "${SCRIPT_DIR}/shell-p10k.zsh" ~/.p10k.zsh
 
 log_info "Configuring IDE to use zsh..."
 # Check both code-server and code-editor settings.json paths

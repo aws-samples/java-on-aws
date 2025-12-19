@@ -164,13 +164,16 @@ fi
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Running IDE setup (${IDE_TYPE})..."
 bash infra/scripts/ide/${IDE_TYPE}.sh
 
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Running setup for template type: $TEMPLATE_TYPE"
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing development tools..."
+sudo -H -i -u ec2-user bash -c "$(pwd)/infra/scripts/ide/tools.sh"
 
-# Run template-specific setup script
-if [ -f "infra/scripts/ide/${TEMPLATE_TYPE}.sh" ]; then
-    sudo -H -i -u ec2-user bash -c "$(pwd)/infra/scripts/ide/${TEMPLATE_TYPE}.sh"
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Running post-deploy for template type: $TEMPLATE_TYPE"
+
+# Run template-specific post-deploy script
+if [ -f "infra/scripts/templates/${TEMPLATE_TYPE}.sh" ]; then
+    sudo -H -i -u ec2-user bash -c "$(pwd)/infra/scripts/templates/${TEMPLATE_TYPE}.sh"
 else
-    echo "ERROR: Template script infra/scripts/ide/${TEMPLATE_TYPE}.sh not found"
+    echo "ERROR: Template script infra/scripts/templates/${TEMPLATE_TYPE}.sh not found"
     exit 1
 fi
 

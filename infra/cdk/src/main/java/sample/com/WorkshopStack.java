@@ -67,19 +67,34 @@ public class WorkshopStack extends Stack {
                 .buildSpec(buildSpec)
                 .build());
 
-        // Custom roles and database only for non-base templates
-        if (!"base".equals(templateType)) {
-            Roles roles = new Roles(this, "Roles");
+        // java-on-aws specific resources
+        if ("java-on-aws".equals(templateType)) {
             Database database = new Database(this, "Database", vpc.getVpc());
 
-            // EKS cluster for java-on-aws and java-on-eks (exclude java-ai-agents)
-            if (!"java-ai-agents".equals(templateType)) {
-                Eks eks = new Eks(this, "Eks", Eks.EksProps.builder()
+            // EKS cluster
+            Eks eks = new Eks(this, "Eks", Eks.EksProps.builder()
+                .vpc(vpc.getVpc())
+                .ideInstanceRole(ideProps.getIdeRole())
+                .ideInternalSecurityGroup(ide.getIdeInternalSecurityGroup())
+                .build());
+
+            // Performance Analysis (thread dump + profiling analysis)
+            PerformanceAnalysis performanceAnalysis = new PerformanceAnalysis(this, "PerformanceAnalysis",
+                PerformanceAnalysis.PerformanceAnalysisProps.builder()
                     .vpc(vpc.getVpc())
-                    .ideInstanceRole(ideProps.getIdeRole())
-                    .ideInternalSecurityGroup(ide.getIdeInternalSecurityGroup())
+                    .eksCluster(eks.getCluster())
+                    .eksClusterName(eks.getClusterName())
+                    .threadAnalysisEnabled(true)
+                    .profilingAnalysisEnabled(true)
                     .build());
-            }
+
+            // Unicorn construct: ECR + Roles (uses unicorn* naming for workshop content compatibility)
+            Unicorn unicorn = new Unicorn(this, "Unicorn", Unicorn.UnicornProps.builder()
+                .eksRolesEnabled(true)
+                .ecsRolesEnabled(false)
+                .database(database)
+                .workshopBucket(performanceAnalysis.getWorkshopBucket())
+                .build());
         }
     }
 }

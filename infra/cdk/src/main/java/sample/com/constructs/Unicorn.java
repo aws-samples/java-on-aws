@@ -1,0 +1,270 @@
+package sample.com.constructs;
+
+import software.amazon.awscdk.RemovalPolicy;
+import software.amazon.awscdk.services.ecr.Repository;
+import software.amazon.awscdk.services.iam.*;
+import software.amazon.awscdk.services.s3.IBucket;
+import software.constructs.Construct;
+
+import java.util.List;
+
+/**
+ * Unicorn construct for workshop-specific resources.
+ * Uses "unicorn*" naming convention for compatibility with workshop content.
+ *
+ * Contains:
+ * - ECR repository (unicorn-store-spring)
+ * - EKS Pod Identity role (unicornstore-eks-pod-role)
+ * - ECS task roles (unicornstore-ecs-task-role, unicornstore-ecs-task-execution-role)
+ */
+public class Unicorn extends Construct {
+
+    // ECR
+    private final Repository unicornStoreSpringEcr;
+
+    // EKS Roles
+    private Role eksPodRole;
+
+    // ECS Roles
+    private Role ecsTaskRole;
+    private Role ecsTaskExecutionRole;
+
+    public Unicorn(final Construct scope, final String id, final UnicornProps props) {
+        super(scope, id);
+
+        // === ECR REPOSITORY ===
+        this.unicornStoreSpringEcr = Repository.Builder.create(this, "UnicornStoreSpringEcr")
+            .repositoryName("unicorn-store-spring")
+            .imageScanOnPush(false)
+            .removalPolicy(RemovalPolicy.DESTROY)
+            .emptyOnDelete(true)
+            .build();
+
+        // === EKS ROLES ===
+        if (props.isEksRolesEnabled()) {
+            createEksRoles(props);
+        }
+
+        // === ECS ROLES ===
+        if (props.isEcsRolesEnabled()) {
+            createEcsRoles(props);
+        }
+    }
+
+    /**
+     * Creates EKS Pod Identity role with permissions for:
+     * - X-Ray tracing
+     * - CloudWatch metrics
+     * - Bedrock AI access
+     * - S3 bucket access
+     * - Database secrets access
+     */
+    private void createEksRoles(UnicornProps props) {
+        ServicePrincipal eksPods = ServicePrincipal.Builder.create("pods.eks.amazonaws.com")
+            .build();
+
+        // EKS Pod Identity role
+        this.eksPodRole = Role.Builder.create(this, "UnicornStoreEksPodRole")
+            .roleName("unicornstore-eks-pod-role")
+            .assumedBy(eksPods)
+            .description("EKS Pod Identity role for Unicorn Store application")
+            .build();
+
+        // Add sts:TagSession for Pod Identity
+        eksPodRole.getAssumeRolePolicy().addStatements(
+            PolicyStatement.Builder.create()
+                .effect(Effect.ALLOW)
+                .principals(List.of(eksPods))
+                .actions(List.of("sts:TagSession"))
+                .build()
+        );
+
+        // X-Ray tracing
+        eksPodRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("xray:PutTraceSegments"))
+            .resources(List.of("*"))
+            .build());
+
+        // CloudWatch Agent
+        eksPodRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy"));
+
+        // Bedrock AI access
+        eksPodRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AmazonBedrockLimitedAccess"));
+
+        // S3 bucket access (if provided)
+        if (props.getWorkshopBucket() != null) {
+            eksPodRole.addToPolicy(PolicyStatement.Builder.create()
+                .effect(Effect.ALLOW)
+                .actions(List.of("s3:ListBucket", "s3:GetObject", "s3:PutObject"))
+                .resources(List.of(
+                    props.getWorkshopBucket().getBucketArn(),
+                    props.getWorkshopBucket().getBucketArn() + "/*"
+                ))
+                .build());
+        }
+
+        // Database secrets access (if provided)
+        if (props.getDatabase() != null) {
+            props.getDatabase().getDatabaseSecret().grantRead(eksPodRole);
+            props.getDatabase().getParamDBConnectionString().grantRead(eksPodRole);
+        }
+    }
+
+    /**
+     * Creates ECS task roles with permissions for:
+     * - X-Ray tracing
+     * - CloudWatch logs
+     * - SSM parameter access
+     * - Database secrets access
+     */
+    private void createEcsRoles(UnicornProps props) {
+        ServicePrincipal ecsTasks = ServicePrincipal.Builder.create("ecs-tasks.amazonaws.com")
+            .build();
+
+        // OpenTelemetry policy for observability
+        PolicyStatement otelPolicy = PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of(
+                "logs:PutLogEvents", "logs:CreateLogGroup", "logs:CreateLogStream",
+                "logs:DescribeLogStreams", "logs:DescribeLogGroups", "logs:PutRetentionPolicy",
+                "xray:PutTraceSegments", "xray:PutTelemetryRecords",
+                "xray:GetSamplingRules", "xray:GetSamplingTargets", "xray:GetSamplingStatisticSummaries",
+                "cloudwatch:PutMetricData", "ssm:GetParameters"
+            ))
+            .resources(List.of("*"))
+            .build();
+
+        // ECS Task Role
+        this.ecsTaskRole = Role.Builder.create(this, "UnicornStoreEcsTaskRole")
+            .roleName("unicornstore-ecs-task-role")
+            .assumedBy(ecsTasks)
+            .description("ECS task role for Unicorn Store application")
+            .build();
+
+        ecsTaskRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("xray:PutTraceSegments"))
+            .resources(List.of("*"))
+            .build());
+
+        ecsTaskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("CloudWatchLogsFullAccess"));
+        ecsTaskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMReadOnlyAccess"));
+        ecsTaskRole.addToPolicy(otelPolicy);
+
+        // Database secrets access (if provided)
+        if (props.getDatabase() != null) {
+            props.getDatabase().getDatabaseSecret().grantRead(ecsTaskRole);
+            props.getDatabase().getSecretPassword().grantRead(ecsTaskRole);
+            props.getDatabase().getParamDBConnectionString().grantRead(ecsTaskRole);
+        }
+
+        // ECS Task Execution Role
+        this.ecsTaskExecutionRole = Role.Builder.create(this, "UnicornStoreEcsTaskExecutionRole")
+            .roleName("unicornstore-ecs-task-execution-role")
+            .assumedBy(ecsTasks)
+            .description("ECS task execution role for Unicorn Store application")
+            .build();
+
+        ecsTaskExecutionRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("logs:CreateLogGroup"))
+            .resources(List.of("*"))
+            .build());
+
+        ecsTaskExecutionRole.addManagedPolicy(
+            ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy"));
+        ecsTaskExecutionRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("CloudWatchLogsFullAccess"));
+        ecsTaskExecutionRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMReadOnlyAccess"));
+        ecsTaskExecutionRole.addToPolicy(otelPolicy);
+
+        // Database secrets access for execution role (if provided)
+        if (props.getDatabase() != null) {
+            props.getDatabase().getDatabaseSecret().grantRead(ecsTaskExecutionRole);
+            props.getDatabase().getSecretPassword().grantRead(ecsTaskExecutionRole);
+        }
+    }
+
+    // Getters
+    public Repository getUnicornStoreSpringEcr() {
+        return unicornStoreSpringEcr;
+    }
+
+    public Role getEksPodRole() {
+        return eksPodRole;
+    }
+
+    public Role getEcsTaskRole() {
+        return ecsTaskRole;
+    }
+
+    public Role getEcsTaskExecutionRole() {
+        return ecsTaskExecutionRole;
+    }
+
+    // Props class
+    public static class UnicornProps {
+        private final boolean eksRolesEnabled;
+        private final boolean ecsRolesEnabled;
+        private final Database database;
+        private final IBucket workshopBucket;
+
+        private UnicornProps(Builder builder) {
+            this.eksRolesEnabled = builder.eksRolesEnabled;
+            this.ecsRolesEnabled = builder.ecsRolesEnabled;
+            this.database = builder.database;
+            this.workshopBucket = builder.workshopBucket;
+        }
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        public boolean isEksRolesEnabled() {
+            return eksRolesEnabled;
+        }
+
+        public boolean isEcsRolesEnabled() {
+            return ecsRolesEnabled;
+        }
+
+        public Database getDatabase() {
+            return database;
+        }
+
+        public IBucket getWorkshopBucket() {
+            return workshopBucket;
+        }
+
+        public static class Builder {
+            private boolean eksRolesEnabled = false;
+            private boolean ecsRolesEnabled = false;
+            private Database database;
+            private IBucket workshopBucket;
+
+            public Builder eksRolesEnabled(boolean eksRolesEnabled) {
+                this.eksRolesEnabled = eksRolesEnabled;
+                return this;
+            }
+
+            public Builder ecsRolesEnabled(boolean ecsRolesEnabled) {
+                this.ecsRolesEnabled = ecsRolesEnabled;
+                return this;
+            }
+
+            public Builder database(Database database) {
+                this.database = database;
+                return this;
+            }
+
+            public Builder workshopBucket(IBucket workshopBucket) {
+                this.workshopBucket = workshopBucket;
+                return this;
+            }
+
+            public UnicornProps build() {
+                return new UnicornProps(this);
+            }
+        }
+    }
+}

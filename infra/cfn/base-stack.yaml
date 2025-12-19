@@ -271,14 +271,12 @@ Resources:
                 aws-marketplace:ProductId: "false"
               ForAllValues:StringEquals:
                 aws-marketplace:ProductId:
+                  - prod-jhuafngbly644
+                  - prod-mxcfnwvpd6kb4
                   - prod-4pmewlybdftbs
-                  - prod-4dlfvry4v5hbi
-                  - prod-cx7ovbu5wex7g
-                  - prod-5oba7y7jpji56
-                  - b7568428-a1ab-46d8-bab3-37def50f6f6a
-                  - 38e55671-c3fe-4a44-9783-3584906e7cad
             Effect: Allow
             Resource: "*"
+            Sid: MarketplaceSubscribe_Claude45Opus_Claude45Sonnet_Claude4Sonnet
           - Action:
               - aws-marketplace:Unsubscribe
               - aws-marketplace:ViewSubscriptions
@@ -286,65 +284,36 @@ Resources:
             Effect: Allow
             Resource: "*"
           - Action:
+              - apigateway:*
+              - application-signals:*
+              - cloudformation:*
               - cloudwatch:*
               - codewhisperer:*
+              - ec2:*
               - ecr:*
+              - ecs:*
               - eks:*
+              - elasticloadbalancing:*
               - events:*
-              - iam:CreateOpenIDConnectProvider
-              - iam:TagOpenIDConnectProvider
+              - lambda:*
+              - logs:*
               - q:*
+              - rds:*
+              - s3:*
               - secretsmanager:*
               - ssm:*
               - sts:*
+              - tag:*
+              - xray:*
             Effect: Allow
             Resource: "*"
-            Sid: AllowedServicesEKS
+            Sid: AllowedServices
           - Action: iam:PassRole
             Effect: Allow
             Resource:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
-            Sid: PassRoleEKS
-          - Action:
-              - iam:AttachRolePolicy
-              - iam:CreatePolicy
-              - iam:CreatePolicyVersion
-              - iam:CreateRole
-              - iam:DeletePolicy
-              - iam:DeletePolicyVersion
-              - iam:DeleteRole
-              - iam:DeleteRolePolicy
-              - iam:DetachRolePolicy
-              - iam:PassRole
-              - iam:PutRolePolicy
-              - iam:TagRole
-            Effect: Allow
-            Resource:
-              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*AWSLambdaTracerAccessExecutionRole*
-              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*Unicorn*
-              - !Sub arn:aws:iam::${AWS::AccountId}:policy/*unicorn*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/*Unicorn*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/*unicorn*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
-            Sid: IamLimitedAccessForUnicorns
-          - Action:
-              - application-signals:*
-              - apprunner:*
-              - cloudformation:*
-              - codeartifact:*
-              - dynamodb:*
-              - ec2:*
-              - ecs:*
-              - elasticloadbalancing:*
-              - lambda:*
-              - logs:*
-              - s3:*
-              - tag:*
-              - xray:*
-            Effect: Allow
-            Resource: "*"
-            Sid: AllowedServicesOthers
+            Sid: PassRole
           - Action: ec2:RunInstances
             Condition:
               StringLike:
@@ -713,19 +682,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      InstanceName: ide
-      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -873,6 +829,19 @@ Resources:
             - Fn::GetAtt:
                 - IdeInternalSecurityGroupB0A5D76B
                 - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      InstanceName: ide
+      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1499,13 +1468,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
-      ContentHash: "1765978900817"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1766162102056"
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
