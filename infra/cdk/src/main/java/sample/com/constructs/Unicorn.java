@@ -1,12 +1,21 @@
 package sample.com.constructs;
 
+import software.amazon.awscdk.CustomResource;
+import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.services.ecr.Repository;
 import software.amazon.awscdk.services.iam.*;
+import software.amazon.awscdk.services.lambda.Code;
+import software.amazon.awscdk.services.lambda.Function;
+import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.s3.IBucket;
 import software.constructs.Construct;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Unicorn construct for workshop-specific resources.
@@ -16,6 +25,7 @@ import java.util.List;
  * - ECR repository (unicorn-store-spring)
  * - EKS Pod Identity role (unicornstore-eks-pod-role)
  * - ECS task roles (unicornstore-ecs-task-role, unicornstore-ecs-task-execution-role)
+ * - Database schema setup (unicorns table)
  */
 public class Unicorn extends Construct {
 
@@ -28,6 +38,9 @@ public class Unicorn extends Construct {
     // ECS Roles
     private Role ecsTaskRole;
     private Role ecsTaskExecutionRole;
+
+    // Database Setup
+    private CustomResource databaseSetupResource;
 
     public Unicorn(final Construct scope, final String id, final UnicornProps props) {
         super(scope, id);
@@ -48,6 +61,51 @@ public class Unicorn extends Construct {
         // === ECS ROLES ===
         if (props.isEcsRolesEnabled()) {
             createEcsRoles(props);
+        }
+
+        // === DATABASE SETUP ===
+        if (props.getDatabase() != null) {
+            createDatabaseSetup(props);
+        }
+    }
+
+    /**
+     * Creates database setup Lambda and custom resource to initialize unicorns table.
+     */
+    private void createDatabaseSetup(UnicornProps props) {
+        Database database = props.getDatabase();
+
+        // Create database setup Lambda function
+        Function databaseSetupFunction = Function.Builder.create(this, "DatabaseSetupFunction")
+            .code(Code.fromInline(loadFile("/lambda/database-setup.py")))
+            .handler("index.lambda_handler")
+            .runtime(Runtime.PYTHON_3_13)
+            .functionName("unicornstore-database-setup")
+            .timeout(Duration.minutes(3))
+            .vpc(props.getVpc())
+            .securityGroups(List.of(database.getDatabaseSecurityGroup()))
+            .build();
+
+        // Grant permissions to setup function
+        database.getDatabaseSecret().grantRead(databaseSetupFunction);
+        database.getDatabase().grantDataApiAccess(databaseSetupFunction);
+
+        // Create custom resource for database setup
+        this.databaseSetupResource = CustomResource.Builder.create(this, "DatabaseSetupResource")
+            .serviceToken(databaseSetupFunction.getFunctionArn())
+            .properties(Map.of(
+                "SecretName", database.getDatabaseSecret().getSecretName(),
+                "SqlStatements", loadFile("/unicorns.sql")
+            ))
+            .build();
+        databaseSetupResource.getNode().addDependency(database.getDatabase());
+    }
+
+    private String loadFile(String filePath) {
+        try {
+            return Files.readString(Path.of(getClass().getResource(filePath).getPath()));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load file " + filePath, e);
         }
     }
 
@@ -208,12 +266,14 @@ public class Unicorn extends Construct {
         private final boolean ecsRolesEnabled;
         private final Database database;
         private final IBucket workshopBucket;
+        private final software.amazon.awscdk.services.ec2.IVpc vpc;
 
         private UnicornProps(Builder builder) {
             this.eksRolesEnabled = builder.eksRolesEnabled;
             this.ecsRolesEnabled = builder.ecsRolesEnabled;
             this.database = builder.database;
             this.workshopBucket = builder.workshopBucket;
+            this.vpc = builder.vpc;
         }
 
         public static Builder builder() {
@@ -236,11 +296,16 @@ public class Unicorn extends Construct {
             return workshopBucket;
         }
 
+        public software.amazon.awscdk.services.ec2.IVpc getVpc() {
+            return vpc;
+        }
+
         public static class Builder {
             private boolean eksRolesEnabled = false;
             private boolean ecsRolesEnabled = false;
             private Database database;
             private IBucket workshopBucket;
+            private software.amazon.awscdk.services.ec2.IVpc vpc;
 
             public Builder eksRolesEnabled(boolean eksRolesEnabled) {
                 this.eksRolesEnabled = eksRolesEnabled;
@@ -259,6 +324,11 @@ public class Unicorn extends Construct {
 
             public Builder workshopBucket(IBucket workshopBucket) {
                 this.workshopBucket = workshopBucket;
+                return this;
+            }
+
+            public Builder vpc(software.amazon.awscdk.services.ec2.IVpc vpc) {
+                this.vpc = vpc;
                 return this;
             }
 

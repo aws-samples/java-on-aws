@@ -63,7 +63,6 @@ public class PerformanceAnalysis extends Construct {
             .bucketName(String.format("workshop-%s-%s-%s", Aws.ACCOUNT_ID, Aws.REGION, timestamp))
             .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
             .removalPolicy(RemovalPolicy.DESTROY)
-            .autoDeleteObjects(true)
             .build();
 
         // Create SSM parameter for bucket name discovery
@@ -95,6 +94,13 @@ public class PerformanceAnalysis extends Construct {
                 "arn:aws:bedrock:*:*:inference-profile/global.anthropic.claude-sonnet-4-20250514-v1:0",
                 "arn:aws:bedrock:*:*:foundation-model/anthropic.claude-sonnet-4-20250514-v1:0"
             ))
+            .build());
+
+        // Add Secrets Manager permission for IDE password (webhook auth)
+        lambdaBedrockRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("secretsmanager:GetSecretValue"))
+            .resources(List.of("arn:aws:secretsmanager:*:*:secret:workshop-ide-password*"))
             .build());
 
         // Add EKS access permissions
@@ -180,7 +186,8 @@ public class PerformanceAnalysis extends Construct {
                 "S3_THREAD_DUMPS_PREFIX", "thread-dumps/",
                 "APP_LABEL", "unicorn-store-spring",
                 "KUBERNETES_AUTH_TYPE", "aws",
-                "K8S_NAMESPACE", "unicorn-store-spring"
+                "K8S_NAMESPACE", "unicorn-store-spring",
+                "SECRET_NAME", "workshop-ide-password"
             ))
             .build();
 
@@ -218,6 +225,9 @@ public class PerformanceAnalysis extends Construct {
                 ))
                 .build())
             .build();
+
+        // Remove auto-generated endpoint output
+        threadDumpApi.getNode().tryRemoveChild("Endpoint");
 
         // Add POST method to root
         LambdaIntegration lambdaIntegration = LambdaIntegration.Builder.create(threadDumpLambda)

@@ -1,10 +1,8 @@
 package sample.com.constructs;
 
-import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.SecretValue;
 import software.amazon.awscdk.SecretsManagerSecretOptions;
-import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.services.ec2.IVpc;
 import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.Peer;
@@ -12,9 +10,6 @@ import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.ISecurityGroup;
-import software.amazon.awscdk.services.lambda.Code;
-import software.amazon.awscdk.services.lambda.Function;
-import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.rds.AuroraPostgresClusterEngineProps;
 import software.amazon.awscdk.services.rds.ServerlessV2ClusterInstanceProps;
 import software.amazon.awscdk.services.rds.AuroraPostgresEngineVersion;
@@ -29,12 +24,12 @@ import software.amazon.awscdk.services.ssm.StringParameter;
 import software.amazon.awscdk.services.secretsmanager.Secret;
 import software.constructs.Construct;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 
+/**
+ * Database construct for workshop infrastructure.
+ * Creates Aurora PostgreSQL Serverless v2 cluster with supporting resources.
+ */
 public class Database extends Construct {
 
     private final DatabaseSecret databaseSecret;
@@ -43,7 +38,6 @@ public class Database extends Construct {
 
     private final StringParameter paramDBConnectionString;
     private final Secret secretPassword;
-    private final CustomResource databaseSetupResource;
 
     public Database(final Construct scope, final String id, final IVpc vpc) {
         super(scope, id);
@@ -66,8 +60,6 @@ public class Database extends Construct {
             Peer.ipv4("10.0.0.0/16"),
             Port.tcp(5432),
             "Allow Database Traffic from local network");
-
-
 
         // Create Aurora PostgreSQL cluster with universal naming
         database = DatabaseCluster.Builder.create(this, "Cluster")
@@ -108,39 +100,6 @@ public class Database extends Construct {
             .stringValue(getConnectionString())
             .tier(ParameterTier.STANDARD)
             .build();
-
-        // Create database setup Lambda function
-        Function databaseSetupFunction = Function.Builder.create(this, "SetupFunction")
-            .code(Code.fromInline(loadFile("/lambda/database-setup.py")))
-            .handler("index.lambda_handler")
-            .runtime(Runtime.PYTHON_3_13)
-            .functionName("workshop-database-setup")
-            .timeout(Duration.minutes(3))
-            .vpc(vpc)
-            .securityGroups(List.of(databaseSecurityGroup))
-            .build();
-
-        // Grant permissions to setup function
-        databaseSecret.grantRead(databaseSetupFunction);
-        database.grantDataApiAccess(databaseSetupFunction);
-
-        // Create custom resource for database setup
-        databaseSetupResource = CustomResource.Builder.create(this, "SetupResource")
-            .serviceToken(databaseSetupFunction.getFunctionArn())
-            .properties(Map.of(
-                "SecretName", databaseSecret.getSecretName(),
-                "SqlStatements", loadFile("/schema.sql")
-            ))
-            .build();
-        databaseSetupResource.getNode().addDependency(database);
-    }
-
-    private String loadFile(String filePath) {
-        try {
-            return Files.readString(Path.of(getClass().getResource(filePath).getPath()));
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load file " + filePath, e);
-        }
     }
 
     public String getConnectionString() {

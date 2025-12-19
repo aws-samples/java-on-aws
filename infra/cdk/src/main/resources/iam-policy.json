@@ -2,7 +2,7 @@
 	"Version": "2012-10-17",
 	"Statement": [
 		{
-			"Sid": "MarketplaceSubscribe_Claude45Opus_Claude45Sonnet_Claude4Sonnet",
+			"Sid": "MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet",
             "Effect": "Allow",
             "Action": [
                 "aws-marketplace:Subscribe"
