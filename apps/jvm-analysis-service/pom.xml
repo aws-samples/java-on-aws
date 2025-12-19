@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.8</version>
+        <version>4.0.0</version>
         <relativePath/>
     </parent>
     <groupId>com.unicorn</groupId>
@@ -15,7 +15,10 @@
     <description>JVM Analysis Service</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
+        <maven.compiler.release>25</maven.compiler.release>
         <aws.sdk.version>2.39.2</aws.sdk.version>
         <jfr-converter.version>4.2</jfr-converter.version>
         <resilience4j.version>2.3.0</resilience4j.version>
@@ -75,7 +78,7 @@
                 <version>3.5.1</version>
                 <configuration>
                     <from>
-                        <image>amazoncorretto:21-alpine</image>
+                        <image>public.ecr.aws/docker/library/amazoncorretto:25-alpine</image>
                     </from>
                 </configuration>
             </plugin>

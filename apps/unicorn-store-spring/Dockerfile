@@ -2,11 +2,7 @@ FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
 
 RUN yum install -y shadow-utils
 
-COPY ./pom.xml ./pom.xml
-COPY src ./src/
-
-RUN mvn clean package && mv target/store-spring-1.0.0-exec.jar store-spring.jar
-RUN rm -rf ~/.m2/repository
+COPY store-spring.jar store-spring.jar
 
 RUN groupadd --system spring -g 1000
 RUN adduser spring -u 1000 -g 1000

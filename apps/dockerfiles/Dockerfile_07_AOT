@@ -1,0 +1,54 @@
+# syntax=docker/dockerfile:1
+# ===== build (Spring AOT + package) =====
+FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS build
+WORKDIR /w
+COPY pom.xml .
+COPY src ./src/
+RUN mvn -DskipTests clean compile org.springframework.boot:spring-boot-maven-plugin:process-aot package \
+ && mv target/*-exec.jar /w/app.jar \
+ && rm -rf ~/.m2/repository
+ 
+# ===== train (Leyden AOT cache) =====
+FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023 AS train
+WORKDIR /w
+COPY --from=build /w/app.jar /w/app.jar
+# explode fat jar and make a JAR-only classpath that matches final runtime paths
+RUN mkdir -p /w/ex && (cd /w/ex && jar -xf /w/app.jar) \
+ && mkdir -p /opt/app/training /opt/app/lib \
+ && (cd /w/ex/BOOT-INF/classes && jar -cf /opt/app/training/classes.jar .) \
+ && cp -r /w/ex/BOOT-INF/lib/* /opt/app/lib/
+ENV APP_CP="/opt/app/training/classes.jar:/opt/app/lib/*"
+ENV MAIN_CLASS="com.unicorn.store.StoreApplication"
+# Optional: pass DB props for training in one shot
+#   docker build --build-arg TRAINING_JAVA_OPTS="-Dspring.datasource.url=... -Dspring.datasource.username=... -Dspring.datasource.password=... -Dspring.sql.init.mode=never" ...
+ARG TRAINING_JAVA_OPTS=""
+ENV TRAINING_JAVA_OPTS=${TRAINING_JAVA_OPTS}
+ENV TRAINING_JAVA_OPTS_DEFAULT="-Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration -Dspring.main.lazy-initialization=true"
+
+# record
+RUN set -e; \
+    OPTS="$TRAINING_JAVA_OPTS"; [ -z "$OPTS" ] && OPTS="$TRAINING_JAVA_OPTS_DEFAULT"; \
+    java -XX:AOTMode=record -XX:AOTConfiguration=/w/app.aotconf \
+         -cp "$APP_CP" -Dspring.context.exit=onRefresh $OPTS $MAIN_CLASS || true \
+ && test -s /w/app.aotconf
+ 
+# create cache
+RUN set -e; \
+    OPTS="$TRAINING_JAVA_OPTS"; [ -z "$OPTS" ] && OPTS="$TRAINING_JAVA_OPTS_DEFAULT"; \
+    java -XX:AOTMode=create -XX:AOTConfiguration=/w/app.aotconf \
+         -XX:AOTCache=/opt/app/app.aot \
+         -cp "$APP_CP" $OPTS $MAIN_CLASS || true \
+ && test -s /opt/app/app.aot
+ 
+# ===== runtime =====
+FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
+RUN yum install -y shadow-utils
+WORKDIR /opt/app
+COPY --from=train /opt/app/training/classes.jar /opt/app/training/classes.jar
+COPY --from=train /opt/app/lib/                 /opt/app/lib/
+COPY --from=train /opt/app/app.aot              /opt/app/app.aot
+RUN groupadd --system spring -g 1000
+RUN adduser spring -u 1000 -g 1000
+USER 1000:1000
+EXPOSE 8080
+ENTRYPOINT ["java", "-XX:AOTCache=/opt/app/app.aot", "-cp", "/opt/app/training/classes.jar:/opt/app/lib/*", "com.unicorn.store.StoreApplication"]

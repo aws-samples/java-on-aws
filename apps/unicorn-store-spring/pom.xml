@@ -131,6 +131,16 @@
         <!-- Spring dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
             <scope>runtime</scope>
             <optional>true</optional>
@@ -250,9 +260,6 @@
                             <requiredVersion>25</requiredVersion><!-- Spring Boot parent defines 22.3 -->
                             <buildArgs>
                                 <arg>--verbose</arg>
-                                <arg>
-                                    --initialize-at-build-time=org.apache.commons.logging.LogFactory,org.apache.commons.logging.LogFactoryService
-                                </arg>
                             </buildArgs>
                         </configuration>
                     </plugin>

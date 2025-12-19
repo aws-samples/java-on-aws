@@ -20,7 +20,7 @@ spring:
     hibernate:
       ddl-auto: none
   jmx:
-    enabled: true
+    enabled: false
   threads:
     virtual:
       enabled: true
