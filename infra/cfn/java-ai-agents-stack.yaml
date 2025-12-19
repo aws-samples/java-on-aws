@@ -265,9 +265,32 @@ Resources:
       Path: /
       PolicyDocument:
         Statement:
-          - Action: "*"
+          - Action: aws-marketplace:Subscribe
+            Condition:
+              "Null":
+                aws-marketplace:ProductId: "false"
+              ForAllValues:StringEquals:
+                aws-marketplace:ProductId:
+                  - prod-jhuafngbly644
+                  - prod-mxcfnwvpd6kb4
+                  - prod-4pmewlybdftbs
             Effect: Allow
             Resource: "*"
+            Sid: MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet
+          - Action:
+              - aws-marketplace:Unsubscribe
+              - aws-marketplace:ViewSubscriptions
+              - bedrock:*
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - bedrock-agentcore:*
+              - bedrock:*
+              - codewhisperer:*
+              - q:*
+            Effect: Allow
+            Resource: "*"
+            Sid: AllowedServices
         Version: "2012-10-17"
   IdeLambdaRole82392143:
     Type: AWS::IAM::Role
@@ -606,12 +629,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
       VolumeSize: "50"
       IamInstanceProfileArn:
         Fn::GetAtt:
@@ -637,7 +654,7 @@ Resources:
               - Ref: AWS::Region
               - |-
                 "
-                export TEMPLATE_TYPE="base"
+                export TEMPLATE_TYPE="java-ai-agents"
                 export ARCH="aarch64"
                 export IDE_TYPE="code-editor"
                 export WAIT_CONDITION_HANDLE_URL="
@@ -766,6 +783,12 @@ Resources:
             - Fn::GetAtt:
                 - IdeInternalSecurityGroupB0A5D76B
                 - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:

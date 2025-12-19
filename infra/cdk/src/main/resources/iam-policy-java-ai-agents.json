@@ -1,0 +1,45 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet",
+            "Effect": "Allow",
+            "Action": [
+                "aws-marketplace:Subscribe"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "Null": {
+                    "aws-marketplace:ProductId": "false"
+                },
+                "ForAllValues:StringEquals": {
+                    "aws-marketplace:ProductId": [
+						"prod-jhuafngbly644",
+						"prod-mxcfnwvpd6kb4",
+						"prod-4pmewlybdftbs"
+                    ]
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "aws-marketplace:Unsubscribe",
+                "aws-marketplace:ViewSubscriptions",
+				"bedrock:*"
+            ],
+            "Resource": "*"
+        },
+		{
+			"Sid": "AllowedServices",
+			"Effect": "Allow",
+			"Action": [
+                "bedrock-agentcore:*",
+                "bedrock:*",
+				"codewhisperer:*",
+				"q:*"
+			],
+			"Resource": "*"
+		}
+	]
+  }

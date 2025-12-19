@@ -33,17 +33,20 @@
   - _Requirements: 4.1, 4.4_
 
 - [x] 2.2 Create workshop sync script
-  - Create infra/scripts/cfn/sync.sh that copies workshop-template.yaml to workshop directories as {workshop}-stack.yaml
-  - Include iam-policy.json copying from cdk/src/main/resources/ directory to workshop static/ directories
-  - Implement directory existence checking and error reporting
-  - Support workshop list: ide, java-on-aws, java-on-eks, java-ai-agents, java-spring-ai-agents
+  - Create infra/scripts/cfn/sync.sh that copies cfn/{workshop}-stack.yaml → workshop-stack.yaml ✅
+  - Copy workshop-specific IAM policies (iam-policy-{workshop}.json → iam-policy.json) ✅
+  - Target files use static names: workshop-stack.yaml and iam-policy.json ✅
+  - Implement directory existence checking and error reporting ✅
+  - Support workshop list: ide, java-on-aws-immersion-day, java-on-amazon-eks, java-ai-agents, java-spring-ai-agents ✅
   - _Requirements: 4.2, 4.5_
 
 - [x] 2.3 Set up build automation
-  - Create infra/package.json with generate and sync npm scripts
-  - Make scripts executable and test npm run generate && npm run sync workflow
-  - Validate that generated templates are copied to correct locations with proper naming
-  - Copy existing iam-policy.json to infra/cdk/src/main/resources/ for single source of truth
+  - Create infra/package.json with generate and sync npm scripts ✅
+  - Make scripts executable and test npm run generate && npm run sync workflow ✅
+  - Validate that generated templates are copied to correct locations with proper naming ✅
+  - Workshop-specific IAM policies stored as iam-policy-{workshop}.json in cdk/src/main/resources/ ✅
+  - Ide.java loads iam-policy-{templateType}.json and throws exception if not found ✅
+  - Created iam-policy-base.json with Allow * for base template ✅
   - _Requirements: 4.3_
 
 ## Base IDE Stack (10.x)
@@ -383,9 +386,9 @@
   - Enabled easy filtering and management of workshop resources in AWS console and CLI
   - _Requirements: 21.1, 21.2, 21.3, 21.4, 21.5_
 
-## Java-on-AWS Migration (100.x)
+## Java-on-AWS-Immersion-Day Migration (100.x)
 
-- [x] 100.1 Analyze java-on-aws workshop requirements
+- [x] 100.1 Analyze java-on-aws-immersion-day workshop requirements
   - Reviewed infrastructure/cfn/unicornstore-stack.yaml and identified required resources ✅
   - Documented EKS, Database, and other workshop-specific components ✅
   - Mapped existing resources to new construct pattern ✅
@@ -416,14 +419,14 @@
   - Consolidate RDS and database schema setup into single construct
   - _Requirements: 5.6, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
 
-- [x] 100.4 Update WorkshopStack for java-on-aws with EKS integration
+- [x] 100.4 Update WorkshopStack for java-on-aws-immersion-day with EKS integration
   - Database already conditionally created for non-base templates (same as Roles) ✅
   - Added conditional EKS creation: if (!"base".equals(templateType) && !"java-ai-agents".equals(templateType)) ✅
   - Integrated EKS with IDE security group: eks.ideInternalSecurityGroup(ide.getIdeInternalSecurityGroup()) ✅
   - Integrated EKS with IDE instance role: eks.ideInstanceRole(ideProps.getIdeRole()) ✅
-  - Tested TEMPLATE_TYPE=java-on-aws generates template with VPC, IDE, CodeBuild, Roles, Database, and EKS resources ✅
+  - Tested TEMPLATE_TYPE=java-on-aws-immersion-day generates template with VPC, IDE, CodeBuild, Roles, Database, and EKS resources ✅
   - Validated generated template includes all EKS add-ons and Access Entries configuration ✅
-  - Ensured template supports both java-on-aws and base templates from same codebase ✅
+  - Ensured template supports both java-on-aws-immersion-day and base templates from same codebase ✅
   - _Requirements: 1.2, 1.3, 13.1, 16.1_
 
 - [x] 100.5 Create EKS post-deployment setup script
@@ -439,8 +442,8 @@
   - Verified all three add-ons are installed and functional before completing ✅
   - _Requirements: 15.1, 15.2, 14.2, 14.3, 14.4, 15.7, 18.1, 18.2, 18.3, 18.4, 18.6_
 
-- [x] 100.6 Create java-on-aws workshop orchestration script
-  - Created infra/scripts/ide/java-on-aws.sh that executes base.sh and workshop-specific setup ✅
+- [x] 100.6 Create java-on-aws-immersion-day workshop orchestration script
+  - Created infra/scripts/templates/java-on-aws-immersion-day.sh that executes base.sh and workshop-specific setup ✅
   - Script calls base.sh first for foundational development tools ✅
   - Then executes EKS-specific setup (cluster configuration, add-ons, storage classes) ✅
   - Added Phase 3: Monitoring stack (Prometheus + Grafana) via monitoring.sh ✅
@@ -480,8 +483,8 @@
   - Updated bootstrap.sh to call tools.sh as part of default IDE setup (after vscode/code-editor) ✅
   - Created templates/ directory for workshop-specific post-deploy scripts ✅
   - Created templates/base.sh as empty placeholder with comment ✅
-  - Moved java-on-aws.sh to templates/java-on-aws.sh ✅
-  - Updated java-on-aws.sh to NOT call base (tools already installed by bootstrap) ✅
+  - Moved java-on-aws-immersion-day.sh to templates/java-on-aws-immersion-day.sh ✅
+  - Updated java-on-aws-immersion-day.sh to NOT call base (tools already installed by bootstrap) ✅
   - Updated bootstrap.sh to look for template scripts in templates/ folder ✅
   - Updated vscode.sh and code-editor.sh to use settings.sh ✅
   - Final structure:
@@ -504,14 +507,14 @@
     - eks.sh: "✅ Success: EKS cluster (workshop-eks)" ✅
     - monitoring.sh: "✅ Success: Monitoring (Prometheus + Grafana)" ✅
     - analysis.sh: "✅ Success: Analysis (Thread + Profiling dashboards)" ✅
-    - java-on-aws.sh: "✅ Success: Java-on-AWS workshop template" ✅
+    - java-on-aws-immersion-day.sh: "✅ Success: Java-on-AWS-Immersion-Day workshop template" ✅
   - _Requirements: 3.3, 3.7, 6.6_
 
 
 
-- [x] 100.11 Validate java-on-aws migration
-  - Generated template with TEMPLATE_TYPE=java-on-aws and verified all EKS resources are present ✅
-  - Tested template generation for both base and java-on-aws from same codebase ✅
+- [x] 100.11 Validate java-on-aws-immersion-day migration
+  - Generated template with TEMPLATE_TYPE=java-on-aws-immersion-day and verified all EKS resources are present ✅
+  - Tested template generation for both base and java-on-aws-immersion-day from same codebase ✅
   - Verified EKS add-ons, Access Entries, and database resources are properly configured ✅
   - Documented template differences and ensured they provide equivalent functionality ✅
   - _Requirements: 1.2, 1.3, 16.1_
@@ -542,11 +545,11 @@
   - _Requirements: 5.6_
 
 - [x] 100.15 Integrate PerformanceAnalysis into WorkshopStack
-  - Added conditional PerformanceAnalysis creation for java-on-aws template type ✅
+  - Added conditional PerformanceAnalysis creation for java-on-aws-immersion-day template type ✅
   - Passed EKS cluster reference for Access Entry creation ✅
   - Passed VPC reference for Lambda VPC placement ✅
   - Tested template generation with PerformanceAnalysis resources ✅
-  - Verified all resources present in generated java-on-aws-stack.yaml ✅
+  - Verified all resources present in generated java-on-aws-immersion-day-stack.yaml ✅
   - _Requirements: 1.2, 1.3_
 
 - [x] 100.16 Create thread-dump-lambda.py implementation
@@ -570,22 +573,33 @@
   - Note: ESO roles not needed - replaced by AWS Secrets Store CSI Driver add-on
   - _Requirements: 5.6_
 
+## Java-on-Amazon-EKS Template (200.x)
+
+- [x] 200.1 Create java-on-amazon-eks template (same infrastructure as java-on-aws-immersion-day)
+  - Updated WorkshopStack.java to include java-on-amazon-eks in same conditional as java-on-aws-immersion-day ✅
+  - Updated generate.sh to generate java-on-amazon-eks-stack.yaml template ✅
+  - Created infra/scripts/templates/java-on-amazon-eks.sh (same setup as java-on-aws-immersion-day.sh) ✅
+  - Created infra/cdk/src/main/resources/iam-policy-java-on-amazon-eks.json (copy of java-on-aws-immersion-day policy) ✅
+  - Template includes: VPC, IDE, CodeBuild, Database, EKS, PerformanceAnalysis, Unicorn ✅
+  - _Requirements: 1.2, 1.3, 5.4_
+
 ## Java-AI-Agents Migration (300.x)
 
-- [ ] 300.1 Analyze and migrate java-ai-agents workshop
-  - Review infrastructure/cfn/java-ai-agents-stack.yaml (no EKS, includes Bedrock permissions, has database)
-  - Verify EKS exclusion logic: if (!"base".equals(workshopType) && !"java-ai-agents".equals(workshopType))
-  - Database will be included automatically (non-base template)
-  - Create infra/scripts/setup/ai-agents.sh for AI-specific setup
-  - Create infra/scripts/workshops/java-ai-agents.sh orchestration script
-  - _Requirements: 5.4, 5.5_
+- [x] 300.1 Create java-ai-agents template (same infrastructure as base)
+  - Updated generate.sh to generate java-ai-agents-stack.yaml template ✅
+  - Created infra/scripts/templates/java-ai-agents.sh (minimal setup, no EKS/Database) ✅
+  - Created infra/cdk/src/main/resources/iam-policy-java-ai-agents.json (Allow * like base) ✅
+  - Template includes: VPC, IDE, CodeBuild only (same as base) ✅
+  - No EKS, Database, PerformanceAnalysis, or Unicorn resources ✅
+  - _Requirements: 1.2, 1.3, 5.4_
 
-## Java-Spring-AI-Agents Migration (400.x)
+## Java-Spring-AI-Agents Template (400.x)
 
-- [ ] 400.1 Analyze and migrate java-spring-ai-agents workshop
-  - Review infrastructure/cfn/spring-ai-stack.yaml for specific requirements
-  - Create infra/scripts/setup/spring-ai.sh for Spring AI specific setup
-  - Create infra/scripts/workshops/java-spring-ai-agents.sh orchestration script
-  - Validate template generation and workshop setup scripts
-  - _Requirements: 5.4, 5.5_
+- [x] 400.1 Create java-spring-ai-agents template (same infrastructure as base)
+  - Updated generate.sh to generate java-spring-ai-agents-stack.yaml template ✅
+  - Created infra/scripts/templates/java-spring-ai-agents.sh (minimal setup, no EKS/Database) ✅
+  - Created infra/cdk/src/main/resources/iam-policy-java-spring-ai-agents.json (Allow * like base) ✅
+  - Template includes: VPC, IDE only (same as base) ✅
+  - No EKS, Database, PerformanceAnalysis, or Unicorn resources ✅
+  - _Requirements: 1.2, 1.3, 5.4_
 

@@ -26,7 +26,6 @@ public class WorkshopStack extends Stack {
               - |
                 # Resolution for when creating the first service in the account
                 aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
-                aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com 2>/dev/null || true
                 aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
         """;
 
@@ -56,19 +55,20 @@ public class WorkshopStack extends Stack {
             .build();
         Ide ide = new Ide(this, "Ide", ideProps);
 
-        // CodeBuild for workshop setup
-        CodeBuild codeBuild = new CodeBuild(this, "CodeBuild",
-            CodeBuild.CodeBuildProps.builder()
-                .projectName("workshop-setup")
-                .vpc(vpc.getVpc())
-                .environmentVariables(Map.of(
-                    "TEMPLATE_TYPE", templateType,
-                    "GIT_BRANCH", gitBranch))
-                .buildSpec(buildSpec)
-                .build());
+        // java-on-aws-immersion-day and java-on-amazon-eks specific resources (CodeBuild for service-linked roles)
+        if ("java-on-aws-immersion-day".equals(templateType) || "java-on-amazon-eks".equals(templateType)) {
+            // CodeBuild for workshop setup (service-linked role creation)
+            new CodeBuild(this, "CodeBuild",
+                CodeBuild.CodeBuildProps.builder()
+                    .projectName("workshop-setup")
+                    .vpc(vpc.getVpc())
+                    .environmentVariables(Map.of(
+                        "TEMPLATE_TYPE", templateType,
+                        "GIT_BRANCH", gitBranch))
+                    .buildSpec(buildSpec)
+                    .build());
 
-        // java-on-aws specific resources
-        if ("java-on-aws".equals(templateType)) {
+            // Database, EKS, PerformanceAnalysis, Unicorn
             Database database = new Database(this, "Database", vpc.getVpc());
 
             // EKS cluster

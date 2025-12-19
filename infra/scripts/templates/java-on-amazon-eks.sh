@@ -1,14 +1,15 @@
 #!/bin/bash
 
-# Java-on-AWS workshop post-deploy script
+# Java-on-Amazon-EKS workshop post-deploy script
 # Base development tools are already installed by ide/tools.sh during bootstrap
 # This script sets up workshop-specific infrastructure (EKS, monitoring, analysis)
+# Same setup as java-on-aws-immersion-day
 
 # Source common utilities
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 
-log_info "Starting Java-on-AWS workshop post-deploy setup..."
+log_info "Starting Java-on-Amazon-EKS workshop post-deploy setup..."
 
 # Phase 1: EKS cluster configuration
 log_info "Phase 1: Configuring EKS cluster..."
@@ -37,7 +38,7 @@ else
     exit 1
 fi
 
-log_success "Java-on-AWS workshop post-deploy setup completed successfully!"
+log_success "Java-on-Amazon-EKS workshop post-deploy setup completed successfully!"
 
 # Emit for bootstrap summary
-echo "✅ Success: Java-on-AWS workshop template"
+echo "✅ Success: Java-on-Amazon-EKS workshop template"

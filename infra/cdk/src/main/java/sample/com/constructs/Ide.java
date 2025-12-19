@@ -179,15 +179,14 @@ public class Ide extends Construct {
 
         this.ideRole.addToPolicy(cfnSignalPermissions);
 
-        // Load additional IAM policy from file
-        var policyDocumentJson = loadFile("/iam-policy.json");
-        if (policyDocumentJson != null) {
-            var policyDocument = PolicyDocument.fromJson(new JSONObject(policyDocumentJson).toMap());
-            var policy = ManagedPolicy.Builder.create(this, "UserPolicy")
-                .document(policyDocument)
-                .build();
-            this.ideRole.addManagedPolicy(policy);
-        }
+        // Load workshop-specific IAM policy from file (iam-policy-{templateType}.json)
+        String policyFileName = "/iam-policy-" + props.getTemplateType() + ".json";
+        String policyDocumentJson = loadFile(policyFileName);
+        var policyDocument = PolicyDocument.fromJson(new JSONObject(policyDocumentJson).toMap());
+        var policy = ManagedPolicy.Builder.create(this, "UserPolicy")
+            .document(policyDocument)
+            .build();
+        this.ideRole.addManagedPolicy(policy);
 
         // Create Lambda role for IDE Lambda functions
         this.lambdaRole = Role.Builder.create(this, "LambdaRole")
@@ -434,7 +433,11 @@ public class Ide extends Construct {
      */
     private String loadFile(String filePath) {
         try {
-            return Files.readString(Path.of(getClass().getResource(filePath).getPath()));
+            var resource = getClass().getResource(filePath);
+            if (resource == null) {
+                throw new RuntimeException("Resource file not found: " + filePath);
+            }
+            return Files.readString(Path.of(resource.getPath()));
         } catch (IOException e) {
             throw new RuntimeException("Failed to load file " + filePath, e);
         }

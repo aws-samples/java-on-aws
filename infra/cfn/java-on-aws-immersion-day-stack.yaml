@@ -702,6 +702,18 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      InstanceName: ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      VolumeSize: "50"
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
       SecurityGroupIds:
         Fn::Join:
           - ""
@@ -712,19 +724,8 @@ Resources:
             - Fn::GetAtt:
                 - IdeInternalSecurityGroupB0A5D76B
                 - GroupId
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      InstanceName: ide
-      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -743,7 +744,7 @@ Resources:
               - Ref: AWS::Region
               - |-
                 "
-                export TEMPLATE_TYPE="java-on-aws"
+                export TEMPLATE_TYPE="java-on-aws-immersion-day"
                 export ARCH="aarch64"
                 export IDE_TYPE="code-editor"
                 export WAIT_CONDITION_HANDLE_URL="
@@ -860,8 +861,7 @@ Resources:
                 "
                     exit 1
                 fi
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
+      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1242,7 +1242,7 @@ Resources:
         EnvironmentVariables:
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
-            Value: java-on-aws
+            Value: java-on-aws-immersion-day
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: new-ws-infra
@@ -1273,7 +1273,6 @@ Resources:
                 - |
                   # Resolution for when creating the first service in the account
                   aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
-                  aws iam create-service-linked-role --aws-service-name apprunner.amazonaws.com 2>/dev/null || true
                   aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
         Type: NO_SOURCE
       TimeoutInMinutes: 30
@@ -1490,11 +1489,11 @@ Resources:
           - Arn
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
-      ContentHash: "1766168394649"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
+      ContentHash: "1766171870692"
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1846,7 +1845,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251219191954"
+            - "-20251219201750"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2012,15 +2011,15 @@ Resources:
               }
       Environment:
         Variables:
+          K8S_NAMESPACE: unicorn-store-spring
+          S3_THREAD_DUMPS_PREFIX: thread-dumps/
           EKS_CLUSTER_NAME:
             Ref: EksClusterB2BDED5B
-          S3_THREAD_DUMPS_PREFIX: thread-dumps/
-          K8S_NAMESPACE: unicorn-store-spring
-          APP_LABEL: unicorn-store-spring
-          KUBERNETES_AUTH_TYPE: aws
-          SECRET_NAME: workshop-ide-password
           S3_BUCKET_NAME:
             Ref: PerformanceAnalysisBucketE9EDCD90
+          SECRET_NAME: workshop-ide-password
+          KUBERNETES_AUTH_TYPE: aws
+          APP_LABEL: unicorn-store-spring
       FunctionName: workshop-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512

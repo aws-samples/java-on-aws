@@ -29,6 +29,11 @@ infra/
 │   │   └── WorkshopApp.java      # Main CDK application
 │   ├── src/main/resources/
 │   │   ├── userdata.sh           # Minimal UserData script (embedded in CDK)
+│   │   ├── iam-policy-base.json
+│   │   ├── iam-policy-java-on-aws-immersion-day.json
+│   │   ├── iam-policy-java-on-amazon-eks.json
+│   │   ├── iam-policy-java-ai-agents.json
+│   │   ├── iam-policy-java-spring-ai-agents.json
 │   │   └── lambda/               # Lambda function source files
 │   │       ├── ec2-launcher.py
 │   │       ├── codebuild-start.py
@@ -41,7 +46,10 @@ infra/
 │   └── cdk.json
 ├── cfn/                         # Generated CloudFormation templates
 │   ├── base-stack.yaml
-│   └── java-on-aws-stack.yaml
+│   ├── java-on-aws-immersion-day-stack.yaml
+│   ├── java-on-amazon-eks-stack.yaml
+│   ├── java-ai-agents-stack.yaml
+│   └── java-spring-ai-agents-stack.yaml
 ├── scripts/
 │   ├── ide/                     # IDE setup scripts
 │   │   ├── bootstrap.sh         # Full bootstrap orchestration
@@ -53,7 +61,10 @@ infra/
 │   │   └── shell-p10k.zsh       # Powerlevel10k configuration
 │   ├── templates/               # Workshop-specific post-deploy scripts
 │   │   ├── base.sh              # Base template (empty placeholder)
-│   │   └── java-on-aws.sh       # Java-on-AWS workshop setup
+│   │   ├── java-on-aws-immersion-day.sh  # Java-on-AWS Immersion Day workshop setup
+│   │   ├── java-on-amazon-eks.sh         # Java-on-Amazon-EKS workshop setup (same as java-on-aws-immersion-day)
+│   │   ├── java-ai-agents.sh             # Java-AI-Agents workshop setup (same as base)
+│   │   └── java-spring-ai-agents.sh      # Java-Spring-AI-Agents workshop setup (same as base)
 │   ├── setup/                   # Infrastructure setup scripts
 │   │   ├── eks.sh               # EKS cluster configuration
 │   │   ├── monitoring.sh        # Prometheus + Grafana setup
@@ -81,27 +92,36 @@ public class WorkshopStack extends Stack {
     public WorkshopStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
 
-        String templateType = System.getenv("TEMPLATE_TYPE");
+        String templateType = (String) this.getNode().tryGetContext("template.type");
         if (templateType == null) {
             templateType = "base"; // default
         }
 
         // Core infrastructure (always created)
         var vpc = new Vpc(this, "Vpc");
-        var ide = new Ide(this, "Ide", vpc.getVpc());
+        var ide = new Ide(this, "Ide", ideProps);
 
-        // Custom roles and database only for non-base templates
-        if (!"base".equals(templateType)) {
-            var roles = new Roles(this, "Roles");
+        // java-on-aws-immersion-day and java-on-amazon-eks specific resources
+        if ("java-on-aws-immersion-day".equals(templateType) || "java-on-amazon-eks".equals(templateType)) {
+            new CodeBuild(this, "CodeBuild", codeBuildProps);
             var database = new Database(this, "Database", vpc.getVpc());
+            var eks = new Eks(this, "Eks", eksProps);
+            var performanceAnalysis = new PerformanceAnalysis(this, "PerformanceAnalysis", analysisProps);
+            var unicorn = new Unicorn(this, "Unicorn", unicornProps);
         }
-
-        // CodeBuild for service-linked role creation
-        new CodeBuild(this, "CodeBuild",
-            Map.of("STACK_NAME", Aws.STACK_NAME, "TEMPLATE_TYPE", templateType));
     }
 }
 ```
+
+#### Supported Template Types
+
+| Template Type | Resources Created |
+|---------------|-------------------|
+| `base` | VPC, IDE |
+| `java-ai-agents` | VPC, IDE (same as base) |
+| `java-spring-ai-agents` | VPC, IDE (same as base) |
+| `java-on-aws-immersion-day` | VPC, IDE, CodeBuild, Database, EKS, PerformanceAnalysis, Unicorn |
+| `java-on-amazon-eks` | VPC, IDE, CodeBuild, Database, EKS, PerformanceAnalysis, Unicorn (same as java-on-aws-immersion-day) |
 
 #### Reusable Constructs
 
@@ -195,7 +215,12 @@ infra/cdk/src/main/resources/
 │   ├── cloudfront-prefix-lookup.py # CloudFront prefix list lookup
 │   └── thread-dump-lambda.py     # Thread dump collection and AI analysis
 ├── userdata.sh                   # Minimal UserData script with CloudWatch logging
-├── iam-policy.json               # IAM policy for workshop participants
+├── iam-policy-base.json          # Base template IAM policy (Allow *)
+├── iam-policy-java-on-aws-immersion-day.json   # Java-on-AWS Immersion Day workshop IAM policy
+├── iam-policy-java-on-amazon-eks.json          # Java-on-Amazon-EKS workshop IAM policy (same as java-on-aws-immersion-day)
+├── iam-policy-java-ai-agents.json              # Java-AI-Agents workshop IAM policy (same as base)
+├── iam-policy-java-spring-ai-agents.json       # Java-Spring-AI-Agents workshop IAM policy (same as base)
+├── iam-policy-{workshop}.json    # Workshop-specific IAM policies (required for each template type)
 └── unicorns.sql                  # Database schema SQL
 ```
 
@@ -277,8 +302,11 @@ infra/scripts/ide/
 └── shell-p10k.zsh        # Powerlevel10k configuration
 
 infra/scripts/templates/
-├── base.sh               # Base template (empty placeholder)
-└── java-on-aws.sh        # Java-on-AWS workshop post-deploy
+├── base.sh                       # Base template (empty placeholder)
+├── java-on-aws-immersion-day.sh  # Java-on-AWS Immersion Day workshop post-deploy
+├── java-on-amazon-eks.sh         # Java-on-Amazon-EKS workshop post-deploy (same as java-on-aws-immersion-day)
+├── java-ai-agents.sh             # Java-AI-Agents workshop post-deploy (same as base)
+└── java-spring-ai-agents.sh      # Java-Spring-AI-Agents workshop post-deploy (same as base)
 ```
 
 #### Bootstrap Flow
@@ -398,7 +426,7 @@ echo "✅ Generated workshop-template.yaml"
 #!/bin/bash
 set -e
 
-WORKSHOPS=("ide" "java-on-aws" "java-on-eks" "java-ai-agents" "java-spring-ai-agents")
+WORKSHOPS=("ide" "java-on-aws-immersion-day" "java-on-amazon-eks" "java-ai-agents" "java-spring-ai-agents")
 
 for workshop in "${WORKSHOPS[@]}"; do
   target_dir="../$workshop/static"

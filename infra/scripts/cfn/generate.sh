@@ -63,7 +63,16 @@ generate_template() {
 # Generate base template (IDE only)
 generate_template "base" "../cfn/base-stack.yaml"
 
-# Generate java-on-aws template (IDE + Database + EKS + Roles)
-generate_template "java-on-aws" "../cfn/java-on-aws-stack.yaml"
+# Generate java-on-aws-immersion-day template (IDE + Database + EKS + Roles)
+generate_template "java-on-aws-immersion-day" "../cfn/java-on-aws-immersion-day-stack.yaml"
+
+# Generate java-on-amazon-eks template (same as java-on-aws-immersion-day)
+generate_template "java-on-amazon-eks" "../cfn/java-on-amazon-eks-stack.yaml"
+
+# Generate java-ai-agents template (same as base)
+generate_template "java-ai-agents" "../cfn/java-ai-agents-stack.yaml"
+
+# Generate java-spring-ai-agents template (same as base)
+generate_template "java-spring-ai-agents" "../cfn/java-spring-ai-agents-stack.yaml"
 
 log_success "All CloudFormation templates generated successfully"
