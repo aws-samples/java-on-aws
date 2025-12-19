@@ -73,16 +73,8 @@ public class Eks extends Construct {
                 .build()
         );
 
-        // WSParticipantRole Access Entry - TEMPORARILY COMMENTED OUT FOR TESTING
-        // String wsParticipantRoleArn = String.format("arn:aws:iam::%s:role/WSParticipantRole", Aws.ACCOUNT_ID);
-        // AccessEntry.Builder.create(this, "WSParticipantAccessEntry")
-        //     .cluster(cluster)
-        //     .principal(wsParticipantRoleArn)
-        //     .accessEntryType(AccessEntryType.STANDARD)
-        //     .accessPolicies(List.of(clusterAdminPolicy))
-        //     .build();
-
         // IDE Instance Role Access Entry (if provided)
+        // This grants the IDE instance role cluster admin permissions for kubectl access
         if (props.getIdeInstanceRole() != null) {
             AccessEntry.Builder.create(this, "InstanceAccessEntry")
                 .cluster(cluster)

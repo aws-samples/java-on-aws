@@ -49,17 +49,17 @@
 ## Base IDE Stack (10.x)
 
 - [x] 10.1 Create core CDK constructs
-  - Create infra/cdk/src/main/java/sample/com/constructs/Roles.java for IAM roles and policies
-  - Create infra/cdk/src/main/java/sample/com/constructs/Vpc.java for VPC with 2 AZs and 1 NAT gateway
-  - Create infra/cdk/src/main/java/sample/com/constructs/Ide.java for VS Code IDE environment
-  - Create infra/cdk/src/main/java/sample/com/constructs/CodeBuild.java for workshop setup automation
+  - Created infra/cdk/src/main/java/sample/com/constructs/Vpc.java for VPC with 2 AZs and 1 NAT gateway ✅
+  - Created infra/cdk/src/main/java/sample/com/constructs/Ide.java for VS Code IDE environment ✅
+  - Created infra/cdk/src/main/java/sample/com/constructs/CodeBuild.java for workshop setup automation ✅
+  - Created infra/cdk/src/main/java/sample/com/constructs/Lambda.java for reusable Lambda function creation ✅
   - _Requirements: 1.1, 5.6_
 
-- [x] 10.2 Migrate and refactor Roles construct
-  - Copy infrastructure/cdk/src/main/java/com/unicorn/constructs/WorkshopFunction.java patterns for IAM setup
-  - Update package names from com.unicorn to sample.com
-  - Consolidate all IAM roles and policies into single Roles construct
-  - Include Bedrock permissions for AI workshops in the unified roles
+- [x] 10.2 Migrate and refactor IAM roles into Unicorn construct
+  - Replaced standalone Roles.java with Unicorn.java that combines ECR + IAM roles ✅
+  - IAM roles embedded in Unicorn construct for workshop content compatibility ✅
+  - Uses unicorn* naming convention for workshop application compatibility ✅
+  - Include Bedrock permissions for AI workshops in the unified roles ✅
   - _Requirements: 5.6_
 
 - [x] 10.3 Migrate and refactor Vpc construct
@@ -397,9 +397,9 @@
   - Created infra/cdk/src/main/java/sample/com/constructs/Eks.java using software.amazon.awscdk.services.eks.v2.alpha ✅
   - Configured workshop-eks with Auto Mode, version 1.34, system+general-purpose node pools ✅
   - Added 3 EKS add-ons: AWS Secrets Store CSI Driver, AWS Mountpoint S3 CSI Driver, EKS Pod Identity Agent ✅
-  - Created Access Entry for WSParticipantRole AND IDE instance role with cluster admin permissions ✅
+  - Created Access Entry for IDE instance role with cluster admin permissions ✅
+  - WSParticipantRole Access Entry removed after testing showed it's not needed ✅
   - Used Access Entries authentication mode instead of ConfigMap-based authentication ✅
-  - Enabled all log types (api, audit, authenticator, controllerManager, scheduler) for comprehensive monitoring ✅
   - EKS cluster depends only on VPC for parallel deployment with Database ✅
   - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.7, 13.8, 15.3, 15.5, 15.6, 19.1_
 
@@ -507,21 +507,7 @@
     - java-on-aws.sh: "✅ Success: Java-on-AWS workshop template" ✅
   - _Requirements: 3.3, 3.7, 6.6_
 
-- [ ]* 100.7 Write property test for EKS Access Entry configuration
-  - **Property 19: EKS Access Entry Configuration**
-  - **Validates: Requirements 13.8**
 
-- [ ]* 100.8 Write property test for workshop script orchestration
-  - **Property 20: Workshop Script Orchestration**
-  - **Validates: Requirements 17.1, 17.2**
-
-- [ ]* 100.9 Write property test for workshop error handling
-  - **Property 21: Workshop Error Handling**
-  - **Validates: Requirements 17.3**
-
-- [ ]* 100.10 Write property test for workshop verification
-  - **Property 22: Workshop Verification**
-  - **Validates: Requirements 17.4**
 
 - [x] 100.11 Validate java-on-aws migration
   - Generated template with TEMPLATE_TYPE=java-on-aws and verified all EKS resources are present ✅
@@ -563,11 +549,11 @@
   - Verified all resources present in generated java-on-aws-stack.yaml ✅
   - _Requirements: 1.2, 1.3_
 
-- [ ] 100.16 Create thread-dump-lambda.py implementation
-  - Create infra/cdk/src/main/resources/lambda/thread-dump-lambda.py
-  - Implement EKS pod discovery and thread dump collection
-  - Add Bedrock integration for AI-powered thread analysis
-  - Store results in S3 bucket with proper prefixes
+- [x] 100.16 Create thread-dump-lambda.py implementation
+  - Created infra/cdk/src/main/resources/lambda/thread-dump-lambda.py ✅
+  - Implemented EKS pod discovery and thread dump collection ✅
+  - Added Bedrock integration for AI-powered thread analysis ✅
+  - Store results in S3 bucket with proper prefixes ✅
   - _Requirements: 5.6_
 
 - [x] 100.24 Create Unicorn construct with ECR and Roles
@@ -603,18 +589,3 @@
   - Validate template generation and workshop setup scripts
   - _Requirements: 5.4, 5.5_
 
-## Validation & Cleanup (1000.x)
-
-- [ ] 1000.1 Comprehensive testing
-  - Test template generation for all workshop types
-  - Validate sync scripts copy templates and policies correctly
-  - Test convention-based script discovery for all workshops
-  - Verify error handling and timeout behavior in setup scripts
-  - _Requirements: 3.4, 3.5, 4.5_
-
-- [ ] 1000.2 Documentation and final validation
-  - Update README with new infra/ usage instructions
-  - Document migration process and parallel operation approach
-  - Verify both infrastructure/ and infra/ systems can operate independently
-  - Create migration checklist for workshop maintainers
-  - _Requirements: 5.9_

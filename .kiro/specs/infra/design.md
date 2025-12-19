@@ -23,24 +23,45 @@ infra/
 │   │   │   ├── Database.java
 │   │   │   ├── CodeBuild.java
 │   │   │   ├── Lambda.java
-│   │   │   └── Roles.java
+│   │   │   ├── PerformanceAnalysis.java
+│   │   │   └── Unicorn.java      # ECR + IAM roles (uses unicorn* naming for workshop compatibility)
 │   │   ├── WorkshopStack.java    # Main stack
 │   │   └── WorkshopApp.java      # Main CDK application
 │   ├── src/main/resources/
-│   │   └── ec2-userdata.sh       # Minimal UserData script (embedded in CDK)
+│   │   ├── userdata.sh           # Minimal UserData script (embedded in CDK)
+│   │   └── lambda/               # Lambda function source files
+│   │       ├── ec2-launcher.py
+│   │       ├── codebuild-start.py
+│   │       ├── codebuild-report.py
+│   │       ├── password-exporter.py
+│   │       ├── database-setup.py
+│   │       ├── cloudfront-prefix-lookup.py
+│   │       └── thread-dump-lambda.py
 │   ├── pom.xml
 │   └── cdk.json
-├── workshop-template.yaml       # Generated unified CloudFormation template
+├── cfn/                         # Generated CloudFormation templates
+│   ├── base-stack.yaml
+│   └── java-on-aws-stack.yaml
 ├── scripts/
-│   ├── ide/                     # Modular IDE and workshop scripts
-│   │   ├── vscode.sh            # VS Code installation and configuration
-│   │   ├── base.sh              # Base development tools
-│   │   ├── java-on-aws.sh       # Java-on-AWS workshop setup
-│   │   ├── java-on-eks.sh       # Java-on-EKS workshop setup
-│   │   └── java-ai-agents.sh    # Java AI Agents workshop setup
-│   ├── lib/                     # Common utilities (actively used)
-│   │   ├── common.sh            # Emoji logging, error handling (used by generate.sh, sync.sh)
-│   │   └── wait-for-resources.sh # EKS/RDS readiness checking (used by setup scripts)
+│   ├── ide/                     # IDE setup scripts
+│   │   ├── bootstrap.sh         # Full bootstrap orchestration
+│   │   ├── vscode.sh            # VS Code Server installation
+│   │   ├── code-editor.sh       # AWS Code Editor installation
+│   │   ├── tools.sh             # Base development tools
+│   │   ├── settings.sh          # IDE settings configuration
+│   │   ├── shell.sh             # Shell UX (zsh + oh-my-zsh + p10k)
+│   │   └── shell-p10k.zsh       # Powerlevel10k configuration
+│   ├── templates/               # Workshop-specific post-deploy scripts
+│   │   ├── base.sh              # Base template (empty placeholder)
+│   │   └── java-on-aws.sh       # Java-on-AWS workshop setup
+│   ├── setup/                   # Infrastructure setup scripts
+│   │   ├── eks.sh               # EKS cluster configuration
+│   │   ├── monitoring.sh        # Prometheus + Grafana setup
+│   │   ├── analysis.sh          # Thread dump + profiling analysis
+│   │   └── deploy-spring-app.sh # Spring application deployment
+│   ├── lib/                     # Common utilities
+│   │   ├── common.sh            # Emoji logging, error handling
+│   │   └── wait-for-resources.sh # EKS/RDS readiness checking
 │   ├── cfn/                     # CloudFormation utilities
 │   │   ├── generate.sh
 │   │   └── sync.sh
@@ -86,10 +107,12 @@ public class WorkshopStack extends Stack {
 
 **Vpc**: Creates VPC with appropriate subnets and networking configuration
 **Ide**: Creates VS Code IDE environment with necessary permissions and security groups
-**Eks**: Creates EKS cluster with Auto Mode, v1.34, native add-ons (Secrets Store CSI, Mountpoint S3 CSI, Pod Identity Agent), Access Entries, and IDE security group integration
+**Eks**: Creates EKS cluster with Auto Mode, v1.34, native add-ons (Secrets Store CSI, Mountpoint S3 CSI, Pod Identity Agent), Access Entries for IDE instance role, and IDE security group integration
 **Database**: Configures RDS Aurora PostgreSQL cluster with universal "workshop-" naming convention
 **CodeBuild**: Creates CodeBuild project for AWS service-linked role creation
-**Roles**: Creates IAM roles and policies for workshop resources
+**Lambda**: Reusable construct for consistent Lambda function creation with inline Python code
+**PerformanceAnalysis**: Creates S3 bucket, Lambda functions, and API Gateway for thread dump and profiling analysis
+**Unicorn**: Creates ECR repository and IAM roles for workshop applications (uses unicorn* naming for workshop content compatibility)
 
 #### CDK Construct Naming Convention
 
@@ -164,10 +187,16 @@ The new design uses **external files** for all complex scripts and code, loaded 
 ```
 infra/cdk/src/main/resources/
 ├── lambda/
-│   ├── ec2-launcher.py      # EC2 instance launching with multi-AZ/instance-type failover
-│   ├── codebuild-start.py   # CodeBuild project starter for workshop setup
-│   └── codebuild-report.py  # CodeBuild completion reporter via EventBridge
-└── ec2-userdata.sh          # Minimal UserData script (2.4KB) with CloudWatch logging
+│   ├── ec2-launcher.py           # EC2 instance launching with multi-AZ/instance-type failover
+│   ├── codebuild-start.py        # CodeBuild project starter for workshop setup
+│   ├── codebuild-report.py       # CodeBuild completion reporter via EventBridge
+│   ├── password-exporter.py      # Custom Resource for password output
+│   ├── database-setup.py         # Database schema initialization
+│   ├── cloudfront-prefix-lookup.py # CloudFront prefix list lookup
+│   └── thread-dump-lambda.py     # Thread dump collection and AI analysis
+├── userdata.sh                   # Minimal UserData script with CloudWatch logging
+├── iam-policy.json               # IAM policy for workshop participants
+└── unicorns.sql                  # Database schema SQL
 ```
 
 #### Reusable Lambda Construct
@@ -232,40 +261,45 @@ This integration ensures seamless access from the IDE to the EKS cluster without
 ### Script Organization
 
 #### Minimal UserData Architecture
-The new architecture uses minimal UserData (2.4KB) that downloads and executes a full bootstrap script, avoiding AWS UserData size limits:
+The new architecture uses minimal UserData that downloads and executes a full bootstrap script, avoiding AWS UserData size limits:
 
 ```
 infra/cdk/src/main/resources/
-└── ec2-userdata.sh       # Minimal UserData script (2.4KB)
+└── userdata.sh           # Minimal UserData script with CloudWatch logging
 
 infra/scripts/ide/
-├── bootstrap.sh          # Full bootstrap script (3.8KB)
-├── vscode.sh             # VS Code installation and configuration
-├── base.sh               # Base development tools (foundational for all workshops)
-├── java-on-aws.sh        # calls base.sh + EKS/DB setup
-├── java-on-eks.sh        # calls base.sh + EKS setup
-└── java-ai-agents.sh     # calls base.sh + AI setup
+├── bootstrap.sh          # Full bootstrap orchestration
+├── vscode.sh             # VS Code Server installation and configuration
+├── code-editor.sh        # AWS Code Editor installation
+├── tools.sh              # Base development tools (Java, Node.js, kubectl, etc.)
+├── settings.sh           # IDE settings configuration
+├── shell.sh              # Shell UX (zsh + oh-my-zsh + powerlevel10k)
+└── shell-p10k.zsh        # Powerlevel10k configuration
+
+infra/scripts/templates/
+├── base.sh               # Base template (empty placeholder)
+└── java-on-aws.sh        # Java-on-AWS workshop post-deploy
 ```
 
 #### Bootstrap Flow
 ```
-ec2-userdata.sh → bootstrap.sh → vscode.sh → {workshop}.sh
+userdata.sh → bootstrap.sh → {IDE_TYPE}.sh → tools.sh → templates/{TEMPLATE_TYPE}.sh
 ```
 
 Where:
-- `ec2-userdata.sh`: Minimal UserData script that downloads and runs bootstrap.sh with fallback URLs
-- `bootstrap.sh`: Full system setup, CloudWatch, environment variables, git clone, calls vscode.sh and template script
-- `vscode.sh`: Complete VS Code IDE setup (code-server, Caddy, configuration)
-- `base.sh`: Base development tools (for base template type)
-- `java-on-aws.sh`: Calls base.sh + EKS implementation (cluster setup, add-ons, storage classes)
-- Future template scripts will be added to `/ide` folder as needed
+- `userdata.sh`: Minimal UserData script that clones repo and runs bootstrap.sh with CloudWatch logging
+- `bootstrap.sh`: Full system setup, environment variables, calls IDE setup and template script
+- `{IDE_TYPE}.sh`: IDE-specific setup (vscode.sh or code-editor.sh)
+- `tools.sh`: Base development tools installation (Java, Node.js, kubectl, Helm, etc.)
+- `templates/{TEMPLATE_TYPE}.sh`: Workshop-specific post-deploy (EKS setup, monitoring, analysis)
 
 #### Workshop Orchestration Pattern
 Workshop scripts follow a layered approach:
-1. **Base Layer**: `base.sh` provides foundational development tools (Java, Node.js, kubectl, Helm, etc.)
-2. **Workshop Layer**: Workshop-specific scripts (e.g., `java-on-aws.sh`) call base.sh then add specialized setup
-3. **Error Handling**: Each layer implements proper error handling and progress feedback
-4. **Verification**: Final verification ensures all tools and services are operational
+1. **IDE Layer**: `bootstrap.sh` calls IDE setup (`vscode.sh` or `code-editor.sh`) and `tools.sh`
+2. **Tools Layer**: `tools.sh` provides foundational development tools (Java, Node.js, kubectl, Helm, etc.)
+3. **Workshop Layer**: Template scripts in `templates/` folder add workshop-specific setup (EKS, monitoring, analysis)
+4. **Error Handling**: Each layer implements proper error handling and progress feedback
+5. **Verification**: Final verification ensures all tools and services are operational
 
 #### Configuration
 - **Template Type**: Configurable via `TEMPLATE_TYPE` environment variable (defaults to `base`)
@@ -503,7 +537,7 @@ public class BuildConfig {
 **Validates: Requirements 12.1, 12.2, 12.3, 12.4, 12.5, 12.6**
 
 ### Property 19: EKS Access Entry Configuration
-*For any* EKS cluster created, it should include Access Entry for WSParticipantRole with cluster admin permissions
+*For any* EKS cluster created, it should include Access Entry for IDE instance role with cluster admin permissions
 **Validates: Requirements 13.8**
 
 ### Property 20: Workshop Script Orchestration

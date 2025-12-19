@@ -193,7 +193,7 @@ This document specifies the requirements for creating a new AWS workshop infrast
 5. WHEN EKS cluster networking is configured, THE system SHALL place cluster in private subnets with public and private API access for security and flexibility
 6. WHEN EKS cluster logging is enabled, THE system SHALL activate all log types (api, audit, authenticator, controllerManager, scheduler) for comprehensive monitoring
 7. WHEN EKS cluster permissions are configured, THE system SHALL use Access Entries authentication mode instead of deprecated ConfigMap-based authentication
-8. WHEN EKS cluster access is configured, THE system SHALL create Access Entry for WSParticipantRole and IDE instance role with cluster admin permissions for workshop participant access
+8. WHEN EKS cluster access is configured, THE system SHALL create Access Entry for IDE instance role with cluster admin permissions for workshop participant access
 
 ### Requirement 14
 
@@ -219,7 +219,7 @@ This document specifies the requirements for creating a new AWS workshop infrast
 3. WHEN EKS cluster is configured for secrets management, THE system SHALL install AWS Secrets Store CSI Driver add-on for mounting database secrets as environment variables
 4. WHEN EKS cluster is configured for S3 access, THE system SHALL install AWS Mountpoint S3 CSI driver add-on for S3 bucket mounting capabilities
 5. WHEN EKS cluster is configured for authentication, THE system SHALL install EKS Pod Identity Agent add-on for modern IAM authentication with AWS services
-6. WHEN EKS cluster is configured for workshop access, THE system SHALL grant WSParticipantRole cluster admin permissions via Access Entries for workshop participant access
+6. WHEN EKS cluster is configured for workshop access, THE system SHALL grant IDE instance role cluster admin permissions via Access Entries for workshop participant access
 7. WHEN EKS cluster setup is complete, THE system SHALL verify all three add-ons (Secrets Store CSI Driver, Mountpoint S3 CSI Driver, Pod Identity Agent) are installed and functional before marking deployment as successful
 
 ### Requirement 16
