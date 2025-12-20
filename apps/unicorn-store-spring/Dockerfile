@@ -5,7 +5,7 @@ RUN yum install -y shadow-utils
 COPY ./pom.xml ./pom.xml
 COPY src ./src/
 
-RUN mvn clean package && mv target/store-spring-1.0.0-exec.jar store-spring.jar
+RUN mvn clean package -DskipTests -ntp && mv target/store-spring-1.0.0-exec.jar store-spring.jar
 RUN rm -rf ~/.m2/repository
 
 RUN groupadd --system spring -g 1000

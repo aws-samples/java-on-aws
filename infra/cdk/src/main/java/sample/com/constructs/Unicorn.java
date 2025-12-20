@@ -2,6 +2,9 @@ package sample.com.constructs;
 
 import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.RemovalPolicy;
+import software.amazon.awscdk.services.ecr.Repository;
+import software.amazon.awscdk.services.ecr.TagMutability;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
@@ -20,14 +23,15 @@ import java.util.Map;
  * Uses "unicorn*" naming convention for compatibility with workshop content.
  *
  * Contains:
+ * - ECR repository (unicorn-store-spring)
  * - EKS Pod Identity role (unicornstore-eks-pod-role)
  * - ECS task roles (unicornstore-ecs-task-role, unicornstore-ecs-task-execution-role)
  * - Database schema setup (unicorns table)
- *
- * Note: ECR repository (unicorn-store-spring) is now created automatically via
- * ECR Repository Creation Template (create-on-push) instead of explicit definition.
  */
 public class Unicorn extends Construct {
+
+    // ECR Repository
+    private Repository ecrRepository;
 
     // EKS Roles
     private Role eksPodRole;
@@ -42,8 +46,14 @@ public class Unicorn extends Construct {
     public Unicorn(final Construct scope, final String id, final UnicornProps props) {
         super(scope, id);
 
-        // Note: ECR repository (unicorn-store-spring) is created automatically via
-        // ECR Repository Creation Template when images are pushed
+        // === ECR REPOSITORY ===
+        this.ecrRepository = Repository.Builder.create(this, "UnicornStoreRepository")
+            .repositoryName("unicorn-store-spring")
+            .imageScanOnPush(true)
+            .imageTagMutability(TagMutability.MUTABLE)
+            .removalPolicy(RemovalPolicy.DESTROY)
+            .emptyOnDelete(true)
+            .build();
 
         // === EKS ROLES ===
         if (props.isEksRolesEnabled()) {
@@ -236,6 +246,10 @@ public class Unicorn extends Construct {
     }
 
     // Getters
+    public Repository getEcrRepository() {
+        return ecrRepository;
+    }
+
     public Role getEksPodRole() {
         return eksPodRole;
     }

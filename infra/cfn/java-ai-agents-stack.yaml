@@ -757,7 +757,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -918,6 +917,7 @@ Resources:
           - IdeInstanceProfile61B92038
           - Arn
       InstanceName: ide
+      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
