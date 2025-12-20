@@ -26,7 +26,10 @@ if [ -d ~/environment/unicorn-store-spring ]; then
     rm -rf ~/environment/unicorn-store-spring
 fi
 cp -r ~/java-on-aws/apps/unicorn-store-spring ~/environment/
-log_success "Copied unicorn-store-spring to ~/environment"
+
+# Remove test directory to avoid testcontainers issues during Docker build
+rm -rf ~/environment/unicorn-store-spring/src/test
+log_success "Copied unicorn-store-spring to ~/environment (tests removed)"
 
 # Change to the app directory
 cd ~/environment/unicorn-store-spring
