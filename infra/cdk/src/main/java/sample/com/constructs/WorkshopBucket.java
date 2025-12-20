@@ -48,7 +48,9 @@ public class WorkshopBucket extends Construct {
         this.bucket = Bucket.Builder.create(this, "Bucket")
             .bucketName(String.format("%s-bucket-%s-%s-%s", prefix, Aws.ACCOUNT_ID, Aws.REGION, timestamp))
             .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
+            .enforceSsl(true)
             .removalPolicy(RemovalPolicy.DESTROY)
+            .autoDeleteObjects(true)
             .build();
 
         // Create SSM parameter for bucket name discovery

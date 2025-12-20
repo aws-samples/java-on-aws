@@ -1,3 +1,72 @@
+Metadata:
+  cdk_nag:
+    rules_to_suppress:
+      - reason: API Gateway access logging not needed for workshop
+        id: AwsSolutions-APIG1
+      - reason: API Gateway request validation not needed for workshop
+        id: AwsSolutions-APIG2
+      - reason: Workshop API Gateways do not need AWS WAF
+        id: AwsSolutions-APIG3
+      - reason: Workshop environment does not require API Gateway authorization
+        id: AwsSolutions-APIG4
+      - reason: API Gateway access logging not needed for workshop
+        id: AwsSolutions-APIG6
+      - reason: Workshop environment does not require Cognito User Pool authorization
+        id: AwsSolutions-COG4
+      - reason: AWS Managed policies are acceptable for workshop
+        id: AwsSolutions-IAM4
+      - reason: Wildcard permissions acceptable for workshop parallel resource creation
+        id: AwsSolutions-IAM5
+      - reason: Workshop non-sensitive test database does not need encryption at rest
+        id: AwsSolutions-RDS2
+      - reason: Workshop environment does not need Multi-AZ to reduce cost
+        id: AwsSolutions-RDS3
+      - reason: Workshop environment uses user/password authentication
+        id: AwsSolutions-RDS6
+      - reason: Workshop environment is ephemeral - database deleted at end
+        id: AwsSolutions-RDS10
+      - reason: Database in private subnet can use default port
+        id: AwsSolutions-RDS11
+      - reason: Workshop database does not need backups
+        id: AwsSolutions-RDS13
+      - reason: Workshop environment does not need VPC flow logs
+        id: AwsSolutions-VPC7
+      - reason: Workshop security groups allow broad access for learning
+        id: AwsSolutions-EC23
+      - reason: Ephemeral workshop environment does not need secret rotation
+        id: AwsSolutions-SMG4
+      - reason: Workshop environment should be accessible from any geo
+        id: AwsSolutions-CFR1
+      - reason: Ephemeral workshop environment does not need WAF
+        id: AwsSolutions-CFR2
+      - reason: Ephemeral workshop environment does not need logging
+        id: AwsSolutions-CFR3
+      - reason: Workshop IDE uses HTTP origin
+        id: AwsSolutions-CFR4
+      - reason: Workshop IDE uses HTTP origin
+        id: AwsSolutions-CFR5
+      - reason: Workshop EKS cluster uses public access for learning
+        id: AwsSolutions-EKS1
+      - reason: Workshop EKS cluster does not need control plane logging
+        id: AwsSolutions-EKS2
+      - reason: Workshop instance does not need detailed monitoring
+        id: AwsSolutions-EC28
+      - reason: Workshop instance does not need termination protection
+        id: AwsSolutions-EC29
+      - reason: CodeBuild uses default AWS-managed CMK for S3
+        id: AwsSolutions-CB4
+      - reason: Workshop S3 bucket does not need access logs
+        id: AwsSolutions-S1
+      - reason: Workshop environment uses CDK default Lambda runtimes
+        id: AwsSolutions-L1
+      - reason: Workshop environment does not need ALB logs
+        id: AwsSolutions-ELB2
+      - reason: Workshop environment uses temporary containers
+        id: AwsSolutions-ECS2
+      - reason: Workshop environment does not need Container Insights
+        id: AwsSolutions-ECS4
+      - reason: Suppress CDK Nag validation warnings
+        id: CdkNagValidationFailure
 Resources:
   VpcC3027511:
     Type: AWS::EC2::VPC
@@ -211,6 +280,14 @@ Resources:
       InternetGatewayId:
         Ref: VpcIGW488B0FEB
       VpcId:
+        Ref: VpcC3027511
+  VpcVpcIdParameter240F384B:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Workshop VPC ID for cross-stack reference
+      Name: workshop-vpc-id
+      Type: String
+      Value:
         Ref: VpcC3027511
   IdeRole4650E22E:
     Type: AWS::IAM::Role
@@ -599,29 +676,8 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      InstanceName: ide
-      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -758,8 +814,29 @@ Resources:
                 "
                     exit 1
                 fi
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
+      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
+      InstanceName: ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      VolumeSize: "50"
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:

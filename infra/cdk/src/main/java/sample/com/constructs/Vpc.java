@@ -1,6 +1,7 @@
 package sample.com.constructs;
 
 import software.amazon.awscdk.services.ec2.*;
+import software.amazon.awscdk.services.ssm.StringParameter;
 import software.constructs.Construct;
 import java.util.List;
 
@@ -50,6 +51,13 @@ public class Vpc extends Construct {
                     .cidrMask(24)
                     .build()
             ))
+            .build();
+
+        // Store VPC ID in SSM Parameter for cross-stack reference
+        StringParameter.Builder.create(this, "VpcIdParameter")
+            .parameterName(prefix + "-vpc-id")
+            .description("Workshop VPC ID for cross-stack reference")
+            .stringValue(this.vpc.getVpcId())
             .build();
     }
 

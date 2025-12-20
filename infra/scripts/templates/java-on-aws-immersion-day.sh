@@ -37,6 +37,15 @@ else
     exit 1
 fi
 
+# Phase 4: Unicorn Store Spring (build and push to ECR)
+log_info "Phase 4: Building and pushing Unicorn Store Spring..."
+if bash "$SCRIPT_DIR/../setup/unicorn-store-spring.sh"; then
+    log_success "Unicorn Store Spring setup completed"
+else
+    log_error "Unicorn Store Spring setup failed"
+    exit 1
+fi
+
 log_success "Java-on-AWS-Immersion-Day workshop post-deploy setup completed successfully!"
 
 # Emit for bootstrap summary

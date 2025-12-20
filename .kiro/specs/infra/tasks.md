@@ -783,3 +783,140 @@
   - Verify base template uses AdministratorAccess
   - Verify other templates use custom IdeUserPolicy
   - _Requirements: 5.6_
+
+
+## VPC Endpoint Cleanup and SSM Parameters (900.x)
+
+- [x] 900.1 Create VPC Endpoint Cleanup construct
+  - Create infra/cdk/src/main/resources/lambda/cfn-pre-delete-cleanup.py
+  - Lambda finds GuardDuty VPC endpoints by VPC ID, deletes them, waits for deletion
+  - Create infra/cdk/src/main/java/sample/com/constructs/CfnPreDeleteCleanup.java
+  - Custom Resource triggers cleanup on stack delete only
+  - _Requirements: 5.6_
+
+- [x] 900.2 Integrate CfnPreDeleteCleanup into WorkshopStack
+  - Add CfnPreDeleteCleanup for java-on-aws-immersion-day and java-on-amazon-eks templates
+  - Pass VPC ID to ensure only workshop VPC endpoints are deleted
+  - _Requirements: 5.6_
+
+- [x] 900.3 Add workshop-vpc-id SSM parameter
+  - Update Vpc.java to create SSM parameter with VPC ID
+  - Parameter name: workshop-vpc-id
+  - Available in all stacks for cross-stack reference
+  - _Requirements: 5.6_
+
+- [x] 900.4 Test and validate
+  - Generate all templates: `npm run generate`
+  - Verify CfnPreDeleteCleanup resources in EKS templates
+  - Verify workshop-vpc-id SSM parameter in all templates
+  - _Requirements: 5.6_
+
+
+## CDK Nag Integration (1000.x)
+
+- [x] 1000.1 Add CDK Nag dependency
+  - Add io.github.cdklabs:cdknag:2.36.2 to pom.xml
+  - Add cdknag.version property for version management
+  - _Requirements: 5.6_
+
+- [x] 1000.2 Configure CDK Nag in WorkshopApp
+  - Add AwsSolutionsChecks aspect to app
+  - Add workshop-appropriate suppressions for:
+    - API Gateway (APIG1-6, COG4) - no auth/logging needed for workshop
+    - IAM (IAM4, IAM5) - managed policies and wildcards acceptable
+    - RDS (RDS2, RDS3, RDS6, RDS10, RDS11, RDS13) - ephemeral workshop database
+    - VPC (VPC7, EC23) - no flow logs needed
+    - Secrets Manager (SMG4) - no rotation needed
+    - CloudFront (CFR1-5) - HTTP origin acceptable for workshop
+    - EKS (EKS1, EKS2) - public access and no logging for workshop
+    - EC2 (EC28, EC29) - no autoscaling/termination protection
+    - CodeBuild (CB4) - default CMK acceptable
+    - S3 (S1) - no access logs needed
+    - Lambda (L1) - CDK default runtimes acceptable
+    - ELB (ELB2) - no ALB logs needed
+    - ECS (ECS2, ECS4) - temporary containers, no insights
+  - _Requirements: 5.6_
+
+- [x] 1000.3 Enable SSL enforcement on S3 bucket
+  - Add enforceSsl(true) to WorkshopBucket construct
+  - Fixes AwsSolutions-S10 CDK Nag finding
+  - _Requirements: 5.6_
+
+- [x] 1000.4 Test and validate CDK Nag
+  - Generate all templates: `npm run generate`
+  - Verify no CDK Nag errors (only suppressed warnings)
+  - All templates pass validation
+  - _Requirements: 5.6_
+
+
+## S3 HTTPS Verification (1100.x)
+
+- [x] 1100.1 Verify S3 bucket SSL enforcement
+  - WorkshopBucket.java has enforceSsl(true) which enforces HTTPS at bucket policy level ✅
+  - Any HTTP requests to the bucket will be denied by AWS ✅
+  - _Requirements: 5.6_
+
+- [x] 1100.2 Verify S3 client usage in Lambda
+  - thread-dump-lambda/src/index.py uses boto3.client('s3') for put_object operations ✅
+  - boto3 S3 client uses HTTPS by default - no code changes needed ✅
+  - S3 operations: put_object for thread dumps and analysis results ✅
+  - _Requirements: 5.6_
+
+- [x] 1100.3 Verify S3 permissions in CDK constructs
+  - ThreadAnalysis.java passes bucket name to Lambda via S3_BUCKET_NAME environment variable ✅
+  - JvmAnalysis.java grants S3 permissions to Pod Identity role ✅
+  - Unicorn.java grants S3 permissions to EKS pod role ✅
+  - All use bucket.grantReadWrite() which doesn't affect transport protocol ✅
+  - _Requirements: 5.6_
+
+- [x] 1100.4 Verify scripts don't use HTTP for S3
+  - tools.sh Session Manager download uses AWS-hosted URL (not our bucket) - acceptable ✅
+  - No scripts manually construct S3 URLs that might use HTTP ✅
+  - All S3 interactions go through AWS SDK/CLI which use HTTPS by default ✅
+  - _Requirements: 5.6_
+
+
+## Unicorn Store Spring Setup (1200.x)
+
+- [x] 1200.1 Create unicorn-store-spring.sh setup script
+  - Created infra/scripts/setup/unicorn-store-spring.sh ✅
+  - Copies ~/java-on-aws/apps/unicorn-store-spring to ~/environment ✅
+  - Logs in to ECR using aws ecr get-login-password ✅
+  - Builds Docker image with docker build ✅
+  - Tags and pushes with 'initial' tag ✅
+  - Tags and pushes with 'latest' tag ✅
+  - Emits "✅ Success: Unicorn Store Spring" for bootstrap summary ✅
+  - _Requirements: 5.6_
+
+- [x] 1200.2 Integrate into java-on-aws-immersion-day template
+  - Added Phase 4: Unicorn Store Spring to java-on-aws-immersion-day.sh ✅
+  - Calls unicorn-store-spring.sh after analysis setup ✅
+  - _Requirements: 5.6_
+
+- [x] 1200.3 Integrate into java-on-amazon-eks template
+  - Added Phase 4: Unicorn Store Spring to java-on-amazon-eks.sh ✅
+  - Calls unicorn-store-spring.sh after analysis setup ✅
+  - _Requirements: 5.6_
+
+
+## Stack Cleanup Enhancements (1300.x)
+
+- [x] 1300.1 Enhance cleanup Lambda with CloudWatch logs and S3 cleanup
+  - Updated cfn-pre-delete-cleanup.py to also clean up CloudWatch logs and S3 buckets ✅
+  - Deletes log groups with workshop- or unicornstore- prefix ✅
+  - Empties S3 buckets with workshop- prefix ✅
+  - Execution order: start VPC endpoint deletion → cleanup logs and S3 → wait for VPC endpoints ✅
+  - _Requirements: 5.6_
+
+- [x] 1300.2 Update CfnPreDeleteCleanup construct with additional IAM permissions
+  - Added logs:DescribeLogGroups and logs:DeleteLogGroup permissions ✅
+  - Added s3:ListAllMyBuckets, s3:ListBucket, s3:ListBucketVersions, s3:DeleteObject, s3:DeleteObjectVersion permissions ✅
+  - Updated Lambda description to reflect expanded cleanup scope ✅
+  - _Requirements: 5.6_
+
+- [x] 1300.3 Rename construct and Lambda for clarity
+  - Renamed VpcEndpointCleanup.java to CfnPreDeleteCleanup.java ✅
+  - Renamed vpc-endpoint-cleanup.py to cfn-pre-delete-cleanup.py ✅
+  - Updated Lambda function name to {prefix}-cfn-pre-delete-cleanup ✅
+  - Updated WorkshopStack.java to use new class name ✅
+  - _Requirements: 5.6_

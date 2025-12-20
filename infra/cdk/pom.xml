@@ -13,6 +13,7 @@
         <maven.compiler.target>25</maven.compiler.target>
         <cdk.version>2.224.0</cdk.version>
         <constructs.version>10.4.2</constructs.version>
+        <cdknag.version>2.36.2</cdknag.version>
         <junit.version>5.11.3</junit.version>
     </properties>
 
@@ -58,6 +59,13 @@
             <groupId>software.amazon.awscdk</groupId>
             <artifactId>eks-v2-alpha</artifactId>
             <version>${cdk.version}-alpha.0</version>
+        </dependency>
+
+        <!-- CDK Nag for best practices validation -->
+        <dependency>
+            <groupId>io.github.cdklabs</groupId>
+            <artifactId>cdknag</artifactId>
+            <version>${cdknag.version}</version>
         </dependency>
 
         <!-- AWS Lambda Runtime -->

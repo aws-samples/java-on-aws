@@ -125,6 +125,13 @@ public class WorkshopStack extends Stack {
                 .database(database)
                 .workshopBucket(workshopBucket.getBucket())
                 .build());
+
+            // Pre-delete cleanup (removes VPC endpoints, CloudWatch logs, S3 contents before stack deletion)
+            new CfnPreDeleteCleanup(this, "CfnPreDeleteCleanup",
+                CfnPreDeleteCleanup.CfnPreDeleteCleanupProps.builder()
+                    .prefix(prefix)
+                    .vpc(vpc.getVpc())
+                    .build());
         }
     }
 }
