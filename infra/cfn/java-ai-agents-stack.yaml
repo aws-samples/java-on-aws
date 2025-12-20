@@ -278,19 +278,70 @@ Resources:
             Resource: "*"
             Sid: MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet
           - Action:
+              - apigateway:*
+              - application-signals:*
               - aws-marketplace:Unsubscribe
               - aws-marketplace:ViewSubscriptions
-              - bedrock:*
-            Effect: Allow
-            Resource: "*"
-          - Action:
               - bedrock-agentcore:*
               - bedrock:*
+              - cloudformation:*
+              - cloudwatch:*
               - codewhisperer:*
+              - ec2:*
+              - ecr:*
+              - ecs:*
+              - eks:*
+              - elasticloadbalancing:*
+              - events:*
+              - lambda:*
+              - logs:*
               - q:*
+              - rds:*
+              - s3:*
+              - secretsmanager:*
+              - ssm:*
+              - sts:*
+              - tag:*
+              - xray:*
             Effect: Allow
             Resource: "*"
             Sid: AllowedServices
+          - Action: iam:PassRole
+            Effect: Allow
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+            Sid: PassRole
+          - Action: ec2:RunInstances
+            Condition:
+              StringLike:
+                ec2:InstanceType:
+                  - "*4xlarge"
+                  - "*6xlarge"
+                  - "*8xlarge"
+                  - "*9xlarge"
+                  - "*10xlarge"
+                  - "*12xlarge"
+                  - "*16xlarge"
+                  - "*18xlarge"
+                  - "*24xlarge"
+                  - f1*
+                  - x1*
+                  - z1*
+                  - "*metal"
+            Effect: Deny
+            Resource: arn:aws:ec2:*:*:instance/*
+            Sid: DenyXXLInstances
+          - Action:
+              - dynamodb:PurchaseReservedCapacityOfferings
+              - ec2:ModifyReservedInstances
+              - ec2:PurchaseHostReservation
+              - ec2:PurchaseReservedInstancesOffering
+              - ec2:PurchaseScheduledInstances
+              - rds:PurchaseReservedDBInstancesOffering
+            Effect: Deny
+            Resource: "*"
+            Sid: DenyReservations
         Version: "2012-10-17"
   IdeLambdaRole82392143:
     Type: AWS::IAM::Role
@@ -629,18 +680,19 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      SecurityGroupIds:
+      SubnetIds:
         Fn::Join:
           - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
             - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      InstanceName: ide
+      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -777,19 +829,18 @@ Resources:
                 "
                     exit 1
                 fi
-      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
-      InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      VolumeSize: "50"
-      SubnetIds:
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
+      SecurityGroupIds:
         Fn::Join:
           - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
             - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:

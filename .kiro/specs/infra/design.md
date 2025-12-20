@@ -747,3 +747,216 @@ void workshopTypeResourceMapping(@ForAll String workshopType) {
     // Test implementation
 }
 ```
+
+
+## ECR Repository Creation Templates
+
+### Overview
+
+ECR Repository Creation Templates enable automatic repository creation when images are pushed, eliminating the need for explicit repository definitions in CDK. This simplifies infrastructure management and ensures consistent repository settings across all auto-created repositories.
+
+### Architecture
+
+The ECR Create-on-Push feature uses a registry-level template that applies to all repositories:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ECR Private Registry                      │
+├─────────────────────────────────────────────────────────────┤
+│  Repository Creation Template (ROOT prefix)                  │
+│  ├── Applied For: CREATE_ON_PUSH, REPLICATION               │
+│  ├── Image Tag Mutability: MUTABLE                          │
+│  ├── Lifecycle Policy: 1 day untagged, 10 recent tagged     │
+│  └── Resource Tags: Environment=workshop, ManagedBy=ecr-... │
+├─────────────────────────────────────────────────────────────┤
+│  Auto-Created Repositories (on first push):                  │
+│  ├── unicorn-store-spring                                   │
+│  ├── jvm-analysis-service                                   │
+│  └── {any-new-repo}                                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### EcrRegistry Construct
+
+A new `EcrRegistry` construct manages the repository creation template:
+
+```java
+package sample.com.constructs;
+
+import software.amazon.awscdk.RemovalPolicy;
+import software.amazon.awscdk.services.ecr.CfnRepositoryCreationTemplate;
+import software.constructs.Construct;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * EcrRegistry construct for ECR private registry settings.
+ * Creates Repository Creation Template for automatic repository creation on push.
+ * Uses prefix for resource naming consistency.
+ */
+public class EcrRegistry extends Construct {
+
+    private final CfnRepositoryCreationTemplate repositoryCreationTemplate;
+
+    public static class EcrRegistryProps {
+        private String prefix = "workshop";
+
+        public static Builder builder() { return new Builder(); }
+
+        public static class Builder {
+            private EcrRegistryProps props = new EcrRegistryProps();
+
+            public Builder prefix(String prefix) { props.prefix = prefix; return this; }
+            public EcrRegistryProps build() { return props; }
+        }
+
+        public String getPrefix() { return prefix; }
+    }
+
+    public EcrRegistry(final Construct scope, final String id, final EcrRegistryProps props) {
+        super(scope, id);
+
+        String prefix = props.getPrefix();
+
+        // Lifecycle policy JSON - expires untagged after 1 day, keeps 10 recent tagged
+        String lifecyclePolicyJson = """
+            {
+                "rules": [
+                    {
+                        "rulePriority": 1,
+                        "description": "Expire untagged images after 1 day",
+                        "selection": {
+                            "tagStatus": "untagged",
+                            "countType": "sinceImagePushed",
+                            "countUnit": "days",
+                            "countNumber": 1
+                        },
+                        "action": {
+                            "type": "expire"
+                        }
+                    },
+                    {
+                        "rulePriority": 2,
+                        "description": "Keep only 10 most recent tagged images",
+                        "selection": {
+                            "tagStatus": "tagged",
+                            "tagPrefixList": ["latest", "v"],
+                            "countType": "imageCountMoreThan",
+                            "countNumber": 10
+                        },
+                        "action": {
+                            "type": "expire"
+                        }
+                    }
+                ]
+            }
+            """;
+
+        // Create Repository Creation Template
+        this.repositoryCreationTemplate = CfnRepositoryCreationTemplate.Builder.create(this, "Template")
+            .prefix("ROOT")  // Applies to all repositories
+            .appliedFor(List.of("CREATE_ON_PUSH", "REPLICATION"))
+            .imageTagMutability("MUTABLE")
+            .lifecyclePolicy(lifecyclePolicyJson)
+            .resourceTags(List.of(
+                CfnRepositoryCreationTemplate.TagProperty.builder()
+                    .key("Environment")
+                    .value(prefix)
+                    .build(),
+                CfnRepositoryCreationTemplate.TagProperty.builder()
+                    .key("ManagedBy")
+                    .value("ecr-create-on-push")
+                    .build()
+            ))
+            .description("Auto-create repositories on push with lifecycle policies for " + prefix + " workshop")
+            .build();
+    }
+
+    public CfnRepositoryCreationTemplate getRepositoryCreationTemplate() {
+        return repositoryCreationTemplate;
+    }
+}
+```
+
+### Changes to Existing Constructs
+
+#### Unicorn Construct (Updated)
+
+Remove explicit ECR repository creation:
+
+```java
+// BEFORE: Explicit repository creation
+this.unicornStoreSpringEcr = Repository.Builder.create(this, "UnicornStoreSpringEcr")
+    .repositoryName("unicorn-store-spring")
+    .imageScanOnPush(false)
+    .removalPolicy(RemovalPolicy.DESTROY)
+    .emptyOnDelete(true)
+    .build();
+
+// AFTER: Remove ECR repository - created automatically on push
+// Repository will be created when image is pushed with:
+// docker push {account}.dkr.ecr.{region}.amazonaws.com/unicorn-store-spring:latest
+```
+
+#### JvmAnalysis Construct (Updated)
+
+Remove explicit ECR repository creation:
+
+```java
+// BEFORE: Explicit repository creation
+this.jvmAnalysisEcr = Repository.Builder.create(this, "Ecr")
+    .repositoryName("jvm-analysis-service")
+    .removalPolicy(RemovalPolicy.DESTROY)
+    .emptyOnDelete(true)
+    .build();
+
+// AFTER: Remove ECR repository - created automatically on push
+// Repository will be created when image is pushed with:
+// docker push {account}.dkr.ecr.{region}.amazonaws.com/jvm-analysis-service:latest
+```
+
+### WorkshopStack Integration
+
+Add EcrRegistry to WorkshopStack for java-on-aws-immersion-day and java-on-amazon-eks templates:
+
+```java
+// In WorkshopStack.java
+if ("java-on-aws-immersion-day".equals(templateType) || "java-on-amazon-eks".equals(templateType)) {
+    // ECR Registry settings (Repository Creation Template for create-on-push)
+    EcrRegistry ecrRegistry = new EcrRegistry(this, "EcrRegistry",
+        EcrRegistry.EcrRegistryProps.builder()
+            .prefix(prefix)
+            .build());
+
+    // ... other resources (Database, EKS, etc.)
+}
+```
+
+### Benefits
+
+| Aspect | Before (Explicit Repos) | After (Create-on-Push) |
+|--------|------------------------|------------------------|
+| New repo creation | Requires CDK deploy | Push and go |
+| Lifecycle policies | Manual per-repo | Automatic via template |
+| Consistent tagging | Manual | Automatic |
+| CDK code complexity | Higher | Lower |
+| Workshop flexibility | Limited | Self-service |
+
+### Correctness Properties for ECR
+
+#### Property 31: Repository Creation Template Configuration
+*For any* deployed CDK stack with java-on-aws-immersion-day or java-on-amazon-eks template type, the ECR Registry should contain a Repository Creation Template with ROOT prefix and CREATE_ON_PUSH enabled
+**Validates: Requirements 26.1, 26.2**
+
+#### Property 32: Lifecycle Policy Application
+*For any* repository created via Create-on-Push, the lifecycle policy should expire untagged images after 1 day and keep only 10 most recent tagged images
+**Validates: Requirements 27.1, 27.2, 27.3**
+
+#### Property 33: Resource Tag Consistency
+*For any* repository created via Create-on-Push, it should have Environment and ManagedBy tags applied from the template
+**Validates: Requirements 29.1, 29.2**
+
+#### Property 34: Construct Simplification
+*For any* Unicorn or JvmAnalysis construct, it should not create explicit ECR repositories when EcrRegistry is present
+**Validates: Requirements 28.1, 28.2, 28.3**

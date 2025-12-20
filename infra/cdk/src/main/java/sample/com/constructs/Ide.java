@@ -185,14 +185,17 @@ public class Ide extends Construct {
 
         this.ideRole.addToPolicy(cfnSignalPermissions);
 
-        // Load workshop-specific IAM policy from file (iam-policy-{templateType}.json)
-        String policyFileName = "/iam-policy-" + props.getTemplateType() + ".json";
-        String policyDocumentJson = loadFile(policyFileName);
-        var policyDocument = PolicyDocument.fromJson(new JSONObject(policyDocumentJson).toMap());
-        var policy = ManagedPolicy.Builder.create(this, "UserPolicy")
-            .document(policyDocument)
-            .build();
-        this.ideRole.addManagedPolicy(policy);
+        // Load IAM policy: base template uses AdministratorAccess, others use iam-policy.json
+        if ("base".equals(props.getTemplateType())) {
+            this.ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
+        } else {
+            String policyDocumentJson = loadFile("/iam-policy.json");
+            var policyDocument = PolicyDocument.fromJson(new JSONObject(policyDocumentJson).toMap());
+            var policy = ManagedPolicy.Builder.create(this, "UserPolicy")
+                .document(policyDocument)
+                .build();
+            this.ideRole.addManagedPolicy(policy);
+        }
 
         // Create Lambda role for IDE Lambda functions
         this.lambdaRole = Role.Builder.create(this, "LambdaRole")

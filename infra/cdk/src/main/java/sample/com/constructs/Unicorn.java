@@ -2,8 +2,6 @@ package sample.com.constructs;
 
 import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
-import software.amazon.awscdk.RemovalPolicy;
-import software.amazon.awscdk.services.ecr.Repository;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
@@ -22,15 +20,14 @@ import java.util.Map;
  * Uses "unicorn*" naming convention for compatibility with workshop content.
  *
  * Contains:
- * - ECR repository (unicorn-store-spring)
  * - EKS Pod Identity role (unicornstore-eks-pod-role)
  * - ECS task roles (unicornstore-ecs-task-role, unicornstore-ecs-task-execution-role)
  * - Database schema setup (unicorns table)
+ *
+ * Note: ECR repository (unicorn-store-spring) is now created automatically via
+ * ECR Repository Creation Template (create-on-push) instead of explicit definition.
  */
 public class Unicorn extends Construct {
-
-    // ECR
-    private final Repository unicornStoreSpringEcr;
 
     // EKS Roles
     private Role eksPodRole;
@@ -45,13 +42,8 @@ public class Unicorn extends Construct {
     public Unicorn(final Construct scope, final String id, final UnicornProps props) {
         super(scope, id);
 
-        // === ECR REPOSITORY ===
-        this.unicornStoreSpringEcr = Repository.Builder.create(this, "UnicornStoreSpringEcr")
-            .repositoryName("unicorn-store-spring")
-            .imageScanOnPush(false)
-            .removalPolicy(RemovalPolicy.DESTROY)
-            .emptyOnDelete(true)
-            .build();
+        // Note: ECR repository (unicorn-store-spring) is created automatically via
+        // ECR Repository Creation Template when images are pushed
 
         // === EKS ROLES ===
         if (props.isEksRolesEnabled()) {
@@ -244,10 +236,6 @@ public class Unicorn extends Construct {
     }
 
     // Getters
-    public Repository getUnicornStoreSpringEcr() {
-        return unicornStoreSpringEcr;
-    }
-
     public Role getEksPodRole() {
         return eksPodRole;
     }

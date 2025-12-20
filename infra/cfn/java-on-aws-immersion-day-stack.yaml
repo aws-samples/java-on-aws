@@ -298,14 +298,12 @@ Resources:
             Resource: "*"
             Sid: MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet
           - Action:
-              - aws-marketplace:Unsubscribe
-              - aws-marketplace:ViewSubscriptions
-              - bedrock:*
-            Effect: Allow
-            Resource: "*"
-          - Action:
               - apigateway:*
               - application-signals:*
+              - aws-marketplace:Unsubscribe
+              - aws-marketplace:ViewSubscriptions
+              - bedrock-agentcore:*
+              - bedrock:*
               - cloudformation:*
               - cloudwatch:*
               - codewhisperer:*
@@ -1488,7 +1486,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ContentHash: "1766218944836"
+      ContentHash: "1766238889312"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
@@ -1846,7 +1844,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251220092225"
+            - "-20251220145449"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -1862,6 +1860,51 @@ Resources:
       Type: String
       Value:
         Ref: WorkshopBucketFD5BC43F
+  EcrRegistryTemplateD54113AB:
+    Type: AWS::ECR::RepositoryCreationTemplate
+    Properties:
+      AppliedFor:
+        - CREATE_ON_PUSH
+        - REPLICATION
+      Description: Auto-create repositories on push with lifecycle policies for workshop workshop
+      ImageTagMutability: MUTABLE
+      LifecyclePolicy: |
+        {
+            "rules": [
+                {
+                    "rulePriority": 1,
+                    "description": "Expire untagged images after 1 day",
+                    "selection": {
+                        "tagStatus": "untagged",
+                        "countType": "sinceImagePushed",
+                        "countUnit": "days",
+                        "countNumber": 1
+                    },
+                    "action": {
+                        "type": "expire"
+                    }
+                },
+                {
+                    "rulePriority": 2,
+                    "description": "Keep only 10 most recent tagged images",
+                    "selection": {
+                        "tagStatus": "tagged",
+                        "tagPrefixList": ["latest", "v"],
+                        "countType": "imageCountMoreThan",
+                        "countNumber": 10
+                    },
+                    "action": {
+                        "type": "expire"
+                    }
+                }
+            ]
+        }
+      Prefix: ROOT
+      ResourceTags:
+        - Key: Environment
+          Value: workshop
+        - Key: ManagedBy
+          Value: ecr-create-on-push
   ThreadAnalysisLambdaRole00E8F59E:
     Type: AWS::IAM::Role
     Properties:
@@ -2193,13 +2236,6 @@ Resources:
           - ThreadAnalysisLambdaRole00E8F59E
           - Arn
       Type: STANDARD
-  JvmAnalysisEcr01D6730D:
-    Type: AWS::ECR::Repository
-    Properties:
-      EmptyOnDelete: true
-      RepositoryName: jvm-analysis-service
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
   JvmAnalysisServiceRole87E5AD2B:
     Type: AWS::IAM::Role
     Properties:
@@ -2244,15 +2280,6 @@ Resources:
       PolicyName: JvmAnalysisServiceRoleDefaultPolicyB35B4FC8
       Roles:
         - Ref: JvmAnalysisServiceRole87E5AD2B
-  UnicornUnicornStoreSpringEcr689B9363:
-    Type: AWS::ECR::Repository
-    Properties:
-      EmptyOnDelete: true
-      ImageScanningConfiguration:
-        ScanOnPush: false
-      RepositoryName: unicorn-store-spring
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
   UnicornUnicornStoreEksPodRoleB15D12B7:
     Type: AWS::IAM::Role
     Properties:

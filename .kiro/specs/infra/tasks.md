@@ -710,3 +710,76 @@
   - Verify JvmAnalysis resources use app-specific naming (no prefix) ✅
   - Verify Unicorn still receives bucket reference ✅
   - _Requirements: 22.5, 23.3, 24.1, 25.1_
+
+
+## ECR Create-on-Push (700.x)
+
+- [x] 700.1 Create EcrRegistry construct
+  - Create infra/cdk/src/main/java/sample/com/constructs/EcrRegistry.java
+  - Add prefix parameter to EcrRegistryProps
+  - Create CfnRepositoryCreationTemplate with:
+    - prefix: "ROOT" (applies to all repositories)
+    - appliedFor: ["CREATE_ON_PUSH", "REPLICATION"]
+    - imageTagMutability: "MUTABLE"
+    - lifecyclePolicy: JSON with 1-day untagged expiry and 10 recent tagged retention
+    - resourceTags: Environment={prefix}, ManagedBy=ecr-create-on-push
+    - description: "Auto-create repositories on push with lifecycle policies for {prefix} workshop"
+  - _Requirements: 26.1, 26.2, 26.3, 27.1, 27.2, 29.1, 29.2_
+
+- [x] 700.2 Remove ECR repository from Unicorn construct
+  - Remove Repository.Builder.create() for unicorn-store-spring from Unicorn.java
+  - Remove unicornStoreSpringEcr field and getter
+  - Update any code that references the ECR repository
+  - Verify construct still compiles and functions correctly
+  - _Requirements: 28.1_
+
+- [x] 700.3 Remove ECR repository from JvmAnalysis construct
+  - Remove Repository.Builder.create() for jvm-analysis-service from JvmAnalysis.java
+  - Remove jvmAnalysisEcr field and getter
+  - Update any code that references the ECR repository
+  - Verify construct still compiles and functions correctly
+  - _Requirements: 28.2_
+
+- [x] 700.4 Integrate EcrRegistry into WorkshopStack
+  - Add EcrRegistry creation for java-on-aws-immersion-day and java-on-amazon-eks templates
+  - Create EcrRegistry before Unicorn and JvmAnalysis constructs
+  - Pass prefix to EcrRegistry
+  - _Requirements: 26.1, 28.3_
+
+- [x] 700.5 Test and validate ECR Create-on-Push
+  - Generate template: `npm run generate`
+  - Verify CfnRepositoryCreationTemplate resource is present in generated template
+  - Verify Unicorn construct no longer creates ECR repository
+  - Verify JvmAnalysis construct no longer creates ECR repository
+  - Verify lifecycle policy JSON is correctly formatted
+  - Verify resource tags are present
+  - _Requirements: 26.1, 26.2, 26.3, 27.1, 27.2, 28.1, 28.2, 29.1, 29.2_
+
+- [x] 700.6 Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+
+## IAM Policy Consolidation (800.x)
+
+- [x] 800.1 Consolidate IAM policy files
+  - Create single iam-policy.json from java-on-aws-immersion-day.json
+  - Add bedrock-agentcore:* permission for AI agent workshops
+  - Delete duplicate policy files:
+    - iam-policy-base.json
+    - iam-policy-java-on-aws-immersion-day.json
+    - iam-policy-java-on-amazon-eks.json
+    - iam-policy-java-ai-agents.json
+    - iam-policy-java-spring-ai-agents.json
+  - _Requirements: 5.6_
+
+- [x] 800.2 Update Ide.java policy loading logic
+  - For base template: use AdministratorAccess managed policy
+  - For all other templates: load iam-policy.json
+  - Remove template-specific policy file loading
+  - _Requirements: 5.6_
+
+- [x] 800.3 Test and validate IAM policy consolidation
+  - Generate all templates: `npm run generate`
+  - Verify base template uses AdministratorAccess
+  - Verify other templates use custom IdeUserPolicy
+  - _Requirements: 5.6_

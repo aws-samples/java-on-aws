@@ -1,7 +1,5 @@
 package sample.com.constructs;
 
-import software.amazon.awscdk.RemovalPolicy;
-import software.amazon.awscdk.services.ecr.Repository;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.s3.Bucket;
 import software.constructs.Construct;
@@ -10,12 +8,14 @@ import java.util.List;
 
 /**
  * JvmAnalysis construct for JVM profiling analysis.
- * Creates ECR repository and Pod Identity role for jvm-analysis-service.
+ * Creates Pod Identity role for jvm-analysis-service.
  * Uses app-specific naming (no prefix) for workshop content compatibility.
+ *
+ * Note: ECR repository (jvm-analysis-service) is now created automatically via
+ * ECR Repository Creation Template (create-on-push) instead of explicit definition.
  */
 public class JvmAnalysis extends Construct {
 
-    private final Repository jvmAnalysisEcr;
     private final Role jvmAnalysisServiceRole;
 
     public static class JvmAnalysisProps {
@@ -40,12 +40,8 @@ public class JvmAnalysis extends Construct {
     public JvmAnalysis(final Construct scope, final String id, final JvmAnalysisProps props) {
         super(scope, id);
 
-        // Create ECR repository for jvm-analysis-service (app-specific naming, no prefix)
-        this.jvmAnalysisEcr = Repository.Builder.create(this, "Ecr")
-            .repositoryName("jvm-analysis-service")
-            .removalPolicy(RemovalPolicy.DESTROY)
-            .emptyOnDelete(true)
-            .build();
+        // Note: ECR repository (jvm-analysis-service) is created automatically via
+        // ECR Repository Creation Template when images are pushed
 
         // Create Pod Identity role for jvm-analysis-service (app-specific naming, no prefix)
         // Pod Identity requires both sts:AssumeRole and sts:TagSession
@@ -92,10 +88,6 @@ public class JvmAnalysis extends Construct {
     }
 
     // Getters
-    public Repository getJvmAnalysisEcr() {
-        return jvmAnalysisEcr;
-    }
-
     public Role getJvmAnalysisServiceRole() {
         return jvmAnalysisServiceRole;
     }

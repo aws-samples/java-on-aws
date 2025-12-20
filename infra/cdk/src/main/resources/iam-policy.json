@@ -3,37 +3,32 @@
 	"Statement": [
 		{
 			"Sid": "MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet",
-            "Effect": "Allow",
-            "Action": [
-                "aws-marketplace:Subscribe"
-            ],
-            "Resource": "*",
-            "Condition": {
-                "Null": {
-                    "aws-marketplace:ProductId": "false"
-                },
-                "ForAllValues:StringEquals": {
-                    "aws-marketplace:ProductId": [
+			"Effect": "Allow",
+			"Action": [
+				"aws-marketplace:Subscribe"
+			],
+			"Resource": "*",
+			"Condition": {
+				"Null": {
+					"aws-marketplace:ProductId": "false"
+				},
+				"ForAllValues:StringEquals": {
+					"aws-marketplace:ProductId": [
 						"prod-jhuafngbly644",
 						"prod-mxcfnwvpd6kb4",
 						"prod-4pmewlybdftbs"
-                    ]
-                }
-            }
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "aws-marketplace:Unsubscribe",
-                "aws-marketplace:ViewSubscriptions",
-				"bedrock:*"
-            ],
-            "Resource": "*"
-        },
+					]
+				}
+			}
+		},
 		{
 			"Sid": "AllowedServices",
 			"Effect": "Allow",
 			"Action": [
+				"aws-marketplace:Unsubscribe",
+				"aws-marketplace:ViewSubscriptions",
+				"bedrock:*",
+				"bedrock-agentcore:*",
 				"apigateway:*",
 				"application-signals:*",
 				"cloudformation:*",
@@ -47,14 +42,14 @@
 				"events:*",
 				"lambda:*",
 				"logs:*",
-				"q:*",
 				"rds:*",
 				"s3:*",
 				"secretsmanager:*",
 				"ssm:*",
 				"sts:*",
 				"tag:*",
-				"xray:*"
+				"xray:*",
+				"q:*"
 			],
 			"Resource": "*"
 		},
@@ -74,23 +69,23 @@
 			"Effect": "Deny",
 			"Action": "ec2:RunInstances",
 			"Condition": {
-			"StringLike": {
-				"ec2:InstanceType": [
-				"*4xlarge",
-				"*6xlarge",
-				"*8xlarge",
-				"*9xlarge",
-				"*10xlarge",
-				"*12xlarge",
-				"*16xlarge",
-				"*18xlarge",
-				"*24xlarge",
-				"f1*",
-				"x1*",
-				"z1*",
-				"*metal"
-				]
-			}
+				"StringLike": {
+					"ec2:InstanceType": [
+						"*4xlarge",
+						"*6xlarge",
+						"*8xlarge",
+						"*9xlarge",
+						"*10xlarge",
+						"*12xlarge",
+						"*16xlarge",
+						"*18xlarge",
+						"*24xlarge",
+						"f1*",
+						"x1*",
+						"z1*",
+						"*metal"
+					]
+				}
 			},
 			"Resource": ["arn:aws:ec2:*:*:instance/*"]
 		},
@@ -108,4 +103,4 @@
 			"Resource": "*"
 		}
 	]
-  }
+}

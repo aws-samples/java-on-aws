@@ -95,6 +95,12 @@ public class WorkshopStack extends Stack {
                     .prefix(prefix)
                     .build());
 
+            // ECR Registry settings (Repository Creation Template for create-on-push)
+            EcrRegistry ecrRegistry = new EcrRegistry(this, "EcrRegistry",
+                EcrRegistry.EcrRegistryProps.builder()
+                    .prefix(prefix)
+                    .build());
+
             // Thread Analysis (thread dump Lambda + API Gateway)
             ThreadAnalysis threadAnalysis = new ThreadAnalysis(this, "ThreadAnalysis",
                 ThreadAnalysis.ThreadAnalysisProps.builder()
@@ -105,13 +111,13 @@ public class WorkshopStack extends Stack {
                     .workshopBucket(workshopBucket.getBucket())
                     .build());
 
-            // JVM Analysis (ECR + Pod Identity role for jvm-analysis-service)
+            // JVM Analysis (Pod Identity role for jvm-analysis-service)
             JvmAnalysis jvmAnalysis = new JvmAnalysis(this, "JvmAnalysis",
                 JvmAnalysis.JvmAnalysisProps.builder()
                     .workshopBucket(workshopBucket.getBucket())
                     .build());
 
-            // Unicorn construct: ECR + Roles + DB Setup (uses unicorn* naming for workshop content compatibility)
+            // Unicorn construct: Roles + DB Setup (uses unicorn* naming for workshop content compatibility)
             Unicorn unicorn = new Unicorn(this, "Unicorn", Unicorn.UnicornProps.builder()
                 .vpc(vpc.getVpc())
                 .eksRolesEnabled(true)

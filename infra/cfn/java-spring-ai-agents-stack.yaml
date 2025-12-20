@@ -265,9 +265,83 @@ Resources:
       Path: /
       PolicyDocument:
         Statement:
-          - Action: "*"
+          - Action: aws-marketplace:Subscribe
+            Condition:
+              "Null":
+                aws-marketplace:ProductId: "false"
+              ForAllValues:StringEquals:
+                aws-marketplace:ProductId:
+                  - prod-jhuafngbly644
+                  - prod-mxcfnwvpd6kb4
+                  - prod-4pmewlybdftbs
             Effect: Allow
             Resource: "*"
+            Sid: MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet
+          - Action:
+              - apigateway:*
+              - application-signals:*
+              - aws-marketplace:Unsubscribe
+              - aws-marketplace:ViewSubscriptions
+              - bedrock-agentcore:*
+              - bedrock:*
+              - cloudformation:*
+              - cloudwatch:*
+              - codewhisperer:*
+              - ec2:*
+              - ecr:*
+              - ecs:*
+              - eks:*
+              - elasticloadbalancing:*
+              - events:*
+              - lambda:*
+              - logs:*
+              - q:*
+              - rds:*
+              - s3:*
+              - secretsmanager:*
+              - ssm:*
+              - sts:*
+              - tag:*
+              - xray:*
+            Effect: Allow
+            Resource: "*"
+            Sid: AllowedServices
+          - Action: iam:PassRole
+            Effect: Allow
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+            Sid: PassRole
+          - Action: ec2:RunInstances
+            Condition:
+              StringLike:
+                ec2:InstanceType:
+                  - "*4xlarge"
+                  - "*6xlarge"
+                  - "*8xlarge"
+                  - "*9xlarge"
+                  - "*10xlarge"
+                  - "*12xlarge"
+                  - "*16xlarge"
+                  - "*18xlarge"
+                  - "*24xlarge"
+                  - f1*
+                  - x1*
+                  - z1*
+                  - "*metal"
+            Effect: Deny
+            Resource: arn:aws:ec2:*:*:instance/*
+            Sid: DenyXXLInstances
+          - Action:
+              - dynamodb:PurchaseReservedCapacityOfferings
+              - ec2:ModifyReservedInstances
+              - ec2:PurchaseHostReservation
+              - ec2:PurchaseReservedInstancesOffering
+              - ec2:PurchaseScheduledInstances
+              - rds:PurchaseReservedDBInstancesOffering
+            Effect: Deny
+            Resource: "*"
+            Sid: DenyReservations
         Version: "2012-10-17"
   IdeLambdaRole82392143:
     Type: AWS::IAM::Role
@@ -606,6 +680,7 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      InstanceName: ide
       InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
       UserData:
         Fn::Base64:
@@ -766,7 +841,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceProfile61B92038
           - Arn
-      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:

@@ -342,3 +342,44 @@ This document specifies the requirements for creating a new AWS workshop infrast
 1. WHEN JvmAnalysis construct is created, THE system SHALL use app-specific naming (no prefix)
 2. WHEN JvmAnalysis creates ECR repository, THE system SHALL name it `jvm-analysis-service`
 3. WHEN JvmAnalysis creates Pod Identity role, THE system SHALL name it `jvm-analysis-service-eks-pod-role`
+
+
+### Requirement 26
+
+**User Story:** As a workshop developer, I want ECR repositories to be created automatically when images are pushed, so that I don't need to pre-provision repositories in CDK and can simplify infrastructure management.
+
+#### Acceptance Criteria
+
+1. WHEN the CDK stack is deployed, THE CDK_Stack SHALL create an ECR Repository Creation Template with Create_On_Push enabled
+2. THE Repository_Creation_Template SHALL apply to all repository prefixes (ROOT) in the ECR_Registry
+3. THE Repository_Creation_Template SHALL configure image tag mutability as MUTABLE to allow tag overwrites
+4. THE Repository_Creation_Template SHALL set removal policy to DESTROY for workshop cleanup
+
+### Requirement 27
+
+**User Story:** As a workshop developer, I want automatic cleanup of old container images, so that ECR storage costs are minimized and repositories stay clean.
+
+#### Acceptance Criteria
+
+1. THE Repository_Creation_Template SHALL include a lifecycle policy that expires untagged images after 1 day
+2. THE Repository_Creation_Template SHALL include a lifecycle policy that keeps only the 10 most recent tagged images
+3. WHEN a new repository is created via Create_On_Push, THE ECR_Registry SHALL automatically apply the lifecycle policy
+
+### Requirement 28
+
+**User Story:** As a workshop developer, I want to simplify the CDK code by removing explicit ECR repository definitions, so that the infrastructure is easier to maintain.
+
+#### Acceptance Criteria
+
+1. WHEN the feature is implemented, THE Unicorn construct SHALL NOT create the unicorn-store-spring ECR repository explicitly
+2. WHEN the feature is implemented, THE JvmAnalysis construct SHALL NOT create the jvm-analysis-service ECR repository explicitly
+3. THE CDK_Stack SHALL continue to function correctly with repositories created via Create_On_Push
+
+### Requirement 29
+
+**User Story:** As a workshop developer, I want all auto-created repositories to have consistent tags, so that I can track and manage workshop resources.
+
+#### Acceptance Criteria
+
+1. THE Repository_Creation_Template SHALL apply an "Environment" tag with value "workshop" to all created repositories
+2. THE Repository_Creation_Template SHALL apply a "ManagedBy" tag with value "ecr-create-on-push" to all created repositories
