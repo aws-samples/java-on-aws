@@ -10,6 +10,7 @@ def lambda_handler(event, context):
     """
     Custom Resource handler to cleanup resources before stack deletion.
     - GuardDuty VPC endpoints that block VPC deletion
+    - GuardDuty managed security groups
     - CloudWatch log groups with workshop- or unicornstore- prefix
     - S3 bucket contents for workshop- buckets
     """
@@ -30,6 +31,9 @@ def lambda_handler(event, context):
             # Wait for VPC endpoint deletion to complete
             if endpoint_ids:
                 wait_for_deletion(endpoint_ids, max_wait=300)
+
+            # Delete GuardDuty security groups (after endpoints are deleted)
+            cleanup_guardduty_security_groups(vpc_id)
 
         cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
     except Exception as e:
@@ -63,6 +67,42 @@ def start_guardduty_endpoint_deletion(vpc_id):
             print(f"Error deleting {endpoint_id}: {e}")
 
     return endpoint_ids
+
+def cleanup_guardduty_security_groups(vpc_id):
+    """Delete GuardDuty managed security groups for the VPC."""
+    if not vpc_id:
+        print("No VPC ID provided, skipping security group cleanup")
+        return
+
+    try:
+        # Find GuardDuty managed security groups by name pattern
+        response = ec2.describe_security_groups(
+            Filters=[
+                {'Name': 'vpc-id', 'Values': [vpc_id]},
+                {'Name': 'group-name', 'Values': [f'GuardDutyManagedSecurityGroup-{vpc_id}']}
+            ]
+        )
+
+        security_groups = response.get('SecurityGroups', [])
+
+        if not security_groups:
+            print("No GuardDuty security groups found")
+            return
+
+        for sg in security_groups:
+            sg_id = sg['GroupId']
+            sg_name = sg['GroupName']
+            print(f"Deleting GuardDuty security group: {sg_name} ({sg_id})")
+            try:
+                ec2.delete_security_group(GroupId=sg_id)
+                print(f"Deleted security group: {sg_id}")
+            except Exception as e:
+                print(f"Error deleting security group {sg_id}: {e}")
+
+    except Exception as e:
+        print(f"Error listing GuardDuty security groups: {e}")
+
+    print("GuardDuty security group cleanup completed")
 
 def cleanup_cloudwatch_logs():
     """Delete CloudWatch log groups with workshop- or unicornstore- prefix."""

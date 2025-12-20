@@ -920,3 +920,10 @@
   - Updated Lambda function name to {prefix}-cfn-pre-delete-cleanup ✅
   - Updated WorkshopStack.java to use new class name ✅
   - _Requirements: 5.6_
+
+- [x] 1300.4 Add GuardDuty security group cleanup
+  - Added cleanup_guardduty_security_groups() function to Lambda ✅
+  - Deletes security groups named GuardDutyManagedSecurityGroup-{vpc_id} ✅
+  - Runs after VPC endpoints are deleted (security groups depend on endpoints) ✅
+  - Added ec2:DescribeSecurityGroups and ec2:DeleteSecurityGroup permissions ✅
+  - _Requirements: 5.6_

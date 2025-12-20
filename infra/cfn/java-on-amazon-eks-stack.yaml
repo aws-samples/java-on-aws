@@ -777,6 +777,25 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      VolumeSize: "50"
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -913,31 +932,12 @@ Resources:
                 "
                     exit 1
                 fi
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
-      VolumeSize: "50"
+      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
+      InstanceName: ide
       IamInstanceProfileArn:
         Fn::GetAtt:
           - IdeInstanceProfile61B92038
           - Arn
-      InstanceName: ide
-      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1316,12 +1316,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: java-on-amazon-eks
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: new-ws-infra
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-on-amazon-eks
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1526,12 +1526,12 @@ Resources:
       Description: workshop-setup build complete
       EventPattern:
         detail:
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1563,13 +1563,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
-      ContentHash: "1766246265432"
+      ContentHash: "1766247102819"
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1921,7 +1921,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251220165745"
+            - "-20251220171143"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2232,15 +2232,15 @@ Resources:
               }
       Environment:
         Variables:
-          SECRET_NAME: workshop-ide-password
           S3_BUCKET_NAME:
             Ref: WorkshopBucketFD5BC43F
+          SECRET_NAME: workshop-ide-password
+          KUBERNETES_AUTH_TYPE: aws
+          APP_LABEL: unicorn-store-spring
+          K8S_NAMESPACE: unicorn-store-spring
+          S3_THREAD_DUMPS_PREFIX: thread-dumps/
           EKS_CLUSTER_NAME:
             Ref: EksClusterB2BDED5B
-          S3_THREAD_DUMPS_PREFIX: thread-dumps/
-          K8S_NAMESPACE: unicorn-store-spring
-          APP_LABEL: unicorn-store-spring
-          KUBERNETES_AUTH_TYPE: aws
       FunctionName: workshop-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
@@ -2845,7 +2845,9 @@ Resources:
       PolicyDocument:
         Statement:
           - Action:
+              - ec2:DeleteSecurityGroup
               - ec2:DeleteVpcEndpoints
+              - ec2:DescribeSecurityGroups
               - ec2:DescribeVpcEndpoints
               - logs:DeleteLogGroup
               - logs:DescribeLogGroups
@@ -2877,6 +2879,7 @@ Resources:
               """
               Custom Resource handler to cleanup resources before stack deletion.
               - GuardDuty VPC endpoints that block VPC deletion
+              - GuardDuty managed security groups
               - CloudWatch log groups with workshop- or unicornstore- prefix
               - S3 bucket contents for workshop- buckets
               """
@@ -2897,6 +2900,9 @@ Resources:
                       # Wait for VPC endpoint deletion to complete
                       if endpoint_ids:
                           wait_for_deletion(endpoint_ids, max_wait=300)
+
+                      # Delete GuardDuty security groups (after endpoints are deleted)
+                      cleanup_guardduty_security_groups(vpc_id)
 
                   cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
               except Exception as e:
@@ -2930,6 +2936,42 @@ Resources:
                       print(f"Error deleting {endpoint_id}: {e}")
 
               return endpoint_ids
+
+          def cleanup_guardduty_security_groups(vpc_id):
+              """Delete GuardDuty managed security groups for the VPC."""
+              if not vpc_id:
+                  print("No VPC ID provided, skipping security group cleanup")
+                  return
+
+              try:
+                  # Find GuardDuty managed security groups by name pattern
+                  response = ec2.describe_security_groups(
+                      Filters=[
+                          {'Name': 'vpc-id', 'Values': [vpc_id]},
+                          {'Name': 'group-name', 'Values': [f'GuardDutyManagedSecurityGroup-{vpc_id}']}
+                      ]
+                  )
+
+                  security_groups = response.get('SecurityGroups', [])
+
+                  if not security_groups:
+                      print("No GuardDuty security groups found")
+                      return
+
+                  for sg in security_groups:
+                      sg_id = sg['GroupId']
+                      sg_name = sg['GroupName']
+                      print(f"Deleting GuardDuty security group: {sg_name} ({sg_id})")
+                      try:
+                          ec2.delete_security_group(GroupId=sg_id)
+                          print(f"Deleted security group: {sg_id}")
+                      except Exception as e:
+                          print(f"Error deleting security group {sg_id}: {e}")
+
+              except Exception as e:
+                  print(f"Error listing GuardDuty security groups: {e}")
+
+              print("GuardDuty security group cleanup completed")
 
           def cleanup_cloudwatch_logs():
               """Delete CloudWatch log groups with workshop- or unicornstore- prefix."""

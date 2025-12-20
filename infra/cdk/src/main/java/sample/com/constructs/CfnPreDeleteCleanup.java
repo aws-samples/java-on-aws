@@ -54,12 +54,14 @@ public class CfnPreDeleteCleanup extends Construct {
             ))
             .build();
 
-        // Add EC2 permissions for VPC endpoint operations
+        // Add EC2 permissions for VPC endpoint and security group operations
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
             .actions(List.of(
                 "ec2:DescribeVpcEndpoints",
-                "ec2:DeleteVpcEndpoints"
+                "ec2:DeleteVpcEndpoints",
+                "ec2:DescribeSecurityGroups",
+                "ec2:DeleteSecurityGroup"
             ))
             .resources(List.of("*"))
             .build());
