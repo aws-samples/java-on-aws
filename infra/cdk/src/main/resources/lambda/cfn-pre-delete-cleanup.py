@@ -5,6 +5,7 @@ import cfnresponse
 ec2 = boto3.client('ec2')
 logs = boto3.client('logs')
 s3 = boto3.client('s3')
+s3_resource = boto3.resource('s3')
 
 def lambda_handler(event, context):
     """
@@ -139,57 +140,14 @@ def cleanup_s3_buckets():
     print("S3 bucket cleanup completed")
 
 def empty_bucket(bucket_name):
-    """Delete all objects and versions from a bucket."""
+    """Delete all objects and versions from a bucket using boto3 resource API."""
     try:
-        # Delete all object versions (for versioned buckets)
-        paginator = s3.get_paginator('list_object_versions')
-        try:
-            for page in paginator.paginate(Bucket=bucket_name):
-                objects_to_delete = []
-
-                # Collect versions
-                for version in page.get('Versions', []):
-                    objects_to_delete.append({
-                        'Key': version['Key'],
-                        'VersionId': version['VersionId']
-                    })
-
-                # Collect delete markers
-                for marker in page.get('DeleteMarkers', []):
-                    objects_to_delete.append({
-                        'Key': marker['Key'],
-                        'VersionId': marker['VersionId']
-                    })
-
-                if objects_to_delete:
-                    s3.delete_objects(
-                        Bucket=bucket_name,
-                        Delete={'Objects': objects_to_delete}
-                    )
-                    print(f"Deleted {len(objects_to_delete)} objects from {bucket_name}")
-        except s3.exceptions.ClientError as e:
-            # Bucket might not have versioning, try regular delete
-            if 'NoSuchBucket' not in str(e):
-                delete_objects_without_versions(bucket_name)
-
+        bucket = s3_resource.Bucket(bucket_name)
+        # Delete all object versions (handles both versioned and non-versioned buckets)
+        bucket.object_versions.delete()
+        print(f"Emptied bucket: {bucket_name}")
     except Exception as e:
         print(f"Error emptying bucket {bucket_name}: {e}")
-
-def delete_objects_without_versions(bucket_name):
-    """Delete objects from non-versioned bucket."""
-    try:
-        paginator = s3.get_paginator('list_objects_v2')
-        for page in paginator.paginate(Bucket=bucket_name):
-            objects = page.get('Contents', [])
-            if objects:
-                objects_to_delete = [{'Key': obj['Key']} for obj in objects]
-                s3.delete_objects(
-                    Bucket=bucket_name,
-                    Delete={'Objects': objects_to_delete}
-                )
-                print(f"Deleted {len(objects_to_delete)} objects from {bucket_name}")
-    except Exception as e:
-        print(f"Error deleting objects from {bucket_name}: {e}")
 
 def wait_for_deletion(endpoint_ids, max_wait=300):
     """Poll until endpoints are deleted or timeout."""

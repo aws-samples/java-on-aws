@@ -777,8 +777,29 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      InstanceName: ide
+      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -915,29 +936,8 @@ Resources:
                 "
                     exit 1
                 fi
-      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
-      InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      VolumeSize: "50"
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1316,12 +1316,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: new-ws-infra
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-on-aws-immersion-day
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: new-ws-infra
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1526,12 +1526,12 @@ Resources:
       Description: workshop-setup build complete
       EventPattern:
         detail:
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1563,9 +1563,9 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ContentHash: "1766247095097"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1766247601476"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
@@ -1921,15 +1921,12 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251220171135"
+            - "-20251220172001"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
-      Tags:
-        - Key: aws-cdk:auto-delete-objects
-          Value: "true"
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   WorkshopBucketPolicyA21947CB:
@@ -1956,41 +1953,7 @@ Resources:
                         - WorkshopBucketFD5BC43F
                         - Arn
                     - /*
-          - Action:
-              - s3:DeleteObject*
-              - s3:GetBucket*
-              - s3:List*
-              - s3:PutBucketPolicy
-            Effect: Allow
-            Principal:
-              AWS:
-                Fn::GetAtt:
-                  - CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092
-                  - Arn
-            Resource:
-              - Fn::GetAtt:
-                  - WorkshopBucketFD5BC43F
-                  - Arn
-              - Fn::Join:
-                  - ""
-                  - - Fn::GetAtt:
-                        - WorkshopBucketFD5BC43F
-                        - Arn
-                    - /*
         Version: "2012-10-17"
-  WorkshopBucketAutoDeleteObjectsCustomResourceBC958F6F:
-    Type: Custom::S3AutoDeleteObjects
-    Properties:
-      ServiceToken:
-        Fn::GetAtt:
-          - CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F
-          - Arn
-      BucketName:
-        Ref: WorkshopBucketFD5BC43F
-    DependsOn:
-      - WorkshopBucketPolicyA21947CB
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
   WorkshopBucketBucketNameParameterCEE58012:
     Type: AWS::SSM::Parameter
     Properties:
@@ -1999,44 +1962,6 @@ Resources:
       Type: String
       Value:
         Ref: WorkshopBucketFD5BC43F
-  CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-      ManagedPolicyArns:
-        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F:
-    Type: AWS::Lambda::Function
-    Properties:
-      Code:
-        S3Bucket:
-          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
-        S3Key: faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip
-      Timeout: 900
-      MemorySize: 128
-      Handler: index.handler
-      Role:
-        Fn::GetAtt:
-          - CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092
-          - Arn
-      Runtime: nodejs22.x
-      Description:
-        Fn::Join:
-          - ""
-          - - "Lambda function for auto-deleting objects in "
-            - Ref: WorkshopBucketFD5BC43F
-            - " S3 bucket."
-    DependsOn:
-      - CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092
-    Metadata:
-      aws:asset:path: asset.faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6
-      aws:asset:property: Code
   EcrRegistryTemplateD54113AB:
     Type: AWS::ECR::RepositoryCreationTemplate
     Properties:
@@ -2232,13 +2157,13 @@ Resources:
               }
       Environment:
         Variables:
-          SECRET_NAME: workshop-ide-password
-          KUBERNETES_AUTH_TYPE: aws
-          APP_LABEL: unicorn-store-spring
-          K8S_NAMESPACE: unicorn-store-spring
-          S3_THREAD_DUMPS_PREFIX: thread-dumps/
           EKS_CLUSTER_NAME:
             Ref: EksClusterB2BDED5B
+          S3_THREAD_DUMPS_PREFIX: thread-dumps/
+          K8S_NAMESPACE: unicorn-store-spring
+          APP_LABEL: unicorn-store-spring
+          KUBERNETES_AUTH_TYPE: aws
+          SECRET_NAME: workshop-ide-password
           S3_BUCKET_NAME:
             Ref: WorkshopBucketFD5BC43F
       FunctionName: workshop-thread-dump-lambda
@@ -2874,6 +2799,7 @@ Resources:
           ec2 = boto3.client('ec2')
           logs = boto3.client('logs')
           s3 = boto3.client('s3')
+          s3_resource = boto3.resource('s3')
 
           def lambda_handler(event, context):
               """
@@ -3008,57 +2934,14 @@ Resources:
               print("S3 bucket cleanup completed")
 
           def empty_bucket(bucket_name):
-              """Delete all objects and versions from a bucket."""
+              """Delete all objects and versions from a bucket using boto3 resource API."""
               try:
-                  # Delete all object versions (for versioned buckets)
-                  paginator = s3.get_paginator('list_object_versions')
-                  try:
-                      for page in paginator.paginate(Bucket=bucket_name):
-                          objects_to_delete = []
-
-                          # Collect versions
-                          for version in page.get('Versions', []):
-                              objects_to_delete.append({
-                                  'Key': version['Key'],
-                                  'VersionId': version['VersionId']
-                              })
-
-                          # Collect delete markers
-                          for marker in page.get('DeleteMarkers', []):
-                              objects_to_delete.append({
-                                  'Key': marker['Key'],
-                                  'VersionId': marker['VersionId']
-                              })
-
-                          if objects_to_delete:
-                              s3.delete_objects(
-                                  Bucket=bucket_name,
-                                  Delete={'Objects': objects_to_delete}
-                              )
-                              print(f"Deleted {len(objects_to_delete)} objects from {bucket_name}")
-                  except s3.exceptions.ClientError as e:
-                      # Bucket might not have versioning, try regular delete
-                      if 'NoSuchBucket' not in str(e):
-                          delete_objects_without_versions(bucket_name)
-
+                  bucket = s3_resource.Bucket(bucket_name)
+                  # Delete all object versions (handles both versioned and non-versioned buckets)
+                  bucket.object_versions.delete()
+                  print(f"Emptied bucket: {bucket_name}")
               except Exception as e:
                   print(f"Error emptying bucket {bucket_name}: {e}")
-
-          def delete_objects_without_versions(bucket_name):
-              """Delete objects from non-versioned bucket."""
-              try:
-                  paginator = s3.get_paginator('list_objects_v2')
-                  for page in paginator.paginate(Bucket=bucket_name):
-                      objects = page.get('Contents', [])
-                      if objects:
-                          objects_to_delete = [{'Key': obj['Key']} for obj in objects]
-                          s3.delete_objects(
-                              Bucket=bucket_name,
-                              Delete={'Objects': objects_to_delete}
-                          )
-                          print(f"Deleted {len(objects_to_delete)} objects from {bucket_name}")
-              except Exception as e:
-                  print(f"Error deleting objects from {bucket_name}: {e}")
 
           def wait_for_deletion(endpoint_ids, max_wait=300):
               """Poll until endpoints are deleted or timeout."""

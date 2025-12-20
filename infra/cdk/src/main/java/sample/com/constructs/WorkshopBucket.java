@@ -45,12 +45,12 @@ public class WorkshopBucket extends Construct {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
 
         // Create S3 bucket for workshop data (thread dumps, profiling data)
+        // Note: autoDeleteObjects removed - CfnPreDeleteCleanup Lambda handles bucket emptying
         this.bucket = Bucket.Builder.create(this, "Bucket")
             .bucketName(String.format("%s-bucket-%s-%s-%s", prefix, Aws.ACCOUNT_ID, Aws.REGION, timestamp))
             .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
             .enforceSsl(true)
             .removalPolicy(RemovalPolicy.DESTROY)
-            .autoDeleteObjects(true)
             .build();
 
         // Create SSM parameter for bucket name discovery
