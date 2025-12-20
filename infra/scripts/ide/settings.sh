@@ -4,7 +4,7 @@
 # =============================================================================
 
 # Extensions to install
-EXTENSIONS="vscjava.vscode-java-pack,ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools"
+EXTENSIONS="vscjava.vscode-java-pack,ms-azuretools.vscode-docker,ms-kubernetes-tools.vscode-kubernetes-tools,vmware.vscode-boot-dev-pack"
 
 # Extensions to uninstall (pre-installed but unwanted)
 EXTENSIONS_UNINSTALL="AmazonWebServices.aws-toolkit-vscode,AmazonWebServices.amazon-q-vscode"
