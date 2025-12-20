@@ -777,6 +777,18 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      InstanceName: ide
       InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
       UserData:
         Fn::Base64:
@@ -926,18 +938,6 @@ Resources:
             - Fn::GetAtt:
                 - IdeInternalSecurityGroupB0A5D76B
                 - GroupId
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1526,12 +1526,12 @@ Resources:
       Description: workshop-setup build complete
       EventPattern:
         detail:
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1563,13 +1563,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1766259260959"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
-      ContentHash: "1766254396783"
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1921,7 +1921,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251220191317"
+            - "-20251220203421"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2157,15 +2157,15 @@ Resources:
               }
       Environment:
         Variables:
-          KUBERNETES_AUTH_TYPE: aws
-          SECRET_NAME: workshop-ide-password
-          S3_BUCKET_NAME:
-            Ref: WorkshopBucketFD5BC43F
           EKS_CLUSTER_NAME:
             Ref: EksClusterB2BDED5B
           S3_THREAD_DUMPS_PREFIX: thread-dumps/
           K8S_NAMESPACE: unicorn-store-spring
           APP_LABEL: unicorn-store-spring
+          KUBERNETES_AUTH_TYPE: aws
+          SECRET_NAME: workshop-ide-password
+          S3_BUCKET_NAME:
+            Ref: WorkshopBucketFD5BC43F
       FunctionName: workshop-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
@@ -2709,9 +2709,6 @@ Resources:
         Fn::GetAtt:
           - UnicornUnicornStoreDatabaseSetupFunction04E12F8B
           - Arn
-      SqlStatements: |
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -2742,6 +2739,9 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: DatabaseSecret3B817195
+      SqlStatements: |
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - DatabaseClusterDatabaseWriterF4C0B9A6
       - DatabaseCluster5B53A178
@@ -2859,8 +2859,8 @@ Resources:
 
               return endpoint_ids
 
-          def cleanup_guardduty_security_groups(vpc_id):
-              """Delete GuardDuty managed security groups for the VPC."""
+          def cleanup_guardduty_security_groups(vpc_id, max_retries=6, retry_delay=10):
+              """Delete GuardDuty managed security groups for the VPC with retry logic."""
               if not vpc_id:
                   print("No VPC ID provided, skipping security group cleanup")
                   return
@@ -2884,11 +2884,20 @@ Resources:
                       sg_id = sg['GroupId']
                       sg_name = sg['GroupName']
                       print(f"Deleting GuardDuty security group: {sg_name} ({sg_id})")
-                      try:
-                          ec2.delete_security_group(GroupId=sg_id)
-                          print(f"Deleted security group: {sg_id}")
-                      except Exception as e:
-                          print(f"Error deleting security group {sg_id}: {e}")
+
+                      # Retry deletion - ENIs may take time to detach after endpoint deletion
+                      for attempt in range(max_retries):
+                          try:
+                              ec2.delete_security_group(GroupId=sg_id)
+                              print(f"Deleted security group: {sg_id}")
+                              break
+                          except ec2.exceptions.ClientError as e:
+                              if 'DependencyViolation' in str(e) and attempt < max_retries - 1:
+                                  print(f"Security group has dependencies, waiting {retry_delay}s (attempt {attempt + 1}/{max_retries})...")
+                                  time.sleep(retry_delay)
+                              else:
+                                  print(f"Error deleting security group {sg_id}: {e}")
+                                  break
 
               except Exception as e:
                   print(f"Error listing GuardDuty security groups: {e}")

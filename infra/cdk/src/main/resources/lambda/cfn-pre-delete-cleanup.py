@@ -67,8 +67,8 @@ def start_guardduty_endpoint_deletion(vpc_id):
 
     return endpoint_ids
 
-def cleanup_guardduty_security_groups(vpc_id):
-    """Delete GuardDuty managed security groups for the VPC."""
+def cleanup_guardduty_security_groups(vpc_id, max_retries=6, retry_delay=10):
+    """Delete GuardDuty managed security groups for the VPC with retry logic."""
     if not vpc_id:
         print("No VPC ID provided, skipping security group cleanup")
         return
@@ -92,11 +92,20 @@ def cleanup_guardduty_security_groups(vpc_id):
             sg_id = sg['GroupId']
             sg_name = sg['GroupName']
             print(f"Deleting GuardDuty security group: {sg_name} ({sg_id})")
-            try:
-                ec2.delete_security_group(GroupId=sg_id)
-                print(f"Deleted security group: {sg_id}")
-            except Exception as e:
-                print(f"Error deleting security group {sg_id}: {e}")
+
+            # Retry deletion - ENIs may take time to detach after endpoint deletion
+            for attempt in range(max_retries):
+                try:
+                    ec2.delete_security_group(GroupId=sg_id)
+                    print(f"Deleted security group: {sg_id}")
+                    break
+                except ec2.exceptions.ClientError as e:
+                    if 'DependencyViolation' in str(e) and attempt < max_retries - 1:
+                        print(f"Security group has dependencies, waiting {retry_delay}s (attempt {attempt + 1}/{max_retries})...")
+                        time.sleep(retry_delay)
+                    else:
+                        print(f"Error deleting security group {sg_id}: {e}")
+                        break
 
     except Exception as e:
         print(f"Error listing GuardDuty security groups: {e}")
