@@ -66,16 +66,6 @@ public class CfnPreDeleteCleanup extends Construct {
             .resources(List.of("*"))
             .build());
 
-        // Add CloudWatch Logs permissions for log group cleanup
-        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
-            .effect(Effect.ALLOW)
-            .actions(List.of(
-                "logs:DescribeLogGroups",
-                "logs:DeleteLogGroup"
-            ))
-            .resources(List.of("*"))
-            .build());
-
         // Add S3 permissions for bucket cleanup
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)

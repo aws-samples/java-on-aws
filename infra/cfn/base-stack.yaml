@@ -676,11 +676,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
       VolumeSize: "50"
       SubnetIds:
         Fn::Join:
@@ -837,6 +832,11 @@ Resources:
                     exit 1
                 fi
       InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
+      InstanceName: ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:

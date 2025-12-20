@@ -777,28 +777,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      InstanceName: ide
       InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
       UserData:
         Fn::Base64:
@@ -938,6 +916,28 @@ Resources:
                 fi
       ImageId:
         Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1526,12 +1526,12 @@ Resources:
       Description: workshop-setup build complete
       EventPattern:
         detail:
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1563,13 +1563,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
-      ContentHash: "1766247601476"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1766254396783"
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1921,7 +1921,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251220172001"
+            - "-20251220191317"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2157,15 +2157,15 @@ Resources:
               }
       Environment:
         Variables:
+          KUBERNETES_AUTH_TYPE: aws
+          SECRET_NAME: workshop-ide-password
+          S3_BUCKET_NAME:
+            Ref: WorkshopBucketFD5BC43F
           EKS_CLUSTER_NAME:
             Ref: EksClusterB2BDED5B
           S3_THREAD_DUMPS_PREFIX: thread-dumps/
           K8S_NAMESPACE: unicorn-store-spring
           APP_LABEL: unicorn-store-spring
-          KUBERNETES_AUTH_TYPE: aws
-          SECRET_NAME: workshop-ide-password
-          S3_BUCKET_NAME:
-            Ref: WorkshopBucketFD5BC43F
       FunctionName: workshop-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
@@ -2709,6 +2709,9 @@ Resources:
         Fn::GetAtt:
           - UnicornUnicornStoreDatabaseSetupFunction04E12F8B
           - Arn
+      SqlStatements: |
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -2739,9 +2742,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: DatabaseSecret3B817195
-      SqlStatements: |
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - DatabaseClusterDatabaseWriterF4C0B9A6
       - DatabaseCluster5B53A178
@@ -2774,8 +2774,6 @@ Resources:
               - ec2:DeleteVpcEndpoints
               - ec2:DescribeSecurityGroups
               - ec2:DescribeVpcEndpoints
-              - logs:DeleteLogGroup
-              - logs:DescribeLogGroups
               - s3:DeleteObject
               - s3:DeleteObjectVersion
               - s3:ListAllMyBuckets
@@ -2797,7 +2795,6 @@ Resources:
           import cfnresponse
 
           ec2 = boto3.client('ec2')
-          logs = boto3.client('logs')
           s3 = boto3.client('s3')
           s3_resource = boto3.resource('s3')
 
@@ -2806,8 +2803,8 @@ Resources:
               Custom Resource handler to cleanup resources before stack deletion.
               - GuardDuty VPC endpoints that block VPC deletion
               - GuardDuty managed security groups
-              - CloudWatch log groups with workshop- or unicornstore- prefix
               - S3 bucket contents for workshop- buckets
+              Note: CloudWatch logs are kept for debugging/analysis
               """
               print(f"Event: {event}")
 
@@ -2819,8 +2816,7 @@ Resources:
                       # Start VPC endpoint deletion (async)
                       endpoint_ids = start_guardduty_endpoint_deletion(vpc_id)
 
-                      # While endpoints are deleting, clean up logs and S3
-                      cleanup_cloudwatch_logs()
+                      # While endpoints are deleting, clean up S3
                       cleanup_s3_buckets()
 
                       # Wait for VPC endpoint deletion to complete
@@ -2898,26 +2894,6 @@ Resources:
                   print(f"Error listing GuardDuty security groups: {e}")
 
               print("GuardDuty security group cleanup completed")
-
-          def cleanup_cloudwatch_logs():
-              """Delete CloudWatch log groups with workshop- or unicornstore- prefix."""
-              prefixes = ['workshop-', 'unicornstore-', '/aws/lambda/workshop-', '/aws/lambda/unicornstore-']
-
-              for prefix in prefixes:
-                  try:
-                      paginator = logs.get_paginator('describe_log_groups')
-                      for page in paginator.paginate(logGroupNamePrefix=prefix):
-                          for log_group in page.get('logGroups', []):
-                              log_group_name = log_group['logGroupName']
-                              print(f"Deleting log group: {log_group_name}")
-                              try:
-                                  logs.delete_log_group(logGroupName=log_group_name)
-                              except Exception as e:
-                                  print(f"Error deleting log group {log_group_name}: {e}")
-                  except Exception as e:
-                      print(f"Error listing log groups with prefix {prefix}: {e}")
-
-              print("CloudWatch log cleanup completed")
 
           def cleanup_s3_buckets():
               """Empty S3 buckets with workshop- prefix."""

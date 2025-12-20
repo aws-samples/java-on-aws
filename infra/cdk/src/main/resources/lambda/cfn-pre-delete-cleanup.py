@@ -3,7 +3,6 @@ import time
 import cfnresponse
 
 ec2 = boto3.client('ec2')
-logs = boto3.client('logs')
 s3 = boto3.client('s3')
 s3_resource = boto3.resource('s3')
 
@@ -12,8 +11,8 @@ def lambda_handler(event, context):
     Custom Resource handler to cleanup resources before stack deletion.
     - GuardDuty VPC endpoints that block VPC deletion
     - GuardDuty managed security groups
-    - CloudWatch log groups with workshop- or unicornstore- prefix
     - S3 bucket contents for workshop- buckets
+    Note: CloudWatch logs are kept for debugging/analysis
     """
     print(f"Event: {event}")
 
@@ -25,8 +24,7 @@ def lambda_handler(event, context):
             # Start VPC endpoint deletion (async)
             endpoint_ids = start_guardduty_endpoint_deletion(vpc_id)
 
-            # While endpoints are deleting, clean up logs and S3
-            cleanup_cloudwatch_logs()
+            # While endpoints are deleting, clean up S3
             cleanup_s3_buckets()
 
             # Wait for VPC endpoint deletion to complete
@@ -104,26 +102,6 @@ def cleanup_guardduty_security_groups(vpc_id):
         print(f"Error listing GuardDuty security groups: {e}")
 
     print("GuardDuty security group cleanup completed")
-
-def cleanup_cloudwatch_logs():
-    """Delete CloudWatch log groups with workshop- or unicornstore- prefix."""
-    prefixes = ['workshop-', 'unicornstore-', '/aws/lambda/workshop-', '/aws/lambda/unicornstore-']
-
-    for prefix in prefixes:
-        try:
-            paginator = logs.get_paginator('describe_log_groups')
-            for page in paginator.paginate(logGroupNamePrefix=prefix):
-                for log_group in page.get('logGroups', []):
-                    log_group_name = log_group['logGroupName']
-                    print(f"Deleting log group: {log_group_name}")
-                    try:
-                        logs.delete_log_group(logGroupName=log_group_name)
-                    except Exception as e:
-                        print(f"Error deleting log group {log_group_name}: {e}")
-        except Exception as e:
-            print(f"Error listing log groups with prefix {prefix}: {e}")
-
-    print("CloudWatch log cleanup completed")
 
 def cleanup_s3_buckets():
     """Empty S3 buckets with workshop- prefix."""
