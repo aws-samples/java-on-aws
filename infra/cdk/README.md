@@ -1,18 +1,26 @@
-# Welcome to your CDK Java project!
+# Workshop Infrastructure
 
-This is a blank project for CDK development with Java.
+CDK project for generating CloudFormation templates for AWS workshops.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## Quick Start
 
-It is a [Maven](https://maven.apache.org/) based project, so you can open this project with any Maven compatible Java IDE to build and run tests.
+```bash
+# Generate all CloudFormation templates
+npm run generate
 
-## Useful commands
+# Sync templates to workshop directories
+npm run sync
+```
 
- * `mvn package`     compile and run tests
- * `cdk ls`          list all stacks in the app
- * `cdk synth`       emits the synthesized CloudFormation template
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk docs`        open CDK documentation
+## Customization
 
-Enjoy!
+Edit `WorkshopStack.java` to change the resource naming prefix:
+```java
+String prefix = "workshop";  // Change to customize all resource names
+```
+
+Then regenerate templates with `npm run generate`.
+
+## Details
+
+See `.kiro/specs/infra/` for complete requirements, design, and implementation details.

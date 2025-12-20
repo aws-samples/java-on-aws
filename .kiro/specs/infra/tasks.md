@@ -603,3 +603,110 @@
   - No EKS, Database, PerformanceAnalysis, or Unicorn resources ✅
   - _Requirements: 1.2, 1.3, 5.4_
 
+
+
+## Configurable Prefix Pattern (500.x)
+
+- [x] 500.1 Add prefix constant to WorkshopStack
+  - Add `String prefix = "workshop";` at the very beginning of WorkshopStack constructor (before configuration values) ✅
+  - Pass prefix to all construct Props builders (Vpc, Ide, CodeBuild, Database, Eks) ✅
+  - Do NOT pass prefix to Unicorn or JvmAnalysis (they have their own naming) ✅
+  - _Requirements: 22.1, 22.2, 22.6, 22.7_
+
+- [x] 500.2 Update Vpc construct for configurable prefix
+  - Add prefix parameter to VpcProps ✅
+  - Update VPC name to use `{prefix}-vpc` pattern ✅
+  - _Requirements: 22.2, 22.3_
+
+- [x] 500.3 Update Ide construct for configurable prefix
+  - Add prefix parameter to IdeProps ✅
+  - Update Lambda function names: `{prefix}-ide-launcher`, `{prefix}-ide-password`, `{prefix}-ide-prefixlist` ✅
+  - Update CloudWatch log group: `{prefix}-ide-bootstrap-{timestamp}` ✅
+  - Update security group names to use prefix ✅
+  - Update instance profile name to use prefix ✅
+  - Update password secret name to use prefix ✅
+  - _Requirements: 22.2, 22.3_
+
+- [x] 500.4 Update CodeBuild construct for configurable prefix
+  - Add prefix parameter to CodeBuildProps ✅
+  - Update CodeBuild project name: `{prefix}-setup` ✅
+  - Update Lambda function names: `{prefix}-codebuild-start`, `{prefix}-codebuild-report` ✅
+  - _Requirements: 22.2, 22.3_
+
+- [x] 500.5 Update Database construct for configurable prefix
+  - Add prefix parameter to DatabaseProps ✅
+  - Update cluster name: `{prefix}-db-cluster` ✅
+  - Update instance name: `{prefix}-db-writer` ✅
+  - Update secrets names: `{prefix}-db-secret`, `{prefix}-db-password-secret` ✅
+  - Update parameter store: `{prefix}-db-connection-string` ✅
+  - Update security group name to use prefix ✅
+  - _Requirements: 22.2, 22.3_
+
+- [x] 500.6 Update Eks construct for configurable prefix
+  - Add prefix parameter to EksProps ✅
+  - Update cluster name: `{prefix}-eks` ✅
+  - _Requirements: 22.2, 22.3_
+
+- [x] 500.7 Update bootstrap scripts for configurable prefix
+  - Pass PREFIX environment variable from CDK to UserData ✅
+  - Update userdata.sh to use PREFIX for log group names ✅
+  - Update bootstrap.sh to use PREFIX for secret name lookup ✅
+  - Update eks.sh to use PREFIX for cluster name and SecretProviderClass ✅
+  - Update monitoring.sh and analysis.sh to use PREFIX ✅
+  - _Requirements: 22.2, 22.3_
+
+- [x] 500.8 Test and validate configurable prefix
+  - Generate template with default prefix: `npm run generate` ✅
+  - Verify all resources (except Unicorn and JvmAnalysis) use "workshop-" prefix ✅
+  - Verify generated CloudFormation template has all names resolved (no parameters) ✅
+  - _Requirements: 22.4, 22.5_
+
+
+## PerformanceAnalysis Refactoring (600.x)
+
+- [x] 600.1 Create WorkshopBucket construct
+  - Create infra/cdk/src/main/java/sample/com/constructs/WorkshopBucket.java ✅
+  - Add prefix parameter to WorkshopBucketProps ✅
+  - Create S3 bucket: `{prefix}-bucket-{account}-{region}-{timestamp}` ✅
+  - Create SSM parameter: `{prefix}-bucket-name` ✅
+  - Expose bucket and parameter as getters ✅
+  - _Requirements: 23.1, 23.2, 23.3_
+
+- [x] 600.2 Create ThreadAnalysis construct
+  - Create infra/cdk/src/main/java/sample/com/constructs/ThreadAnalysis.java ✅
+  - Add prefix parameter to ThreadAnalysisProps ✅
+  - Create thread dump Lambda: `{prefix}-thread-dump-lambda` ✅
+  - Create API Gateway: `{prefix}-thread-dump-api` ✅
+  - Create Lambda role: `{prefix}-thread-dump-lambda-role` ✅
+  - Create security group: `{prefix}-thread-dump-lambda-sg` ✅
+  - Create log group: `/aws/lambda/{prefix}-thread-dump-lambda` ✅
+  - Accept WorkshopBucket reference for S3 permissions ✅
+  - _Requirements: 24.1, 24.2, 24.3, 24.4, 24.5_
+
+- [x] 600.3 Create JvmAnalysis construct
+  - Create infra/cdk/src/main/java/sample/com/constructs/JvmAnalysis.java ✅
+  - Create ECR repository: `jvm-analysis-service` (no prefix) ✅
+  - Create Pod Identity role: `jvm-analysis-service-eks-pod-role` (no prefix) ✅
+  - Accept WorkshopBucket reference for S3 permissions ✅
+  - _Requirements: 25.1, 25.2, 25.3_
+
+- [x] 600.4 Update WorkshopStack for new constructs
+  - Add prefix to WorkshopBucket, ThreadAnalysis creation ✅
+  - Create WorkshopBucket first (shared resource) ✅
+  - Pass WorkshopBucket to ThreadAnalysis and JvmAnalysis ✅
+  - Pass WorkshopBucket to Unicorn (replaces performanceAnalysis.getWorkshopBucket()) ✅
+  - Remove PerformanceAnalysis construct usage ✅
+  - _Requirements: 22.2, 23.3_
+
+- [x] 600.5 Delete PerformanceAnalysis construct
+  - Delete infra/cdk/src/main/java/sample/com/constructs/PerformanceAnalysis.java ✅
+  - Verify all functionality moved to new constructs ✅
+  - _Requirements: 23.1, 24.1, 25.1_
+
+- [x] 600.6 Test and validate refactoring
+  - Generate template: `npm run generate` ✅
+  - Verify WorkshopBucket resources use prefix ✅
+  - Verify ThreadAnalysis resources use prefix ✅
+  - Verify JvmAnalysis resources use app-specific naming (no prefix) ✅
+  - Verify Unicorn still receives bucket reference ✅
+  - _Requirements: 22.5, 23.3, 24.1, 25.1_

@@ -8,8 +8,11 @@ set -e
 GIT_BRANCH="$1"
 TEMPLATE_TYPE="$2"
 
+# Use PREFIX from environment, default to "workshop" if not set
+PREFIX="${PREFIX:-workshop}"
+
 echo "Full bootstrap started at $(date)"
-echo "Parameters: GIT_BRANCH=$GIT_BRANCH, TEMPLATE_TYPE=$TEMPLATE_TYPE"
+echo "Parameters: GIT_BRANCH=$GIT_BRANCH, TEMPLATE_TYPE=$TEMPLATE_TYPE, PREFIX=$PREFIX"
 
 # Retry utility function
 # Usage: retry_command <attempts> <delay> <fail_mode> <tool_name> <command...>
@@ -87,7 +90,7 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing CloudFormation helper scripts...
 install_with_version "CloudFormation helper scripts" "dnf install -y aws-cfn-bootstrap" "rpm -q aws-cfn-bootstrap --queryformat '%{VERSION}'"
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Fetching IDE password from Secrets Manager..."
-IDE_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "workshop-ide-password" --query SecretString --output text | jq -r .password)
+IDE_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "${PREFIX}-ide-password" --query SecretString --output text | jq -r .password)
 if [ -z "$IDE_PASSWORD" ] || [ "$IDE_PASSWORD" = "null" ]; then
     echo "ERROR: Failed to retrieve IDE password from Secrets Manager"
     exit 1

@@ -295,3 +295,50 @@ This document specifies the requirements for creating a new AWS workshop infrast
 4. WHEN bootstrap logging is configured, THE system SHALL use "workshop-ide-bootstrap-{timestamp}" pattern for unique log group names
 5. WHEN AWS resources are named, THE system SHALL follow the pattern "workshop-{component}-{function}" for operational consistency
 
+### Requirement 22
+
+**User Story:** As a workshop developer, I want configurable resource name prefixes defined in WorkshopStack, so that I can easily customize all resource names by changing a single string constant and regenerating templates.
+
+#### Acceptance Criteria
+
+1. WHEN WorkshopStack constructor begins, THE system SHALL define a prefix String constant at the very beginning (default "workshop")
+2. WHEN prefix is defined, THE system SHALL pass it to all construct Props builders that create AWS resources
+3. WHEN constructs create AWS resources, THE system SHALL use the prefix for all resource names following pattern "{prefix}-{component}-{function}"
+4. WHEN templates need different prefixes, THE developer SHALL edit the prefix string in WorkshopStack.java and run `npm run generate`
+5. WHEN CloudFormation template is generated, THE system SHALL have all resource names fully resolved with the prefix value (no runtime parameters)
+6. WHEN Unicorn construct creates resources, THE system SHALL use its own "unicorn*" naming convention (exception for app-specific compatibility)
+7. WHEN JvmAnalysis construct creates resources, THE system SHALL use "jvm-analysis-*" naming convention (exception for app-specific resources)
+
+
+
+### Requirement 23
+
+**User Story:** As a workshop developer, I want shared workshop resources in a dedicated construct, so that S3 bucket and SSM parameter can be reused across multiple features.
+
+#### Acceptance Criteria
+
+1. WHEN WorkshopBucket construct is created, THE system SHALL create an S3 bucket with name pattern `{prefix}-bucket-{account}-{region}-{timestamp}`
+2. WHEN WorkshopBucket construct is created, THE system SHALL create an SSM parameter `{prefix}-bucket-name` for bucket name discovery
+3. WHEN WorkshopBucket is used by other constructs, THE system SHALL pass the bucket reference for permissions and configuration
+
+### Requirement 24
+
+**User Story:** As a workshop developer, I want thread dump analysis in a dedicated construct, so that thread dump Lambda and API Gateway are clearly separated from other analysis features.
+
+#### Acceptance Criteria
+
+1. WHEN ThreadAnalysis construct is created, THE system SHALL use prefix for all resource names (infrastructure pattern)
+2. WHEN ThreadAnalysis creates Lambda, THE system SHALL name it `{prefix}-thread-dump-lambda`
+3. WHEN ThreadAnalysis creates API Gateway, THE system SHALL name it `{prefix}-thread-dump-api`
+4. WHEN ThreadAnalysis creates IAM role, THE system SHALL name it `{prefix}-thread-dump-lambda-role`
+5. WHEN ThreadAnalysis creates security group, THE system SHALL name it `{prefix}-thread-dump-lambda-sg`
+
+### Requirement 25
+
+**User Story:** As a workshop developer, I want JVM profiling analysis in a dedicated construct, so that ECR repository and Pod Identity role are clearly separated as app-specific resources.
+
+#### Acceptance Criteria
+
+1. WHEN JvmAnalysis construct is created, THE system SHALL use app-specific naming (no prefix)
+2. WHEN JvmAnalysis creates ECR repository, THE system SHALL name it `jvm-analysis-service`
+3. WHEN JvmAnalysis creates Pod Identity role, THE system SHALL name it `jvm-analysis-service-eks-pod-role`

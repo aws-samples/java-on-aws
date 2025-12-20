@@ -13,13 +13,15 @@ source "$SCRIPT_DIR/../lib/common.sh"
 # CONFIGURATION
 # =============================================================================
 
+# Use PREFIX from environment, default to "workshop"
+PREFIX="${PREFIX:-workshop}"
 NAMESPACE="monitoring"
 GRAFANA_USER="admin"
-SECRET_NAME="workshop-ide-password"
+SECRET_NAME="${PREFIX}-ide-password"
 FOLDER_NAME="Workshop Dashboards"
 
 # Thread Analysis config
-LAMBDA_FUNCTION_NAME="workshop-thread-dump-lambda"
+LAMBDA_FUNCTION_NAME="${PREFIX}-thread-dump-lambda"
 THREAD_DASHBOARD_TITLE="JVM Metrics - EKS"
 THREAD_CONTACT_POINT="lambda-webhook"
 THREAD_ALERT_TITLE="High JVM Threads"
@@ -89,7 +91,7 @@ else
 fi
 
 # Get API Gateway URL for thread dump Lambda
-API_ID=$(aws apigateway get-rest-apis --query "items[?name=='workshop-thread-dump-api'].id" --output text)
+API_ID=$(aws apigateway get-rest-apis --query "items[?name=='${PREFIX}-thread-dump-api'].id" --output text)
 APIGW_URL="https://${API_ID}.execute-api.${AWS_REGION}.amazonaws.com/prod"
 
 

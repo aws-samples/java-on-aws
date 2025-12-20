@@ -24,9 +24,11 @@ public class Eks extends Construct {
     public Eks(final Construct scope, final String id, final EksProps props) {
         super(scope, id);
 
+        String prefix = props.getPrefix();
+
         // Create EKS cluster with Auto Mode (default)
         Cluster.Builder clusterBuilder = Cluster.Builder.create(this, "Cluster")
-            .clusterName("workshop-eks")
+            .clusterName(prefix + "-eks")
             .version(KubernetesVersion.V1_34)
             .vpc(props.getVpc());
 
@@ -100,11 +102,13 @@ public class Eks extends Construct {
 
     // Props class
     public static class EksProps {
+        private final String prefix;
         private final IVpc vpc;
         private final IRole ideInstanceRole;
         private final ISecurityGroup ideInternalSecurityGroup;
 
         private EksProps(Builder builder) {
+            this.prefix = builder.prefix;
             this.vpc = builder.vpc;
             this.ideInstanceRole = builder.ideInstanceRole;
             this.ideInternalSecurityGroup = builder.ideInternalSecurityGroup;
@@ -112,6 +116,10 @@ public class Eks extends Construct {
 
         public static Builder builder() {
             return new Builder();
+        }
+
+        public String getPrefix() {
+            return prefix;
         }
 
         public IVpc getVpc() {
@@ -127,9 +135,15 @@ public class Eks extends Construct {
         }
 
         public static class Builder {
+            private String prefix = "workshop";
             private IVpc vpc;
             private IRole ideInstanceRole;
             private ISecurityGroup ideInternalSecurityGroup;
+
+            public Builder prefix(String prefix) {
+                this.prefix = prefix;
+                return this;
+            }
 
             public Builder vpc(IVpc vpc) {
                 this.vpc = vpc;

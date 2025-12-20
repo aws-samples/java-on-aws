@@ -131,7 +131,9 @@ public class WorkshopStack extends Stack {
 **Database**: Configures RDS Aurora PostgreSQL cluster with universal "workshop-" naming convention
 **CodeBuild**: Creates CodeBuild project for AWS service-linked role creation
 **Lambda**: Reusable construct for consistent Lambda function creation with inline Python code
-**PerformanceAnalysis**: Creates S3 bucket, Lambda functions, and API Gateway for thread dump and profiling analysis
+**WorkshopBucket**: Creates shared S3 bucket and SSM parameter for workshop data (uses prefix)
+**ThreadAnalysis**: Creates thread dump Lambda and API Gateway for thread analysis (uses prefix)
+**JvmAnalysis**: Creates ECR repository and Pod Identity role for jvm-analysis-service (app-specific naming)
 **Unicorn**: Creates ECR repository and IAM roles for workshop applications (uses unicorn* naming for workshop content compatibility)
 
 #### CDK Construct Naming Convention
@@ -147,26 +149,70 @@ This convention eliminates CloudFormation logical ID duplication and ensures mai
 
 #### AWS Resource Naming Convention
 
-All AWS resources follow a consistent "workshop-" prefix pattern for operational clarity:
+All AWS resources follow a consistent prefix pattern for operational clarity. The prefix is defined as a simple String constant at the beginning of WorkshopStack constructor (defaults to "workshop").
 
-**Lambda Functions:**
-- `workshop-codebuild-start` - CodeBuild start trigger
-- `workshop-codebuild-report` - CodeBuild completion handler
-- `workshop-ide-prefixlist` - CloudFront prefix list lookup
-- `workshop-ide-launcher` - EC2 instance launcher with failover
-- `workshop-ide-password` - Password retrieval from Secrets Manager
-- `workshop-database-setup` - Database schema initialization
+**Configurable Prefix Pattern:**
+```java
+public class WorkshopStack extends Stack {
+    public WorkshopStack(final Construct scope, final String id, final StackProps props) {
+        super(scope, id, props);
+
+        // Resource naming prefix - change this to customize all resource names
+        String prefix = "workshop";
+
+        // Configuration values - get template type from CDK context (build time)
+        String templateType = ...
+
+        // Pass prefix to all constructs
+        var ide = new Ide(this, "Ide", Ide.IdeProps.builder()
+            .prefix(prefix)
+            .vpc(vpc.getVpc())
+            .build());
+    }
+}
+```
+
+**Lambda Functions (with default "workshop" prefix):**
+- `{prefix}-codebuild-start` - CodeBuild start trigger
+- `{prefix}-codebuild-report` - CodeBuild completion handler
+- `{prefix}-ide-prefixlist` - CloudFront prefix list lookup
+- `{prefix}-ide-launcher` - EC2 instance launcher with failover
+- `{prefix}-ide-password` - Password retrieval from Secrets Manager
+- `{prefix}-database-setup` - Database schema initialization
 
 **CodeBuild Projects:**
-- `workshop-setup` - Workshop environment setup and service-linked role creation
+- `{prefix}-setup` - Workshop environment setup and service-linked role creation
 
 **CloudWatch Log Groups:**
-- `workshop-ide-bootstrap-{timestamp}` - IDE bootstrap logs with unique timestamps
-- `/aws/lambda/workshop-*` - All Lambda function logs grouped by prefix
-- `/aws/codebuild/workshop-setup` - CodeBuild execution logs
+- `{prefix}-ide-bootstrap-{timestamp}` - IDE bootstrap logs with unique timestamps
+- `/aws/lambda/{prefix}-*` - All Lambda function logs grouped by prefix
+- `/aws/codebuild/{prefix}-setup` - CodeBuild execution logs
+
+**Exceptions (app-specific naming):**
+- **Unicorn construct**: Uses "unicorn*" naming for workshop application compatibility
+- **JvmAnalysis construct**: Uses "jvm-analysis-*" naming for profiling service resources
+
+**Constructs using prefix:**
+- Vpc, Ide, CodeBuild, Database, Eks, WorkshopBucket, ThreadAnalysis
+
+**Constructs with app-specific naming (no prefix):**
+- Unicorn (unicorn*), JvmAnalysis (jvm-analysis-*)
+
+**Usage:**
+```bash
+# Default prefix ("workshop")
+npm run generate
+
+# Custom prefix - edit WorkshopStack.java:
+#   String prefix = "alice";
+# Then regenerate:
+npm run generate
+```
 
 This naming convention enables:
-- **Easy filtering** in AWS Console and CLI using `workshop-*` patterns
+- **Easy filtering** in AWS Console and CLI using `{prefix}-*` patterns
+- **Simple customization** by editing one string constant
+- **Reusable templates** by regenerating with different prefix
 - **Operational management** through consistent resource identification
 - **Cost tracking** and monitoring of workshop-related resources
 - **Automated cleanup** and maintenance scripts
@@ -591,6 +637,26 @@ public class BuildConfig {
 ### Property 25: Parallel Deployment Independence
 *For any* EKS cluster and database creation, they should depend only on VPC and deploy in parallel without unnecessary dependencies
 **Validates: Requirements 19.1, 19.2, 19.3**
+
+### Property 26: Configurable Prefix Pattern
+*For any* AWS resource created by Vpc, Ide, CodeBuild, Database, or Eks constructs, it should use the prefix string defined in WorkshopStack constructor for all resource names
+**Validates: Requirements 22.1, 22.2, 22.3, 22.4, 22.5**
+
+### Property 27: Prefix Exception for App-Specific Constructs
+*For any* resource created by Unicorn or JvmAnalysis constructs, it should use its own naming convention independent of the WorkshopStack prefix
+**Validates: Requirements 22.6, 22.7**
+
+### Property 28: WorkshopBucket Shared Resources
+*For any* WorkshopBucket construct, it should create S3 bucket and SSM parameter using the prefix pattern for shared resource discovery
+**Validates: Requirements 23.1, 23.2, 23.3**
+
+### Property 29: ThreadAnalysis Infrastructure Naming
+*For any* ThreadAnalysis construct, it should use the prefix pattern for all Lambda, API Gateway, IAM role, and security group resources
+**Validates: Requirements 24.1, 24.2, 24.3, 24.4, 24.5**
+
+### Property 30: JvmAnalysis App-Specific Naming
+*For any* JvmAnalysis construct, it should use "jvm-analysis-*" naming for ECR repository and Pod Identity role
+**Validates: Requirements 25.1, 25.2, 25.3**
 
 ## Error Handling
 

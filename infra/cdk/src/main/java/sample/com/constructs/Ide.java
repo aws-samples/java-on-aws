@@ -42,6 +42,7 @@ public class Ide extends Construct {
     private final Secret ideSecretsManagerPassword;
     private final Role ideRole;
     private final Role lambdaRole;
+    private final String prefix;
     private CustomResource passwordResource;
 
     /**
@@ -81,6 +82,7 @@ public class Ide extends Construct {
     }
 
     public static class IdeProps {
+        private String prefix = "workshop";
         private String instanceName = "ide";
         private int diskSize = 50;
         private IVpc vpc;
@@ -105,6 +107,7 @@ public class Ide extends Construct {
         public static class Builder {
             private IdeProps props = new IdeProps();
 
+            public Builder prefix(String prefix) { props.prefix = prefix; return this; }
             public Builder instanceName(String instanceName) { props.instanceName = instanceName; return this; }
             public Builder diskSize(int diskSize) { props.diskSize = diskSize; return this; }
             public Builder vpc(IVpc vpc) { props.vpc = vpc; return this; }
@@ -119,6 +122,7 @@ public class Ide extends Construct {
         }
 
         // Getters
+        public String getPrefix() { return prefix; }
         public String getInstanceName() { return instanceName; }
         public int getDiskSize() { return diskSize; }
         public IVpc getVpc() { return vpc; }
@@ -153,11 +157,13 @@ public class Ide extends Construct {
         super(scope, id);
 
         String instanceName = props.getInstanceName();
+        String prefix = props.getPrefix();
+        this.prefix = prefix;
 
         // Create workshop role for IDE instances if not provided
         if (props.getIdeRole() == null) {
             props.ideRole = Role.Builder.create(this, "Role")
-                .roleName("workshop-ide-user")
+                .roleName(prefix + "-ide-user")
                 .assumedBy(ServicePrincipal.Builder.create("ec2.amazonaws.com").build())
                 .managedPolicies(List.of(
                     ManagedPolicy.fromAwsManagedPolicyName("ReadOnlyAccess"),
@@ -225,7 +231,7 @@ public class Ide extends Construct {
 
         // Create CloudFront prefix list lookup Lambda function
         var prefixListLookup = new Lambda(this, "PrefixListLookup",
-            "/lambda/cloudfront-prefix-lookup.py", "workshop-ide-prefixlist", Duration.minutes(3), lambdaRole);
+            "/lambda/cloudfront-prefix-lookup.py", prefix + "-ide-prefixlist", Duration.minutes(3), lambdaRole);
         var prefixListFunction = prefixListLookup.getFunction();
 
         // Add EC2 permissions for prefix list lookup
@@ -246,7 +252,7 @@ public class Ide extends Construct {
         this.ideSecurityGroup = SecurityGroup.Builder.create(this, "SecurityGroup")
             .vpc(props.getVpc())
             .allowAllOutbound(true)
-            .securityGroupName("workshop-ide-cloudfront-sg")
+            .securityGroupName(prefix + "-ide-cloudfront-sg")
             .description("IDE security group")
             .build();
 
@@ -260,7 +266,7 @@ public class Ide extends Construct {
         this.ideInternalSecurityGroup = SecurityGroup.Builder.create(this, "InternalSecurityGroup")
             .vpc(props.getVpc())
             .allowAllOutbound(false)
-            .securityGroupName("workshop-ide-internal-sg")
+            .securityGroupName(prefix + "-ide-internal-sg")
             .description("IDE internal security group")
             .build();
 
@@ -272,7 +278,7 @@ public class Ide extends Construct {
         // Create instance profile
         var instanceProfile = InstanceProfile.Builder.create(this, "InstanceProfile")
             .role(this.ideRole)
-            .instanceProfileName("workshop-ide-instance-profile")
+            .instanceProfileName(prefix + "-ide-instance-profile")
             .build();
 
         // Create Elastic IP
@@ -301,7 +307,7 @@ public class Ide extends Construct {
                 .secretStringTemplate("{\"password\":\"\"}")
                 .excludeCharacters("\"@/\\\\")
                 .build())
-            .secretName("workshop-ide-password")
+            .secretName(prefix + "-ide-password")
             .removalPolicy(RemovalPolicy.DESTROY)
             .build();
 
@@ -320,13 +326,14 @@ public class Ide extends Construct {
             .replace("${TEMPLATE_TYPE}", templateType)
             .replace("${ARCH}", props.getIdeArch().getUnameValue())
             .replace("${IDE_TYPE}", props.getIdeType().getScriptName())
-            .replace("${WAIT_CONDITION_HANDLE_URL}", waitHandle.getRef());
+            .replace("${WAIT_CONDITION_HANDLE_URL}", waitHandle.getRef())
+            .replace("${PREFIX}", prefix);
 
         userData.addCommands(userDataContent);
 
         // Create instance launcher Lambda with multi-AZ and multi-instance-type failover
         var instanceLauncher = new Lambda(this, "InstanceLauncher",
-            "/lambda/ec2-launcher.py", "workshop-ide-launcher", Duration.minutes(5), lambdaRole);
+            "/lambda/ec2-launcher.py", prefix + "-ide-launcher", Duration.minutes(5), lambdaRole);
         var instanceLauncherFunction = instanceLauncher.getFunction();
 
         // Create EC2 instance via Custom Resource with intelligent failover
@@ -450,7 +457,7 @@ public class Ide extends Construct {
                 .handler("index.lambda_handler")
                 .runtime(Runtime.PYTHON_3_13)
                 .timeout(Duration.minutes(3))
-                .functionName("workshop-ide-password")
+                .functionName(prefix + "-ide-password")
                 .build();
 
             ideSecretsManagerPassword.grantRead(passwordFunction);

@@ -76,7 +76,7 @@ public class Unicorn extends Construct {
         Database database = props.getDatabase();
 
         // Create database setup Lambda function
-        Function databaseSetupFunction = Function.Builder.create(this, "DatabaseSetupFunction")
+        Function databaseSetupFunction = Function.Builder.create(this, "UnicornStoreDatabaseSetupFunction")
             .code(Code.fromInline(loadFile("/lambda/database-setup.py")))
             .handler("index.lambda_handler")
             .runtime(Runtime.PYTHON_3_13)
@@ -91,7 +91,7 @@ public class Unicorn extends Construct {
         database.getDatabase().grantDataApiAccess(databaseSetupFunction);
 
         // Create custom resource for database setup
-        this.databaseSetupResource = CustomResource.Builder.create(this, "DatabaseSetupResource")
+        this.databaseSetupResource = CustomResource.Builder.create(this, "UnicornStoreDatabaseSetupResource")
             .serviceToken(databaseSetupFunction.getFunctionArn())
             .properties(Map.of(
                 "SecretName", database.getDatabaseSecret().getSecretName(),

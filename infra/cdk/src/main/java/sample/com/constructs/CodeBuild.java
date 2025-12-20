@@ -25,6 +25,7 @@ public class CodeBuild extends Construct {
     private final Role lambdaRole;
 
     public static class CodeBuildProps {
+        private String prefix = "workshop";
         private String projectName = "workshop-setup";
         private IBuildImage buildImage = LinuxBuildImage.AMAZON_LINUX_2_5;
         private ComputeType computeType = ComputeType.MEDIUM;
@@ -39,6 +40,7 @@ public class CodeBuild extends Construct {
         public static class Builder {
             private CodeBuildProps props = new CodeBuildProps();
 
+            public Builder prefix(String prefix) { props.prefix = prefix; return this; }
             public Builder projectName(String projectName) { props.projectName = projectName; return this; }
             public Builder buildImage(IBuildImage buildImage) { props.buildImage = buildImage; return this; }
             public Builder computeType(ComputeType computeType) { props.computeType = computeType; return this; }
@@ -52,6 +54,7 @@ public class CodeBuild extends Construct {
         }
 
         // Getters
+        public String getPrefix() { return prefix; }
         public String getProjectName() { return projectName; }
         public IBuildImage getBuildImage() { return buildImage; }
         public ComputeType getComputeType() { return computeType; }
@@ -72,6 +75,8 @@ public class CodeBuild extends Construct {
 
     public CodeBuild(final Construct scope, final String id, final CodeBuildProps props) {
         super(scope, id);
+
+        String prefix = props.getPrefix();
 
         // Create CodeBuild service role
         this.codeBuildRole = Role.Builder.create(this, "Role")
@@ -131,12 +136,12 @@ public class CodeBuild extends Construct {
 
         // Create start build Lambda function
         var startLambda = new Lambda(this, "StartLambda",
-            "/lambda/codebuild-start.py", "workshop-codebuild-start", Duration.minutes(2), lambdaRole);
+            "/lambda/codebuild-start.py", prefix + "-codebuild-start", Duration.minutes(2), lambdaRole);
         Function startBuildFunction = startLambda.getFunction();
 
         // Create report build Lambda function
         var reportLambda = new Lambda(this, "ReportLambda",
-            "/lambda/codebuild-report.py", "workshop-codebuild-report", Duration.minutes(2), lambdaRole);
+            "/lambda/codebuild-report.py", prefix + "-codebuild-report", Duration.minutes(2), lambdaRole);
         Function reportBuildFunction = reportLambda.getFunction();
 
         // Create EventBridge rule for build completion

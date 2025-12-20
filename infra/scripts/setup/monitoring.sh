@@ -10,12 +10,14 @@ source "$SCRIPT_DIR/../lib/common.sh"
 
 log_info "Starting monitoring stack setup..."
 
+# Configuration - use PREFIX from environment, default to "workshop"
+PREFIX="${PREFIX:-workshop}"
 NAMESPACE="monitoring"
 GRAFANA_SECRET_NAME="grafana-admin"
 GRAFANA_USER="admin"
 
 # Get password from Secrets Manager
-SECRET_NAME="workshop-ide-password"
+SECRET_NAME="${PREFIX}-ide-password"
 SECRET_VALUE=$(aws secretsmanager get-secret-value \
     --secret-id "$SECRET_NAME" \
     --query 'SecretString' \

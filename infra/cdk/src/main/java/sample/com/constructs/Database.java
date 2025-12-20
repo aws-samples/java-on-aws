@@ -39,19 +39,44 @@ public class Database extends Construct {
     private final StringParameter paramDBConnectionString;
     private final Secret secretPassword;
 
+    public static class DatabaseProps {
+        private String prefix = "workshop";
+        private IVpc vpc;
+
+        public static DatabaseProps.Builder builder() { return new Builder(); }
+
+        public static class Builder {
+            private DatabaseProps props = new DatabaseProps();
+
+            public Builder prefix(String prefix) { props.prefix = prefix; return this; }
+            public Builder vpc(IVpc vpc) { props.vpc = vpc; return this; }
+            public DatabaseProps build() { return props; }
+        }
+
+        public String getPrefix() { return prefix; }
+        public IVpc getVpc() { return vpc; }
+    }
+
     public Database(final Construct scope, final String id, final IVpc vpc) {
+        this(scope, id, DatabaseProps.builder().vpc(vpc).build());
+    }
+
+    public Database(final Construct scope, final String id, final DatabaseProps props) {
         super(scope, id);
+
+        String prefix = props.getPrefix();
+        IVpc vpc = props.getVpc();
 
         // Create database secret with universal naming
         databaseSecret = DatabaseSecret.Builder
             .create(this, "Secret")
-            .secretName("workshop-db-secret")
+            .secretName(prefix + "-db-secret")
             .username("postgres")
             .build();
 
         // Create database security group
         databaseSecurityGroup = SecurityGroup.Builder.create(this, "SG")
-            .securityGroupName("workshop-db-sg")
+            .securityGroupName(prefix + "-db-sg")
             .allowAllOutbound(true)
             .vpc(vpc)
             .build();
@@ -70,12 +95,12 @@ public class Database extends Construct {
             .serverlessV2MinCapacity(0.5)
             .serverlessV2MaxCapacity(4)
             .writer(ClusterInstance.serverlessV2("DatabaseWriter", ServerlessV2ClusterInstanceProps.builder()
-                .instanceIdentifier("workshop-db-writer")
+                .instanceIdentifier(prefix + "-db-writer")
                 .autoMinorVersionUpgrade(true)
                 .build()))
             .enableDataApi(true)
             .defaultDatabaseName("workshop")
-            .clusterIdentifier("workshop-db-cluster")
+            .clusterIdentifier(prefix + "-db-cluster")
             .vpc(vpc)
             .vpcSubnets(SubnetSelection.builder()
                 .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
@@ -87,7 +112,7 @@ public class Database extends Construct {
 
         // Create separate password secret for services that need plain password
         secretPassword = Secret.Builder.create(this, "PasswordSecret")
-            .secretName("workshop-db-password-secret")
+            .secretName(prefix + "-db-password-secret")
             .secretStringValue(SecretValue.secretsManager(databaseSecret.getSecretName(),
                 SecretsManagerSecretOptions.builder().jsonField("password").build()))
             .build();
@@ -96,7 +121,7 @@ public class Database extends Construct {
         paramDBConnectionString = StringParameter.Builder.create(this, "ConnectionString")
             .allowedPattern(".*")
             .description("Database Connection String")
-            .parameterName("workshop-db-connection-string")
+            .parameterName(prefix + "-db-connection-string")
             .stringValue(getConnectionString())
             .tier(ParameterTier.STANDARD)
             .build();

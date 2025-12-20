@@ -612,13 +612,18 @@ Resources:
           - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
             - ","
             - Ref: VpcPublicSubnet2SubnetA811849C
-      VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      InstanceName: ide
-      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -644,8 +649,9 @@ Resources:
               - Ref: IdeWaitConditionHandleE8345861
               - |-
                 "
+                export PREFIX="workshop"
 
-                # Setup logging
+                # Setup logging - use PREFIX for log group name
                 LOG_GROUP_NAME="workshop-ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
                 echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
 
@@ -754,18 +760,13 @@ Resources:
                 "
                     exit 1
                 fi
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
+      InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
+      InstanceName: ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      VolumeSize: "50"
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:

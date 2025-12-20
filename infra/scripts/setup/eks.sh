@@ -8,13 +8,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 source "$SCRIPT_DIR/../lib/wait-for-resources.sh"
 
-# Configuration
-CLUSTER_NAME="workshop-eks"
+# Configuration - use PREFIX from environment, default to "workshop"
+PREFIX="${PREFIX:-workshop}"
+CLUSTER_NAME="${PREFIX}-eks"
 REGION=${AWS_REGION:-$(aws configure get region)}
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 log_info "Starting EKS cluster setup for cluster: $CLUSTER_NAME"
-log_info "Region: $REGION, Account: $ACCOUNT_ID"
+log_info "Region: $REGION, Account: $ACCOUNT_ID, Prefix: $PREFIX"
 
 # Wait for EKS cluster to be active
 log_info "Waiting for EKS cluster to be ready..."
@@ -85,24 +86,24 @@ cat <<EOF | kubectl apply -f -
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
 metadata:
-  name: workshop-db-secrets
+  name: ${PREFIX}-db-secrets
   namespace: default
 spec:
   provider: aws
   parameters:
     objects: |
-      - objectName: "workshop-db-secret"
+      - objectName: "${PREFIX}-db-secret"
         objectType: "secretsmanager"
         jmesPath:
           - path: "username"
             objectAlias: "db-username"
           - path: "password"
             objectAlias: "db-password"
-      - objectName: "workshop-db-connection-string"
+      - objectName: "${PREFIX}-db-connection-string"
         objectType: "ssmparameter"
         objectAlias: "db-connection-string"
   secretObjects:
-    - secretName: workshop-db-secret
+    - secretName: ${PREFIX}-db-secret
       type: Opaque
       data:
         - objectName: "db-username"

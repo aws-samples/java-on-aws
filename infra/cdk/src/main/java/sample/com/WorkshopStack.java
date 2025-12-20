@@ -32,6 +32,9 @@ public class WorkshopStack extends Stack {
     public WorkshopStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
 
+        // Resource naming prefix - change this to customize all resource names
+        String prefix = "workshop";
+
         // Configuration values - get template type from CDK context (build time)
         String templateType = (String) this.getNode().tryGetContext("template.type");
         if (templateType == null) {
@@ -45,10 +48,13 @@ public class WorkshopStack extends Stack {
         }
 
         // Core infrastructure (always created)
-        Vpc vpc = new Vpc(this, "Vpc");
+        Vpc vpc = new Vpc(this, "Vpc", Vpc.VpcProps.builder()
+            .prefix(prefix)
+            .build());
 
         // Create IDE props and get role for parallel resource creation
         IdeProps ideProps = IdeProps.builder()
+            .prefix(prefix)
             .vpc(vpc.getVpc())
             .gitBranch(gitBranch)
             .templateType(templateType)
@@ -60,7 +66,8 @@ public class WorkshopStack extends Stack {
             // CodeBuild for workshop setup (service-linked role creation)
             new CodeBuild(this, "CodeBuild",
                 CodeBuild.CodeBuildProps.builder()
-                    .projectName("workshop-setup")
+                    .prefix(prefix)
+                    .projectName(prefix + "-setup")
                     .vpc(vpc.getVpc())
                     .environmentVariables(Map.of(
                         "TEMPLATE_TYPE", templateType,
@@ -69,23 +76,39 @@ public class WorkshopStack extends Stack {
                     .build());
 
             // Database, EKS, PerformanceAnalysis, Unicorn
-            Database database = new Database(this, "Database", vpc.getVpc());
+            Database database = new Database(this, "Database", Database.DatabaseProps.builder()
+                .prefix(prefix)
+                .vpc(vpc.getVpc())
+                .build());
 
             // EKS cluster
             Eks eks = new Eks(this, "Eks", Eks.EksProps.builder()
+                .prefix(prefix)
                 .vpc(vpc.getVpc())
                 .ideInstanceRole(ideProps.getIdeRole())
                 .ideInternalSecurityGroup(ide.getIdeInternalSecurityGroup())
                 .build());
 
-            // Performance Analysis (thread dump + profiling analysis)
-            PerformanceAnalysis performanceAnalysis = new PerformanceAnalysis(this, "PerformanceAnalysis",
-                PerformanceAnalysis.PerformanceAnalysisProps.builder()
+            // Shared workshop bucket for thread dumps and profiling data
+            WorkshopBucket workshopBucket = new WorkshopBucket(this, "WorkshopBucket",
+                WorkshopBucket.WorkshopBucketProps.builder()
+                    .prefix(prefix)
+                    .build());
+
+            // Thread Analysis (thread dump Lambda + API Gateway)
+            ThreadAnalysis threadAnalysis = new ThreadAnalysis(this, "ThreadAnalysis",
+                ThreadAnalysis.ThreadAnalysisProps.builder()
+                    .prefix(prefix)
                     .vpc(vpc.getVpc())
                     .eksCluster(eks.getCluster())
                     .eksClusterName(eks.getClusterName())
-                    .threadAnalysisEnabled(true)
-                    .profilingAnalysisEnabled(true)
+                    .workshopBucket(workshopBucket.getBucket())
+                    .build());
+
+            // JVM Analysis (ECR + Pod Identity role for jvm-analysis-service)
+            JvmAnalysis jvmAnalysis = new JvmAnalysis(this, "JvmAnalysis",
+                JvmAnalysis.JvmAnalysisProps.builder()
+                    .workshopBucket(workshopBucket.getBucket())
                     .build());
 
             // Unicorn construct: ECR + Roles + DB Setup (uses unicorn* naming for workshop content compatibility)
@@ -94,7 +117,7 @@ public class WorkshopStack extends Stack {
                 .eksRolesEnabled(true)
                 .ecsRolesEnabled(false)
                 .database(database)
-                .workshopBucket(performanceAnalysis.getWorkshopBucket())
+                .workshopBucket(workshopBucket.getBucket())
                 .build());
         }
     }

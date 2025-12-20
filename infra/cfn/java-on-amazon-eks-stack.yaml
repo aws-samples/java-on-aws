@@ -702,7 +702,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      InstanceName: ide
       IamInstanceProfileArn:
         Fn::GetAtt:
           - IdeInstanceProfile61B92038
@@ -751,8 +750,9 @@ Resources:
               - Ref: IdeWaitConditionHandleE8345861
               - |-
                 "
+                export PREFIX="workshop"
 
-                # Setup logging
+                # Setup logging - use PREFIX for log group name
                 LOG_GROUP_NAME="workshop-ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
                 echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
 
@@ -862,6 +862,7 @@ Resources:
                     exit 1
                 fi
       InstanceTypes: m7g.xlarge,m6g.xlarge,c7g.xlarge,t4g.xlarge
+      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1240,12 +1241,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: new-ws-infra
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-on-amazon-eks
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: new-ws-infra
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1493,7 +1494,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1766171876896"
+      ContentHash: "1766218953076"
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1783,7 +1784,7 @@ Resources:
       Value: aws:cdk:eks:kubectl-ready
     DependsOn:
       - EksClusterB2BDED5B
-  EksClusterClusterSecurityGroupfromWorkshopStackPerformanceAnalysisLambdaSecurityGroupB1230E1D44314DAA9F0:
+  EksClusterClusterSecurityGroupfromWorkshopStackThreadAnalysisSecurityGroup80EDCDE3443FFB1A901:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: Allow Lambda access to Kubernetes API
@@ -1795,7 +1796,7 @@ Resources:
       IpProtocol: tcp
       SourceSecurityGroupId:
         Fn::GetAtt:
-          - PerformanceAnalysisLambdaSecurityGroupA80AE618
+          - ThreadAnalysisSecurityGroup28B00BCE
           - GroupId
       ToPort: 443
   EksSecretsStoreDriverA84665C0:
@@ -1835,17 +1836,17 @@ Resources:
           - IdeRole4650E22E
           - Arn
       Type: STANDARD
-  PerformanceAnalysisBucketE9EDCD90:
+  WorkshopBucketFD5BC43F:
     Type: AWS::S3::Bucket
     Properties:
       BucketName:
         Fn::Join:
           - ""
-          - - workshop-
+          - - workshop-bucket-
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251219201757"
+            - "-20251220092233"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -1853,15 +1854,15 @@ Resources:
         RestrictPublicBuckets: true
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  PerformanceAnalysisBucketNameParameterB5351BBC:
+  WorkshopBucketBucketNameParameterCEE58012:
     Type: AWS::SSM::Parameter
     Properties:
-      Description: Workshop analysis bucket name for thread dumps and profiling data
-      Name: workshop-analysis-bucket-name
+      Description: Workshop bucket name for thread dumps and profiling data
+      Name: workshop-bucket-name
       Type: String
       Value:
-        Ref: PerformanceAnalysisBucketE9EDCD90
-  PerformanceAnalysisLambdaBedrockRoleDC31B6C5:
+        Ref: WorkshopBucketFD5BC43F
+  ThreadAnalysisLambdaRole00E8F59E:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -1871,7 +1872,7 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
         Version: "2012-10-17"
-      Description: Role for Lambda to access Bedrock, EKS, and ECS for performance analysis
+      Description: Role for Thread Dump Lambda to access Bedrock, EKS, and ECS
       ManagedPolicyArns:
         - Fn::Join:
             - ""
@@ -1883,8 +1884,8 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-      RoleName: workshop-analysis-lambda-role
-  PerformanceAnalysisLambdaBedrockRoleDefaultPolicy263C2987:
+      RoleName: workshop-thread-dump-lambda-role
+  ThreadAnalysisLambdaRoleDefaultPolicyC7AD40BA:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -1925,23 +1926,23 @@ Resources:
             Effect: Allow
             Resource:
               - Fn::GetAtt:
-                  - PerformanceAnalysisBucketE9EDCD90
+                  - WorkshopBucketFD5BC43F
                   - Arn
               - Fn::Join:
                   - ""
                   - - Fn::GetAtt:
-                        - PerformanceAnalysisBucketE9EDCD90
+                        - WorkshopBucketFD5BC43F
                         - Arn
                     - /*
         Version: "2012-10-17"
-      PolicyName: PerformanceAnalysisLambdaBedrockRoleDefaultPolicy263C2987
+      PolicyName: ThreadAnalysisLambdaRoleDefaultPolicyC7AD40BA
       Roles:
-        - Ref: PerformanceAnalysisLambdaBedrockRoleDC31B6C5
-  PerformanceAnalysisLambdaSecurityGroupA80AE618:
+        - Ref: ThreadAnalysisLambdaRole00E8F59E
+  ThreadAnalysisSecurityGroup28B00BCE:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for Thread Dump Lambda function
-      GroupName: workshop-analysis-lambda-sg
+      GroupName: workshop-thread-dump-lambda-sg
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
@@ -1957,14 +1958,14 @@ Resources:
           ToPort: 443
       VpcId:
         Ref: VpcC3027511
-  PerformanceAnalysisThreadDumpLogGroup04976B37:
+  ThreadAnalysisLogGroup7EC7074A:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: /aws/lambda/workshop-thread-dump-lambda
       RetentionInDays: 7
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  PerformanceAnalysisThreadDumpLambda16C12FFD:
+  ThreadAnalysisLambda3EE9B29D:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -2011,46 +2012,46 @@ Resources:
               }
       Environment:
         Variables:
-          APP_LABEL: unicorn-store-spring
-          K8S_NAMESPACE: unicorn-store-spring
-          S3_THREAD_DUMPS_PREFIX: thread-dumps/
           EKS_CLUSTER_NAME:
             Ref: EksClusterB2BDED5B
           S3_BUCKET_NAME:
-            Ref: PerformanceAnalysisBucketE9EDCD90
+            Ref: WorkshopBucketFD5BC43F
           SECRET_NAME: workshop-ide-password
           KUBERNETES_AUTH_TYPE: aws
+          APP_LABEL: unicorn-store-spring
+          K8S_NAMESPACE: unicorn-store-spring
+          S3_THREAD_DUMPS_PREFIX: thread-dumps/
       FunctionName: workshop-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
       Role:
         Fn::GetAtt:
-          - PerformanceAnalysisLambdaBedrockRoleDC31B6C5
+          - ThreadAnalysisLambdaRole00E8F59E
           - Arn
       Runtime: python3.13
       Timeout: 300
       VpcConfig:
         SecurityGroupIds:
           - Fn::GetAtt:
-              - PerformanceAnalysisLambdaSecurityGroupA80AE618
+              - ThreadAnalysisSecurityGroup28B00BCE
               - GroupId
         SubnetIds:
           - Ref: VpcPrivateSubnet1Subnet67A4DBCB
           - Ref: VpcPrivateSubnet2SubnetC8EB537D
     DependsOn:
-      - PerformanceAnalysisLambdaBedrockRoleDefaultPolicy263C2987
-      - PerformanceAnalysisLambdaBedrockRoleDC31B6C5
+      - ThreadAnalysisLambdaRoleDefaultPolicyC7AD40BA
+      - ThreadAnalysisLambdaRole00E8F59E
       - VpcPrivateSubnet1DefaultRouteF704DE9F
       - VpcPrivateSubnet1RouteTableAssociation2BC202CB
       - VpcPrivateSubnet2DefaultRoute5FAC9901
       - VpcPrivateSubnet2RouteTableAssociationFA51927B
-  PerformanceAnalysisApiGatewayVpcEndpoint1FF8955E:
+  ThreadAnalysisApiGatewayVpcEndpointFFA4C62B:
     Type: AWS::EC2::VPCEndpoint
     Properties:
       PrivateDnsEnabled: true
       SecurityGroupIds:
         - Fn::GetAtt:
-            - PerformanceAnalysisLambdaSecurityGroupA80AE618
+            - ThreadAnalysisSecurityGroup28B00BCE
             - GroupId
       ServiceName:
         Fn::Join:
@@ -2064,14 +2065,14 @@ Resources:
       VpcEndpointType: Interface
       VpcId:
         Ref: VpcC3027511
-  PerformanceAnalysisThreadDumpApi015AD489:
+  ThreadAnalysisApi9CE34026:
     Type: AWS::ApiGateway::RestApi
     Properties:
       EndpointConfiguration:
         Types:
           - PRIVATE
         VpcEndpointIds:
-          - Ref: PerformanceAnalysisApiGatewayVpcEndpoint1FF8955E
+          - Ref: ThreadAnalysisApiGatewayVpcEndpointFFA4C62B
       Name: workshop-thread-dump-api
       Policy:
         Statement:
@@ -2079,37 +2080,37 @@ Resources:
             Condition:
               StringEquals:
                 aws:SourceVpce:
-                  Ref: PerformanceAnalysisApiGatewayVpcEndpoint1FF8955E
+                  Ref: ThreadAnalysisApiGatewayVpcEndpointFFA4C62B
             Effect: Allow
             Principal:
               AWS: "*"
             Resource: "*"
         Version: "2012-10-17"
-  PerformanceAnalysisThreadDumpApiDeployment8915D43F6b3eda0b2b3b40ebb27b2a6b3e793cdd:
+  ThreadAnalysisApiDeploymentE7CF7355b4bcd829c8994c23f3c0fc8056d86da0:
     Type: AWS::ApiGateway::Deployment
     Properties:
       Description: Automatically created by the RestApi construct
       RestApiId:
-        Ref: PerformanceAnalysisThreadDumpApi015AD489
+        Ref: ThreadAnalysisApi9CE34026
     DependsOn:
-      - PerformanceAnalysisThreadDumpApiPOSTFD53C97E
+      - ThreadAnalysisApiPOSTAFF1E50B
     Metadata:
       aws:cdk:do-not-refactor: true
-  PerformanceAnalysisThreadDumpApiDeploymentStageprodE9DD8D76:
+  ThreadAnalysisApiDeploymentStageprod96FD44F8:
     Type: AWS::ApiGateway::Stage
     Properties:
       DeploymentId:
-        Ref: PerformanceAnalysisThreadDumpApiDeployment8915D43F6b3eda0b2b3b40ebb27b2a6b3e793cdd
+        Ref: ThreadAnalysisApiDeploymentE7CF7355b4bcd829c8994c23f3c0fc8056d86da0
       RestApiId:
-        Ref: PerformanceAnalysisThreadDumpApi015AD489
+        Ref: ThreadAnalysisApi9CE34026
       StageName: prod
-  PerformanceAnalysisThreadDumpApiPOSTApiPermissionWorkshopStackPerformanceAnalysisThreadDumpApiA2527E2EPOST5C264D02:
+  ThreadAnalysisApiPOSTApiPermissionWorkshopStackThreadAnalysisApi3435FEFFPOST556B33FB:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
       FunctionName:
         Fn::GetAtt:
-          - PerformanceAnalysisThreadDumpLambda16C12FFD
+          - ThreadAnalysisLambda3EE9B29D
           - Arn
       Principal: apigateway.amazonaws.com
       SourceArn:
@@ -2122,17 +2123,17 @@ Resources:
             - ":"
             - Ref: AWS::AccountId
             - ":"
-            - Ref: PerformanceAnalysisThreadDumpApi015AD489
+            - Ref: ThreadAnalysisApi9CE34026
             - /
-            - Ref: PerformanceAnalysisThreadDumpApiDeploymentStageprodE9DD8D76
+            - Ref: ThreadAnalysisApiDeploymentStageprod96FD44F8
             - /POST/
-  PerformanceAnalysisThreadDumpApiPOSTApiPermissionTestWorkshopStackPerformanceAnalysisThreadDumpApiA2527E2EPOST10B83E9A:
+  ThreadAnalysisApiPOSTApiPermissionTestWorkshopStackThreadAnalysisApi3435FEFFPOST08FF3066:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
       FunctionName:
         Fn::GetAtt:
-          - PerformanceAnalysisThreadDumpLambda16C12FFD
+          - ThreadAnalysisLambda3EE9B29D
           - Arn
       Principal: apigateway.amazonaws.com
       SourceArn:
@@ -2145,9 +2146,9 @@ Resources:
             - ":"
             - Ref: AWS::AccountId
             - ":"
-            - Ref: PerformanceAnalysisThreadDumpApi015AD489
+            - Ref: ThreadAnalysisApi9CE34026
             - /test-invoke-stage/POST/
-  PerformanceAnalysisThreadDumpApiPOSTFD53C97E:
+  ThreadAnalysisApiPOSTAFF1E50B:
     Type: AWS::ApiGateway::Method
     Properties:
       AuthorizationType: NONE
@@ -2164,16 +2165,16 @@ Resources:
               - Ref: AWS::Region
               - :lambda:path/2015-03-31/functions/
               - Fn::GetAtt:
-                  - PerformanceAnalysisThreadDumpLambda16C12FFD
+                  - ThreadAnalysisLambda3EE9B29D
                   - Arn
               - /invocations
       ResourceId:
         Fn::GetAtt:
-          - PerformanceAnalysisThreadDumpApi015AD489
+          - ThreadAnalysisApi9CE34026
           - RootResourceId
       RestApiId:
-        Ref: PerformanceAnalysisThreadDumpApi015AD489
-  PerformanceAnalysisLambdaAccessEntryE27F9567:
+        Ref: ThreadAnalysisApi9CE34026
+  ThreadAnalysisLambdaAccessEntryF884F8C2:
     Type: AWS::EKS::AccessEntry
     Properties:
       AccessPolicies:
@@ -2189,17 +2190,17 @@ Resources:
         Ref: EksClusterB2BDED5B
       PrincipalArn:
         Fn::GetAtt:
-          - PerformanceAnalysisLambdaBedrockRoleDC31B6C5
+          - ThreadAnalysisLambdaRole00E8F59E
           - Arn
       Type: STANDARD
-  PerformanceAnalysisJvmAnalysisEcrC876FBDD:
+  JvmAnalysisEcr01D6730D:
     Type: AWS::ECR::Repository
     Properties:
       EmptyOnDelete: true
       RepositoryName: jvm-analysis-service
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
-  PerformanceAnalysisJvmAnalysisServiceRole911F5A8A:
+  JvmAnalysisServiceRole87E5AD2B:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -2219,7 +2220,7 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonBedrockLimitedAccess
       RoleName: jvm-analysis-service-eks-pod-role
-  PerformanceAnalysisJvmAnalysisServiceRoleDefaultPolicy050D80FD:
+  JvmAnalysisServiceRoleDefaultPolicyB35B4FC8:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -2231,18 +2232,18 @@ Resources:
             Effect: Allow
             Resource:
               - Fn::GetAtt:
-                  - PerformanceAnalysisBucketE9EDCD90
+                  - WorkshopBucketFD5BC43F
                   - Arn
               - Fn::Join:
                   - ""
                   - - Fn::GetAtt:
-                        - PerformanceAnalysisBucketE9EDCD90
+                        - WorkshopBucketFD5BC43F
                         - Arn
                     - /*
         Version: "2012-10-17"
-      PolicyName: PerformanceAnalysisJvmAnalysisServiceRoleDefaultPolicy050D80FD
+      PolicyName: JvmAnalysisServiceRoleDefaultPolicyB35B4FC8
       Roles:
-        - Ref: PerformanceAnalysisJvmAnalysisServiceRole911F5A8A
+        - Ref: JvmAnalysisServiceRole87E5AD2B
   UnicornUnicornStoreSpringEcr689B9363:
     Type: AWS::ECR::Repository
     Properties:
@@ -2292,12 +2293,12 @@ Resources:
             Effect: Allow
             Resource:
               - Fn::GetAtt:
-                  - PerformanceAnalysisBucketE9EDCD90
+                  - WorkshopBucketFD5BC43F
                   - Arn
               - Fn::Join:
                   - ""
                   - - Fn::GetAtt:
-                        - PerformanceAnalysisBucketE9EDCD90
+                        - WorkshopBucketFD5BC43F
                         - Arn
                     - /*
           - Action:
@@ -2327,7 +2328,7 @@ Resources:
       PolicyName: UnicornUnicornStoreEksPodRoleDefaultPolicy0D527B93
       Roles:
         - Ref: UnicornUnicornStoreEksPodRoleB15D12B7
-  UnicornDatabaseSetupFunctionServiceRoleA5B977F8:
+  UnicornUnicornStoreDatabaseSetupFunctionServiceRole61942171:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -2353,7 +2354,7 @@ Resources:
       - VpcPrivateSubnet1RouteTableAssociation2BC202CB
       - VpcPrivateSubnet2DefaultRoute5FAC9901
       - VpcPrivateSubnet2RouteTableAssociationFA51927B
-  UnicornDatabaseSetupFunctionServiceRoleDefaultPolicyD14FF050:
+  UnicornUnicornStoreDatabaseSetupFunctionServiceRoleDefaultPolicy00D62509:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -2384,15 +2385,15 @@ Resources:
                   - ":cluster:"
                   - Ref: DatabaseCluster5B53A178
         Version: "2012-10-17"
-      PolicyName: UnicornDatabaseSetupFunctionServiceRoleDefaultPolicyD14FF050
+      PolicyName: UnicornUnicornStoreDatabaseSetupFunctionServiceRoleDefaultPolicy00D62509
       Roles:
-        - Ref: UnicornDatabaseSetupFunctionServiceRoleA5B977F8
+        - Ref: UnicornUnicornStoreDatabaseSetupFunctionServiceRole61942171
     DependsOn:
       - VpcPrivateSubnet1DefaultRouteF704DE9F
       - VpcPrivateSubnet1RouteTableAssociation2BC202CB
       - VpcPrivateSubnet2DefaultRoute5FAC9901
       - VpcPrivateSubnet2RouteTableAssociationFA51927B
-  UnicornDatabaseSetupFunction80EB56CA:
+  UnicornUnicornStoreDatabaseSetupFunction04E12F8B:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -2553,7 +2554,7 @@ Resources:
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-          - UnicornDatabaseSetupFunctionServiceRoleA5B977F8
+          - UnicornUnicornStoreDatabaseSetupFunctionServiceRole61942171
           - Arn
       Runtime: python3.13
       Timeout: 180
@@ -2566,18 +2567,18 @@ Resources:
           - Ref: VpcPrivateSubnet1Subnet67A4DBCB
           - Ref: VpcPrivateSubnet2SubnetC8EB537D
     DependsOn:
-      - UnicornDatabaseSetupFunctionServiceRoleDefaultPolicyD14FF050
-      - UnicornDatabaseSetupFunctionServiceRoleA5B977F8
+      - UnicornUnicornStoreDatabaseSetupFunctionServiceRoleDefaultPolicy00D62509
+      - UnicornUnicornStoreDatabaseSetupFunctionServiceRole61942171
       - VpcPrivateSubnet1DefaultRouteF704DE9F
       - VpcPrivateSubnet1RouteTableAssociation2BC202CB
       - VpcPrivateSubnet2DefaultRoute5FAC9901
       - VpcPrivateSubnet2RouteTableAssociationFA51927B
-  UnicornDatabaseSetupResource057250E4:
+  UnicornUnicornStoreDatabaseSetupResourceCDB8BDDF:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken:
         Fn::GetAtt:
-          - UnicornDatabaseSetupFunction80EB56CA
+          - UnicornUnicornStoreDatabaseSetupFunction04E12F8B
           - Arn
       SecretName:
         Fn::Join:

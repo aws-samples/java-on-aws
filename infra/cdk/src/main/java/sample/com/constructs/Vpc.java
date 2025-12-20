@@ -7,11 +7,32 @@ import java.util.List;
 public class Vpc extends Construct {
     private final IVpc vpc;
 
+    public static class VpcProps {
+        private String prefix = "workshop";
+
+        public static VpcProps.Builder builder() { return new Builder(); }
+
+        public static class Builder {
+            private VpcProps props = new VpcProps();
+
+            public Builder prefix(String prefix) { props.prefix = prefix; return this; }
+            public VpcProps build() { return props; }
+        }
+
+        public String getPrefix() { return prefix; }
+    }
+
     public Vpc(final Construct scope, final String id) {
+        this(scope, id, VpcProps.builder().build());
+    }
+
+    public Vpc(final Construct scope, final String id, final VpcProps props) {
         super(scope, id);
 
+        String prefix = props.getPrefix();
+
         this.vpc = software.amazon.awscdk.services.ec2.Vpc.Builder.create(this, "Vpc")
-            .vpcName("workshop-vpc")
+            .vpcName(prefix + "-vpc")
             .ipAddresses(IpAddresses.cidr("10.0.0.0/16"))
             .enableDnsSupport(true)
             .enableDnsHostnames(true)
