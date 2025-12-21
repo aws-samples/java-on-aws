@@ -147,12 +147,12 @@ configure_code_editor_settings() {
   "update.mode": "none",
   "telemetry.telemetryLevel": "off",
   "terminal.integrated.defaultProfile.linux": "zsh",
-  "terminal.integrated.shellIntegration.decorationsEnabled": "never",
   "redhat.telemetry.enabled": false,
   "java.configuration.checkProjectSettingsExclusions": false,
   "java.help.firstView": "none",
   "java.help.showReleaseNotes": false,
-  "java.jdt.ls.nullAnalysis.mode": "disabled"
+  "java.compile.nullAnalysis.mode": "disabled",
+  "java.recommendations.dependency.analytics.show": false
 }
 EOF
 
