@@ -2,6 +2,9 @@ package sample.com.constructs;
 
 import software.amazon.awscdk.CfnTag;
 import software.amazon.awscdk.services.ecr.CfnRepositoryCreationTemplate;
+import software.amazon.awscdk.services.iam.Role;
+import software.amazon.awscdk.services.iam.ServicePrincipal;
+import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.constructs.Construct;
 
 import java.util.List;
@@ -69,12 +72,28 @@ public class EcrRegistry extends Construct {
             }
             """;
 
+        // Create IAM role for ECR repository creation template
+        Role ecrTemplateRole = Role.Builder.create(this, "TemplateRole")
+            .roleName(prefix + "-ecr-template-role")
+            .assumedBy(new ServicePrincipal("ecr.amazonaws.com"))
+            .build();
+
+        ecrTemplateRole.addToPolicy(PolicyStatement.Builder.create()
+            .actions(List.of(
+                "ecr:CreateRepository",
+                "ecr:TagResource",
+                "ecr:PutLifecyclePolicy"
+            ))
+            .resources(List.of("*"))
+            .build());
+
         // Create Repository Creation Template
         this.repositoryCreationTemplate = CfnRepositoryCreationTemplate.Builder.create(this, "Template")
             .prefix("ROOT")  // Applies to all repositories
             .appliedFor(List.of("CREATE_ON_PUSH", "REPLICATION"))
             .imageTagMutability("MUTABLE")
             .lifecyclePolicy(lifecyclePolicyJson)
+            .customRoleArn(ecrTemplateRole.getRoleArn())
             .resourceTags(List.of(
                 CfnTag.builder()
                     .key("Environment")

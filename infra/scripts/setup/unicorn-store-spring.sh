@@ -10,12 +10,12 @@ source "$SCRIPT_DIR/../lib/common.sh"
 log_info "Setting up Unicorn Store Spring application..."
 
 # Get AWS account and region
-AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-AWS_REGION=$(aws configure get region)
-ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+ACCOUNT_ID=${ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}
+AWS_REGION=${AWS_REGION:-$(aws configure get region)}
+ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 IMAGE_NAME="unicorn-store-spring"
 
-log_info "AWS Account: $AWS_ACCOUNT_ID"
+log_info "AWS Account: $ACCOUNT_ID"
 log_info "AWS Region: $AWS_REGION"
 log_info "ECR Registry: $ECR_REGISTRY"
 
@@ -33,6 +33,11 @@ log_success "Copied unicorn-store-spring to ~/environment (tests removed)"
 
 # Change to the app directory
 cd ~/environment/unicorn-store-spring
+
+# Build the application with Maven
+log_info "Building application with Maven..."
+mvn clean package -DskipTests -ntp
+log_success "Maven build completed"
 
 # Login to ECR
 log_info "Logging in to ECR..."

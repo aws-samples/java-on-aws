@@ -144,6 +144,7 @@ EOF
 source /etc/profile.d/workshop.sh
 
 echo "export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)" | tee -a /etc/profile.d/workshop.sh
+echo "export AWS_ACCOUNT_ID=\$ACCOUNT_ID" | tee -a /etc/profile.d/workshop.sh
 source /etc/profile.d/workshop.sh
 
 echo "Setting PS1..."
