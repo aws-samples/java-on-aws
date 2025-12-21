@@ -145,7 +145,14 @@ configure_code_editor_settings() {
   "security.workspace.trust.enabled": false,
   "workbench.startupEditor": "terminal",
   "update.mode": "none",
-  "terminal.integrated.defaultProfile.linux": "zsh"
+  "telemetry.telemetryLevel": "off",
+  "terminal.integrated.defaultProfile.linux": "zsh",
+  "terminal.integrated.shellIntegration.decorationsEnabled": "never",
+  "redhat.telemetry.enabled": false,
+  "java.configuration.checkProjectSettingsExclusions": false,
+  "java.help.firstView": "none",
+  "java.help.showReleaseNotes": false,
+  "java.jdt.ls.nullAnalysis.mode": "disabled"
 }
 EOF
 
