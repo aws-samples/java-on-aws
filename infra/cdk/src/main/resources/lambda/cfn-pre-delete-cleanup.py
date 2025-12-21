@@ -137,24 +137,27 @@ def empty_bucket(bucket_name):
         print(f"Error emptying bucket {bucket_name}: {e}")
 
 def wait_for_deletion(endpoint_ids, max_wait=300):
-    """Poll until endpoints are deleted or timeout."""
+    """Poll until endpoints are fully deleted (not just deleting) or timeout."""
     start_time = time.time()
 
     while time.time() - start_time < max_wait:
         try:
             response = ec2.describe_vpc_endpoints(VpcEndpointIds=endpoint_ids)
-            remaining = [ep for ep in response.get('VpcEndpoints', [])
-                        if ep['State'] not in ['deleted', 'deleting']]
+            endpoints = response.get('VpcEndpoints', [])
+
+            # Wait for fully deleted state, not just deleting
+            remaining = [ep for ep in endpoints if ep['State'] != 'deleted']
 
             if not remaining:
-                print("All endpoints deleted")
+                print("All endpoints fully deleted")
                 return
 
-            print(f"Waiting for {len(remaining)} endpoints to delete...")
+            states = {ep['VpcEndpointId']: ep['State'] for ep in remaining}
+            print(f"Waiting for endpoints: {states}")
             time.sleep(10)
         except ec2.exceptions.ClientError as e:
             if 'InvalidVpcEndpointId.NotFound' in str(e):
-                print("All endpoints deleted")
+                print("All endpoints deleted (not found)")
                 return
             raise
 

@@ -676,6 +676,22 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
       VolumeSize: "50"
       IamInstanceProfileArn:
         Fn::GetAtt:
@@ -821,22 +837,6 @@ Resources:
                 fi
       ImageId:
         Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
