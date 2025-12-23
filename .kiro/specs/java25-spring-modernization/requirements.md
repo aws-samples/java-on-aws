@@ -178,9 +178,9 @@ When a Java/Spring developer sees this application, they should think:
 
 #### Acceptance Criteria
 
-1. THE Application SHALL use AWS SDK version 2.39.2 or later
+1. THE Application SHALL use AWS SDK version 2.40.14 or later
 2. THE Application SHALL NOT require --add-opens JVM flags for test execution
-3. THE Application SHALL use Testcontainers version 1.20.4 or later
+3. THE Application SHALL use Testcontainers version 1.21.4 or later
 
 ### Requirement 15: H2 Database Fallback
 

@@ -7,8 +7,8 @@ This implementation plan transforms unicorn-store-spring-java25 into a showcase 
 ## Tasks
 
 - [ ] 1. Critical Fixes and Dependency Updates
-  - [ ] 1.1 Update AWS SDK to version 2.39.2+
-    - Update `pom.xml` AWS SDK BOM version from 2.33.4 to 2.39.2
+  - [ ] 1.1 Update AWS SDK to version 2.40.14+
+    - Update `pom.xml` AWS SDK BOM version from 2.33.4 to 2.40.14
     - _Requirements: 14.1_
 
   - [ ] 1.2 Remove --add-opens JVM flags from surefire plugin
@@ -234,7 +234,7 @@ This implementation plan transforms unicorn-store-spring-java25 into a showcase 
 
 - [ ] 14. Add jqwik dependency for property testing
   - [ ] 14.1 Add jqwik to pom.xml
-    - Add jqwik dependency version 1.9.2 with test scope
+    - Add jqwik dependency version 1.9.3 with test scope
     - _Requirements: Testing Strategy_
 
 ## Notes
