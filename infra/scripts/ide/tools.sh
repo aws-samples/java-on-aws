@@ -259,6 +259,7 @@ install_container_tools() {
     sudo dnf install -y -q docker >/dev/null
     sudo service docker start
     sudo usermod -aG docker ec2-user
+    sudo systemctl restart code-server@ec2-user
 
     log_info "Installing SOCI snapshotter ${SOCI_VERSION} for ${ARCH_K8S}..."
     download_and_verify "https://github.com/awslabs/soci-snapshotter/releases/download/v$SOCI_VERSION/soci-snapshotter-$SOCI_VERSION-linux-${ARCH_K8S}.tar.gz" "soci-snapshotter-$SOCI_VERSION-linux-${ARCH_K8S}.tar.gz" "SOCI snapshotter ${SOCI_VERSION}"
