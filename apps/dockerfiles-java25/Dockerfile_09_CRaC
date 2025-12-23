@@ -1,0 +1,48 @@
+# Dockerfile_09_CRaC - Coordinated Restore at Checkpoint
+# Uses Azul Zulu with CRaC + Warp engine for ~100ms startup
+# Requires UnicornPublisher.crac modification for AWS SDK
+
+FROM azul/zulu-openjdk:25-jdk-crac-latest AS builder
+
+RUN apt-get -qq update && apt-get -qq install -y curl maven
+
+ARG SPRING_DATASOURCE_URL
+ENV SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL
+ARG SPRING_DATASOURCE_PASSWORD
+ENV SPRING_DATASOURCE_PASSWORD=$SPRING_DATASOURCE_PASSWORD
+
+COPY ./pom.xml ./pom.xml
+COPY src ./src/
+
+# Build the application
+RUN mvn clean package -DskipTests -ntp && mv target/store-spring-1.0.0-exec.jar store-spring.jar
+
+# Run the application and take a checkpoint using Warp engine
+# -Dspring.context.checkpoint=onRefresh: checkpoint after Spring context refresh
+# -XX:CRaCEngine=warp: use Warp engine (no CRIU, no extra privileges needed)
+# -XX:CPUFeatures=generic: portable checkpoint across different CPU types
+RUN <<END_OF_SCRIPT
+#!/bin/bash
+java -Dspring.context.checkpoint=onRefresh \
+    -Djdk.crac.collect-fd-stacktraces=true \
+    -XX:CRaCEngine=warp \
+    -XX:CPUFeatures=generic \
+    -XX:CRaCCheckpointTo=/opt/crac-files \
+    -jar /store-spring.jar & PID=$!
+wait $PID || true
+END_OF_SCRIPT
+
+FROM azul/zulu-openjdk:25-jdk-crac-latest AS runner
+
+RUN apt-get -qq update && apt-get -qq install -y adduser \
+    && addgroup --system --gid 1000 spring \
+    && adduser --system --disabled-password --gecos "" --uid 1000 --gid 1000 spring
+
+COPY --from=builder --chown=1000:1000 /opt/crac-files /opt/crac-files
+COPY --from=builder --chown=1000:1000 /store-spring.jar /store-spring.jar
+
+USER 1000:1000
+EXPOSE 8080
+
+# Restore the application from the checkpoint
+CMD ["java", "-XX:CRaCEngine=warp", "-XX:CRaCRestoreFrom=/opt/crac-files"]
