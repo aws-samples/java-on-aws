@@ -99,20 +99,29 @@ This implementation plan transforms unicorn-store-spring-java25 into a showcase 
   - Verify application starts correctly
   - Ask the user if questions arise
 
-- [ ] 6. Test Infrastructure Simplification
-  - [ ] 6.1 Create TestInfrastructure annotation
+- [ ] 6. Test Infrastructure Simplification and Testcontainers 2.0 Migration
+  - [ ] 6.1 Update pom.xml for Testcontainers 2.0
+    - Update testcontainers.version property to 2.0.3
+    - Update artifact coordinates: `org.testcontainers:postgresql` → `org.testcontainers:testcontainers-postgresql`
+    - Update artifact coordinates: `org.testcontainers:localstack` → `org.testcontainers:testcontainers-localstack`
+    - Update artifact coordinates: `org.testcontainers:junit-jupiter` → `org.testcontainers:testcontainers-junit-jupiter`
+    - _Requirements: 14.3_
+
+  - [ ] 6.2 Create TestInfrastructure annotation
     - Create `src/test/java/com/unicorn/store/integration/TestInfrastructure.java`
     - Combine @ExtendWith with TestInfrastructureInitializer
     - _Requirements: 7.1, 7.2_
 
-  - [ ] 6.2 Rename and update TestInfrastructureInitializer
+  - [ ] 6.3 Rename and update TestInfrastructureInitializer for Testcontainers 2.0
     - Rename from TestcontainersInfrastructureInitializer if needed
+    - Update imports: `org.testcontainers.containers.PostgreSQLContainer` → `org.testcontainers.postgresql.PostgreSQLContainer`
+    - Update imports: `org.testcontainers.containers.localstack.LocalStackContainer` → `org.testcontainers.localstack.LocalStackContainer`
     - Update LocalStack to use CLOUDWATCHEVENTS service (not S3/DynamoDB)
     - Add `.withReuse(true)` for container reuse
     - Remove unused `dockerAvailable` variable
-    - _Requirements: 8.1, 8.3_
+    - _Requirements: 8.1, 8.3, 14.3_
 
-  - [ ] 6.3 Delete redundant test infrastructure files
+  - [ ] 6.4 Delete redundant test infrastructure files
     - Delete `InfrastructureInitializer.java`
     - Delete `InitializeInfrastructure.java`
     - Delete `InitializeSimpleInfrastructure.java`
@@ -122,18 +131,18 @@ This implementation plan transforms unicorn-store-spring-java25 into a showcase 
     - Delete `application-test.yaml` if exists
     - _Requirements: 7.1_
 
-  - [ ] 6.4 Update UnicornControllerTest
+  - [ ] 6.5 Update UnicornControllerTest
     - Replace `@InitializeTestcontainersInfrastructure` with `@TestInfrastructure`
     - Remove `@ActiveProfiles("test")` if not needed
     - Replace raw `assert` statements with AssertJ assertions
     - _Requirements: 7.2, 7.3, 7.4_
 
-  - [ ] 6.5 Fix H2 fallback schema
+  - [ ] 6.6 Fix H2 fallback schema
     - Update `src/test/resources/schema.sql` to use `RANDOM_UUID()` instead of `gen_random_uuid()`
     - Ensure schema works with both PostgreSQL and H2
     - _Requirements: 15.1, 15.2_
 
-  - [ ] 6.6 Write property test for JSON serialization
+  - [ ] 6.7 Write property test for JSON serialization
     - **Property 2: JSON Serialization Round-Trip**
     - Create `src/test/java/com/unicorn/store/property/UnicornSerializationPropertyTest.java`
     - Test serialize → deserialize produces equivalent object

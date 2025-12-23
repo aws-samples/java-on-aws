@@ -366,14 +366,21 @@ public @interface TestInfrastructure {
 
 ```java
 /**
- * Initializes test infrastructure with Testcontainers.
+ * Initializes test infrastructure with Testcontainers 2.0.
  *
  * Features:
  * - PostgreSQL container for database
  * - LocalStack with CLOUDWATCHEVENTS for EventBridge testing
  * - Container reuse for faster test execution
  * - H2 fallback when Docker unavailable
+ *
+ * Note: Testcontainers 2.0 uses new package structure:
+ * - org.testcontainers.postgresql.PostgreSQLContainer
+ * - org.testcontainers.localstack.LocalStackContainer
  */
+import org.testcontainers.postgresql.PostgreSQLContainer;  // TC 2.0 package
+import org.testcontainers.localstack.LocalStackContainer;  // TC 2.0 package
+
 public class TestInfrastructureInitializer implements BeforeAllCallback {
 
     private static PostgreSQLContainer<?> postgres;
