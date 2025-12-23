@@ -242,10 +242,13 @@ install_kubernetes_tools() {
 
     log_info "Installing k9s..."
     export PATH="$HOME/.local/bin:$PATH"  # k9s installs to ~/.local/bin
-    install_with_version "k9s" "curl -sS https://webinstall.dev/k9s | bash" "k9s version --short 2>/dev/null | grep Version | awk '{print \$2}'" "LOG"
+    install_with_version "k9s" "curl -sS https://webinstall.dev/k9s | bash" "k9s version --short 2>/dev/null | grep Version | awk '{print \$2}'" "LOG" || true
 
     log_info "Installing e1s..."
-    install_with_version "e1s" "curl -sL https://raw.githubusercontent.com/keidarcy/e1s-install/master/cloudshell-install.sh | bash" "e1s --version 2>/dev/null | grep 'Current:' | awk '{print \$2}'" "LOG"
+    E1S_VERSION=$(curl -s https://api.github.com/repos/keidarcy/e1s/releases/latest | jq -r '.tag_name')
+    curl -sSLf "https://github.com/keidarcy/e1s/releases/download/${E1S_VERSION}/e1s_${E1S_VERSION#v}_linux_${ARCH_K8S}.tar.gz" -o /tmp/e1s.tar.gz
+    tar -xzf /tmp/e1s.tar.gz -C /tmp
+    install_with_version "e1s" "cp /tmp/e1s $HOME/.local/bin/ && rm -f /tmp/e1s.tar.gz /tmp/e1s" "e1s --version 2>/dev/null | grep 'Current:' | awk '{print \$2}'" "LOG" || true
 }
 
 install_kubernetes_tools
