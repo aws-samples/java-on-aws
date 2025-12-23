@@ -246,6 +246,79 @@ This implementation plan transforms unicorn-store-spring-java25 into a showcase 
     - Add jqwik dependency version 1.9.3 with test scope
     - _Requirements: Testing Strategy_
 
+- [ ] 15. Add Code Formatting with Spotless
+  - [ ] 15.1 Add Spotless Maven plugin to pom.xml
+    - Add spotless-maven-plugin version 2.44.4
+    - Configure with Palantir Java Format
+    - Add removeUnusedImports configuration
+    - _Requirements: 18.3_
+
+  - [ ] 15.2 Add EditorConfig for IDE consistency
+    - Create `.editorconfig` file in project root
+    - Configure indent_style=space, indent_size=4
+    - Configure end_of_line=lf, charset=utf-8
+    - _Requirements: 18.3_
+
+  - [ ] 15.3 Run Spotless to format all code
+    - Execute `mvn spotless:apply` to format codebase
+    - Verify no formatting issues with `mvn spotless:check`
+    - _Requirements: 18.3_
+
+- [ ] 16. Clean Up pom.xml with sortpom
+  - [ ] 16.1 Add sortpom-maven-plugin to pom.xml
+    - Add sortpom-maven-plugin version 4.0.0
+    - Configure to sort dependencies, plugins, and properties
+    - Configure indentation and line separator
+    - _Requirements: 18.3_
+
+  - [ ] 16.2 Reorganize pom.xml structure
+    - Group properties: Java version → Encoding → Dependency versions
+    - Group dependencies: Spring Boot → AWS SDK → Database → Observability → Test
+    - Remove unused S3 and DynamoDB dependencies
+    - Add comments for dependency groups
+    - Run `mvn sortpom:sort` to apply ordering
+    - _Requirements: 18.3, 1.3_
+
+- [ ] 17. Clean Up application.yaml
+  - [ ] 17.1 Reorganize application.yaml with logical sections
+    - Add section comments: # === Database Configuration ===
+    - Group: Spring Core → Database → JPA → Server → Management/Actuator
+    - Remove redundant/default settings
+    - Add comments explaining non-obvious settings (e.g., hikari pool size for containers)
+    - _Requirements: 18.1, 18.3_
+
+  - [ ] 17.2 Review and optimize configuration for microservices
+    - Ensure graceful shutdown is configured
+    - Verify health probes are production-ready
+    - Add appropriate timeouts for container environments
+    - Configure proper logging levels
+    - _Requirements: 16.1, 16.2, 16.3_
+
+- [ ] 18. Final Code Quality Review
+  - [ ] 18.1 Review package structure
+    - Verify clean separation: controller → service → data → model
+    - Ensure no circular dependencies
+    - Check that each class has single responsibility
+    - _Requirements: 18.2_
+
+  - [ ] 18.2 Fix unused blackhole variable in ThreadGeneratorService
+    - Properly use the blackhole variable to prevent dead code elimination
+    - Add comment explaining why volatile blackhole pattern is used
+    - _Requirements: 18.2_
+
+  - [ ] 18.3 Review and clean up imports
+    - Remove unused imports across all files
+    - Ensure consistent import ordering
+    - No wildcard imports
+    - _Requirements: 18.3_
+
+  - [ ] 18.4 Final polish
+    - Verify all TODO comments are resolved
+    - Ensure consistent naming conventions
+    - Check all public methods have appropriate Javadoc
+    - Verify no commented-out code remains
+    - _Requirements: 18.1, 18.2, 18.3_
+
 ## Notes
 
 - All tasks are required for comprehensive modernization

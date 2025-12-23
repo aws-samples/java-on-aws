@@ -225,3 +225,19 @@ When a Java/Spring developer sees this application, they should think:
 2. THE Application SHALL use meaningful variable and method names
 3. THE Application SHALL follow consistent code formatting
 4. THE Dockerfiles SHALL include comments explaining each optimization technique
+5. THE Application SHALL use Spotless with Palantir Java Format for automated code formatting
+6. THE pom.xml SHALL be organized with sortpom plugin for consistent dependency ordering
+7. THE application.yaml SHALL be organized with logical sections and explanatory comments
+
+### Requirement 19: Clean Configuration for Microservices
+
+**User Story:** As a workshop attendee, I want to see production-ready microservice configuration, so that I can understand best practices for containerized Java applications.
+
+#### Acceptance Criteria
+
+1. THE Application SHALL configure graceful shutdown for container orchestration
+2. THE Application SHALL configure appropriate connection pool sizes for containerized deployment
+3. THE Application SHALL configure proper request timeouts
+4. THE Application SHALL use structured logging suitable for container environments
+5. THE Application SHALL externalize all environment-specific configuration via environment variables
+6. THE pom.xml SHALL NOT contain unused dependencies
