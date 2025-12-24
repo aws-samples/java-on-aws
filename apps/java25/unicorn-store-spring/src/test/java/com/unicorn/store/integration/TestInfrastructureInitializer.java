@@ -48,6 +48,10 @@ public class TestInfrastructureInitializer implements BeforeAllCallback {
                 System.setProperty("spring.datasource.username", postgres.getUsername());
                 System.setProperty("spring.datasource.password", postgres.getPassword());
                 System.setProperty("spring.datasource.driver-class-name", "org.postgresql.Driver");
+
+                // Let Hibernate create schema (matches Aurora production behavior)
+                System.setProperty("spring.sql.init.mode", "never");
+                System.setProperty("spring.jpa.hibernate.ddl-auto", "create");
             }
 
             // Start LocalStack container with EventBridge (events service)
@@ -83,6 +87,10 @@ public class TestInfrastructureInitializer implements BeforeAllCallback {
         System.setProperty("spring.datasource.username", "sa");
         System.setProperty("spring.datasource.password", "password");
         System.setProperty("spring.datasource.driver-class-name", "org.h2.Driver");
+
+        // Let Hibernate create schema
+        System.setProperty("spring.sql.init.mode", "never");
+        System.setProperty("spring.jpa.hibernate.ddl-auto", "create");
 
         // Set up mock AWS properties
         System.setProperty("aws.accessKeyId", "test");
