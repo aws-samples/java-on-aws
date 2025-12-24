@@ -1,4 +1,4 @@
-package com.unicorn.jvm;
+package com.unicorn.jvm.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unicorn.jvm.AlertWebhookRequest;

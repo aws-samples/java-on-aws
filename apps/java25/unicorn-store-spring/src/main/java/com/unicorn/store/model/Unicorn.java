@@ -4,8 +4,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.Objects;
-
 @Entity(name = "unicorns")
 public class Unicorn {
 

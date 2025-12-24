@@ -57,13 +57,12 @@ public class TestInfrastructureInitializer implements BeforeAllCallback {
     }
 
     private void createTestBucket() {
-        try {
-            var s3Client = software.amazon.awssdk.services.s3.S3Client.builder()
+        try (var s3Client = software.amazon.awssdk.services.s3.S3Client.builder()
                 .endpointOverride(localstack.getEndpoint())
                 .region(software.amazon.awssdk.regions.Region.US_EAST_1)
                 .credentialsProvider(software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
                     software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create("test", "test")))
-                .build();
+                .build()) {
 
             s3Client.createBucket(software.amazon.awssdk.services.s3.model.CreateBucketRequest.builder()
                 .bucket("jvm-ai-analyzer-bucket")
