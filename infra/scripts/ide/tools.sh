@@ -259,7 +259,14 @@ install_container_tools() {
     sudo dnf install -y -q docker >/dev/null
     sudo service docker start
     sudo usermod -aG docker ec2-user
-    sudo systemctl restart code-server@ec2-user
+
+    # Restart the appropriate IDE service to pick up docker group membership
+    # IDE_TYPE is set by bootstrap.sh (defaults to code-editor)
+    if systemctl list-units --type=service | grep -q "code-editor@ec2-user"; then
+        sudo systemctl restart code-editor@ec2-user
+    elif systemctl list-units --type=service | grep -q "code-server@ec2-user"; then
+        sudo systemctl restart code-server@ec2-user
+    fi
 
     log_info "Installing SOCI snapshotter ${SOCI_VERSION} for ${ARCH_K8S}..."
     download_and_verify "https://github.com/awslabs/soci-snapshotter/releases/download/v$SOCI_VERSION/soci-snapshotter-$SOCI_VERSION-linux-${ARCH_K8S}.tar.gz" "soci-snapshotter-$SOCI_VERSION-linux-${ARCH_K8S}.tar.gz" "SOCI snapshotter ${SOCI_VERSION}"
