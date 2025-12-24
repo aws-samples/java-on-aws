@@ -79,47 +79,6 @@ else
     exit 1
 fi
 
-# Create SecretProviderClass for database secrets
-log_info "Creating SecretProviderClass for database secrets..."
-cat <<EOF | kubectl apply -f -
-apiVersion: secrets-store.csi.x-k8s.io/v1
-kind: SecretProviderClass
-metadata:
-  name: ${PREFIX}-db-secrets
-  namespace: default
-spec:
-  provider: aws
-  parameters:
-    objects: |
-      - objectName: "${PREFIX}-db-secret"
-        objectType: "secretsmanager"
-        jmesPath:
-          - path: "username"
-            objectAlias: "db-username"
-          - path: "password"
-            objectAlias: "db-password"
-      - objectName: "${PREFIX}-db-connection-string"
-        objectType: "ssmparameter"
-        objectAlias: "db-connection-string"
-  secretObjects:
-    - secretName: ${PREFIX}-db-secret
-      type: Opaque
-      data:
-        - objectName: "db-username"
-          key: "DB_USERNAME"
-        - objectName: "db-password"
-          key: "DB_PASSWORD"
-        - objectName: "db-connection-string"
-          key: "DB_CONNECTION_STRING"
-EOF
-
-if [ $? -eq 0 ]; then
-    log_success "SecretProviderClass created successfully"
-else
-    log_error "Failed to create SecretProviderClass"
-    exit 1
-fi
-
 # Verify EKS add-ons are installed and functional
 log_info "Verifying EKS add-ons..."
 

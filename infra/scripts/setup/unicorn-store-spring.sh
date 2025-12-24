@@ -55,7 +55,7 @@ log_success "Git user configured: Workshop User <user@sample.com>"
 # Initialize git repository in unicorn-store-spring
 log_info "Initializing git repository in unicorn-store-spring..."
 cd ~/environment/unicorn-store-spring
-git init
+git init -b main
 git add .
 git commit -m "Initial commit"
 log_success "Git repository initialized with initial commit"
@@ -78,11 +78,11 @@ log_info "Building Docker image..."
 docker build -t "$IMAGE_NAME" .
 log_success "Docker image built"
 
-# Tag and push with 'initial' tag
-log_info "Tagging and pushing image with 'initial' tag..."
-docker tag "$IMAGE_NAME:latest" "$ECR_REGISTRY/$IMAGE_NAME:initial"
-docker push "$ECR_REGISTRY/$IMAGE_NAME:initial"
-log_success "Pushed $ECR_REGISTRY/$IMAGE_NAME:initial"
+# Tag and push with '01-initial' tag
+log_info "Tagging and pushing image with '01-initial' tag..."
+docker tag "$IMAGE_NAME:latest" "$ECR_REGISTRY/$IMAGE_NAME:01-initial"
+docker push "$ECR_REGISTRY/$IMAGE_NAME:01-initial"
+log_success "Pushed $ECR_REGISTRY/$IMAGE_NAME:01-initial"
 
 # Tag and push with 'latest' tag
 log_info "Tagging and pushing image with 'latest' tag..."
@@ -93,4 +93,4 @@ log_success "Pushed $ECR_REGISTRY/$IMAGE_NAME:latest"
 log_success "Unicorn Store Spring setup completed"
 
 # Emit for bootstrap summary
-echo "✅ Success: Unicorn Store Spring (ECR: $IMAGE_NAME:initial, $IMAGE_NAME:latest)"
+echo "✅ Success: Unicorn Store Spring (ECR: $IMAGE_NAME:01-initial, $IMAGE_NAME:latest)"
