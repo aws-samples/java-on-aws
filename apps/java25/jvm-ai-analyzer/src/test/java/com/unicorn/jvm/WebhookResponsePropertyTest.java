@@ -45,7 +45,6 @@ class WebhookResponsePropertyTest {
             .map(pod -> new AlertWebhookRequest.Alert(
                 new AlertWebhookRequest.Labels(pod, "10.0.0.1:8080")))
             .toList();
-        var request = new AlertWebhookRequest(alerts);
 
         long validCount = alerts.stream()
             .filter(this::isValidAlert)
