@@ -2,7 +2,10 @@
 
 ## Introduction
 
-This specification defines the requirements for the unicorn-store-spring-java25 application as a **showcase workshop application** demonstrating Java 25, Spring Framework 7, and Spring Boot 4 best practices. The application serves as the centerpiece of an AWS workshop showing Java deployment options (EKS, ECS) and container optimizations (multi-stage builds, jlink, native images, CDS, CRaC, AOT).
+This specification defines the requirements for the `apps/java25/unicorn-store-spring` application as a **showcase workshop application** demonstrating Java 25, Spring Framework 7, and Spring Boot 4 best practices. The application serves as the centerpiece of an AWS workshop showing Java deployment options (EKS, ECS) and container optimizations (multi-stage builds, jlink, native images, CDS, CRaC, AOT).
+
+**Location:** `apps/java25/unicorn-store-spring/`
+**Dockerfiles:** `apps/java25/dockerfiles/`
 
 When a Java/Spring developer sees this application, they should think:
 - "This is how modern Java 25 code should look"

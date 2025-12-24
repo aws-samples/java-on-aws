@@ -2,7 +2,10 @@
 
 ## Overview
 
-This design document describes the architecture and implementation of the unicorn-store-spring-java25 application as a **showcase workshop application** demonstrating Java 25, Spring Framework 7, and Spring Boot 4 best practices.
+This design document describes the architecture and implementation of the `apps/java25/unicorn-store-spring` application as a **showcase workshop application** demonstrating Java 25, Spring Framework 7, and Spring Boot 4 best practices.
+
+**Location:** `apps/java25/unicorn-store-spring/`
+**Dockerfiles:** `apps/java25/dockerfiles/`
 
 The application is a RESTful CRUD service for managing unicorn entities, integrated with AWS EventBridge for event publishing. It serves as the centerpiece of an AWS workshop demonstrating:
 - Java deployment options (EKS, ECS)

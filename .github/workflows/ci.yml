@@ -68,9 +68,9 @@ jobs:
         cache: maven
     - name: Java version
       run: java --version
-    - name: Build unicorn-store-spring-java25 with Maven
+    - name: Build unicorn-store-spring with Maven
       run: mvn -B clean package --file pom.xml --no-transfer-progress
-      working-directory: ./apps/unicorn-store-spring-java25/
+      working-directory: ./apps/java25/unicorn-store-spring/
     - name: Install AWS CDK
       run: npm install -g aws-cdk
     - name: AWS CDK version

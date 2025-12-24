@@ -2,7 +2,10 @@
 
 ## Overview
 
-This implementation plan transforms unicorn-store-spring-java25 into a showcase workshop application demonstrating Java 25, Spring Framework 7, and Spring Boot 4 best practices. Tasks are organized by priority: critical fixes first, then Java features, tests, and finally Dockerfiles.
+This implementation plan transforms `apps/java25/unicorn-store-spring` into a showcase workshop application demonstrating Java 25, Spring Framework 7, and Spring Boot 4 best practices. Tasks are organized by priority: critical fixes first, then Java features, tests, and finally Dockerfiles.
+
+**Location:** `apps/java25/unicorn-store-spring/`
+**Dockerfiles:** `apps/java25/dockerfiles/`
 
 ## Tasks
 
