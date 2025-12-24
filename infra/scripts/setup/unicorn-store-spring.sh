@@ -19,17 +19,32 @@ log_info "AWS Account: $ACCOUNT_ID"
 log_info "AWS Region: $AWS_REGION"
 log_info "ECR Registry: $ECR_REGISTRY"
 
-# Copy unicorn-store-spring to ~/environment
-log_info "Copying unicorn-store-spring to ~/environment..."
+# Copy unicorn-store-spring (Java 25 version) to ~/environment
+log_info "Copying unicorn-store-spring (Java 25) to ~/environment..."
 if [ -d ~/environment/unicorn-store-spring ]; then
     log_warning "~/environment/unicorn-store-spring already exists, removing..."
     rm -rf ~/environment/unicorn-store-spring
 fi
-cp -r ~/java-on-aws/apps/unicorn-store-spring ~/environment/
+cp -r ~/java-on-aws/apps/java25/unicorn-store-spring ~/environment/
+log_success "Copied unicorn-store-spring (Java 25) to ~/environment"
 
-# Remove test directory to avoid testcontainers issues during Docker build
-rm -rf ~/environment/unicorn-store-spring/src/test
-log_success "Copied unicorn-store-spring to ~/environment (tests removed)"
+# Copy dockerfiles (Java 25 version) to ~/environment
+log_info "Copying dockerfiles (Java 25) to ~/environment..."
+if [ -d ~/environment/dockerfiles ]; then
+    log_warning "~/environment/dockerfiles already exists, removing..."
+    rm -rf ~/environment/dockerfiles
+fi
+cp -r ~/java-on-aws/apps/java25/dockerfiles ~/environment/
+log_success "Copied dockerfiles (Java 25) to ~/environment"
+
+# Copy jvm-ai-analyzer to ~/environment
+log_info "Copying jvm-ai-analyzer to ~/environment..."
+if [ -d ~/environment/jvm-ai-analyzer ]; then
+    log_warning "~/environment/jvm-ai-analyzer already exists, removing..."
+    rm -rf ~/environment/jvm-ai-analyzer
+fi
+cp -r ~/java-on-aws/apps/java25/jvm-ai-analyzer ~/environment/
+log_success "Copied jvm-ai-analyzer to ~/environment"
 
 # Change to the app directory
 cd ~/environment/unicorn-store-spring
