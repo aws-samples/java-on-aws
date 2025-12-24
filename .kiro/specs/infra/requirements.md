@@ -383,3 +383,26 @@ This document specifies the requirements for creating a new AWS workshop infrast
 
 1. THE Repository_Creation_Template SHALL apply an "Environment" tag with value "workshop" to all created repositories
 2. THE Repository_Creation_Template SHALL apply a "ManagedBy" tag with value "ecr-create-on-push" to all created repositories
+
+
+### Requirement 30
+
+**User Story:** As a workshop developer, I want shared helper functions across all IDE scripts, so that I can maintain consistent error handling, logging, and retry logic without code duplication.
+
+#### Acceptance Criteria
+
+1. WHEN IDE scripts execute, THE system SHALL source a shared functions.sh file for common helper functions
+2. WHEN retry operations are needed, THE system SHALL use retry_command with configurable attempts, delay, and failure mode
+3. WHEN tools are installed, THE system SHALL use install_with_version to log tool name and version consistently
+4. WHEN AWS variables are needed, THE system SHALL source /etc/profile.d/workshop.sh instead of re-fetching from metadata/API
+5. WHEN Docker is installed, THE system SHALL install it in bootstrap.sh before IDE setup so services inherit docker group membership
+
+### Requirement 31
+
+**User Story:** As a workshop developer, I want consistent AWS variable naming across all scripts, so that I can avoid confusion between different variable names for the same values.
+
+#### Acceptance Criteria
+
+1. WHEN AWS region is referenced, THE system SHALL use AWS_REGION variable name consistently (not REGION)
+2. WHEN AWS account ID is referenced, THE system SHALL use ACCOUNT_ID variable name consistently
+3. WHEN workshop.sh is created, THE system SHALL set AWS_REGION, AWS_DEFAULT_REGION, ACCOUNT_ID, and AWS_ACCOUNT_ID for compatibility

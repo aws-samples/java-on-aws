@@ -1,38 +1,110 @@
-# Unicorn Store: A Spring Boot REST API for Managing Unicorns
+# Unicorn Store - Java 25 + Spring Boot 4
 
-The Unicorn Store is a robust Spring Boot application that provides a RESTful API for managing unicorns. It offers CRUD operations for unicorn entities, integrates with AWS services, and uses PostgreSQL for data persistence.
+A REST API for managing unicorns, built to showcase modern Java features and container optimization techniques.
 
-## Project Description
+## Architecture
 
-The Unicorn Store is designed to showcase best practices in building a modern, cloud-native Spring Boot application. It leverages several key technologies and patterns:
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      HTTP Request                           │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  RequestContextFilter                                       │
+│  - Generates unique request ID                              │
+│  - Binds to ScopedValue (JEP 506) for request duration      │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  UnicornController                                          │
+│  - REST endpoints: GET/POST/PUT/DELETE /unicorns            │
+│  - Input validation, error handling                         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  UnicornService                                             │
+│  - Business logic, validation                               │
+│  - Reads request ID from ScopedValue for log correlation    │
+│  - Publishes events to EventBridge                          │
+└─────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+┌─────────────────────────┐     ┌─────────────────────────┐
+│  UnicornRepository      │     │  UnicornPublisher       │
+│  - Spring Data JPA      │     │  - EventBridge async    │
+│  - PostgreSQL           │     │  - CRUD events          │
+└─────────────────────────┘     └─────────────────────────┘
+```
 
-- **Spring Boot**: Provides the core framework for building the application, including dependency injection, web services, and data access.
-- **PostgreSQL**: Used as the primary database for storing unicorn information.
-- **AWS SDK**: Integrates with various AWS services, including EventBridge for event publishing, S3 for object storage, and DynamoDB for NoSQL data storage.
-- **Docker**: The application can be containerized for easy deployment and scaling.
-- **Testcontainers**: Enables integration testing with a real PostgreSQL database running in a container.
+## Project Structure
 
-Key features of the Unicorn Store include:
+```
+src/main/java/com/unicorn/store/
+├── StoreApplication.java          # Spring Boot entry point
+├── context/
+│   └── RequestContext.java        # ScopedValue holder (JEP 506)
+├── filter/
+│   └── RequestContextFilter.java  # Binds request ID to ScopedValue
+├── controller/
+│   └── UnicornController.java     # REST API endpoints
+├── service/
+│   └── UnicornService.java        # Business logic
+├── data/
+│   ├── UnicornRepository.java     # Spring Data JPA
+│   └── UnicornPublisher.java      # EventBridge integration
+├── model/
+│   └── Unicorn.java               # JPA entity
+└── config/
+    └── MonitoringConfig.java      # Metrics for EKS/ECS
+```
 
-- RESTful API for creating, reading, updating, and deleting unicorn entities
-- Event publishing to AWS EventBridge for each unicorn operation
-- Comprehensive integration tests using RestAssured and Testcontainers
-- Support for native compilation using GraalVM
-- Configurable deployment options, including Docker and Cloud Native Buildpacks
+## Modern Java Features
 
-The application demonstrates how to build a scalable, cloud-ready microservice that can be easily deployed and integrated into a larger ecosystem of services.
+| Feature | JEP | Location | Description |
+|---------|-----|----------|-------------|
+| Scoped Values | [506](https://openjdk.org/jeps/506) | `RequestContext`, `RequestContextFilter` | Thread-safe request context without ThreadLocal |
+| Flexible Constructor Bodies | [513](https://openjdk.org/jeps/513) | `Unicorn` constructor | Validation before super() call |
+| Unnamed Variables | 456 | catch blocks | `catch (Exception _)` when variable unused |
+| Sequenced Collections | 431 | `UnicornService.getAllUnicorns()` | `getFirst()`, `getLast()` methods |
+| Pattern Matching | 441 | `UnicornService.validateUnicorn()` | Switch with guarded patterns |
+| Virtual Threads | 444 | `application.yaml` | `spring.threads.virtual.enabled: true` |
+| Text Blocks | 378 | `UnicornController` | Multi-line strings |
 
-## Infrastructure
+## Testing
 
-The Unicorn Store application uses the following key infrastructure components:
+```bash
+# Run all tests (26 total)
+mvn test
 
-1. PostgreSQL Container (for testing):
-   - Type: PostgreSQLContainer
-   - Image: postgres:16.4
-   - Database Name: unicorns
-   - Username: postgres
-   - Password: postgres
+# Tests use Testcontainers 2.0 with H2 fallback when Docker unavailable
+```
 
-This container is defined in the `ContainersConfig` class and is used for integration testing. It ensures that tests run against a real PostgreSQL instance, improving the reliability of the test suite.
+**Test Infrastructure:**
+- `@TestInfrastructure` - unified annotation for integration tests
+- PostgreSQL via Testcontainers, H2 fallback without Docker
+- LocalStack for EventBridge
+- Property-based tests with jqwik for validation logic
 
-Note: In a production environment, you would typically use a managed PostgreSQL service or a dedicated PostgreSQL server instead of a container.
+## Building
+
+```bash
+mvn package           # Standard JAR
+mvn package -Pnative  # Native image (GraalVM)
+mvn jib:dockerBuild   # Container with Jib
+```
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/unicorns` | List all unicorns |
+| POST | `/unicorns` | Create unicorn |
+| GET | `/unicorns/{id}` | Get by ID |
+| PUT | `/unicorns/{id}` | Update unicorn |
+| DELETE | `/unicorns/{id}` | Delete unicorn |
+| GET | `/actuator/health` | Health check |
+| GET | `/actuator/prometheus` | Metrics |

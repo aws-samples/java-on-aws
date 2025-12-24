@@ -7,11 +7,11 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 
+# Source environment variables
+source /etc/profile.d/workshop.sh
+
 log_info "Setting up Unicorn Store Spring application..."
 
-# Get AWS account and region
-ACCOUNT_ID=${ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}
-AWS_REGION=${AWS_REGION:-$(aws configure get region)}
 ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 IMAGE_NAME="unicorn-store-spring"
 

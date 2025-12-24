@@ -229,7 +229,20 @@ When a Java/Spring developer sees this application, they should think:
 6. THE pom.xml SHALL be organized with sortpom plugin for consistent dependency ordering
 7. THE application.yaml SHALL be organized with logical sections and explanatory comments
 
-### Requirement 19: Clean Configuration for Microservices
+### Requirement 19: Standardized Container Base Images
+
+**User Story:** As a workshop attendee, I want consistent container base images across all Dockerfiles, so that I can fairly compare optimization techniques and have predictable behavior.
+
+#### Acceptance Criteria
+
+1. ALL Dockerfiles SHALL use `public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023` as the builder image
+2. ALL Dockerfiles SHALL use `public.ecr.aws/docker/library/amazoncorretto:25-al2023` as the runner image
+3. THE Jib plugin in pom.xml SHALL use `public.ecr.aws/docker/library/amazoncorretto:25-al2023` as the base image
+4. WHEN CRaC is used, THE Dockerfile SHALL use `azul/zulu-openjdk:25-jdk-crac-latest` (exception - CRaC requires special JVM)
+5. WHEN GraalVM native image is built, THE Dockerfile SHALL use Mandrel builder image (exception - native compilation)
+6. THE standardization SHALL enable fair comparison of image sizes across optimization techniques
+
+### Requirement 20: Clean Configuration for Microservices
 
 **User Story:** As a workshop attendee, I want to see production-ready microservice configuration, so that I can understand best practices for containerized Java applications.
 

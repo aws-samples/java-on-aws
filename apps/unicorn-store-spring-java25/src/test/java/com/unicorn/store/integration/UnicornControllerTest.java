@@ -1,19 +1,20 @@
 package com.unicorn.store.integration;
 
+import com.unicorn.store.model.Unicorn;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.BeforeEach;
-import com.unicorn.store.model.Unicorn;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import org.springframework.test.context.ActiveProfiles;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+// Integration tests for UnicornController using WebTestClient
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ActiveProfiles("test")
-@InitializeTestcontainersInfrastructure
+@TestInfrastructure
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class UnicornControllerTest {
 
@@ -44,7 +45,7 @@ class UnicornControllerTest {
     @Order(2)
     void shouldPostUnicorn1() {
         Unicorn unicorn = new Unicorn("Unicorn1", "10", "Big", "standard");
-        
+
         id1 = webTestClient.post()
             .uri("/unicorns")
             .bodyValue(unicorn)
@@ -54,8 +55,8 @@ class UnicornControllerTest {
             .returnResult()
             .getResponseBody()
             .getId();
-            
-        System.out.println(id1);
+
+        assertThat(id1).isNotNull().isNotBlank();
     }
 
     static String id2;
@@ -64,7 +65,7 @@ class UnicornControllerTest {
     @Order(3)
     void shouldPostUnicorn2() {
         Unicorn unicorn = new Unicorn("Unicorn2", "10", "Big", "standard");
-        
+
         id2 = webTestClient.post()
             .uri("/unicorns")
             .bodyValue(unicorn)
@@ -74,15 +75,15 @@ class UnicornControllerTest {
             .returnResult()
             .getResponseBody()
             .getId();
-            
-        System.out.println(id2);
+
+        assertThat(id2).isNotNull().isNotBlank();
     }
 
     @Test
     @Order(4)
     void shouldPutUnicorn1() {
         Unicorn unicorn = new Unicorn("Unicorn11", "10", "Big", "standard");
-        
+
         webTestClient.put()
             .uri("/unicorns/" + id1)
             .bodyValue(unicorn)
@@ -90,8 +91,8 @@ class UnicornControllerTest {
             .expectStatus().isOk()
             .expectBody(Unicorn.class)
             .value(u -> {
-                assert u.getId().equals(id1);
-                assert u.getName().equals("Unicorn11");
+                assertThat(u.getId()).isEqualTo(id1);
+                assertThat(u.getName()).isEqualTo("Unicorn11");
             });
     }
 
@@ -133,8 +134,8 @@ class UnicornControllerTest {
             .expectStatus().isOk()
             .expectBody(Unicorn.class)
             .value(u -> {
-                assert u.getId().equals(id1);
-                assert u.getName().equals("Unicorn11");
+                assertThat(u.getId()).isEqualTo(id1);
+                assertThat(u.getName()).isEqualTo("Unicorn11");
             });
     }
 

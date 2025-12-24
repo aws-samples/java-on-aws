@@ -35,7 +35,7 @@ public class UnicornController {
         try {
             logger.debug("Creating unicorn: {}", unicorn);
             var savedUnicorn = unicornService.createUnicorn(unicorn);
-            logger.info("Successfully created unicorn with ID: {}", savedUnicorn.id());
+            logger.info("Successfully created unicorn with ID: {}", savedUnicorn.getId());
             return ResponseEntity.status(CREATED).body(savedUnicorn);
         } catch (IllegalArgumentException e) {
             logger.warn("Invalid unicorn data: {}", e.getMessage());
@@ -134,15 +134,6 @@ public class UnicornController {
 
     @GetMapping("/")
     public ResponseEntity<String> getWelcomeMessage() {
-        return ResponseEntity.ok("""
-            Welcome to the Unicorn Store!
-            
-            Available endpoints:
-            - GET /unicorns - List all unicorns
-            - POST /unicorns - Create a new unicorn
-            - GET /unicorns/{id} - Get unicorn by ID
-            - PUT /unicorns/{id} - Update unicorn
-            - DELETE /unicorns/{id} - Delete unicorn
-            """);
+        return ResponseEntity.ok("Welcome to the Unicorn Store!");
     }
 }

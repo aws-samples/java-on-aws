@@ -47,12 +47,12 @@ public final class UnicornPublisher {
             return eventBridgeClient.putEvents(eventsRequest)
                     .thenApply(response -> {
                         logger.info("Successfully published event type: {} for unicorn ID: {}",
-                                unicornEventType, unicorn.id());
+                                unicornEventType, unicorn.getId());
                         return response;
                     })
                     .exceptionally(throwable -> {
                         logger.error("Failed to publish event type: {} for unicorn ID: {}",
-                                unicornEventType, unicorn.id(), throwable);
+                                unicornEventType, unicorn.getId(), throwable);
                         throw new RuntimeException("Failed to publish event", throwable);
                     });
         } catch (JsonProcessingException e) {

@@ -927,3 +927,54 @@
   - Runs after VPC endpoints are deleted (security groups depend on endpoints) ✅
   - Added ec2:DescribeSecurityGroups and ec2:DeleteSecurityGroup permissions ✅
   - _Requirements: 5.6_
+
+
+## Script Refactoring and Shared Functions (1400.x)
+
+- [x] 1400.1 Create shared functions.sh helper file
+  - Created infra/scripts/ide/functions.sh with shared helper functions ✅
+  - Implemented retry_command(attempts, delay, fail_mode, tool_name, cmd) for configurable retry ✅
+  - Implemented retry_critical and retry_optional convenience wrappers ✅
+  - Implemented install_with_version for install + version logging ✅
+  - Implemented log_info for timestamped logging ✅
+  - Implemented download_and_verify for downloads with retry ✅
+  - _Requirements: 6.6, 6.7_
+
+- [x] 1400.2 Move Docker and jq installation to bootstrap.sh
+  - Moved jq and Docker installation from tools.sh to bootstrap.sh ✅
+  - Docker installed before IDE setup so service inherits docker group membership ✅
+  - Eliminates need to restart IDE service after Docker installation ✅
+  - _Requirements: 6.1, 6.7_
+
+- [x] 1400.3 Update bootstrap.sh to source functions.sh
+  - Added source of functions.sh at start of bootstrap.sh ✅
+  - Removed duplicate function definitions ✅
+  - Uses shared install_with_version for AWS CLI installation ✅
+  - _Requirements: 6.6_
+
+- [x] 1400.4 Update tools.sh to source functions.sh and workshop.sh
+  - Added source of functions.sh at start of tools.sh ✅
+  - Sources /etc/profile.d/workshop.sh for AWS_REGION instead of re-fetching ✅
+  - Removed duplicate retry_command, log_info, download_and_verify definitions ✅
+  - Removed redundant jq installation (now in bootstrap.sh) ✅
+  - Fixed Kiro CLI sudo nesting issue ✅
+  - _Requirements: 6.6, 6.7_
+
+- [x] 1400.5 Update code-editor.sh to source functions.sh
+  - Added source of functions.sh at start of code-editor.sh ✅
+  - Removed duplicate function definitions ✅
+  - _Requirements: 6.6_
+
+- [x] 1400.6 Update vscode.sh to source functions.sh
+  - Added source of functions.sh at start of vscode.sh ✅
+  - Removed duplicate function definitions ✅
+  - Extracted Caddy installation to function matching code-editor.sh structure ✅
+  - _Requirements: 6.6_
+
+- [x] 1400.7 Consolidate AWS variable sourcing across setup scripts
+  - Updated eks.sh to source /etc/profile.d/workshop.sh instead of re-fetching ACCOUNT_ID, AWS_REGION ✅
+  - Updated unicorn-store-spring.sh to source workshop.sh ✅
+  - Updated analysis.sh to source workshop.sh ✅
+  - Updated monitoring.sh to source workshop.sh ✅
+  - Standardized on AWS_REGION variable name (not REGION) ✅
+  - _Requirements: 6.6_

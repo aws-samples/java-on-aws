@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+// Virtual thread generator for profiling - uses Thread.ofVirtual() (Java 21+)
 @Service
 public class ThreadGeneratorService {
     private static final Logger logger = LoggerFactory.getLogger(ThreadGeneratorService.class);
@@ -44,7 +45,8 @@ public class ThreadGeneratorService {
         activeThreads.forEach(thread -> {
             try {
                 thread.join(java.time.Duration.ofSeconds(5));
-            } catch (InterruptedException e) {
+            } catch (InterruptedException _) {
+                // Java 22 unnamed variable (_)
                 logger.warn("Interrupted while waiting for thread {} to stop", thread.getName());
                 Thread.currentThread().interrupt();
             }
@@ -58,18 +60,28 @@ public class ThreadGeneratorService {
         return activeThreads.size();
     }
 
-    private record DummyWorkload(AtomicBoolean running) implements Runnable {
+    // Dummy workload for profiling - volatile blackhole prevents JIT elimination
+    private static class DummyWorkload implements Runnable {
+        private final AtomicBoolean running;
+        @SuppressWarnings("unused")
+        private static volatile double blackhole;
+
+        DummyWorkload(AtomicBoolean running) {
+            this.running = running;
+        }
+
         @Override
         public void run() {
             while (running.get()) {
                 try {
-                    // Calculate some dummy values to keep CPU busy
                     var result = 0.0;
                     for (int i = 0; i < 1000; i++) {
                         result += Math.sqrt(i) * Math.random();
                     }
+                    blackhole = result;
                     Thread.sleep(java.time.Duration.ofMillis(100));
-                } catch (InterruptedException e) {
+                } catch (InterruptedException _) {
+                    // Java 22 unnamed variable (_)
                     Thread.currentThread().interrupt();
                     break;
                 }

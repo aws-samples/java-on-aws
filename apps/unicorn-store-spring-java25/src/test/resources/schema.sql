@@ -1,1 +1,2 @@
-CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+-- H2 compatible schema (uses RANDOM_UUID() instead of PostgreSQL's gen_random_uuid())
+CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT RANDOM_UUID() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);

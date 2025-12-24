@@ -1,82 +1,45 @@
 #!/bin/bash
 set -e
 
-# =============================================================================
-# VERSION DEFINITIONS (managed by Renovate)
-# =============================================================================
-
-# VS Code Server version
 VSCODE_VERSION="4.106.3"
+VSCODE_USER="ec2-user"
+VSCODE_PORT="8889"
 
-# =============================================================================
-
-# Source common IDE settings (extensions, workspace config)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/functions.sh"
 source "${SCRIPT_DIR}/settings.sh"
 
-# =============================================================================
+install_code_server() {
+    log_info "Installing code-server ${VSCODE_VERSION}..."
 
-# Import retry functions from bootstrap (if available, fallback to direct execution)
-retry_critical() {
-    if command -v retry_command >/dev/null 2>&1; then
-        retry_command 5 5 "FAIL" "$@"
-    else
-        local tool_name="$1"
-        shift
-        if eval "$*"; then
-            echo "✅ Success: $tool_name"
-        else
-            echo "💥 FATAL: $tool_name failed"
-            exit 1
-        fi
-    fi
-}
-retry_optional() {
-    if command -v retry_command >/dev/null 2>&1; then
-        retry_command 5 5 "LOG" "$@"
-    else
-        local tool_name="$1"
-        shift
-        if eval "$*"; then
-            echo "✅ Success: $tool_name"
-        else
-            echo "⚠️  Warning: $tool_name failed (continuing)"
-        fi
+    codeServer=$(dnf list installed code-server 2>/dev/null | wc -l)
+    if [ "$codeServer" -eq "0" ]; then
+        retry_critical "VS Code Server ${VSCODE_VERSION}" \
+            "sudo -u $VSCODE_USER bash -c 'curl -fsSL https://code-server.dev/install.sh | sh -s -- --version $VSCODE_VERSION'"
+        retry_critical "VS Code Server service" "systemctl enable --now code-server@${VSCODE_USER}"
     fi
 }
 
-# Helper function to create user files
-setup_user_file() {
-    local file_path="$1"
-    local content="$2"
-    sudo -u ec2-user mkdir -p "$(dirname "$file_path")"
-    sudo -u ec2-user tee "$file_path" >/dev/null <<< "$content"
-}
+configure_code_server() {
+    log_info "Configuring code-server..."
 
-# Helper function to run commands as ec2-user
-run_as_user() {
-    sudo -u ec2-user bash -c "$1"
-}
-
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing code-server..."
-codeServer=$(dnf list installed code-server 2>/dev/null | wc -l)
-if [ "$codeServer" -eq "0" ]; then
-  # Install as ec2-user with retry logic - pass version as environment variable
-  retry_critical "VS Code Server ${VSCODE_VERSION}" "sudo -u ec2-user bash -c 'curl -fsSL https://code-server.dev/install.sh | sh -s -- --version $VSCODE_VERSION'"
-  retry_critical "VS Code Server service" "systemctl enable --now code-server@ec2-user"
-fi
-
-# Configure code-server
-setup_user_file "/home/ec2-user/.config/code-server/config.yaml" "cert: false
+    sudo -u $VSCODE_USER mkdir -p "/home/${VSCODE_USER}/.config/code-server"
+    sudo -u $VSCODE_USER tee "/home/${VSCODE_USER}/.config/code-server/config.yaml" >/dev/null <<EOF
+cert: false
 auth: password
-password: \"$IDE_PASSWORD\"
-bind-addr: 127.0.0.1:8889"
+password: "$IDE_PASSWORD"
+bind-addr: 127.0.0.1:${VSCODE_PORT}
+EOF
+}
 
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Creating ~/environment folder..."
-run_as_user 'mkdir -p ~/environment'
+configure_vscode_settings() {
+    log_info "Configuring VS Code settings..."
 
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Configuring VS Code settings..."
-setup_user_file "/home/ec2-user/.local/share/code-server/User/settings.json" '{
+    local settings_dir="/home/${VSCODE_USER}/.local/share/code-server/User"
+    sudo -u $VSCODE_USER mkdir -p "$settings_dir"
+
+    sudo -u $VSCODE_USER tee "$settings_dir/settings.json" >/dev/null << 'EOF'
+{
   "extensions.autoUpdate": false,
   "extensions.autoCheckUpdates": false,
   "security.workspace.trust.enabled": false,
@@ -98,42 +61,53 @@ setup_user_file "/home/ec2-user/.local/share/code-server/User/settings.json" '{
   "workbench.panel.defaultLocation": "bottom",
   "workbench.auxiliaryBar.visible": false,
   "workbench.secondarySideBar.defaultVisibility": "hidden"
-}'
+}
+EOF
 
-echo "Configuring VS Code keybindings..."
-setup_user_file "/home/ec2-user/.local/share/code-server/User/keybindings.json" '[
+    sudo -u $VSCODE_USER tee "$settings_dir/keybindings.json" >/dev/null << 'EOF'
+[
   {
     "key": "shift+cmd+/",
     "command": "remote.tunnel.forwardCommandPalette"
   }
-]'
+]
+EOF
+}
 
-echo "Setting default workspace..."
-# Use shared workspace configuration function
-configure_default_workspace "/home/ec2-user/.local/share/code-server/coder.json" "ec2-user"
+install_caddy() {
+    log_info "Installing Caddy..."
 
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing VS Code extensions..."
+    retry_critical "Caddy repository" "dnf copr enable -y -q @caddy/caddy epel-9-x86_64"
+    retry_critical "Caddy" "dnf install -y -q caddy"
+    retry_critical "Caddy service" "systemctl enable --now caddy"
 
-# Use shared extension installation function
-install_ide_extensions "code-server" "ec2-user"
-
-echo "Restarting code-server..."
-systemctl restart code-server@ec2-user
-
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Installing Caddy..."
-retry_critical "Caddy repository" "dnf copr enable -y -q @caddy/caddy epel-9-x86_64"
-retry_critical "Caddy" "dnf install -y -q caddy"
-retry_critical "Caddy service" "systemctl enable --now caddy"
-
-tee /etc/caddy/Caddyfile <<EOF
+    tee /etc/caddy/Caddyfile <<EOF
 :80 {
   handle /* {
-    reverse_proxy 127.0.0.1:8889
+    reverse_proxy 127.0.0.1:${VSCODE_PORT}
   }
 }
 EOF
 
-echo "Restarting caddy..."
-systemctl restart caddy
+    systemctl restart caddy
+    echo "✅ Caddy configured"
+}
 
-echo "$(date '+%Y-%m-%d %H:%M:%S') - VS Code IDE setup completed successfully"
+log_info "Starting VS Code Server setup..."
+
+sudo -u $VSCODE_USER mkdir -p /home/${VSCODE_USER}/environment
+
+install_code_server
+configure_code_server
+configure_vscode_settings
+
+log_info "Installing extensions..."
+install_ide_extensions "code-server" "$VSCODE_USER"
+
+configure_default_workspace "/home/${VSCODE_USER}/.local/share/code-server/coder.json" "$VSCODE_USER"
+
+systemctl restart code-server@${VSCODE_USER}
+
+install_caddy
+
+log_info "VS Code Server setup completed"

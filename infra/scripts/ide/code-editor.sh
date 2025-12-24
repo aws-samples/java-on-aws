@@ -1,67 +1,20 @@
 #!/bin/bash
 set -e
 
-# =============================================================================
-# AWS Code Editor Installation Script
-# =============================================================================
-
 CODEEDITOR_CLOUDFRONT_BASE_URL="https://code-editor.amazonaws.com/content/code-editor-server/dist"
 CODE_EDITOR_USER="ec2-user"
 CODE_EDITOR_PORT="8889"
 
-# Source common IDE settings
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/functions.sh"
 source "${SCRIPT_DIR}/settings.sh"
-
-# =============================================================================
-
-# Import retry functions from bootstrap (if available, fallback to direct execution)
-retry_critical() {
-    if command -v retry_command >/dev/null 2>&1; then
-        retry_command 5 5 "FAIL" "$@"
-    else
-        local tool_name="$1"
-        shift
-        if eval "$*"; then
-            echo "✅ Success: $tool_name"
-        else
-            echo "💥 FATAL: $tool_name failed"
-            exit 1
-        fi
-    fi
-}
-retry_optional() {
-    if command -v retry_command >/dev/null 2>&1; then
-        retry_command 5 5 "LOG" "$@"
-    else
-        local tool_name="$1"
-        shift
-        if eval "$*"; then
-            echo "✅ Success: $tool_name"
-        else
-            echo "⚠️  Warning: $tool_name failed (continuing)"
-        fi
-    fi
-}
-
-# Helper function for consistent logging
-log_info() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
-}
-
-
-# =============================================================================
-# Installation Functions
-# =============================================================================
 
 install_code_editor() {
     log_info "Installing AWS Code Editor..."
 
-    # Architecture detection (arm64 or x64 for Code Editor)
     local ARCH=$([ "$(uname -m)" = "aarch64" ] && echo "arm64" || echo "x64")
     log_info "Detected architecture: $ARCH"
 
-    # Download manifest
     log_info "Downloading AWS Code Editor manifest..."
     MANIFEST_CONTENT=$(curl -L --silent "$CODEEDITOR_CLOUDFRONT_BASE_URL/manifest-latest-linux-$ARCH.json")
 
@@ -74,12 +27,10 @@ install_code_editor() {
     CODE_EDITOR_PKG_NAME="code-editor-$CODE_EDITOR_VERSION-linux-$ARCH"
     CODE_EDITOR_LOCAL_FOLDER="/home/${CODE_EDITOR_USER}/.local/lib/$CODE_EDITOR_PKG_NAME"
 
-    # Download Code Editor
     log_info "Downloading AWS Code Editor..."
     retry_critical "AWS Code Editor download" \
         "curl -L '$CODEEDITOR_CLOUDFRONT_BASE_URL/$CODE_EDITOR_VERSION/$CODE_EDITOR_DISTRIBUTION_VERSION' -o /tmp/code-editor-server.tar.gz"
 
-    # Verify checksum
     log_info "Verifying checksum..."
     DOWNLOAD_CHECKSUM=$(sha256sum /tmp/code-editor-server.tar.gz | cut -d ' ' -f 1)
     if [ "$CODE_EDITOR_CHECKSUM" != "$DOWNLOAD_CHECKSUM" ]; then
@@ -88,7 +39,6 @@ install_code_editor() {
     fi
     echo "✅ Checksum verified"
 
-    # Install to user's .local directory
     log_info "Installing to $CODE_EDITOR_LOCAL_FOLDER..."
     sudo -u $CODE_EDITOR_USER mkdir -p "$CODE_EDITOR_LOCAL_FOLDER"
     sudo -u $CODE_EDITOR_USER mkdir -p "/home/${CODE_EDITOR_USER}/.local/bin"
@@ -97,7 +47,7 @@ install_code_editor() {
         "/home/${CODE_EDITOR_USER}/.local/bin/code-editor-server"
     rm /tmp/code-editor-server.tar.gz
 
-    echo "✅ AWS Code Editor installed successfully"
+    echo "✅ AWS Code Editor installed"
 }
 
 configure_code_editor_service() {
@@ -178,35 +128,20 @@ EOF
     echo "✅ Caddy configured"
 }
 
-# =============================================================================
-# Main Installation
-# =============================================================================
-
 log_info "Starting AWS Code Editor setup..."
 
-# Create environment folder
 sudo -u $CODE_EDITOR_USER mkdir -p /home/${CODE_EDITOR_USER}/environment
 
-# Install Code Editor
 install_code_editor
-
-# Configure token authentication
 configure_token_auth
-
-# Configure Code Editor settings (disable workspace trust, open terminal on startup)
 configure_code_editor_settings
-
-# Configure systemd service
 configure_code_editor_service
 
-# Install extensions using shared function
 log_info "Installing extensions..."
 install_ide_extensions "/home/${CODE_EDITOR_USER}/.local/bin/code-editor-server" "$CODE_EDITOR_USER"
 
-# Configure default workspace using shared function
 configure_default_workspace "/home/${CODE_EDITOR_USER}/.code-editor-server/data/coder.json" "$CODE_EDITOR_USER"
 
-# Install and configure Caddy
 install_caddy
 
-log_info "AWS Code Editor setup completed successfully"
+log_info "AWS Code Editor setup completed"

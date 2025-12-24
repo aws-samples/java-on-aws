@@ -1,30 +1,32 @@
-# Dockerfile_10_async_profiler - Continuous profiling with async-profiler
-# Used with S3 Mountpoint CSI driver for storing profiling results
-# Supports both ARM64 (Graviton) and x64 architectures
-
 FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
 
 ARG TARGETARCH
 
 RUN yum install -y wget tar gzip
+
+# Download async-profiler (auto-detects ARM64/x64)
 RUN cd /tmp && \
     ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "aarch64" || echo "x64") && \
-    wget https://github.com/async-profiler/async-profiler/releases/download/v4.2.1/async-profiler-4.2.1-linux-${ARCH}.tar.gz && \
+    wget -q https://github.com/async-profiler/async-profiler/releases/download/v4.2.1/async-profiler-4.2.1-linux-${ARCH}.tar.gz && \
     mkdir /async-profiler && \
-    tar -xvzf ./async-profiler-4.2.1-linux-${ARCH}.tar.gz -C /async-profiler --strip-components=1
+    tar -xzf ./async-profiler-4.2.1-linux-${ARCH}.tar.gz -C /async-profiler --strip-components=1
 
 COPY ./pom.xml ./pom.xml
 COPY src ./src/
 
 RUN mvn clean package -DskipTests -ntp && mv target/store-spring-1.0.0-exec.jar store-spring.jar
 
-FROM public.ecr.aws/docker/library/amazoncorretto:25-alpine AS runtime
+FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
 
-RUN addgroup -g 1000 -S spring && adduser -D -u 1000 -G spring spring
+RUN yum install -y shadow-utils
 
 COPY --from=builder /async-profiler/ /async-profiler/
 COPY --from=builder store-spring.jar store-spring.jar
 
+RUN groupadd --system spring -g 1000
+RUN adduser spring -u 1000 -g 1000
+
 USER 1000:1000
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","-Dserver.port=8080","/store-spring.jar"]
+
+ENTRYPOINT ["java", "-XX:+UseCompactObjectHeaders", "-jar", "-Dserver.port=8080", "/store-spring.jar"]

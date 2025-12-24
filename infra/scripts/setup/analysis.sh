@@ -13,7 +13,9 @@ source "$SCRIPT_DIR/../lib/common.sh"
 # CONFIGURATION
 # =============================================================================
 
-# Use PREFIX from environment, default to "workshop"
+# Source environment variables
+source /etc/profile.d/workshop.sh
+
 PREFIX="${PREFIX:-workshop}"
 NAMESPACE="monitoring"
 GRAFANA_USER="admin"
@@ -32,11 +34,6 @@ HTTP_DASHBOARD_TITLE="HTTP Metrics"
 PROFILING_CONTACT_POINT="jvm-analysis-webhook"
 PROFILING_ALERT_TITLE="High HTTP POST Request Rate"
 REQUESTS_THRESHOLD=20
-
-AWS_REGION=${AWS_REGION:-$(aws configure get region)}
-if [[ -z "$AWS_REGION" ]]; then
-  AWS_REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/region 2>/dev/null || echo "us-east-1")
-fi
 
 # =============================================================================
 # SHARED SETUP

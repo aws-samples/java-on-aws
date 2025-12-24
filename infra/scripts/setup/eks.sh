@@ -8,22 +8,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 source "$SCRIPT_DIR/../lib/wait-for-resources.sh"
 
-# Configuration - use PREFIX from environment, default to "workshop"
+# Source environment variables
+source /etc/profile.d/workshop.sh
+
 PREFIX="${PREFIX:-workshop}"
 CLUSTER_NAME="${PREFIX}-eks"
-REGION=${AWS_REGION:-$(aws configure get region)}
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 log_info "Starting EKS cluster setup for cluster: $CLUSTER_NAME"
-log_info "Region: $REGION, Account: $ACCOUNT_ID, Prefix: $PREFIX"
+log_info "Region: $AWS_REGION, Account: $ACCOUNT_ID, Prefix: $PREFIX"
 
 # Wait for EKS cluster to be active
 log_info "Waiting for EKS cluster to be ready..."
 wait_for_eks_cluster "$CLUSTER_NAME"
 
-# Update kubeconfig with infinite retry (like original)
 log_info "Updating kubeconfig for cluster $CLUSTER_NAME..."
-while ! aws eks --region "$REGION" update-kubeconfig --name "$CLUSTER_NAME"; do
+while ! aws eks --region "$AWS_REGION" update-kubeconfig --name "$CLUSTER_NAME"; do
     log_warning "Failed to update kubeconfig. Retrying in 10 seconds..."
     sleep 10
 done
@@ -149,7 +148,7 @@ fi
 log_info "EKS cluster setup completed successfully!"
 log_info "Cluster information:"
 echo "  Cluster Name: $CLUSTER_NAME"
-echo "  Region: $REGION"
+echo "  Region: $AWS_REGION"
 echo "  Account: $ACCOUNT_ID"
 
 log_info "Checking cluster status..."

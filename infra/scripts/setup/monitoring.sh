@@ -10,7 +10,9 @@ source "$SCRIPT_DIR/../lib/common.sh"
 
 log_info "Starting monitoring stack setup..."
 
-# Configuration - use PREFIX from environment, default to "workshop"
+# Source environment variables
+source /etc/profile.d/workshop.sh
+
 PREFIX="${PREFIX:-workshop}"
 NAMESPACE="monitoring"
 GRAFANA_SECRET_NAME="grafana-admin"

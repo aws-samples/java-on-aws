@@ -52,7 +52,8 @@ infra/
 │   └── java-spring-ai-agents-stack.yaml
 ├── scripts/
 │   ├── ide/                     # IDE setup scripts
-│   │   ├── bootstrap.sh         # Full bootstrap orchestration
+│   │   ├── functions.sh         # Shared helper functions (retry, logging, install)
+│   │   ├── bootstrap.sh         # Full bootstrap orchestration (jq, Docker, AWS CLI, env vars)
 │   │   ├── vscode.sh            # VS Code Server installation
 │   │   ├── code-editor.sh       # AWS Code Editor installation
 │   │   ├── tools.sh             # Base development tools
@@ -339,7 +340,8 @@ infra/cdk/src/main/resources/
 └── userdata.sh           # Minimal UserData script with CloudWatch logging
 
 infra/scripts/ide/
-├── bootstrap.sh          # Full bootstrap orchestration
+├── functions.sh          # Shared helper functions (retry_command, install_with_version, log_info)
+├── bootstrap.sh          # Full bootstrap orchestration (jq, Docker, AWS CLI, environment setup)
 ├── vscode.sh             # VS Code Server installation and configuration
 ├── code-editor.sh        # AWS Code Editor installation
 ├── tools.sh              # Base development tools (Java, Node.js, kubectl, etc.)
@@ -355,6 +357,15 @@ infra/scripts/templates/
 └── java-spring-ai-agents.sh      # Java-Spring-AI-Agents workshop post-deploy (same as base)
 ```
 
+#### Shared Functions Architecture
+All IDE scripts source `functions.sh` for consistent helper functions:
+- `retry_command(attempts, delay, fail_mode, tool_name, cmd)`: Retry with configurable failure handling
+- `retry_critical(tool_name, cmd)`: Retry with exit on failure (5 attempts, 5s delay)
+- `retry_optional(tool_name, cmd)`: Retry with warning on failure (continues execution)
+- `install_with_version(tool_name, install_cmd, version_cmd, fail_mode)`: Install and log version
+- `log_info(message)`: Timestamped logging
+- `download_and_verify(url, output, description)`: Download with retry
+
 #### Bootstrap Flow
 ```
 userdata.sh → bootstrap.sh → {IDE_TYPE}.sh → tools.sh → templates/{TEMPLATE_TYPE}.sh
@@ -362,18 +373,27 @@ userdata.sh → bootstrap.sh → {IDE_TYPE}.sh → tools.sh → templates/{TEMPL
 
 Where:
 - `userdata.sh`: Minimal UserData script that clones repo and runs bootstrap.sh with CloudWatch logging
-- `bootstrap.sh`: Full system setup, environment variables, calls IDE setup and template script
-- `{IDE_TYPE}.sh`: IDE-specific setup (vscode.sh or code-editor.sh)
-- `tools.sh`: Base development tools installation (Java, Node.js, kubectl, Helm, etc.)
+- `bootstrap.sh`: System setup (jq, Docker, AWS CLI), environment variables in `/etc/profile.d/workshop.sh`, calls IDE setup and template script
+- `{IDE_TYPE}.sh`: IDE-specific setup (vscode.sh or code-editor.sh), sources functions.sh
+- `tools.sh`: Base development tools installation (Java, Node.js, kubectl, Helm, etc.), sources functions.sh and workshop.sh
 - `templates/{TEMPLATE_TYPE}.sh`: Workshop-specific post-deploy (EKS setup, monitoring, analysis)
+
+#### Environment Variables
+Scripts source `/etc/profile.d/workshop.sh` instead of re-fetching AWS variables. This file is created by bootstrap.sh and contains:
+- `AWS_REGION`, `AWS_DEFAULT_REGION`: AWS region from instance metadata
+- `ACCOUNT_ID`, `AWS_ACCOUNT_ID`: AWS account ID from STS
+- `EC2_PRIVATE_IP`, `EC2_DOMAIN`, `EC2_URL`: Instance networking
+- `IDE_DOMAIN`, `IDE_URL`, `IDE_PASSWORD`: IDE access
+- `JAVA_HOME`, `M2_HOME`: Development tool paths
 
 #### Workshop Orchestration Pattern
 Workshop scripts follow a layered approach:
-1. **IDE Layer**: `bootstrap.sh` calls IDE setup (`vscode.sh` or `code-editor.sh`) and `tools.sh`
-2. **Tools Layer**: `tools.sh` provides foundational development tools (Java, Node.js, kubectl, Helm, etc.)
-3. **Workshop Layer**: Template scripts in `templates/` folder add workshop-specific setup (EKS, monitoring, analysis)
-4. **Error Handling**: Each layer implements proper error handling and progress feedback
-5. **Verification**: Final verification ensures all tools and services are operational
+1. **Bootstrap Layer**: `bootstrap.sh` installs jq, Docker, AWS CLI, creates `/etc/profile.d/workshop.sh` with all environment variables
+2. **IDE Layer**: `bootstrap.sh` calls IDE setup (`vscode.sh` or `code-editor.sh`) which sources `functions.sh`
+3. **Tools Layer**: `tools.sh` sources `functions.sh` and `workshop.sh`, provides foundational development tools
+4. **Workshop Layer**: Template scripts in `templates/` folder add workshop-specific setup (EKS, monitoring, analysis)
+5. **Error Handling**: Each layer implements proper error handling via shared `functions.sh`
+6. **Verification**: Final verification ensures all tools and services are operational
 
 #### Configuration
 - **Template Type**: Configurable via `TEMPLATE_TYPE` environment variable (defaults to `base`)
@@ -388,6 +408,14 @@ Workshop scripts follow a layered approach:
 - `STACK_NAME` - AWS stack name
 - `TEMPLATE_TYPE` - template type
 - `GIT_BRANCH` - git branch (hardcoded to "main")
+- `PREFIX` - resource naming prefix (defaults to "workshop")
+
+**Created by bootstrap.sh in `/etc/profile.d/workshop.sh`:**
+- `AWS_REGION`, `AWS_DEFAULT_REGION` - AWS region
+- `ACCOUNT_ID`, `AWS_ACCOUNT_ID` - AWS account ID
+- `EC2_PRIVATE_IP`, `EC2_DOMAIN`, `EC2_URL` - Instance networking
+- `IDE_DOMAIN`, `IDE_URL`, `IDE_PASSWORD` - IDE access
+- `JAVA_HOME`, `M2_HOME` - Development tool paths
 
 #### Tool Version Management
 The system uses a hybrid approach for tool versions:
@@ -418,25 +446,36 @@ The system uses a hybrid approach for tool versions:
 - jq, Docker, git, Caddy: latest available in package repositories
 
 #### Script Architecture
-Scripts are organized with helper functions and consistent error handling:
+Scripts are organized with shared helper functions and consistent error handling:
 
-**Bootstrap Script (`ide-bootstrap.sh`):**
+**Shared Functions (`functions.sh`):**
+- Central location for all helper functions used across IDE scripts
+- `retry_command()`: Configurable retry with attempts, delay, and failure mode
+- `retry_critical()`: Retry with exit on failure (5 attempts, 5s delay)
+- `retry_optional()`: Retry with warning on failure (continues execution)
+- `install_with_version()`: Install tool and log version in consistent format
+- `log_info()`: Timestamped logging
+- `download_and_verify()`: Download with retry and verification
+
+**Bootstrap Script (`bootstrap.sh`):**
+- Sources functions.sh for shared helpers
+- Installs jq and Docker before IDE setup (services inherit docker group)
+- Creates `/etc/profile.d/workshop.sh` with all environment variables
 - Standardized on `dnf` package manager
-- Added error handling for critical operations (AWS CLI, git clone, CloudFront)
-- Improved logging and comments
+- Error handling with CloudFormation signaling
 
 **VS Code Script (`vscode.sh`):**
+- Sources functions.sh for shared helpers
 - Helper functions eliminate repetitive `sudo -u ec2-user` patterns
 - `setup_user_file()` function for clean file creation
 - `run_as_user()` function for user command execution
 - Uses latest VS Code version by default
 
-**IDE Script (`ide.sh`):**
+**Tools Script (`tools.sh`):**
+- Sources functions.sh and `/etc/profile.d/workshop.sh`
 - Function-based organization by tool category
-- Comprehensive logging with timestamps (`log_info()`)
-- Error handling and download verification (`handle_error()`, `download_and_verify()`)
-- Consistent output handling and cleanup
-- Removed redundant operations (multiple `java -version` calls)
+- Uses shared retry and install functions
+- No redundant AWS variable fetching
 
 ### Build Automation
 
@@ -960,3 +999,22 @@ if ("java-on-aws-immersion-day".equals(templateType) || "java-on-amazon-eks".equ
 #### Property 34: Construct Simplification
 *For any* Unicorn or JvmAnalysis construct, it should not create explicit ECR repositories when EcrRegistry is present
 **Validates: Requirements 28.1, 28.2, 28.3**
+
+
+### Correctness Properties for Shared Functions
+
+#### Property 35: Shared Functions Sourcing
+*For any* IDE script (bootstrap.sh, vscode.sh, code-editor.sh, tools.sh), it should source functions.sh for shared helper functions
+**Validates: Requirements 30.1**
+
+#### Property 36: Environment Variable Sourcing
+*For any* script that needs AWS variables (AWS_REGION, ACCOUNT_ID), it should source /etc/profile.d/workshop.sh instead of re-fetching from metadata or API
+**Validates: Requirements 30.4, 31.1, 31.2**
+
+#### Property 37: Docker Installation Timing
+*For any* bootstrap execution, Docker should be installed before IDE setup so that IDE services inherit docker group membership without requiring restart
+**Validates: Requirements 30.5**
+
+#### Property 38: Consistent Variable Naming
+*For any* script referencing AWS region, it should use AWS_REGION variable name (not REGION) for consistency
+**Validates: Requirements 31.1, 31.3**
