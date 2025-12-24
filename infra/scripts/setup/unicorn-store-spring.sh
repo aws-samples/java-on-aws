@@ -46,12 +46,26 @@ fi
 cp -r ~/java-on-aws/apps/java25/jvm-ai-analyzer ~/environment/
 log_success "Copied jvm-ai-analyzer to ~/environment"
 
+# Configure global git user
+log_info "Configuring global git user..."
+git config --global user.name "Workshop User"
+git config --global user.email "user@sample.com"
+log_success "Git user configured: Workshop User <user@sample.com>"
+
+# Initialize git repository in unicorn-store-spring
+log_info "Initializing git repository in unicorn-store-spring..."
+cd ~/environment/unicorn-store-spring
+git init
+git add .
+git commit -m "Initial commit"
+log_success "Git repository initialized with initial commit"
+
 # Change to the app directory
 cd ~/environment/unicorn-store-spring
 
 # Build the application with Maven
 log_info "Building application with Maven..."
-mvn clean package -DskipTests -ntp
+mvn clean package -ntp
 log_success "Maven build completed"
 
 # Login to ECR

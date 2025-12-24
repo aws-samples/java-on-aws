@@ -5,7 +5,7 @@ RUN yum install -y tar gzip unzip
 COPY ./pom.xml ./pom.xml
 COPY src ./src/
 
-RUN mvn clean package -DskipTests && \
+RUN mvn clean package -DskipTests -ntp && \
     mv target/store-spring-1.0.0-exec.jar target/store-spring.jar && \
     cd target && unzip store-spring.jar
 
