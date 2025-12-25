@@ -32,6 +32,7 @@ public class TestInfrastructureInitializer implements BeforeAllCallback {
         }
     }
 
+    @SuppressWarnings("resource")
     private void initializeTestcontainers() {
         try {
             // Start PostgreSQL container with reuse for faster tests

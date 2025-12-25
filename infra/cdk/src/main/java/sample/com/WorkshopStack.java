@@ -58,7 +58,6 @@ public class WorkshopStack extends Stack {
             .vpc(vpc.getVpc())
             .gitBranch(gitBranch)
             .templateType(templateType)
-            .ideArch(Ide.IdeArch.X86_64)
             .build();
         Ide ide = new Ide(this, "Ide", ideProps);
 

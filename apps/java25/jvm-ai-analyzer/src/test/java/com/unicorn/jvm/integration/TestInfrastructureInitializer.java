@@ -32,6 +32,7 @@ public class TestInfrastructureInitializer implements BeforeAllCallback {
         }
     }
 
+    @SuppressWarnings("resource")
     private void initializeTestcontainers() {
         try {
             if (localstack == null) {

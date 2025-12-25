@@ -1,6 +1,5 @@
 package com.unicorn.jvm;
 
-import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -66,20 +65,18 @@ public class AnalyzerService {
         }
     }
 
-    @Retry(name = "threadDump", fallbackMethod = "getThreadDumpFallback")
     String getThreadDump(String podIp) {
         var url = threadDumpUrlTemplate.replace("{podIp}", podIp);
         logger.info("Fetching thread dump from: {}", url);
 
-        return restClient.get()
-            .uri(url)
-            .retrieve()
-            .body(String.class);
-    }
-
-    @SuppressWarnings("unused") // Used by Resilience4j
-    String getThreadDumpFallback(String podIp, Exception ex) {
-        logger.warn("Failed to get thread dump for pod IP {} after retries: {}", podIp, ex.getMessage());
-        return "Failed to retrieve thread dump: " + ex.getMessage();
+        try {
+            return restClient.get()
+                .uri(url)
+                .retrieve()
+                .body(String.class);
+        } catch (Exception e) {
+            logger.warn("Failed to get thread dump for pod IP {}: {}", podIp, e.getMessage());
+            return "Failed to retrieve thread dump: " + e.getMessage();
+        }
     }
 }

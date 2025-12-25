@@ -1,8 +1,6 @@
 package sample.com.constructs;
 
 import software.amazon.awscdk.RemovalPolicy;
-import software.amazon.awscdk.SecretValue;
-import software.amazon.awscdk.SecretsManagerSecretOptions;
 import software.amazon.awscdk.services.ec2.IVpc;
 import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.Peer;
@@ -21,7 +19,6 @@ import software.amazon.awscdk.services.rds.DatabaseSecret;
 
 import software.amazon.awscdk.services.ssm.ParameterTier;
 import software.amazon.awscdk.services.ssm.StringParameter;
-import software.amazon.awscdk.services.secretsmanager.Secret;
 import software.constructs.Construct;
 
 import java.util.List;
@@ -37,7 +34,6 @@ public class Database extends Construct {
     private final ISecurityGroup databaseSecurityGroup;
 
     private final StringParameter paramDBConnectionString;
-    private final Secret secretPassword;
 
     public static class DatabaseProps {
         private String prefix = "workshop";
@@ -110,13 +106,6 @@ public class Database extends Construct {
             .removalPolicy(RemovalPolicy.DESTROY)
             .build();
 
-        // Create separate password secret for services that need plain password
-        secretPassword = Secret.Builder.create(this, "PasswordSecret")
-            .secretName(prefix + "-db-password-secret")
-            .secretStringValue(SecretValue.secretsManager(databaseSecret.getSecretName(),
-                SecretsManagerSecretOptions.builder().jsonField("password").build()))
-            .build();
-
         // Create parameter store entry for connection string
         paramDBConnectionString = StringParameter.Builder.create(this, "ConnectionString")
             .allowedPattern(".*")
@@ -146,10 +135,6 @@ public class Database extends Construct {
 
     public StringParameter getParamDBConnectionString() {
         return paramDBConnectionString;
-    }
-
-    public Secret getSecretPassword() {
-        return secretPassword;
     }
 
     public String getDatabaseSecretString() {

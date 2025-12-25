@@ -86,7 +86,7 @@ public class Ide extends Construct {
         private String instanceName = "ide";
         private int diskSize = 50;
         private IVpc vpc;
-        private IdeArch ideArch = IdeArch.ARM64;
+        private IdeArch ideArch = IdeArch.X86_64;
         private IdeType ideType = IdeType.CODE_EDITOR;
         private List<ISecurityGroup> additionalSecurityGroups = new ArrayList<>();
         private int bootstrapTimeoutMinutes = 30;
@@ -99,8 +99,6 @@ public class Ide extends Construct {
             Arrays.asList("m7g.xlarge", "m6g.xlarge", "c7g.xlarge", "t4g.xlarge");
         private static final List<String> X86_64_INSTANCE_TYPES =
             Arrays.asList("m6i.xlarge", "m5.xlarge", "m6a.xlarge", "m7i-flex.xlarge", "m7a.xlarge", "t3.xlarge");
-        // Old instance list (x86_64) for reference:
-        // Arrays.asList("m7i-flex.xlarge", "m7a.xlarge", "m6i.xlarge", "m6a.xlarge", "m5.xlarge", "t3.xlarge");
 
         public static IdeProps.Builder builder() { return new Builder(); }
 
