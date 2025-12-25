@@ -197,6 +197,7 @@ public class Unicorn extends Construct {
 
         this.ecsInfrastructureRole = Role.Builder.create(this, "UnicornStoreEcsInfrastructureRole")
             .roleName("unicornstore-ecs-infrastructure-role")
+            .path("/service-role/")
             .assumedBy(ecsService)
             .description("ECS infrastructure role for Express Mode services")
             .build();
@@ -209,6 +210,7 @@ public class Unicorn extends Construct {
 
         this.ecsTaskExecutionRole = Role.Builder.create(this, "UnicornStoreEcsTaskExecutionRole")
             .roleName("unicornstore-ecs-task-execution-role")
+            .path("/service-role/")
             .assumedBy(ecsTasks)
             .description("ECS task execution role for pulling images and injecting secrets")
             .build();
@@ -233,6 +235,7 @@ public class Unicorn extends Construct {
         // === ECS Task Role (app runtime permissions) ===
         this.ecsTaskRole = Role.Builder.create(this, "UnicornStoreEcsTaskRole")
             .roleName("unicornstore-ecs-task-role")
+            .path("/service-role/")
             .assumedBy(ecsTasks)
             .description("ECS task role for application runtime permissions")
             .build();

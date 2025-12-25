@@ -27,9 +27,11 @@
 			"Action": [
 				"aws-marketplace:Unsubscribe",
 				"aws-marketplace:ViewSubscriptions",
+				"acm:*",
 				"bedrock:*",
 				"bedrock-agentcore:*",
 				"apigateway:*",
+				"application-autoscaling:*",
 				"application-signals:*",
 				"cloudformation:*",
 				"cloudwatch:*",
@@ -61,7 +63,8 @@
 			],
 			"Resource": [
 				"arn:aws:iam::{{.AccountId}}:role/unicorn*",
-				"arn:aws:iam::{{.AccountId}}:role/jvm-analysis-service*"
+				"arn:aws:iam::{{.AccountId}}:role/service-role/unicorn*",
+				"arn:aws:iam::{{.AccountId}}:role/jvm-ai-analyzer*"
 			]
 		},
 		{

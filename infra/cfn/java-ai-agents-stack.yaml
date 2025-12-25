@@ -355,7 +355,9 @@ Resources:
             Resource: "*"
             Sid: MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet
           - Action:
+              - acm:*
               - apigateway:*
+              - application-autoscaling:*
               - application-signals:*
               - aws-marketplace:Unsubscribe
               - aws-marketplace:ViewSubscriptions
@@ -386,7 +388,8 @@ Resources:
           - Action: iam:PassRole
             Effect: Allow
             Resource:
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-ai-analyzer*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
             Sid: PassRole
           - Action: ec2:RunInstances
@@ -757,8 +760,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -918,6 +919,8 @@ Resources:
             - Fn::GetAtt:
                 - IdeInternalSecurityGroupB0A5D76B
                 - GroupId
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:

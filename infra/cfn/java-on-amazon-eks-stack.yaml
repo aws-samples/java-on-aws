@@ -375,7 +375,9 @@ Resources:
             Resource: "*"
             Sid: MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet
           - Action:
+              - acm:*
               - apigateway:*
+              - application-autoscaling:*
               - application-signals:*
               - aws-marketplace:Unsubscribe
               - aws-marketplace:ViewSubscriptions
@@ -406,7 +408,8 @@ Resources:
           - Action: iam:PassRole
             Effect: Allow
             Resource:
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-analysis-service*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-ai-analyzer*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
             Sid: PassRole
           - Action: ec2:RunInstances
@@ -777,30 +780,7 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      VolumeSize: "50"
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      InstanceTypes: m6i.xlarge,m5.xlarge,m6a.xlarge,m7i-flex.xlarge,m7a.xlarge,t3.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -937,7 +917,30 @@ Resources:
                 "
                     exit 1
                 fi
-      InstanceTypes: m6i.xlarge,m5.xlarge,m6a.xlarge,m7i-flex.xlarge,m7a.xlarge,t3.xlarge
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1526,12 +1529,12 @@ Resources:
       Description: workshop-setup build complete
       EventPattern:
         detail:
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1563,13 +1566,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1766685254419"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1766599121094"
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1674,46 +1677,6 @@ Resources:
       - VpcPrivateSubnet1RouteTableAssociation2BC202CB
       - VpcPrivateSubnet2DefaultRoute5FAC9901
       - VpcPrivateSubnet2RouteTableAssociationFA51927B
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-  DatabasePasswordSecret2954D962:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: workshop-db-password-secret
-      SecretString:
-        Fn::Join:
-          - ""
-          - - "{{resolve:secretsmanager:"
-            - Fn::Join:
-                - "-"
-                - - Fn::Select:
-                      - 0
-                      - Fn::Split:
-                          - "-"
-                          - Fn::Select:
-                              - 6
-                              - Fn::Split:
-                                  - ":"
-                                  - Ref: DatabaseSecret3B817195
-                  - Fn::Select:
-                      - 1
-                      - Fn::Split:
-                          - "-"
-                          - Fn::Select:
-                              - 6
-                              - Fn::Split:
-                                  - ":"
-                                  - Ref: DatabaseSecret3B817195
-                  - Fn::Select:
-                      - 2
-                      - Fn::Split:
-                          - "-"
-                          - Fn::Select:
-                              - 6
-                              - Fn::Split:
-                                  - ":"
-                                  - Ref: DatabaseSecret3B817195
-            - :SecretString:password::}}
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   DatabaseConnectionString52D1E98E:
@@ -1921,7 +1884,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251224185841"
+            - "-20251225185414"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2187,15 +2150,15 @@ Resources:
               }
       Environment:
         Variables:
-          S3_THREAD_DUMPS_PREFIX: thread-dumps/
-          EKS_CLUSTER_NAME:
-            Ref: EksClusterB2BDED5B
+          K8S_NAMESPACE: unicorn-store-spring
+          APP_LABEL: unicorn-store-spring
+          KUBERNETES_AUTH_TYPE: aws
+          SECRET_NAME: workshop-ide-password
           S3_BUCKET_NAME:
             Ref: WorkshopBucketFD5BC43F
-          SECRET_NAME: workshop-ide-password
-          KUBERNETES_AUTH_TYPE: aws
-          APP_LABEL: unicorn-store-spring
-          K8S_NAMESPACE: unicorn-store-spring
+          EKS_CLUSTER_NAME:
+            Ref: EksClusterB2BDED5B
+          S3_THREAD_DUMPS_PREFIX: thread-dumps/
       FunctionName: workshop-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
@@ -2368,7 +2331,7 @@ Resources:
           - ThreadAnalysisLambdaRole00E8F59E
           - Arn
       Type: STANDARD
-  JvmAnalysisServiceRole87E5AD2B:
+  JvmAiAnalyzerServiceRoleD9A12F9F:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -2380,15 +2343,15 @@ Resources:
             Principal:
               Service: pods.eks.amazonaws.com
         Version: "2012-10-17"
-      Description: Role for jvm-analysis-service EKS pod to access Bedrock and S3
+      Description: Role for jvm-ai-analyzer EKS pod to access Bedrock and S3
       ManagedPolicyArns:
         - Fn::Join:
             - ""
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonBedrockLimitedAccess
-      RoleName: jvm-analysis-service-eks-pod-role
-  JvmAnalysisServiceRoleDefaultPolicyB35B4FC8:
+      RoleName: jvm-ai-analyzer-eks-pod-role
+  JvmAiAnalyzerServiceRoleDefaultPolicy740045E6:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -2409,9 +2372,9 @@ Resources:
                         - Arn
                     - /*
         Version: "2012-10-17"
-      PolicyName: JvmAnalysisServiceRoleDefaultPolicyB35B4FC8
+      PolicyName: JvmAiAnalyzerServiceRoleDefaultPolicy740045E6
       Roles:
-        - Ref: JvmAnalysisServiceRole87E5AD2B
+        - Ref: JvmAiAnalyzerServiceRoleD9A12F9F
   UnicornUnicornStoreRepository7B15FB29:
     Type: AWS::ECR::Repository
     Properties:
@@ -2422,6 +2385,10 @@ Resources:
       RepositoryName: unicorn-store-spring
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
+  UnicornUnicornEventBusB728845C:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: unicorns
   UnicornUnicornStoreEksPodRoleB15D12B7:
     Type: AWS::IAM::Role
     Properties:
@@ -2441,11 +2408,6 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/CloudWatchAgentServerPolicy
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonBedrockLimitedAccess
       RoleName: unicornstore-eks-pod-role
   UnicornUnicornStoreEksPodRoleDefaultPolicy0D527B93:
     Type: AWS::IAM::Policy
@@ -2493,6 +2455,12 @@ Resources:
                   - Ref: AWS::AccountId
                   - :parameter/
                   - Ref: DatabaseConnectionString52D1E98E
+          - Action: events:PutEvents
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - UnicornUnicornEventBusB728845C
+                - Arn
         Version: "2012-10-17"
       PolicyName: UnicornUnicornStoreEksPodRoleDefaultPolicy0D527B93
       Roles:
@@ -2749,6 +2717,9 @@ Resources:
         Fn::GetAtt:
           - UnicornUnicornStoreDatabaseSetupFunction04E12F8B
           - Arn
+      SqlStatements: |
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -2779,9 +2750,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: DatabaseSecret3B817195
-      SqlStatements: |
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - DatabaseClusterDatabaseWriterF4C0B9A6
       - DatabaseCluster5B53A178

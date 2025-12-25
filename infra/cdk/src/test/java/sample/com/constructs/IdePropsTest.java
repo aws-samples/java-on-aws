@@ -101,14 +101,14 @@ public class IdePropsTest {
     }
 
     /**
-     * Unit test: Default architecture is ARM64
+     * Unit test: Default architecture is X86_64
      */
     @Test
-    void defaultArchitectureIsArm64() {
+    void defaultArchitectureIsX86_64() {
         IdeProps props = IdeProps.builder().build();
 
-        assertEquals(IdeArch.ARM64, props.getIdeArch());
-        // Should return ARM64 instance types by default
-        assertTrue(props.getInstanceTypes().contains("m7g.xlarge"));
+        assertEquals(IdeArch.X86_64, props.getIdeArch());
+        // Should return X86_64 instance types by default
+        assertTrue(props.getInstanceTypes().contains("m7i-flex.xlarge"));
     }
 }

@@ -111,9 +111,9 @@ public class WorkshopStack extends Stack {
                     .workshopBucket(workshopBucket.getBucket())
                     .build());
 
-            // JVM Analysis (Pod Identity role for jvm-analysis-service)
-            JvmAnalysis jvmAnalysis = new JvmAnalysis(this, "JvmAnalysis",
-                JvmAnalysis.JvmAnalysisProps.builder()
+            // JVM AI Analyzer (Pod Identity role for jvm-ai-analyzer)
+            JvmAiAnalyzer jvmAiAnalyzer = new JvmAiAnalyzer(this, "JvmAiAnalyzer",
+                JvmAiAnalyzer.JvmAiAnalyzerProps.builder()
                     .workshopBucket(workshopBucket.getBucket())
                     .build());
 
