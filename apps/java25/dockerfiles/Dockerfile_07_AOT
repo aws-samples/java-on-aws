@@ -21,12 +21,12 @@ ENV MAIN_CLASS="com.unicorn.store.StoreApplication"
 ENV TRAINING_OPTS="-Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration -Dspring.main.lazy-initialization=true"
 
 # Record AOT configuration
-RUN java -XX:AOTMode=record -XX:AOTConfiguration=/app.aotconf \
+RUN java -XX:+UseCompactObjectHeaders -XX:AOTMode=record -XX:AOTConfiguration=/app.aotconf \
     -cp "$APP_CP" -Dspring.context.exit=onRefresh $TRAINING_OPTS $MAIN_CLASS || true && \
     test -s /app.aotconf
 
 # Create AOT cache
-RUN java -XX:AOTMode=create -XX:AOTConfiguration=/app.aotconf \
+RUN java -XX:+UseCompactObjectHeaders -XX:AOTMode=create -XX:AOTConfiguration=/app.aotconf \
     -XX:AOTCache=/opt/app/app.aot \
     -cp "$APP_CP" $TRAINING_OPTS $MAIN_CLASS || true && \
     test -s /opt/app/app.aot

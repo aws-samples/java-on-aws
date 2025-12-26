@@ -180,30 +180,6 @@
 
     <profiles>
         <profile>
-            <id>otel-manual</id>
-            <dependencies>
-                <dependency>
-                    <groupId>io.opentelemetry.contrib</groupId>
-                    <artifactId>opentelemetry-aws-xray</artifactId>
-                    <version>1.52.0</version>
-                </dependency>
-                <dependency>
-                    <groupId>io.opentelemetry.contrib</groupId>
-                    <artifactId>opentelemetry-aws-xray-propagator</artifactId>
-                    <version>1.52.0-alpha</version>
-                </dependency>
-                <dependency>
-                    <groupId>io.opentelemetry.instrumentation</groupId>
-                    <artifactId>opentelemetry-aws-sdk-2.2</artifactId>
-                    <version>2.22.0-alpha</version>
-                </dependency>
-                <dependency>
-                    <groupId>io.opentelemetry.instrumentation</groupId>
-                    <artifactId>opentelemetry-spring-boot-starter</artifactId>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
             <id>native</id>
             <build>
                 <plugins>
