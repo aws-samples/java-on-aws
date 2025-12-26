@@ -120,8 +120,6 @@ public class WorkshopStack extends Stack {
             // Unicorn construct: Roles + DB Setup (uses unicorn* naming for workshop content compatibility)
             Unicorn unicorn = new Unicorn(this, "Unicorn", Unicorn.UnicornProps.builder()
                 .vpc(vpc.getVpc())
-                .eksRolesEnabled(true)
-                .ecsRolesEnabled(false)
                 .database(database)
                 .workshopBucket(workshopBucket.getBucket())
                 .build());

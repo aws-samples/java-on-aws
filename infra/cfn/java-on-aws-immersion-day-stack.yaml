@@ -780,12 +780,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      VolumeSize: "50"
       SubnetIds:
         Fn::Join:
           - ""
@@ -941,6 +935,12 @@ Resources:
                     exit 1
                 fi
       InstanceTypes: m6i.xlarge,m5.xlarge,m6a.xlarge,m7i-flex.xlarge,m7a.xlarge,t3.xlarge
+      InstanceName: ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      VolumeSize: "50"
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1319,12 +1319,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: java-on-aws-immersion-day
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: new-ws-infra
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-on-aws-immersion-day
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1529,12 +1529,12 @@ Resources:
       Description: workshop-setup build complete
       EventPattern:
         detail:
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1566,13 +1566,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1766758200134"
+      ContentHash: "1766773864950"
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1884,7 +1884,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251226151000"
+            - "-20251226193105"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2150,8 +2150,6 @@ Resources:
               }
       Environment:
         Variables:
-          EKS_CLUSTER_NAME:
-            Ref: EksClusterB2BDED5B
           S3_BUCKET_NAME:
             Ref: WorkshopBucketFD5BC43F
           SECRET_NAME: workshop-ide-password
@@ -2159,6 +2157,8 @@ Resources:
           APP_LABEL: unicorn-store-spring
           K8S_NAMESPACE: unicorn-store-spring
           S3_THREAD_DUMPS_PREFIX: thread-dumps/
+          EKS_CLUSTER_NAME:
+            Ref: EksClusterB2BDED5B
       FunctionName: workshop-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
@@ -2465,6 +2465,110 @@ Resources:
       PolicyName: UnicornUnicornStoreEksPodRoleDefaultPolicy0D527B93
       Roles:
         - Ref: UnicornUnicornStoreEksPodRoleB15D12B7
+  UnicornUnicornStoreEcsInfrastructureRoleEDFFC1E6:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs.amazonaws.com
+        Version: "2012-10-17"
+      Description: ECS infrastructure role for Express Mode services
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices
+      Path: /service-role/
+      RoleName: unicornstore-ecs-infrastructure-role
+  UnicornUnicornStoreEcsTaskExecutionRoleC2148AE8:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: "2012-10-17"
+      Description: ECS task execution role for pulling images and injecting secrets
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Path: /service-role/
+      RoleName: unicornstore-ecs-task-execution-role
+  UnicornUnicornStoreEcsTaskExecutionRoleDefaultPolicy3FC9EFEE:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: logs:CreateLogGroup
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - secretsmanager:DescribeSecret
+              - secretsmanager:GetSecretValue
+            Effect: Allow
+            Resource:
+              Ref: DatabaseSecret3B817195
+          - Action:
+              - ssm:DescribeParameters
+              - ssm:GetParameter
+              - ssm:GetParameterHistory
+              - ssm:GetParameters
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ssm:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :parameter/
+                  - Ref: DatabaseConnectionString52D1E98E
+        Version: "2012-10-17"
+      PolicyName: UnicornUnicornStoreEcsTaskExecutionRoleDefaultPolicy3FC9EFEE
+      Roles:
+        - Ref: UnicornUnicornStoreEcsTaskExecutionRoleC2148AE8
+  UnicornUnicornStoreEcsTaskRoleD7FBB789:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: "2012-10-17"
+      Description: ECS task role for application runtime permissions
+      Path: /service-role/
+      RoleName: unicornstore-ecs-task-role
+  UnicornUnicornStoreEcsTaskRoleDefaultPolicy477138EA:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: xray:PutTraceSegments
+            Effect: Allow
+            Resource: "*"
+          - Action: events:PutEvents
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - UnicornUnicornEventBusB728845C
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: UnicornUnicornStoreEcsTaskRoleDefaultPolicy477138EA
+      Roles:
+        - Ref: UnicornUnicornStoreEcsTaskRoleD7FBB789
   UnicornUnicornStoreDatabaseSetupFunctionServiceRole61942171:
     Type: AWS::IAM::Role
     Properties:
@@ -2717,6 +2821,9 @@ Resources:
         Fn::GetAtt:
           - UnicornUnicornStoreDatabaseSetupFunction04E12F8B
           - Arn
+      SqlStatements: |
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -2747,9 +2854,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: DatabaseSecret3B817195
-      SqlStatements: |
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - DatabaseClusterDatabaseWriterF4C0B9A6
       - DatabaseCluster5B53A178

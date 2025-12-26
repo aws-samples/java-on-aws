@@ -760,6 +760,7 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      InstanceName: ide
       IamInstanceProfileArn:
         Fn::GetAtt:
           - IdeInstanceProfile61B92038
@@ -920,7 +921,6 @@ Resources:
                     exit 1
                 fi
       InstanceTypes: m6i.xlarge,m5.xlarge,m6a.xlarge,m7i-flex.xlarge,m7a.xlarge,t3.xlarge
-      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:

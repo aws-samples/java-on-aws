@@ -70,14 +70,10 @@ public class Unicorn extends Construct {
             .build();
 
         // === EKS ROLES ===
-        if (props.isEksRolesEnabled()) {
-            createEksRoles(props);
-        }
+        createEksRoles(props);
 
         // === ECS ROLES ===
-        if (props.isEcsRolesEnabled()) {
-            createEcsRoles(props);
-        }
+        createEcsRoles(props);
 
         // === DATABASE SETUP ===
         if (props.getDatabase() != null) {
@@ -278,15 +274,11 @@ public class Unicorn extends Construct {
 
     // Props class
     public static class UnicornProps {
-        private final boolean eksRolesEnabled;
-        private final boolean ecsRolesEnabled;
         private final Database database;
         private final IBucket workshopBucket;
         private final software.amazon.awscdk.services.ec2.IVpc vpc;
 
         private UnicornProps(Builder builder) {
-            this.eksRolesEnabled = builder.eksRolesEnabled;
-            this.ecsRolesEnabled = builder.ecsRolesEnabled;
             this.database = builder.database;
             this.workshopBucket = builder.workshopBucket;
             this.vpc = builder.vpc;
@@ -294,14 +286,6 @@ public class Unicorn extends Construct {
 
         public static Builder builder() {
             return new Builder();
-        }
-
-        public boolean isEksRolesEnabled() {
-            return eksRolesEnabled;
-        }
-
-        public boolean isEcsRolesEnabled() {
-            return ecsRolesEnabled;
         }
 
         public Database getDatabase() {
@@ -317,21 +301,9 @@ public class Unicorn extends Construct {
         }
 
         public static class Builder {
-            private boolean eksRolesEnabled = false;
-            private boolean ecsRolesEnabled = false;
             private Database database;
             private IBucket workshopBucket;
             private software.amazon.awscdk.services.ec2.IVpc vpc;
-
-            public Builder eksRolesEnabled(boolean eksRolesEnabled) {
-                this.eksRolesEnabled = eksRolesEnabled;
-                return this;
-            }
-
-            public Builder ecsRolesEnabled(boolean ecsRolesEnabled) {
-                this.ecsRolesEnabled = ecsRolesEnabled;
-                return this;
-            }
 
             public Builder database(Database database) {
                 this.database = database;
