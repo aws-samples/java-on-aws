@@ -25,26 +25,8 @@ if [ -d ~/environment/unicorn-store-spring ]; then
     log_warning "~/environment/unicorn-store-spring already exists, removing..."
     rm -rf ~/environment/unicorn-store-spring
 fi
-cp -r ~/java-on-aws/apps/java25/unicorn-store-spring ~/environment/
+cp -r ~/java-on-aws/apps/unicorn-store-spring-java25 ~/environment/unicorn-store-spring
 log_success "Copied unicorn-store-spring (Java 25) to ~/environment"
-
-# Copy dockerfiles (Java 25 version) to ~/environment
-log_info "Copying dockerfiles (Java 25) to ~/environment..."
-if [ -d ~/environment/dockerfiles ]; then
-    log_warning "~/environment/dockerfiles already exists, removing..."
-    rm -rf ~/environment/dockerfiles
-fi
-cp -r ~/java-on-aws/apps/java25/dockerfiles ~/environment/
-log_success "Copied dockerfiles (Java 25) to ~/environment"
-
-# Copy jvm-ai-analyzer to ~/environment
-log_info "Copying jvm-ai-analyzer to ~/environment..."
-if [ -d ~/environment/jvm-ai-analyzer ]; then
-    log_warning "~/environment/jvm-ai-analyzer already exists, removing..."
-    rm -rf ~/environment/jvm-ai-analyzer
-fi
-cp -r ~/java-on-aws/apps/java25/jvm-ai-analyzer ~/environment/
-log_success "Copied jvm-ai-analyzer to ~/environment"
 
 # Configure global git user
 log_info "Configuring global git user..."
@@ -78,19 +60,11 @@ log_info "Building Docker image..."
 docker build -t "$IMAGE_NAME" .
 log_success "Docker image built"
 
-# Tag and push with '01-initial' tag
-log_info "Tagging and pushing image with '01-initial' tag..."
-docker tag "$IMAGE_NAME:latest" "$ECR_REGISTRY/$IMAGE_NAME:01-initial"
-docker push "$ECR_REGISTRY/$IMAGE_NAME:01-initial"
-log_success "Pushed $ECR_REGISTRY/$IMAGE_NAME:01-initial"
-
-# Tag and push with 'latest' tag
-log_info "Tagging and pushing image with 'latest' tag..."
-docker tag "$IMAGE_NAME:latest" "$ECR_REGISTRY/$IMAGE_NAME:latest"
-docker push "$ECR_REGISTRY/$IMAGE_NAME:latest"
-log_success "Pushed $ECR_REGISTRY/$IMAGE_NAME:latest"
-
-log_success "Unicorn Store Spring setup completed"
+# Delete local Docker images to free up space
+log_info "Cleaning up local Docker images..."
+docker rmi "$IMAGE_NAME" 2>/dev/null || true
+docker image prune -f
+log_success "Local Docker images cleaned up"
 
 # Emit for bootstrap summary
-echo "✅ Success: Unicorn Store Spring (ECR: $IMAGE_NAME:01-initial, $IMAGE_NAME:latest)"
+echo "✅ Success: Unicorn Store Spring Setup"

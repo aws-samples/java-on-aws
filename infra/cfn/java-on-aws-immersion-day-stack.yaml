@@ -780,12 +780,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
       SecurityGroupIds:
         Fn::Join:
           - ""
@@ -934,13 +928,19 @@ Resources:
                 "
                     exit 1
                 fi
-      InstanceTypes: m6i.xlarge,m5.xlarge,m6a.xlarge,m7i-flex.xlarge,m7a.xlarge,t3.xlarge
+      InstanceTypes: m6a.xlarge,m7a.xlarge
       InstanceName: ide
       IamInstanceProfileArn:
         Fn::GetAtt:
           - IdeInstanceProfile61B92038
           - Arn
       VolumeSize: "50"
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1570,7 +1570,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1766773864950"
+      ContentHash: "1766860671731"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
     DependsOn:
@@ -1884,7 +1884,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251226193105"
+            - "-20251227193752"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2821,9 +2821,6 @@ Resources:
         Fn::GetAtt:
           - UnicornUnicornStoreDatabaseSetupFunction04E12F8B
           - Arn
-      SqlStatements: |
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -2854,6 +2851,9 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: DatabaseSecret3B817195
+      SqlStatements: |
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - DatabaseClusterDatabaseWriterF4C0B9A6
       - DatabaseCluster5B53A178

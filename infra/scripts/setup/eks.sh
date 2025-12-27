@@ -79,6 +79,60 @@ else
     exit 1
 fi
 
+# Deploy workshop NodePool (AMD, 4+ vCPU, 16+ GB RAM)
+log_info "Deploying workshop NodePool..."
+cat <<EOF | kubectl apply -f -
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: workshop
+spec:
+  template:
+    spec:
+      nodeClassRef:
+        group: eks.amazonaws.com
+        kind: NodeClass
+        name: default
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: eks.amazonaws.com/instance-cpu-manufacturer
+          operator: In
+          values: ["amd"]
+        - key: eks.amazonaws.com/instance-cpu
+          operator: Gt
+          values: ["3"]
+        - key: eks.amazonaws.com/instance-memory
+          operator: Gt
+          values: ["16383"]
+        - key: eks.amazonaws.com/instance-category
+          operator: In
+          values: ["c", "m"]
+        - key: eks.amazonaws.com/instance-generation
+          operator: Gt
+          values: ["5"]
+  limits:
+    cpu: 16
+    memory: 64Gi
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m
+EOF
+
+if [ $? -eq 0 ]; then
+    log_success "Workshop NodePool deployed successfully"
+else
+    log_error "Failed to deploy workshop NodePool"
+    exit 1
+fi
+
 # Verify EKS add-ons are installed and functional
 log_info "Verifying EKS add-ons..."
 

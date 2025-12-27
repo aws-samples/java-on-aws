@@ -51,7 +51,8 @@ public class Ide extends Construct {
      */
     public enum IdeArch {
         ARM64("arm64", "aarch64"),
-        X86_64("x86_64", "x86_64");
+        X86_64_AMD("x86_64", "x86_64"),
+        X86_64_INTEL("x86_64", "x86_64");
 
         private final String awsValue;
         private final String unameValue;
@@ -86,7 +87,7 @@ public class Ide extends Construct {
         private String instanceName = "ide";
         private int diskSize = 50;
         private IVpc vpc;
-        private IdeArch ideArch = IdeArch.X86_64;
+        private IdeArch ideArch = IdeArch.X86_64_AMD;
         private IdeType ideType = IdeType.CODE_EDITOR;
         private List<ISecurityGroup> additionalSecurityGroups = new ArrayList<>();
         private int bootstrapTimeoutMinutes = 30;
@@ -96,9 +97,11 @@ public class Ide extends Construct {
 
         // Architecture-specific instance type lists
         private static final List<String> ARM64_INSTANCE_TYPES =
-            Arrays.asList("m7g.xlarge", "m6g.xlarge", "c7g.xlarge", "t4g.xlarge");
-        private static final List<String> X86_64_INSTANCE_TYPES =
-            Arrays.asList("m6i.xlarge", "m5.xlarge", "m6a.xlarge", "m7i-flex.xlarge", "m7a.xlarge", "t3.xlarge");
+            Arrays.asList("m7g.xlarge", "m6g.xlarge");
+        private static final List<String> X86_64_AMD_INSTANCE_TYPES =
+            Arrays.asList("m6a.xlarge", "m7a.xlarge");
+        private static final List<String> X86_64_INTEL_INSTANCE_TYPES =
+            Arrays.asList("m6i.xlarge", "m5.xlarge", "m7i.xlarge", "m7i-flex.xlarge");
 
         public static IdeProps.Builder builder() { return new Builder(); }
 
@@ -135,7 +138,11 @@ public class Ide extends Construct {
         }
 
         public List<String> getInstanceTypes() {
-            return ideArch == IdeArch.ARM64 ? ARM64_INSTANCE_TYPES : X86_64_INSTANCE_TYPES;
+            return switch (ideArch) {
+                case ARM64 -> ARM64_INSTANCE_TYPES;
+                case X86_64_AMD -> X86_64_AMD_INSTANCE_TYPES;
+                case X86_64_INTEL -> X86_64_INTEL_INSTANCE_TYPES;
+            };
         }
 
         public List<ISecurityGroup> getAdditionalSecurityGroups() { return additionalSecurityGroups; }

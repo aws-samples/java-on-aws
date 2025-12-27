@@ -46,17 +46,20 @@ spring:
       ddl-auto: none
     properties:
       hibernate:
-        temp:
+        boot:
           # Skip JDBC metadata lookup for faster startup
-          use_jdbc_metadata_defaults: false
+          "[allow_jdbc_metadata_access]": false
 
 # === Server Configuration ===
 server:
-  # Include error messages in responses for debugging
-  error:
-    include-message: always
   # Graceful shutdown for container orchestration
   shutdown: graceful
+
+# === Web Configuration ===
+spring.web:
+  error:
+    # Include error messages in responses for debugging
+    include-message: always
 
 # === Actuator/Management Configuration ===
 management:

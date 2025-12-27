@@ -64,6 +64,13 @@ server:
   retention: 24h
   global:
     scrape_interval: 15s
+  resources:
+    requests:
+      cpu: 200m
+      memory: 1Gi
+    limits:
+      cpu: 500m
+      memory: 2Gi
 EOF
 
 log_info "Deploying Prometheus..."
@@ -108,6 +115,14 @@ persistence:
   enabled: true
   storageClassName: gp3
   size: 10Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
 
 sidecar:
   dashboards:
