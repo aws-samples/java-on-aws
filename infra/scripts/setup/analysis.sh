@@ -31,7 +31,7 @@ THREAD_THRESHOLD=200
 
 # Profiling Analysis config
 HTTP_DASHBOARD_TITLE="HTTP Metrics"
-PROFILING_CONTACT_POINT="jvm-analysis-webhook"
+PROFILING_CONTACT_POINT="ai-jvm-analyzer-webhook"
 PROFILING_ALERT_TITLE="High HTTP Rate"
 REQUESTS_THRESHOLD=20
 
@@ -495,7 +495,7 @@ CONTACT_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
     \"name\": \"$PROFILING_CONTACT_POINT\",
     \"type\": \"webhook\",
     \"settings\": {
-      \"url\": \"http://jvm-analysis-service.monitoring.svc.cluster.local/webhook\",
+      \"url\": \"http://ai-jvm-analyzer.monitoring.svc.cluster.local/webhook\",
       \"httpMethod\": \"POST\"
     },
     \"disableResolveMessage\": true
@@ -631,7 +631,7 @@ log_info ""
 log_info "Profiling Analysis:"
 log_info "   Dashboard: $HTTP_DASHBOARD_TITLE"
 log_info "   Alert: $PROFILING_ALERT_TITLE (threshold: $REQUESTS_THRESHOLD req/s)"
-log_info "   Webhook: http://jvm-analysis-service.monitoring.svc.cluster.local/webhook"
+log_info "   Webhook: http://ai-jvm-analyzer.monitoring.svc.cluster.local/webhook"
 log_info ""
 log_info "Grafana: http://$GRAFANA_LB"
 log_info "Username: $GRAFANA_USER"
