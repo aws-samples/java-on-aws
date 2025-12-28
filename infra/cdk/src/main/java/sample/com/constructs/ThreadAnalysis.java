@@ -2,7 +2,6 @@ package sample.com.constructs;
 
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.RemovalPolicy;
-import software.amazon.awscdk.services.apigateway.*;
 import software.amazon.awscdk.services.ec2.*;
 import software.amazon.awscdk.services.eks.v2.alpha.AccessEntry;
 import software.amazon.awscdk.services.eks.v2.alpha.AccessEntryType;
@@ -14,6 +13,9 @@ import software.amazon.awscdk.services.eks.v2.alpha.IAccessPolicy;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
+import software.amazon.awscdk.services.lambda.FunctionUrl;
+import software.amazon.awscdk.services.lambda.FunctionUrlAuthType;
+import software.amazon.awscdk.services.lambda.FunctionUrlOptions;
 import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.services.logs.RetentionDays;
@@ -28,13 +30,14 @@ import java.util.Map;
 
 /**
  * ThreadAnalysis construct for thread dump analysis.
- * Creates Lambda function and API Gateway for thread dump collection and AI analysis.
+ * Creates Lambda function with Function URL for thread dump collection and AI analysis.
+ * Uses async self-invocation pattern for fast webhook response.
  */
 public class ThreadAnalysis extends Construct {
 
     private final SecurityGroup lambdaSecurityGroup;
     private final Function threadDumpLambda;
-    private final RestApi threadDumpApi;
+    private final FunctionUrl functionUrl;
     private final Role lambdaRole;
 
     public static class ThreadAnalysisProps {
@@ -130,20 +133,13 @@ public class ThreadAnalysis extends Construct {
             props.getWorkshopBucket().grantReadWrite(lambdaRole);
         }
 
-        // Create Lambda security group
+        // Create Lambda security group for EKS and ECS access
         this.lambdaSecurityGroup = SecurityGroup.Builder.create(this, "SecurityGroup")
             .vpc(props.getVpc())
             .securityGroupName(prefix + "-thread-dump-lambda-sg")
             .description("Security group for Thread Dump Lambda function")
             .allowAllOutbound(true)
             .build();
-
-        // Allow inbound from VPC for HTTPS
-        lambdaSecurityGroup.addIngressRule(
-            Peer.ipv4(props.getVpc().getVpcCidrBlock()),
-            Port.tcp(443),
-            "Allow VPC traffic to Lambda"
-        );
 
         // Create CloudWatch Log Group
         LogGroup.Builder.create(this, "LogGroup")
@@ -173,56 +169,22 @@ public class ThreadAnalysis extends Construct {
                 "S3_BUCKET_NAME", bucketName,
                 "EKS_CLUSTER_NAME", eksClusterName,
                 "S3_THREAD_DUMPS_PREFIX", "thread-dumps/",
-                "APP_LABEL", "unicorn-store-spring",
-                "KUBERNETES_AUTH_TYPE", "aws",
-                "K8S_NAMESPACE", "unicorn-store-spring",
                 "SECRET_NAME", prefix + "-ide-password"
             ))
             .build();
 
-        // Create VPC Endpoint for API Gateway
-        InterfaceVpcEndpoint apiGatewayEndpoint = InterfaceVpcEndpoint.Builder.create(this, "ApiGatewayVpcEndpoint")
-            .vpc(props.getVpc())
-            .service(InterfaceVpcEndpointAwsService.APIGATEWAY)
-            .subnets(SubnetSelection.builder()
-                .subnetType(SubnetType.PRIVATE_WITH_EGRESS)
-                .build())
-            .securityGroups(List.of(lambdaSecurityGroup))
-            .privateDnsEnabled(true)
-            .build();
+        // Add permission for Lambda to invoke itself (async pattern)
+        threadDumpLambda.addToRolePolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("lambda:InvokeFunction"))
+            .resources(List.of(threadDumpLambda.getFunctionArn()))
+            .build());
 
-        // Create Private REST API Gateway
-        this.threadDumpApi = RestApi.Builder.create(this, "Api")
-            .restApiName(prefix + "-thread-dump-api")
-            .endpointConfiguration(EndpointConfiguration.builder()
-                .types(List.of(EndpointType.PRIVATE))
-                .vpcEndpoints(List.of(apiGatewayEndpoint))
-                .build())
-            .policy(PolicyDocument.Builder.create()
-                .statements(List.of(
-                    PolicyStatement.Builder.create()
-                        .effect(Effect.ALLOW)
-                        .principals(List.of(new AnyPrincipal()))
-                        .actions(List.of("execute-api:Invoke"))
-                        .resources(List.of("*"))
-                        .conditions(Map.of(
-                            "StringEquals", Map.of(
-                                "aws:SourceVpce", apiGatewayEndpoint.getVpcEndpointId()
-                            )
-                        ))
-                        .build()
-                ))
-                .build())
-            .build();
-
-        // Remove auto-generated endpoint output
-        threadDumpApi.getNode().tryRemoveChild("Endpoint");
-
-        // Add POST method to root
-        LambdaIntegration lambdaIntegration = LambdaIntegration.Builder.create(threadDumpLambda)
-            .build();
-
-        threadDumpApi.getRoot().addMethod("POST", lambdaIntegration);
+        // Create Function URL (replaces API Gateway + VPC Endpoint)
+        // Auth is handled by Lambda code via basic auth against Secrets Manager
+        this.functionUrl = threadDumpLambda.addFunctionUrl(FunctionUrlOptions.builder()
+            .authType(FunctionUrlAuthType.NONE)
+            .build());
 
         // Create EKS Access Entry for Lambda role (if EKS cluster provided)
         if (props.getEksCluster() != null) {
@@ -292,8 +254,8 @@ public class ThreadAnalysis extends Construct {
         return threadDumpLambda;
     }
 
-    public RestApi getThreadDumpApi() {
-        return threadDumpApi;
+    public FunctionUrl getFunctionUrl() {
+        return functionUrl;
     }
 
     public Role getLambdaRole() {

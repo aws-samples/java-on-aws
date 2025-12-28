@@ -24,13 +24,13 @@ public class ThreadGeneratorService {
         logger.info("Starting {} threads", threadCount);
 
         for (int i = 0; i < threadCount; i++) {
-            var thread = Thread.ofVirtual()
+            var thread = Thread.ofPlatform()
                     .name("DummyThread-" + i)
                     .start(new DummyWorkload(running));
             activeThreads.add(thread);
         }
 
-        logger.info("Started {} virtual threads", threadCount);
+        logger.info("Started {} platform threads", threadCount);
     }
 
     public synchronized void stopThreads() {

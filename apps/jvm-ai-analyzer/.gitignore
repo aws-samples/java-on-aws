@@ -27,6 +27,3 @@ release.properties
 # Test output
 *.exec
 test-output/
-
-# Kubernetes manifests (generated during workshop)
-k8s/

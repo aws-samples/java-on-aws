@@ -24,15 +24,15 @@ FOLDER_NAME="Workshop Dashboards"
 
 # Thread Analysis config
 LAMBDA_FUNCTION_NAME="${PREFIX}-thread-dump-lambda"
-THREAD_DASHBOARD_TITLE="JVM Metrics - EKS"
-THREAD_CONTACT_POINT="lambda-webhook"
+THREAD_DASHBOARD_TITLE="JVM Metrics - EKS & ECS"
+THREAD_CONTACT_POINT="thread-dump-lambda-webhook"
 THREAD_ALERT_TITLE="High JVM Threads"
 THREAD_THRESHOLD=200
 
 # Profiling Analysis config
 HTTP_DASHBOARD_TITLE="HTTP Metrics"
 PROFILING_CONTACT_POINT="jvm-analysis-webhook"
-PROFILING_ALERT_TITLE="High HTTP POST Request Rate"
+PROFILING_ALERT_TITLE="High HTTP Rate"
 REQUESTS_THRESHOLD=20
 
 # =============================================================================
@@ -87,9 +87,13 @@ else
   log_success "Folder created: $FOLDER_UID"
 fi
 
-# Get API Gateway URL for thread dump Lambda
-API_ID=$(aws apigateway get-rest-apis --query "items[?name=='${PREFIX}-thread-dump-api'].id" --output text)
-APIGW_URL="https://${API_ID}.execute-api.${AWS_REGION}.amazonaws.com/prod"
+# Get Lambda Function URL for thread dump Lambda
+FUNCTION_URL=$(aws lambda get-function-url-config --function-name "$LAMBDA_FUNCTION_NAME" --query "FunctionUrl" --output text 2>/dev/null || echo "")
+if [[ -z "$FUNCTION_URL" ]]; then
+    log_error "Lambda Function URL not found. Ensure CDK stack is deployed."
+    exit 1
+fi
+log_info "Using Lambda Function URL: $FUNCTION_URL"
 
 
 # =============================================================================
@@ -144,11 +148,11 @@ cat > /tmp/jvm-dashboard.json <<EOF
   "panels": [
     {
       "id": 1,
-      "title": "JVM Thread Count (EKS)",
+      "title": "JVM Thread Count (EKS & ECS)",
       "type": "stat",
       "targets": [
         {
-          "expr": "label_replace(jvm_threads_live_threads{job=\"kubernetes-pods\"}, \"short_id\", \"\$1\", \"pod\", \".*-(.{5})\$\")",
+          "expr": "label_replace(jvm_threads_live_threads{job=\"kubernetes-pods\"}, \"short_id\", \"\$1\", \"pod\", \".*-(.{5})\$\") or label_replace(jvm_threads_live_threads{job=\"ecs-unicorn-store-spring\"}, \"short_id\", \"\$1\", \"task_pod_id\", \"(.{8}).*\")",
           "refId": "A",
           "legendFormat": "{{cluster_type}} - {{short_id}}"
         }
@@ -169,11 +173,11 @@ cat > /tmp/jvm-dashboard.json <<EOF
     },
     {
       "id": 2,
-      "title": "JVM Memory Usage (EKS)",
+      "title": "JVM Memory Usage (EKS & ECS)",
       "type": "timeseries",
       "targets": [
         {
-          "expr": "jvm_memory_used_bytes{job=\"kubernetes-pods\"}",
+          "expr": "jvm_memory_used_bytes{job=~\"kubernetes-pods|ecs-unicorn-store-spring\"}",
           "refId": "A",
           "legendFormat": "{{cluster_type}} - {{area}} - {{id}}"
         }
@@ -186,7 +190,7 @@ cat > /tmp/jvm-dashboard.json <<EOF
       "type": "timeseries",
       "targets": [
         {
-          "expr": "label_replace(jvm_threads_live_threads{job=\"kubernetes-pods\"}, \"short_id\", \"\$1\", \"pod\", \".*-(.{5})\$\")",
+          "expr": "label_replace(jvm_threads_live_threads{job=\"kubernetes-pods\"}, \"short_id\", \"\$1\", \"pod\", \".*-(.{5})\$\") or label_replace(jvm_threads_live_threads{job=\"ecs-unicorn-store-spring\"}, \"short_id\", \"\$1\", \"task_pod_id\", \"(.{8}).*\")",
           "refId": "A",
           "legendFormat": "{{cluster_type}} - {{short_id}}"
         }
@@ -212,6 +216,13 @@ log_success "JVM Metrics dashboard created: $JVM_DASHBOARD_UID"
 log_info "Creating thread analysis contact point..."
 WEBHOOK_USER="grafana-alerts"
 
+# Delete old contact point if exists (renamed from lambda-webhook)
+OLD_CONTACT_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/v1/provisioning/contact-points" | jq -r '.[] | select(.name == "lambda-webhook") | .uid // empty')
+if [[ -n "$OLD_CONTACT_UID" ]]; then
+  log_info "Deleting old lambda-webhook contact point..."
+  curl -s -X DELETE -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/v1/provisioning/contact-points/$OLD_CONTACT_UID"
+fi
+
 EXISTING_THREAD_CONTACT=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/v1/provisioning/contact-points" | jq -r ".[] | select(.name == \"$THREAD_CONTACT_POINT\") | .name // empty")
 
 if [[ -z "$EXISTING_THREAD_CONTACT" ]]; then
@@ -221,7 +232,7 @@ if [[ -z "$EXISTING_THREAD_CONTACT" ]]; then
       \"name\": \"$THREAD_CONTACT_POINT\",
       \"type\": \"webhook\",
       \"settings\": {
-        \"url\": \"$APIGW_URL\",
+        \"url\": \"$FUNCTION_URL\",
         \"httpMethod\": \"POST\",
         \"username\": \"$WEBHOOK_USER\",
         \"password\": \"$GRAFANA_PASSWORD\",
@@ -252,7 +263,7 @@ THREAD_ALERT_PAYLOAD="{
       \"relativeTimeRange\": {\"from\": 600, \"to\": 0},
       \"datasourceUid\": \"promds\",
       \"model\": {
-        \"expr\": \"jvm_threads_live_threads{job=\\\"kubernetes-pods\\\"}\",
+        \"expr\": \"jvm_threads_live_threads{job=~\\\"kubernetes-pods|ecs-unicorn-store-spring\\\"}\",
         \"instant\": true,
         \"refId\": \"A\"
       }
@@ -284,7 +295,7 @@ THREAD_ALERT_PAYLOAD="{
   \"annotations\": {
     \"summary\": \"High JVM Threads\",
     \"description\": \"High number of JVM threads detected. Triggering Lambda thread dump.\",
-    \"webhookUrl\": \"$APIGW_URL\"
+    \"webhookUrl\": \"$FUNCTION_URL\"
   },
   \"labels\": {
     \"severity\": \"critical\",
@@ -530,8 +541,8 @@ PROFILING_ALERT_PAYLOAD="{
   \"for\": \"30s\",
   \"ruleGroup\": \"workshop-analysis-group\",
   \"annotations\": {
-    \"summary\": \"High HTTP POST Request Rate\",
-    \"description\": \"POST rate: {{ \$value }} req/s for pod {{ \$labels.pod }}\"
+    \"summary\": \"High HTTP Rate\",
+    \"description\": \"HTTP rate: {{ \$value }} req/s for pod {{ \$labels.pod }}\"
   },
   \"labels\": {
     \"severity\": \"warning\",
@@ -615,7 +626,7 @@ log_info ""
 log_info "Thread Analysis:"
 log_info "   Dashboard: $THREAD_DASHBOARD_TITLE"
 log_info "   Alert: $THREAD_ALERT_TITLE (threshold: $THREAD_THRESHOLD threads)"
-log_info "   Webhook: $APIGW_URL"
+log_info "   Webhook: $FUNCTION_URL"
 log_info ""
 log_info "Profiling Analysis:"
 log_info "   Dashboard: $HTTP_DASHBOARD_TITLE"

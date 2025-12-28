@@ -61,10 +61,12 @@ source $ZSH/oh-my-zsh.sh
 alias ll='ls -la'
 alias k=kubectl
 
-# Dynamic code alias - detect installed IDE
-if [ -x "/home/ec2-user/.local/bin/code-editor-server" ]; then
-    alias code="/home/ec2-user/.local/bin/code-editor-server"
+# Dynamic code alias - detect installed IDE and use correct CLI
+if [ -d "/home/ec2-user/.local/lib/code-editor-"* ]; then
+    # AWS Code Editor - use remote-cli for opening files in running instance
+    alias code="$(echo /home/ec2-user/.local/lib/code-editor-*/dist/bin/remote-cli/code)"
 elif command -v code-server &>/dev/null; then
+    # code-server
     alias code=/usr/lib/code-server/bin/code-server
 fi
 

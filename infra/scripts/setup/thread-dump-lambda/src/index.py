@@ -247,6 +247,86 @@ class ECSClient:
         return private_ip
 
 
+def invoke_self_async(event: Dict[str, Any], context: Any) -> None:
+    """Invoke this Lambda function asynchronously to process the alert"""
+    lambda_client = boto3.client('lambda')
+    event['_async_processing'] = True
+
+    lambda_client.invoke(
+        FunctionName=context.function_name,
+        InvocationType='Event',  # Async invocation
+        Payload=json.dumps(event)
+    )
+    logger.info(f"Triggered async processing for function {context.function_name}")
+
+
+def process_async_alerts(event: Dict[str, Any], s3_bucket: str) -> Dict[str, Any]:
+    """Process alerts asynchronously (called from async invocation)"""
+    try:
+        body = event.get('_alert_body', {})
+        alerts = body.get('alerts', [])
+
+        results = []
+        for alert in alerts:
+            if alert.get('status') != 'firing':
+                logger.info("Skipping resolved alert")
+                continue
+
+            labels = alert.get('labels', {})
+            cluster_type = labels.get('cluster_type')
+            cluster_name = labels.get('cluster')
+            task_pod_id = labels.get('task_pod_id')
+            container_name = labels.get('container_name')
+            namespace = labels.get('namespace', 'default')
+            container_ip = labels.get('instance')
+
+            if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
+                logger.info("Some labels are missing or invalid, trying to extract from valueString")
+
+                if 'valueString' in alert:
+                    extracted_metrics = extract_all_metrics_from_valuestring(alert['valueString'])
+                    logger.info(f"Extracted {len(extracted_metrics)} metrics from valueString")
+
+                    for i, metric_info in enumerate(extracted_metrics):
+                        logger.info(f"Processing metric {i+1}: {metric_info}")
+
+                        metric_cluster_type = metric_info.get('cluster_type')
+                        metric_cluster_name = metric_info.get('cluster')
+                        metric_task_pod_id = metric_info.get('task_pod_id')
+                        metric_container_name = metric_info.get('container_name')
+                        metric_namespace = metric_info.get('namespace', 'default')
+                        metric_container_ip = metric_info.get('container_ip')
+
+                        if any(is_invalid(val) for val in [metric_cluster_type, metric_cluster_name, metric_task_pod_id, metric_container_name]):
+                            logger.warning(f"Skipping metric {i+1} due to missing values")
+                            continue
+
+                        try:
+                            result = process_alert(metric_cluster_type, metric_cluster_name, metric_task_pod_id, metric_container_name, metric_namespace, s3_bucket, metric_container_ip)
+                            results.append(result)
+                            logger.info(f"Successfully processed metric {i+1}")
+                        except Exception as e:
+                            logger.error(f"Error processing metric {i+1}: {str(e)}")
+                            continue
+
+                    continue
+
+            if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
+                logger.warning(f"Still missing or invalid alert labels after extraction")
+                continue
+
+            result = process_alert(cluster_type, cluster_name, task_pod_id, container_name, namespace, s3_bucket, container_ip)
+            results.append(result)
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps({'message': f'Async processed {len(results)} alerts', 'results': results})
+        }
+    except Exception as e:
+        logger.error(f"Error in async processing: {str(e)}")
+        return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
+
+
 def process_alert(cluster_type, cluster_name, task_pod_id, container_name, namespace, s3_bucket, container_ip=None):
     """Extract the alert processing logic into a separate function for reuse"""
     if cluster_type == 'ecs':
@@ -256,7 +336,11 @@ def process_alert(cluster_type, cluster_name, task_pod_id, container_name, names
             ecs_client = ECSClient(cluster_name)
             container_ip = ecs_client.get_container_ip(task_pod_id)
 
-        response = requests.get(f"http://{container_ip}:8080/actuator/threaddump", timeout=10)
+        response = requests.get(
+            f"http://{container_ip}:8080/actuator/threaddump",
+            headers={"Accept": "text/plain"},
+            timeout=10
+        )
         response.raise_for_status()
         thread_dump = response.text
 
@@ -301,6 +385,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         logger.info(f"Received event: {json.dumps(event)}")
         s3_bucket = os.environ['S3_BUCKET_NAME']
 
+        # Check if this is an async invocation (already validated, process directly)
+        if event.get('_async_processing'):
+            logger.info("Processing async invocation")
+            return process_async_alerts(event, s3_bucket)
+
         if 'body' in event:
             logger.info("Processing direct webhook from Grafana")
 
@@ -325,68 +414,25 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         'body': json.dumps({'message': 'No alerts in webhook payload'})
                     }
 
-                results = []
-                for alert in alerts:
-                    if alert.get('status') != 'firing':
-                        logger.info("Skipping resolved alert")
-                        continue
-
-                    labels = alert.get('labels', {})
-                    cluster_type = labels.get('cluster_type')
-                    cluster_name = labels.get('cluster')
-                    task_pod_id = labels.get('task_pod_id')
-                    container_name = labels.get('container_name')
-                    namespace = labels.get('namespace', 'default')
-                    container_ip = labels.get('instance')
-
-                    if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
-                        logger.info("Some labels are missing or invalid, trying to extract from valueString")
-
-                        if 'valueString' in alert:
-                            extracted_metrics = extract_all_metrics_from_valuestring(alert['valueString'])
-                            logger.info(f"Extracted {len(extracted_metrics)} metrics from valueString")
-
-                            for i, metric_info in enumerate(extracted_metrics):
-                                logger.info(f"Processing metric {i+1}: {metric_info}")
-
-                                metric_cluster_type = metric_info.get('cluster_type')
-                                metric_cluster_name = metric_info.get('cluster')
-                                metric_task_pod_id = metric_info.get('task_pod_id')
-                                metric_container_name = metric_info.get('container_name')
-                                metric_namespace = metric_info.get('namespace', 'default')
-                                metric_container_ip = metric_info.get('container_ip')
-
-                                if any(is_invalid(val) for val in [metric_cluster_type, metric_cluster_name, metric_task_pod_id, metric_container_name]):
-                                    logger.warning(f"Skipping metric {i+1} due to missing values")
-                                    continue
-
-                                try:
-                                    result = process_alert(metric_cluster_type, metric_cluster_name, metric_task_pod_id, metric_container_name, metric_namespace, s3_bucket, metric_container_ip)
-                                    results.append(result)
-                                    logger.info(f"Successfully processed metric {i+1}")
-                                except Exception as e:
-                                    logger.error(f"Error processing metric {i+1}: {str(e)}")
-                                    continue
-
-                            continue
-
-                    if any(is_invalid(val) for val in [cluster_type, cluster_name, task_pod_id, container_name]):
-                        logger.warning(f"Still missing or invalid alert labels after extraction")
-                        continue
-
-                    result = process_alert(cluster_type, cluster_name, task_pod_id, container_name, namespace, s3_bucket, container_ip)
-                    results.append(result)
-
-                if results:
+                # Check if any alerts are firing
+                firing_alerts = [a for a in alerts if a.get('status') == 'firing']
+                if not firing_alerts:
                     return {
                         'statusCode': 200,
-                        'body': json.dumps({'message': f'Processed {len(results)} alerts', 'results': results})
+                        'body': json.dumps({'message': 'No firing alerts to process'})
                     }
-                else:
-                    return {
-                        'statusCode': 200,
-                        'body': json.dumps({'message': 'No valid alerts to process'})
-                    }
+
+                # Trigger async processing and return immediately
+                async_event = {
+                    '_async_processing': True,
+                    '_alert_body': body
+                }
+                invoke_self_async(async_event, context)
+
+                return {
+                    'statusCode': 202,
+                    'body': json.dumps({'message': f'Accepted {len(firing_alerts)} alerts for processing'})
+                }
 
             except Exception as e:
                 logger.error(f"Error processing webhook: {str(e)}")

@@ -119,20 +119,31 @@ persistence:
 resources:
   requests:
     cpu: 100m
-    memory: 128Mi
+    memory: 512Mi
   limits:
-    cpu: 200m
-    memory: 256Mi
+    cpu: 500m
+    memory: 1Gi
 
 sidecar:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
   dashboards:
     enabled: true
     label: grafana_dashboard
     searchNamespace: ALL
+    env:
+      HEALTH_PORT: "8081"
   datasources:
     enabled: true
     label: grafana_datasource
     searchNamespace: ALL
+    env:
+      HEALTH_PORT: "8082"
 
 grafana.ini:
   unified_alerting:

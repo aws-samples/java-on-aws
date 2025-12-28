@@ -780,7 +780,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      InstanceName: ide
       IamInstanceProfileArn:
         Fn::GetAtt:
           - IdeInstanceProfile61B92038
@@ -941,6 +940,7 @@ Resources:
                     exit 1
                 fi
       InstanceTypes: m6a.xlarge,m7a.xlarge
+      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1572,7 +1572,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1766860680509"
+      ContentHash: "1766933048400"
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1884,7 +1884,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251227193800"
+            - "-20251228154408"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2072,6 +2072,12 @@ Resources:
                         - WorkshopBucketFD5BC43F
                         - Arn
                     - /*
+          - Action: lambda:InvokeFunction
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - ThreadAnalysisLambda3EE9B29D
+                - Arn
         Version: "2012-10-17"
       PolicyName: ThreadAnalysisLambdaRoleDefaultPolicyC7AD40BA
       Roles:
@@ -2085,15 +2091,6 @@ Resources:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
-      SecurityGroupIngress:
-        - CidrIp:
-            Fn::GetAtt:
-              - VpcC3027511
-              - CidrBlock
-          Description: Allow VPC traffic to Lambda
-          FromPort: 443
-          IpProtocol: tcp
-          ToPort: 443
       VpcId:
         Ref: VpcC3027511
   ThreadAnalysisLogGroup7EC7074A:
@@ -2150,15 +2147,12 @@ Resources:
               }
       Environment:
         Variables:
-          K8S_NAMESPACE: unicorn-store-spring
-          S3_THREAD_DUMPS_PREFIX: thread-dumps/
+          SECRET_NAME: workshop-ide-password
           EKS_CLUSTER_NAME:
             Ref: EksClusterB2BDED5B
           S3_BUCKET_NAME:
             Ref: WorkshopBucketFD5BC43F
-          SECRET_NAME: workshop-ide-password
-          KUBERNETES_AUTH_TYPE: aws
-          APP_LABEL: unicorn-store-spring
+          S3_THREAD_DUMPS_PREFIX: thread-dumps/
       FunctionName: workshop-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
@@ -2183,66 +2177,35 @@ Resources:
       - VpcPrivateSubnet1RouteTableAssociation2BC202CB
       - VpcPrivateSubnet2DefaultRoute5FAC9901
       - VpcPrivateSubnet2RouteTableAssociationFA51927B
-  ThreadAnalysisApiGatewayVpcEndpointFFA4C62B:
-    Type: AWS::EC2::VPCEndpoint
+  ThreadAnalysisLambdaFunctionUrl1F411C0A:
+    Type: AWS::Lambda::Url
     Properties:
-      PrivateDnsEnabled: true
-      SecurityGroupIds:
-        - Fn::GetAtt:
-            - ThreadAnalysisSecurityGroup28B00BCE
-            - GroupId
-      ServiceName:
-        Fn::Join:
-          - ""
-          - - com.amazonaws.
-            - Ref: AWS::Region
-            - .execute-api
-      SubnetIds:
-        - Ref: VpcPrivateSubnet1Subnet67A4DBCB
-        - Ref: VpcPrivateSubnet2SubnetC8EB537D
-      VpcEndpointType: Interface
-      VpcId:
-        Ref: VpcC3027511
-  ThreadAnalysisApi9CE34026:
-    Type: AWS::ApiGateway::RestApi
-    Properties:
-      EndpointConfiguration:
-        Types:
-          - PRIVATE
-        VpcEndpointIds:
-          - Ref: ThreadAnalysisApiGatewayVpcEndpointFFA4C62B
-      Name: workshop-thread-dump-api
-      Policy:
-        Statement:
-          - Action: execute-api:Invoke
-            Condition:
-              StringEquals:
-                aws:SourceVpce:
-                  Ref: ThreadAnalysisApiGatewayVpcEndpointFFA4C62B
-            Effect: Allow
-            Principal:
-              AWS: "*"
-            Resource: "*"
-        Version: "2012-10-17"
-  ThreadAnalysisApiDeploymentE7CF7355b4bcd829c8994c23f3c0fc8056d86da0:
-    Type: AWS::ApiGateway::Deployment
-    Properties:
-      Description: Automatically created by the RestApi construct
-      RestApiId:
-        Ref: ThreadAnalysisApi9CE34026
+      AuthType: NONE
+      TargetFunctionArn:
+        Fn::GetAtt:
+          - ThreadAnalysisLambda3EE9B29D
+          - Arn
     DependsOn:
-      - ThreadAnalysisApiPOSTAFF1E50B
-    Metadata:
-      aws:cdk:do-not-refactor: true
-  ThreadAnalysisApiDeploymentStageprod96FD44F8:
-    Type: AWS::ApiGateway::Stage
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+  ThreadAnalysisLambdainvokefunctionurlEA9E1E5F:
+    Type: AWS::Lambda::Permission
     Properties:
-      DeploymentId:
-        Ref: ThreadAnalysisApiDeploymentE7CF7355b4bcd829c8994c23f3c0fc8056d86da0
-      RestApiId:
-        Ref: ThreadAnalysisApi9CE34026
-      StageName: prod
-  ThreadAnalysisApiPOSTApiPermissionWorkshopStackThreadAnalysisApi3435FEFFPOST556B33FB:
+      Action: lambda:InvokeFunctionUrl
+      FunctionName:
+        Fn::GetAtt:
+          - ThreadAnalysisLambda3EE9B29D
+          - Arn
+      FunctionUrlAuthType: NONE
+      Principal: "*"
+    DependsOn:
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+  ThreadAnalysisLambdainvokefunctionF0D39245:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
@@ -2250,68 +2213,13 @@ Resources:
         Fn::GetAtt:
           - ThreadAnalysisLambda3EE9B29D
           - Arn
-      Principal: apigateway.amazonaws.com
-      SourceArn:
-        Fn::Join:
-          - ""
-          - - "arn:"
-            - Ref: AWS::Partition
-            - ":execute-api:"
-            - Ref: AWS::Region
-            - ":"
-            - Ref: AWS::AccountId
-            - ":"
-            - Ref: ThreadAnalysisApi9CE34026
-            - /
-            - Ref: ThreadAnalysisApiDeploymentStageprod96FD44F8
-            - /POST/
-  ThreadAnalysisApiPOSTApiPermissionTestWorkshopStackThreadAnalysisApi3435FEFFPOST08FF3066:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName:
-        Fn::GetAtt:
-          - ThreadAnalysisLambda3EE9B29D
-          - Arn
-      Principal: apigateway.amazonaws.com
-      SourceArn:
-        Fn::Join:
-          - ""
-          - - "arn:"
-            - Ref: AWS::Partition
-            - ":execute-api:"
-            - Ref: AWS::Region
-            - ":"
-            - Ref: AWS::AccountId
-            - ":"
-            - Ref: ThreadAnalysisApi9CE34026
-            - /test-invoke-stage/POST/
-  ThreadAnalysisApiPOSTAFF1E50B:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      AuthorizationType: NONE
-      HttpMethod: POST
-      Integration:
-        IntegrationHttpMethod: POST
-        Type: AWS_PROXY
-        Uri:
-          Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - ":apigateway:"
-              - Ref: AWS::Region
-              - :lambda:path/2015-03-31/functions/
-              - Fn::GetAtt:
-                  - ThreadAnalysisLambda3EE9B29D
-                  - Arn
-              - /invocations
-      ResourceId:
-        Fn::GetAtt:
-          - ThreadAnalysisApi9CE34026
-          - RootResourceId
-      RestApiId:
-        Ref: ThreadAnalysisApi9CE34026
+      InvokedViaFunctionUrl: true
+      Principal: "*"
+    DependsOn:
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
   ThreadAnalysisLambdaAccessEntryF884F8C2:
     Type: AWS::EKS::AccessEntry
     Properties:
