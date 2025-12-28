@@ -67,7 +67,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-bedrock</artifactId>
+            <artifactId>spring-ai-starter-model-bedrock-converse</artifactId>
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>

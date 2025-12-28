@@ -20,11 +20,10 @@ spring:
     bedrock:
       aws:
         region: ${AWS_REGION:us-east-1}
-      anthropic:
+      converse:
         chat:
-          enabled: true
-          model: anthropic.claude-sonnet-4-20250514-v1:0
           options:
+            model: anthropic.claude-sonnet-4-20250514-v1:0
             max-tokens: 10000
 
 # === Analyzer Configuration ===
