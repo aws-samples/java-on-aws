@@ -388,7 +388,7 @@ Resources:
           - Action: iam:PassRole
             Effect: Allow
             Resource:
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-ai-analyzer*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/ai-jvm-analyzer*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
             Sid: PassRole

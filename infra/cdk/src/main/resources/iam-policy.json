@@ -64,7 +64,7 @@
 			"Resource": [
 				"arn:aws:iam::{{.AccountId}}:role/unicorn*",
 				"arn:aws:iam::{{.AccountId}}:role/service-role/unicorn*",
-				"arn:aws:iam::{{.AccountId}}:role/jvm-ai-analyzer*"
+				"arn:aws:iam::{{.AccountId}}:role/ai-jvm-analyzer*"
 			]
 		},
 		{

@@ -7,59 +7,59 @@ import software.constructs.Construct;
 import java.util.List;
 
 /**
- * JvmAiAnalyzer construct for JVM profiling analysis.
- * Creates Pod Identity role for jvm-ai-analyzer.
+ * AiJvmAnalyzer construct for JVM profiling analysis.
+ * Creates Pod Identity role for ai-jvm-analyzer.
  * Uses app-specific naming (no prefix) for workshop content compatibility.
  *
- * Note: ECR repository (jvm-ai-analyzer) is now created automatically via
+ * Note: ECR repository (ai-jvm-analyzer) is now created automatically via
  * ECR Repository Creation Template (create-on-push) instead of explicit definition.
  */
-public class JvmAiAnalyzer extends Construct {
+public class AiJvmAnalyzer extends Construct {
 
-    private final Role jvmAiAnalyzerRole;
+    private final Role aiJvmAnalyzerRole;
 
-    public static class JvmAiAnalyzerProps {
+    public static class AiJvmAnalyzerProps {
         private Bucket workshopBucket;
 
-        public static JvmAiAnalyzerProps.Builder builder() { return new Builder(); }
+        public static AiJvmAnalyzerProps.Builder builder() { return new Builder(); }
 
         public static class Builder {
-            private JvmAiAnalyzerProps props = new JvmAiAnalyzerProps();
+            private AiJvmAnalyzerProps props = new AiJvmAnalyzerProps();
 
             public Builder workshopBucket(Bucket workshopBucket) { props.workshopBucket = workshopBucket; return this; }
-            public JvmAiAnalyzerProps build() { return props; }
+            public AiJvmAnalyzerProps build() { return props; }
         }
 
         public Bucket getWorkshopBucket() { return workshopBucket; }
     }
 
-    public JvmAiAnalyzer(final Construct scope, final String id) {
-        this(scope, id, JvmAiAnalyzerProps.builder().build());
+    public AiJvmAnalyzer(final Construct scope, final String id) {
+        this(scope, id, AiJvmAnalyzerProps.builder().build());
     }
 
-    public JvmAiAnalyzer(final Construct scope, final String id, final JvmAiAnalyzerProps props) {
+    public AiJvmAnalyzer(final Construct scope, final String id, final AiJvmAnalyzerProps props) {
         super(scope, id);
 
-        // Note: ECR repository (jvm-ai-analyzer) is created automatically via
+        // Note: ECR repository (ai-jvm-analyzer) is created automatically via
         // ECR Repository Creation Template when images are pushed
 
-        // Create Pod Identity role for jvm-ai-analyzer (app-specific naming, no prefix)
+        // Create Pod Identity role for ai-jvm-analyzer (app-specific naming, no prefix)
         // Pod Identity requires both sts:AssumeRole and sts:TagSession
         CompositePrincipal podIdentityPrincipal = new CompositePrincipal(
             ServicePrincipal.Builder.create("pods.eks.amazonaws.com").build()
         );
 
-        this.jvmAiAnalyzerRole = Role.Builder.create(this, "ServiceRole")
-            .roleName("jvm-ai-analyzer-eks-pod-role")
+        this.aiJvmAnalyzerRole = Role.Builder.create(this, "ServiceRole")
+            .roleName("ai-jvm-analyzer-eks-pod-role")
             .assumedBy(podIdentityPrincipal)
-            .description("Role for jvm-ai-analyzer EKS pod to access Bedrock and S3")
+            .description("Role for ai-jvm-analyzer EKS pod to access Bedrock and S3")
             .managedPolicies(List.of(
                 ManagedPolicy.fromAwsManagedPolicyName("AmazonBedrockLimitedAccess")
             ))
             .build();
 
         // Add sts:TagSession to the assume role policy for Pod Identity
-        PolicyDocument assumeRolePolicy = jvmAiAnalyzerRole.getAssumeRolePolicy();
+        PolicyDocument assumeRolePolicy = aiJvmAnalyzerRole.getAssumeRolePolicy();
         if (assumeRolePolicy != null) {
             assumeRolePolicy.addStatements(
                 PolicyStatement.Builder.create()
@@ -72,7 +72,7 @@ public class JvmAiAnalyzer extends Construct {
 
         // Add S3 permissions for profiling data
         if (props.getWorkshopBucket() != null) {
-            jvmAiAnalyzerRole.addToPolicy(PolicyStatement.Builder.create()
+            aiJvmAnalyzerRole.addToPolicy(PolicyStatement.Builder.create()
                 .effect(Effect.ALLOW)
                 .actions(List.of(
                     "s3:ListBucket",
@@ -88,7 +88,7 @@ public class JvmAiAnalyzer extends Construct {
     }
 
     // Getters
-    public Role getJvmAiAnalyzerRole() {
-        return jvmAiAnalyzerRole;
+    public Role getAiJvmAnalyzerRole() {
+        return aiJvmAnalyzerRole;
     }
 }

@@ -408,7 +408,7 @@ Resources:
           - Action: iam:PassRole
             Effect: Allow
             Resource:
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/jvm-ai-analyzer*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/ai-jvm-analyzer*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
             Sid: PassRole
@@ -784,25 +784,8 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceProfile61B92038
           - Arn
-      VolumeSize: "50"
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      InstanceName: ide
+      InstanceTypes: m6a.xlarge,m7a.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -939,8 +922,25 @@ Resources:
                 "
                     exit 1
                 fi
-      InstanceTypes: m6a.xlarge,m7a.xlarge
-      InstanceName: ide
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      VolumeSize: "50"
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1319,12 +1319,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: java-on-amazon-eks
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: new-ws-infra
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-on-amazon-eks
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1529,12 +1529,12 @@ Resources:
       Description: workshop-setup build complete
       EventPattern:
         detail:
-          project-name:
-            - Ref: CodeBuildProjectA0FF5539
           build-status:
             - SUCCEEDED
             - FAILED
             - STOPPED
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
         detail-type:
           - CodeBuild Build State Change
         source:
@@ -1566,13 +1566,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1766936461750"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1766933048400"
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1884,7 +1884,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251228154408"
+            - "-20251228164101"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2147,12 +2147,12 @@ Resources:
               }
       Environment:
         Variables:
-          SECRET_NAME: workshop-ide-password
-          EKS_CLUSTER_NAME:
-            Ref: EksClusterB2BDED5B
+          S3_THREAD_DUMPS_PREFIX: thread-dumps/
           S3_BUCKET_NAME:
             Ref: WorkshopBucketFD5BC43F
-          S3_THREAD_DUMPS_PREFIX: thread-dumps/
+          EKS_CLUSTER_NAME:
+            Ref: EksClusterB2BDED5B
+          SECRET_NAME: workshop-ide-password
       FunctionName: workshop-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
@@ -2239,7 +2239,7 @@ Resources:
           - ThreadAnalysisLambdaRole00E8F59E
           - Arn
       Type: STANDARD
-  JvmAiAnalyzerServiceRoleD9A12F9F:
+  AiJvmAnalyzerServiceRole295D6B19:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -2251,15 +2251,15 @@ Resources:
             Principal:
               Service: pods.eks.amazonaws.com
         Version: "2012-10-17"
-      Description: Role for jvm-ai-analyzer EKS pod to access Bedrock and S3
+      Description: Role for ai-jvm-analyzer EKS pod to access Bedrock and S3
       ManagedPolicyArns:
         - Fn::Join:
             - ""
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonBedrockLimitedAccess
-      RoleName: jvm-ai-analyzer-eks-pod-role
-  JvmAiAnalyzerServiceRoleDefaultPolicy740045E6:
+      RoleName: ai-jvm-analyzer-eks-pod-role
+  AiJvmAnalyzerServiceRoleDefaultPolicyE0960C92:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -2280,9 +2280,9 @@ Resources:
                         - Arn
                     - /*
         Version: "2012-10-17"
-      PolicyName: JvmAiAnalyzerServiceRoleDefaultPolicy740045E6
+      PolicyName: AiJvmAnalyzerServiceRoleDefaultPolicyE0960C92
       Roles:
-        - Ref: JvmAiAnalyzerServiceRoleD9A12F9F
+        - Ref: AiJvmAnalyzerServiceRole295D6B19
   UnicornUnicornStoreRepository7B15FB29:
     Type: AWS::ECR::Repository
     Properties:
@@ -2729,6 +2729,9 @@ Resources:
         Fn::GetAtt:
           - UnicornUnicornStoreDatabaseSetupFunction04E12F8B
           - Arn
+      SqlStatements: |
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -2759,9 +2762,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: DatabaseSecret3B817195
-      SqlStatements: |
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - DatabaseClusterDatabaseWriterF4C0B9A6
       - DatabaseCluster5B53A178
