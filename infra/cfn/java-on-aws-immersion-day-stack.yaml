@@ -411,6 +411,7 @@ Resources:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/ai-jvm-analyzer*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/workshop-*
             Sid: PassRole
           - Action: ec2:RunInstances
             Condition:
@@ -780,16 +781,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
       ImageId:
         Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
       UserData:
@@ -941,6 +932,16 @@ Resources:
           - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
             - ","
             - Ref: VpcPublicSubnet2SubnetA811849C
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1566,13 +1567,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
+      ContentHash: "1767018250950"
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1766939986165"
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1837,6 +1838,31 @@ Resources:
           - ThreadAnalysisSecurityGroup28B00BCE
           - GroupId
       ToPort: 443
+  EksCloudWatchAgentRole1979BC79:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+              - sts:TagSession
+            Effect: Allow
+            Principal:
+              Service: pods.eks.amazonaws.com
+        Version: "2012-10-17"
+      Description: EKS Pod Identity role for CloudWatch Observability add-on
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/CloudWatchAgentServerPolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AWSXrayWriteOnlyAccess
+      RoleName: workshop-eks-cloudwatch-agent-role
   EksSecretsStoreDriverA84665C0:
     Type: AWS::EKS::Addon
     Properties:
@@ -1884,7 +1910,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251228173946"
+            - "-20251229152411"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3021,6 +3047,14 @@ Outputs:
         - password
     Export:
       Name: ide-password
+  EksCloudWatchAgentRoleArn304F2D87:
+    Description: CloudWatch Agent Pod Identity Role ARN
+    Value:
+      Fn::GetAtt:
+        - EksCloudWatchAgentRole1979BC79
+        - Arn
+    Export:
+      Name: workshop-eks-cloudwatch-agent-role-arn
 Parameters:
   SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>

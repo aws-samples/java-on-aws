@@ -12,6 +12,12 @@ import software.amazon.awscdk.services.eks.v2.alpha.IAccessPolicy;
 import software.amazon.awscdk.services.eks.v2.alpha.AccessPolicyNameOptions;
 import software.amazon.awscdk.services.eks.v2.alpha.AccessScopeType;
 import software.amazon.awscdk.services.eks.v2.alpha.Addon;
+import software.amazon.awscdk.services.iam.Effect;
+import software.amazon.awscdk.services.iam.ManagedPolicy;
+import software.amazon.awscdk.services.iam.PolicyStatement;
+import software.amazon.awscdk.services.iam.Role;
+import software.amazon.awscdk.services.iam.ServicePrincipal;
+import software.amazon.awscdk.CfnOutput;
 
 import java.util.List;
 
@@ -20,6 +26,7 @@ import software.constructs.Construct;
 public class Eks extends Construct {
 
     private final Cluster cluster;
+    private final Role cloudwatchAgentRole;
 
     public Eks(final Construct scope, final String id, final EksProps props) {
         super(scope, id);
@@ -39,11 +46,51 @@ public class Eks extends Construct {
 
         cluster = clusterBuilder.build();
 
+        // Create CloudWatch Agent Pod Identity role
+        cloudwatchAgentRole = createCloudWatchAgentRole(prefix);
+
         // Add EKS add-ons
         createAddons();
 
         // Create Access Entries for workshop access
         createAccessEntries(props);
+    }
+
+    /**
+     * Creates EKS Pod Identity role for CloudWatch Observability add-on.
+     * This role is used by the cloudwatch-agent service account to collect
+     * metrics, logs, and traces from the cluster.
+     */
+    private Role createCloudWatchAgentRole(String prefix) {
+        ServicePrincipal eksPods = ServicePrincipal.Builder.create("pods.eks.amazonaws.com").build();
+
+        Role role = Role.Builder.create(this, "CloudWatchAgentRole")
+            .roleName(prefix + "-eks-cloudwatch-agent-role")
+            .assumedBy(eksPods)
+            .description("EKS Pod Identity role for CloudWatch Observability add-on")
+            .managedPolicies(List.of(
+                ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy"),
+                ManagedPolicy.fromAwsManagedPolicyName("AWSXrayWriteOnlyAccess")
+            ))
+            .build();
+
+        // Add sts:TagSession for Pod Identity
+        role.getAssumeRolePolicy().addStatements(
+            PolicyStatement.Builder.create()
+                .effect(Effect.ALLOW)
+                .principals(List.of(eksPods))
+                .actions(List.of("sts:TagSession"))
+                .build()
+        );
+
+        // Export role ARN for workshop content
+        CfnOutput.Builder.create(this, "CloudWatchAgentRoleArn")
+            .value(role.getRoleArn())
+            .description("CloudWatch Agent Pod Identity Role ARN")
+            .exportName(prefix + "-eks-cloudwatch-agent-role-arn")
+            .build();
+
+        return role;
     }
 
     private void createAddons() {
@@ -98,6 +145,10 @@ public class Eks extends Construct {
 
     public String getClusterEndpoint() {
         return cluster.getClusterEndpoint();
+    }
+
+    public Role getCloudWatchAgentRole() {
+        return cloudwatchAgentRole;
     }
 
     // Props class
