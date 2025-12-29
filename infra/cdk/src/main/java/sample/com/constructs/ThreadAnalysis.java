@@ -174,10 +174,14 @@ public class ThreadAnalysis extends Construct {
             .build();
 
         // Add permission for Lambda to invoke itself (async pattern)
-        threadDumpLambda.addToRolePolicy(PolicyStatement.Builder.create()
+        // Use constructed ARN to avoid circular dependency (Lambda -> Role Policy -> Lambda)
+        String lambdaArn = "arn:aws:lambda:" + software.amazon.awscdk.Stack.of(this).getRegion()
+            + ":" + software.amazon.awscdk.Stack.of(this).getAccount()
+            + ":function:" + prefix + "-thread-dump-lambda";
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
             .actions(List.of("lambda:InvokeFunction"))
-            .resources(List.of(threadDumpLambda.getFunctionArn()))
+            .resources(List.of(lambdaArn))
             .build());
 
         // Create Function URL (replaces API Gateway + VPC Endpoint)
