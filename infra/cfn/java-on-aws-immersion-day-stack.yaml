@@ -414,12 +414,16 @@ Resources:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/workshop-*
             Sid: PassRole
-          - Action:
-              - iam:CreateServiceLinkedRole
-              - iam:GetRole
+          - Action: iam:CreateServiceLinkedRole
+            Effect: Allow
+            Resource:
+              - arn:aws:iam::*:role/aws-service-role/application-signals.cloudwatch.amazonaws.com/*
+              - arn:aws:iam::*:role/aws-service-role/cloudtrail.amazonaws.com/*
+            Sid: CreateServiceLinkedRole
+          - Action: iam:GetRole
             Effect: Allow
             Resource: "*"
-            Sid: CreateServiceLinkedRole
+            Sid: GetRole
           - Action: ec2:RunInstances
             Condition:
               StringLike:
@@ -788,18 +792,6 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
-      InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      VolumeSize: "50"
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
       SecurityGroupIds:
         Fn::Join:
           - ""
@@ -810,8 +802,19 @@ Resources:
             - Fn::GetAtt:
                 - IdeInternalSecurityGroupB0A5D76B
                 - GroupId
-      ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      VolumeSize: "50"
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      InstanceName: ide
+      InstanceTypes: m6a.xlarge,m7a.xlarge
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -948,7 +951,8 @@ Resources:
                 "
                     exit 1
                 fi
-      InstanceTypes: m6a.xlarge,m7a.xlarge
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1327,12 +1331,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: new-ws-infra
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-on-aws-immersion-day
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: new-ws-infra
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1574,13 +1578,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ProjectName:
-        Ref: CodeBuildProjectA0FF5539
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1767104246264"
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
+      ContentHash: "1767112658062"
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1938,7 +1942,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251230151726"
+            - "-20251230173738"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2205,12 +2209,12 @@ Resources:
               }
       Environment:
         Variables:
+          S3_THREAD_DUMPS_PREFIX: thread-dumps/
           S3_BUCKET_NAME:
             Ref: WorkshopBucketFD5BC43F
-          S3_THREAD_DUMPS_PREFIX: thread-dumps/
-          SECRET_NAME: workshop-ide-password
           EKS_CLUSTER_NAME:
             Ref: EksClusterB2BDED5B
+          SECRET_NAME: workshop-ide-password
       FunctionName: workshop-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
@@ -2787,6 +2791,9 @@ Resources:
         Fn::GetAtt:
           - UnicornUnicornStoreDatabaseSetupFunction04E12F8B
           - Arn
+      SqlStatements: |
+        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
+        CREATE EXTENSION IF NOT EXISTS vector;
       SecretName:
         Fn::Join:
           - "-"
@@ -2817,9 +2824,6 @@ Resources:
                         - Fn::Split:
                             - ":"
                             - Ref: DatabaseSecret3B817195
-      SqlStatements: |
-        CREATE TABLE IF NOT EXISTS unicorns(id TEXT DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT, age TEXT, size TEXT, type TEXT);
-        CREATE EXTENSION IF NOT EXISTS vector;
     DependsOn:
       - DatabaseClusterDatabaseWriterF4C0B9A6
       - DatabaseCluster5B53A178
