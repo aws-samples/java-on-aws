@@ -384,6 +384,7 @@ Resources:
               - bedrock-agentcore:*
               - bedrock:*
               - cloudformation:*
+              - cloudtrail:*
               - cloudwatch:*
               - codewhisperer:*
               - ec2:*
@@ -413,6 +414,12 @@ Resources:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/workshop-*
             Sid: PassRole
+          - Action:
+              - iam:CreateServiceLinkedRole
+              - iam:GetRole
+            Effect: Allow
+            Resource: "*"
+            Sid: CreateServiceLinkedRole
           - Action: ec2:RunInstances
             Condition:
               StringLike:
@@ -781,6 +788,11 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      InstanceName: ide
       InstanceTypes: m6a.xlarge,m7a.xlarge
       UserData:
         Fn::Base64:
@@ -937,11 +949,6 @@ Resources:
             - ","
             - Ref: VpcPublicSubnet2SubnetA811849C
       VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1320,12 +1327,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: java-on-amazon-eks
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: new-ws-infra
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-on-amazon-eks
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1567,13 +1574,13 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
+      ContentHash: "1767104254998"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
-      ContentHash: "1767020408395"
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
@@ -1900,6 +1907,27 @@ Resources:
           - IdeRole4650E22E
           - Arn
       Type: STANDARD
+  EksParticipantAccessEntryCBA5D5C0:
+    Type: AWS::EKS::AccessEntry
+    Properties:
+      AccessPolicies:
+        - AccessScope:
+            Type: cluster
+          PolicyArn:
+            Fn::Join:
+              - ""
+              - - "arn:"
+                - Ref: AWS::Partition
+                - :eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+      ClusterName:
+        Ref: EksClusterB2BDED5B
+      PrincipalArn:
+        Fn::Join:
+          - ""
+          - - "arn:aws:iam::"
+            - Ref: AWS::AccountId
+            - :role/WSParticipantRole
+      Type: STANDARD
   WorkshopBucketFD5BC43F:
     Type: AWS::S3::Bucket
     Properties:
@@ -1910,7 +1938,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251229160008"
+            - "-20251230151735"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2177,12 +2205,12 @@ Resources:
               }
       Environment:
         Variables:
-          EKS_CLUSTER_NAME:
-            Ref: EksClusterB2BDED5B
-          SECRET_NAME: workshop-ide-password
           S3_THREAD_DUMPS_PREFIX: thread-dumps/
           S3_BUCKET_NAME:
             Ref: WorkshopBucketFD5BC43F
+          EKS_CLUSTER_NAME:
+            Ref: EksClusterB2BDED5B
+          SECRET_NAME: workshop-ide-password
       FunctionName: workshop-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512
@@ -3027,8 +3055,12 @@ Resources:
         Ref: VpcC3027511
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
+Parameters:
+  SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
 Outputs:
-  IdeUrl45274C27:
+  IdeUrl:
     Description: Workshop IDE Url
     Value:
       Fn::Join:
@@ -3043,7 +3075,7 @@ Outputs:
               - password
     Export:
       Name: ide-url
-  IdePassword51C06AAD:
+  IdePassword:
     Description: Workshop IDE Password
     Value:
       Fn::GetAtt:
@@ -3051,16 +3083,4 @@ Outputs:
         - password
     Export:
       Name: ide-password
-  EksCloudWatchAgentRoleArn304F2D87:
-    Description: CloudWatch Agent Pod Identity Role ARN
-    Value:
-      Fn::GetAtt:
-        - EksCloudWatchAgentRole1979BC79
-        - Arn
-    Export:
-      Name: workshop-eks-cloudwatch-agent-role-arn
-Parameters:
-  SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter:
-    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
 

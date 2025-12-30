@@ -34,6 +34,7 @@
 				"application-autoscaling:*",
 				"application-signals:*",
 				"cloudformation:*",
+				"cloudtrail:*",
 				"cloudwatch:*",
 				"codewhisperer:*",
 				"ec2:*",
@@ -67,6 +68,15 @@
 				"arn:aws:iam::{{.AccountId}}:role/ai-jvm-analyzer*",
 				"arn:aws:iam::{{.AccountId}}:role/workshop-*"
 			]
+		},
+		{
+			"Sid": "CreateServiceLinkedRole",
+			"Effect": "Allow",
+			"Action": [
+				"iam:CreateServiceLinkedRole",
+				"iam:GetRole"
+			],
+			"Resource": "*"
 		},
 		{
 			"Sid": "DenyXXLInstances",

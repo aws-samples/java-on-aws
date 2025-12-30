@@ -417,13 +417,15 @@ public class Ide extends Construct {
             ideUrl = "https://" + distribution.getDistributionDomainName();
         }
 
-        CfnOutput.Builder.create(this, "Url")
+        // Create outputs at stack level with stable logical IDs for Workshop Studio
+        var stack = software.amazon.awscdk.Stack.of(this);
+        CfnOutput.Builder.create(stack, "IdeUrl")
             .value(ideUrl)
             .description("Workshop IDE Url")
             .exportName(instanceName + "-url")
             .build();
 
-        var idePasswordOutput = CfnOutput.Builder.create(this, "Password")
+        var idePasswordOutput = CfnOutput.Builder.create(stack, "IdePassword")
             .value(getIdePassword(instanceName))
             .description("Workshop IDE Password")
             .exportName(instanceName + "-password")

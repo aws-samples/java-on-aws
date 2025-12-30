@@ -83,13 +83,6 @@ public class Eks extends Construct {
                 .build()
         );
 
-        // Export role ARN for workshop content
-        CfnOutput.Builder.create(this, "CloudWatchAgentRoleArn")
-            .value(role.getRoleArn())
-            .description("CloudWatch Agent Pod Identity Role ARN")
-            .exportName(prefix + "-eks-cloudwatch-agent-role-arn")
-            .build();
-
         return role;
     }
 
@@ -132,6 +125,18 @@ public class Eks extends Construct {
                 .accessPolicies(List.of(clusterAdminPolicy))
                 .build();
         }
+
+        // Workshop Studio Participant Role Access Entry
+        // This grants the WSParticipantRole cluster admin permissions for local kubectl access
+        String accountId = software.amazon.awscdk.Stack.of(this).getAccount();
+        String participantRoleArn = "arn:aws:iam::" + accountId + ":role/WSParticipantRole";
+
+        AccessEntry.Builder.create(this, "ParticipantAccessEntry")
+            .cluster(cluster)
+            .principal(participantRoleArn)
+            .accessEntryType(AccessEntryType.STANDARD)
+            .accessPolicies(List.of(clusterAdminPolicy))
+            .build();
     }
 
     // Getters
