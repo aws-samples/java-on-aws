@@ -420,7 +420,10 @@ Resources:
               - arn:aws:iam::*:role/aws-service-role/application-signals.cloudwatch.amazonaws.com/*
               - arn:aws:iam::*:role/aws-service-role/cloudtrail.amazonaws.com/*
             Sid: CreateServiceLinkedRole
-          - Action: iam:GetRole
+          - Action:
+              - iam:GetRole
+              - iam:ListRoles
+              - iam:PassRole
             Effect: Allow
             Resource: "*"
             Sid: GetRole
@@ -792,6 +795,11 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      InstanceName: ide
       InstanceTypes: m6a.xlarge,m7a.xlarge
       UserData:
         Fn::Base64:
@@ -948,11 +956,6 @@ Resources:
             - ","
             - Ref: VpcPublicSubnet2SubnetA811849C
       VolumeSize: "50"
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      InstanceName: ide
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:
@@ -1331,12 +1334,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: java-on-amazon-eks
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: new-ws-infra
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-on-amazon-eks
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1578,7 +1581,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildStartLambdaFunction8349284F
           - Arn
-      ContentHash: "1767112676831"
+      ContentHash: "1767285087259"
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
@@ -1942,7 +1945,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20251230173757"
+            - "-20260101173127"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -2209,12 +2212,12 @@ Resources:
               }
       Environment:
         Variables:
+          S3_THREAD_DUMPS_PREFIX: thread-dumps/
           S3_BUCKET_NAME:
             Ref: WorkshopBucketFD5BC43F
           EKS_CLUSTER_NAME:
             Ref: EksClusterB2BDED5B
           SECRET_NAME: workshop-ide-password
-          S3_THREAD_DUMPS_PREFIX: thread-dumps/
       FunctionName: workshop-thread-dump-lambda
       Handler: index.lambda_handler
       MemorySize: 512

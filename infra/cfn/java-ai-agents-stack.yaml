@@ -400,7 +400,10 @@ Resources:
               - arn:aws:iam::*:role/aws-service-role/application-signals.cloudwatch.amazonaws.com/*
               - arn:aws:iam::*:role/aws-service-role/cloudtrail.amazonaws.com/*
             Sid: CreateServiceLinkedRole
-          - Action: iam:GetRole
+          - Action:
+              - iam:GetRole
+              - iam:ListRoles
+              - iam:PassRole
             Effect: Allow
             Resource: "*"
             Sid: GetRole
@@ -772,6 +775,16 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
       ImageId:
         Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
       UserData:
@@ -923,16 +936,6 @@ Resources:
           - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
             - ","
             - Ref: VpcPublicSubnet2SubnetA811849C
-      SecurityGroupIds:
-        Fn::Join:
-          - ""
-          - - Fn::GetAtt:
-                - IdeSecurityGroup73B02454
-                - GroupId
-            - ","
-            - Fn::GetAtt:
-                - IdeInternalSecurityGroupB0A5D76B
-                - GroupId
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:

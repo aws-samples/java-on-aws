@@ -1,0 +1,30 @@
+FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-25 AS builder
+
+USER root
+RUN microdnf install -y unzip zip
+
+USER 1001
+RUN \
+    curl -s "https://get.sdkman.io" | bash; \
+    bash -c "source $HOME/.sdkman/bin/sdkman-init.sh; \
+    sdk install maven;"
+
+COPY ./pom.xml ./pom.xml
+COPY src ./src/
+
+ENV MAVEN_OPTS='-Xmx8g'
+RUN bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && mvn -DskipTests -ntp clean package -Pnative"
+
+FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
+
+RUN yum install -y shadow-utils
+
+COPY --from=builder /project/target/store-spring /
+
+RUN groupadd --system spring -g 1000
+RUN adduser spring -u 1000 -g 1000
+
+USER 1000:1000
+EXPOSE 8080
+
+ENTRYPOINT ["./store-spring", "-Dserver.port=8080"]

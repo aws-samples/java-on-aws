@@ -1,0 +1,34 @@
+FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
+
+ARG SPRING_DATASOURCE_URL
+ENV SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL
+ARG SPRING_DATASOURCE_USERNAME
+ENV SPRING_DATASOURCE_USERNAME=$SPRING_DATASOURCE_USERNAME
+ARG SPRING_DATASOURCE_PASSWORD
+ENV SPRING_DATASOURCE_PASSWORD=$SPRING_DATASOURCE_PASSWORD
+
+COPY ./pom.xml ./pom.xml
+COPY src ./src/
+
+RUN mvn clean package -DskipTests -ntp && mv target/store-spring-1.0.0-exec.jar store-spring.jar
+
+# CDS training - dump class archive after Spring context initialization
+RUN java -XX:ArchiveClassesAtExit=/app.jsa \
+    -Dspring.context.exit=onRefresh \
+    -jar /store-spring.jar || true && \
+    test -s /app.jsa
+
+FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
+
+RUN yum install -y shadow-utils
+
+COPY --from=builder /store-spring.jar /store-spring.jar
+COPY --from=builder /app.jsa /app.jsa
+
+RUN groupadd --system spring -g 1000 && \
+    adduser spring -u 1000 -g 1000
+
+USER 1000:1000
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-XX:SharedArchiveFile=/app.jsa", "-jar", "-Dserver.port=8080", "/store-spring.jar"]

@@ -400,7 +400,10 @@ Resources:
               - arn:aws:iam::*:role/aws-service-role/application-signals.cloudwatch.amazonaws.com/*
               - arn:aws:iam::*:role/aws-service-role/cloudtrail.amazonaws.com/*
             Sid: CreateServiceLinkedRole
-          - Action: iam:GetRole
+          - Action:
+              - iam:GetRole
+              - iam:ListRoles
+              - iam:PassRole
             Effect: Allow
             Resource: "*"
             Sid: GetRole

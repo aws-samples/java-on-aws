@@ -275,6 +275,13 @@
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.crac</groupId>
+                    <artifactId>crac</artifactId>
+                    <version>1.5.0</version>
+                </dependency>
+            </dependencies>
             <build>
                 <plugins>
                     <plugin>
