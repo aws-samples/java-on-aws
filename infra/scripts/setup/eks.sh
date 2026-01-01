@@ -133,28 +133,43 @@ else
     exit 1
 fi
 
-# Verify EKS add-ons are installed and functional
+# Verify EKS add-ons are installed and fully ready
 log_info "Verifying EKS add-ons..."
 
-# Check AWS Secrets Store CSI Driver
+# Check and wait for AWS Secrets Store CSI Driver
 if kubectl get daemonset -n aws-secrets-manager secrets-store-csi-driver >/dev/null 2>&1; then
-    log_success "AWS Secrets Store CSI Driver is installed"
+    log_info "Waiting for Secrets Store CSI Driver to be fully ready..."
+    kubectl rollout status daemonset/secrets-store-csi-driver -n aws-secrets-manager --timeout=120s
+    log_success "AWS Secrets Store CSI Driver is ready"
 else
     log_warning "AWS Secrets Store CSI Driver not found"
 fi
 
-# Check AWS Mountpoint S3 CSI Driver
+# Check and wait for AWS Mountpoint S3 CSI Driver
 if kubectl get daemonset -n kube-system s3-csi-node >/dev/null 2>&1; then
-    log_success "AWS Mountpoint S3 CSI Driver is installed"
+    log_info "Waiting for S3 CSI Driver to be fully ready..."
+    kubectl rollout status daemonset/s3-csi-node -n kube-system --timeout=120s
+    log_success "AWS Mountpoint S3 CSI Driver is ready"
 else
     log_warning "AWS Mountpoint S3 CSI Driver not found"
 fi
 
-# Check EKS Pod Identity Agent
+# Check and wait for EKS Pod Identity Agent
 if kubectl get daemonset -n kube-system eks-pod-identity-agent >/dev/null 2>&1; then
-    log_success "EKS Pod Identity Agent is installed"
+    log_info "Waiting for Pod Identity Agent to be fully ready..."
+    kubectl rollout status daemonset/eks-pod-identity-agent -n kube-system --timeout=120s
+    log_success "EKS Pod Identity Agent is ready"
 else
     log_warning "EKS Pod Identity Agent not found"
+fi
+
+# Check and wait for AWS Load Balancer Controller
+if kubectl get deployment -n kube-system aws-load-balancer-controller >/dev/null 2>&1; then
+    log_info "Waiting for AWS Load Balancer Controller to be fully ready..."
+    kubectl rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=120s
+    log_success "AWS Load Balancer Controller is ready"
+else
+    log_warning "AWS Load Balancer Controller not found"
 fi
 
 # Display cluster information

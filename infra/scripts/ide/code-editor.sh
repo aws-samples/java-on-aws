@@ -92,6 +92,7 @@ configure_code_editor_settings() {
 
     sudo -u $CODE_EDITOR_USER tee "$settings_dir/settings.json" >/dev/null << 'EOF'
 {
+  "workbench.colorTheme": "Quiet Light",
   "security.workspace.trust.enabled": false,
   "workbench.startupEditor": "terminal",
   "update.mode": "none",

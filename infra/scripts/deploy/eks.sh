@@ -39,7 +39,30 @@ aws eks create-pod-identity-association \
   --service-account unicorn-store-spring \
   --role-arn arn:aws:iam::${ACCOUNT_ID}:role/unicornstore-eks-pod-role \
   --no-cli-pager
-log_success "Pod Identity association created"
+
+# Verify Pod Identity association is ready
+log_info "Verifying Pod Identity association..."
+ASSOCIATION_ID=""
+for i in {1..10}; do
+    ASSOCIATION_ID=$(aws eks list-pod-identity-associations --cluster-name workshop-eks --no-cli-pager \
+      | jq -r '.associations[] | select(.namespace=="unicorn-store-spring" and .serviceAccount=="unicorn-store-spring") | .associationId')
+    if [[ -n "$ASSOCIATION_ID" ]]; then
+        break
+    fi
+    log_info "Waiting for Pod Identity association to propagate... ($i/10)"
+    sleep 2
+done
+
+if [[ -z "$ASSOCIATION_ID" ]]; then
+    log_error "Pod Identity association not found after waiting"
+    exit 1
+fi
+
+aws eks describe-pod-identity-association \
+  --cluster-name workshop-eks \
+  --association-id ${ASSOCIATION_ID} \
+  --no-cli-pager > /dev/null
+log_success "Pod Identity association verified (ID: ${ASSOCIATION_ID})"
 
 # Create k8s directory
 log_info "Creating k8s directory..."
@@ -70,7 +93,11 @@ spec:
         objectAlias: "spring.datasource.url"
 EOF
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/secret-provider-class.yaml
-log_success "SecretProviderClass created"
+
+# Verify SecretProviderClass is registered
+log_info "Verifying SecretProviderClass..."
+kubectl get secretproviderclass unicorn-store-secrets -n unicorn-store-spring > /dev/null
+log_success "SecretProviderClass created and verified"
 
 # Create and apply Deployment
 log_info "Creating Deployment..."

@@ -84,7 +84,9 @@
 			"Sid": "GetRole",
 			"Effect": "Allow",
 			"Action": [
-				"iam:GetRole"
+				"iam:GetRole",
+				"iam:PassRole",
+				"iam:ListRoles"
 			],
 			"Resource": "*"
 		},

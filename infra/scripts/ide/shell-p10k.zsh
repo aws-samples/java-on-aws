@@ -29,8 +29,8 @@ typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='❯'
 # Remove segment separator after prompt_char (no trailing powerline arrow)
 typeset -g POWERLEVEL9K_PROMPT_CHAR_LEFT_SEGMENT_SEPARATOR=''
 
-# Directory - Palenight soft blue
-typeset -g POWERLEVEL9K_DIR_BACKGROUND=111
+# Directory
+typeset -g POWERLEVEL9K_DIR_BACKGROUND=189
 typeset -g POWERLEVEL9K_DIR_FOREGROUND=250
 typeset -g POWERLEVEL9K_SHORTEN_STRATEGY=truncate_to_unique
 typeset -g POWERLEVEL9K_DIR_MAX_LENGTH=80
@@ -54,7 +54,7 @@ typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_BACKGROUND=221
 
 # Kubernetes context
 typeset -g POWERLEVEL9K_KUBECONTEXT_FOREGROUND=250
-typeset -g POWERLEVEL9K_KUBECONTEXT_BACKGROUND=#705697
+typeset -g POWERLEVEL9K_KUBECONTEXT_BACKGROUND=189
 # Shorten EKS ARN: arn:aws:eks:region:account:cluster/name -> region:cluster-name
 typeset -g POWERLEVEL9K_KUBECONTEXT_CONTENT_EXPANSION='${${P9K_KUBECONTEXT_NAME#arn:aws:eks:}%%:*}:${P9K_KUBECONTEXT_CLUSTER##*/}'
 
