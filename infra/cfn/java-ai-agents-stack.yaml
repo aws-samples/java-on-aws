@@ -403,7 +403,6 @@ Resources:
           - Action:
               - iam:GetRole
               - iam:ListRoles
-              - iam:PassRole
             Effect: Allow
             Resource: "*"
             Sid: GetRole
@@ -775,6 +774,19 @@ Resources:
         Fn::GetAtt:
           - IdeInstanceLauncherFunction803C5A2A
           - Arn
+      InstanceTypes: m6a.xlarge,m7a.xlarge
+      InstanceName: ide
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      VolumeSize: "50"
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
       SecurityGroupIds:
         Fn::Join:
           - ""
@@ -923,19 +935,6 @@ Resources:
                 "
                     exit 1
                 fi
-      InstanceTypes: m6a.xlarge,m7a.xlarge
-      InstanceName: ide
-      IamInstanceProfileArn:
-        Fn::GetAtt:
-          - IdeInstanceProfile61B92038
-          - Arn
-      VolumeSize: "50"
-      SubnetIds:
-        Fn::Join:
-          - ""
-          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-            - ","
-            - Ref: VpcPublicSubnet2SubnetA811849C
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
   IdeEipAssociationDFF81215:

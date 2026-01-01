@@ -403,7 +403,6 @@ Resources:
           - Action:
               - iam:GetRole
               - iam:ListRoles
-              - iam:PassRole
             Effect: Allow
             Resource: "*"
             Sid: GetRole
