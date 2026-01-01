@@ -165,6 +165,7 @@ spec:
               readOnly: true
           securityContext:
             runAsNonRoot: true
+            runAsUser: 1000
             allowPrivilegeEscalation: false
           lifecycle:
             preStop:
