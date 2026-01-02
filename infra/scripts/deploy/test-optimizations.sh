@@ -45,13 +45,13 @@ cleanup() {
            "${APP_DIR}/src/main/java/com/unicorn/store/data/UnicornPublisher.java"
     fi
 
-    # Revert deployment to baseline if in deploy mode (disabled for testing)
-    # if [[ "$DEPLOY_MODE" == true && -n "$ACCOUNT_ID" ]]; then
-    #     log_info "Reverting deployment to :latest..."
-    #     local ecr_uri="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}"
-    #     kubectl set image deployment/unicorn-store-spring \
-    #         unicorn-store-spring="${ecr_uri}:latest" -n unicorn-store-spring 2>/dev/null || true
-    # fi
+    # Revert deployment to baseline if --revert flag is set
+    if [[ "$REVERT_MODE" == true && "$DEPLOY_MODE" == true && -n "$ACCOUNT_ID" ]]; then
+        log_info "Reverting deployment to :latest..."
+        local ecr_uri="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}"
+        kubectl set image deployment/unicorn-store-spring \
+            unicorn-store-spring="${ecr_uri}:latest" -n unicorn-store-spring 2>/dev/null || true
+    fi
 
     exit $exit_code
 }
@@ -74,11 +74,13 @@ METHODS=(
 
 # Parse arguments
 DEPLOY_MODE=false
+REVERT_MODE=false
 ONLY_METHOD=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --deploy) DEPLOY_MODE=true; shift ;;
+        --revert) REVERT_MODE=true; shift ;;
         --only) ONLY_METHOD="$2"; shift 2 ;;
         *) log_error "Unknown option: $1"; exit 1 ;;
     esac
@@ -113,8 +115,43 @@ needs_code_change() {
     [[ "$1" == "09-crac" ]]
 }
 
-# Start PostgreSQL for training
+# Database configuration - try AWS first, fallback to local Docker
+USE_AWS_DB=false
+SPRING_DATASOURCE_URL=""
+SPRING_DATASOURCE_USERNAME=""
+SPRING_DATASOURCE_PASSWORD=""
+
+init_db_config() {
+    log_info "Checking for AWS database configuration..."
+
+    # Try to get AWS database credentials
+    local aws_url aws_secret
+    aws_url=$(aws ssm get-parameter --name workshop-db-connection-string --no-cli-pager 2>/dev/null | jq --raw-output '.Parameter.Value' 2>/dev/null) || true
+    aws_secret=$(aws secretsmanager get-secret-value --secret-id workshop-db-secret --no-cli-pager 2>/dev/null | jq --raw-output '.SecretString' 2>/dev/null) || true
+
+    if [[ -n "$aws_url" && "$aws_url" != "null" && -n "$aws_secret" && "$aws_secret" != "null" ]]; then
+        SPRING_DATASOURCE_URL="$aws_url"
+        SPRING_DATASOURCE_USERNAME=$(echo "$aws_secret" | jq -r .username)
+        SPRING_DATASOURCE_PASSWORD=$(echo "$aws_secret" | jq -r .password)
+
+        if [[ -n "$SPRING_DATASOURCE_USERNAME" && "$SPRING_DATASOURCE_USERNAME" != "null" ]]; then
+            USE_AWS_DB=true
+            log_info "Using AWS RDS database for training"
+            return 0
+        fi
+    fi
+
+    log_info "AWS database not available, will use local Docker PostgreSQL"
+    USE_AWS_DB=false
+}
+
+# Start PostgreSQL for training (only if not using AWS DB)
 start_build_db() {
+    if [[ "$USE_AWS_DB" == true ]]; then
+        log_info "Using AWS RDS database (no local DB needed)"
+        return 0
+    fi
+
     log_info "Starting PostgreSQL for training..."
     docker rm -f build-postgres 2>/dev/null || true
     docker run -d --name build-postgres \
@@ -128,10 +165,19 @@ start_build_db() {
     until docker exec build-postgres pg_isready -U unicorn -d unicornstore >/dev/null 2>&1; do
         sleep 1
     done
+
+    # Set local DB credentials
+    SPRING_DATASOURCE_URL="jdbc:postgresql://host.docker.internal:5432/unicornstore"
+    SPRING_DATASOURCE_USERNAME="unicorn"
+    SPRING_DATASOURCE_PASSWORD="unicorn"
+
     log_info "PostgreSQL ready"
 }
 
 stop_build_db() {
+    if [[ "$USE_AWS_DB" == true ]]; then
+        return 0
+    fi
     docker rm -f build-postgres 2>/dev/null || true
 }
 
@@ -188,12 +234,12 @@ build_image() {
         crac_pre_build
     fi
 
-    # Start DB if needed
+    # Start DB if needed and set build args (all methods use same SPRING_DATASOURCE_* args)
     if needs_db "$tag"; then
         start_build_db
-        build_args="--build-arg SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/unicornstore"
-        build_args="${build_args} --build-arg SPRING_DATASOURCE_USERNAME=unicorn"
-        build_args="${build_args} --build-arg SPRING_DATASOURCE_PASSWORD=unicorn"
+        build_args="--build-arg SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}"
+        build_args="${build_args} --build-arg SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}"
+        build_args="${build_args} --build-arg SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}"
     fi
 
     # Build with --progress=plain for cleaner logs
@@ -372,6 +418,9 @@ queue_build_result() {
 rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
 log_info "Output: ${OUTPUT_DIR}"
+
+# Initialize database configuration (AWS or local Docker)
+init_db_config
 
 # Initialize deploy mode
 if [[ "$DEPLOY_MODE" == true ]]; then

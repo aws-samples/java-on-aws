@@ -23,14 +23,20 @@ RUN ls /opt/app/lib/*.jar | sort | tr '\n' ':' | sed 's/:$//' > /opt/app/lib-cp.
 ENV MAIN_CLASS="com.unicorn.store.StoreApplication"
 
 # Optional: pass DB props for training to capture Hibernate/JDBC classes
-#   docker build --build-arg TRAINING_JAVA_OPTS="-Dspring.datasource.url=... -Dspring.datasource.username=... -Dspring.datasource.password=..." ...
-ARG TRAINING_JAVA_OPTS=""
-ENV TRAINING_JAVA_OPTS=${TRAINING_JAVA_OPTS}
+ARG SPRING_DATASOURCE_URL
+ARG SPRING_DATASOURCE_USERNAME
+ARG SPRING_DATASOURCE_PASSWORD
+
+# If DB credentials provided, use them; otherwise exclude DB auto-config
 ENV TRAINING_JAVA_OPTS_DEFAULT="-Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration -Dspring.main.lazy-initialization=true"
 
 # Record AOT configuration
 RUN set -e; \
-    OPTS="${TRAINING_JAVA_OPTS}"; [ -z "${OPTS}" ] && OPTS="${TRAINING_JAVA_OPTS_DEFAULT}"; \
+    if [ -n "${SPRING_DATASOURCE_URL}" ]; then \
+        OPTS="-Dspring.datasource.url=${SPRING_DATASOURCE_URL} -Dspring.datasource.username=${SPRING_DATASOURCE_USERNAME} -Dspring.datasource.password=${SPRING_DATASOURCE_PASSWORD}"; \
+    else \
+        OPTS="${TRAINING_JAVA_OPTS_DEFAULT}"; \
+    fi; \
     java -XX:AOTMode=record -XX:AOTConfiguration=/app.aotconf \
     -cp "/opt/app/training/classes.jar:$(cat /opt/app/lib-cp.txt)" \
     -Dspring.context.exit=onRefresh ${OPTS} ${MAIN_CLASS} || true && \
@@ -38,7 +44,11 @@ RUN set -e; \
 
 # Create AOT cache
 RUN set -e; \
-    OPTS="${TRAINING_JAVA_OPTS}"; [ -z "${OPTS}" ] && OPTS="${TRAINING_JAVA_OPTS_DEFAULT}"; \
+    if [ -n "${SPRING_DATASOURCE_URL}" ]; then \
+        OPTS="-Dspring.datasource.url=${SPRING_DATASOURCE_URL} -Dspring.datasource.username=${SPRING_DATASOURCE_USERNAME} -Dspring.datasource.password=${SPRING_DATASOURCE_PASSWORD}"; \
+    else \
+        OPTS="${TRAINING_JAVA_OPTS_DEFAULT}"; \
+    fi; \
     java -XX:AOTMode=create -XX:AOTConfiguration=/app.aotconf \
     -XX:AOTCache=/opt/app/app.aot \
     -cp "/opt/app/training/classes.jar:$(cat /opt/app/lib-cp.txt)" \
