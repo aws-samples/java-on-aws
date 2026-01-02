@@ -4,10 +4,10 @@
 # Prerequisites: containerize.sh and eks.sh must be run first
 #
 # Usage:
-#   ./test-optimizations.sh              # Build all images locally
-#   ./test-optimizations.sh --deploy     # Build, push to ECR, deploy to EKS, measure startup
-#   ./test-optimizations.sh --only cds   # Build single method
-#   ./test-optimizations.sh --only cds --deploy
+#   ./test-optimizations.sh --pre-clean --deploy --revert  # Full test: clean, build all, deploy, measure, revert
+#   ./test-optimizations.sh                                # Build all images locally
+#   ./test-optimizations.sh --only cds                     # Build single method
+#   ./test-optimizations.sh --only cds --deploy            # Build, push, deploy single method
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../lib/common.sh"
@@ -62,28 +62,29 @@ WATCHER_PID_FILE="${OUTPUT_DIR}/watcher.pid"
 
 # Methods in order (tag names)
 METHODS=(
-    "01-baseline-1cpu"
-    "01-baseline-2cpu"
-    "01-pod-resize"
-    "02-multi-stage"
-    "03-jib"
-    "04-custom-jre"
-    "05-soci"
-    "06-cds"
-    "07-aot"
-    "08-native"
-    "09-crac"
+    "01-multi-stage"
+    "01-multi-stage-2cpu"
+    "01-multi-stage-pod-resize"
+    "02-jib"
+    "03-custom-jre"
+    "04-soci"
+    "05-cds"
+    "06-aot"
+    "07-native"
+    "08-crac"
 )
 
 # Parse arguments
 DEPLOY_MODE=false
 REVERT_MODE=false
+PRE_CLEAN=false
 ONLY_METHOD=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --deploy) DEPLOY_MODE=true; shift ;;
         --revert) REVERT_MODE=true; shift ;;
+        --pre-clean) PRE_CLEAN=true; shift ;;
         --only) ONLY_METHOD="$2"; shift 2 ;;
         *) log_error "Unknown option: $1"; exit 1 ;;
     esac
@@ -108,20 +109,20 @@ fi
 # Check if method needs DB for training
 needs_db() {
     case "$1" in
-        06-cds|07-aot|09-crac) return 0 ;;
+        05-cds|06-aot|08-crac) return 0 ;;
         *) return 1 ;;
     esac
 }
 
 # Check if method needs code changes (CRaC)
 needs_code_change() {
-    [[ "$1" == "09-crac" ]]
+    [[ "$1" == "08-crac" ]]
 }
 
-# Check if method is a special deploy-only method (no build)
-is_deploy_only() {
+# Check if method is a deploy-only variant (uses 01-multi-stage image)
+is_deploy_variant() {
     case "$1" in
-        01-baseline-1cpu|01-baseline-2cpu|01-pod-resize) return 0 ;;
+        01-multi-stage-2cpu|01-multi-stage-pod-resize) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -225,21 +226,21 @@ build_image() {
 
     log_info "Building ${tag}..."
 
-    # Deploy-only methods (baseline, pod-resize) - no build needed
-    if is_deploy_only "$tag"; then
-        log_info "Deploy-only method, skipping build..."
+    # Deploy variants use 01-multi-stage image - no build needed
+    if is_deploy_variant "$tag"; then
+        log_info "Deploy variant, using 01-multi-stage image..."
         return 0
     fi
 
     # Special case: jib uses maven
-    if [[ "$tag" == "03-jib" ]]; then
+    if [[ "$tag" == "02-jib" ]]; then
         log_info "Using Maven Jib plugin..."
         (cd "${APP_DIR}" && mvn compile jib:dockerBuild -Dimage=${IMAGE_NAME}:${tag}) >> "${log_file}" 2>&1
         return $?
     fi
 
     # Special case: CDS uses Paketo Buildpacks
-    if [[ "$tag" == "06-cds" ]]; then
+    if [[ "$tag" == "05-cds" ]]; then
         log_info "Using Paketo Buildpacks for CDS..."
 
         # Install pack CLI if not available
@@ -265,7 +266,7 @@ build_image() {
         return $result
     fi
 
-    # Dockerfile name matches tag (e.g., 02-multi-stage -> Dockerfile.02-multi-stage)
+    # Dockerfile name matches tag (e.g., 01-multi-stage -> Dockerfile.01-multi-stage)
     local dockerfile="${DOCKERFILES_DIR}/Dockerfile.${tag}"
 
     # Check Dockerfile exists
@@ -289,13 +290,9 @@ build_image() {
     fi
 
     # Build with --progress=plain for cleaner logs
-    # Use --no-cache for methods that need fresh training (AOT, CRaC)
-    local no_cache=""
-    if needs_db "$tag"; then
-        no_cache="--no-cache"
-    fi
+    # Use --no-cache for consistent, reproducible build times
     local result=0
-    docker build --progress=plain ${no_cache} ${build_args} -f "${dockerfile}" -t "${IMAGE_NAME}:${tag}" "${APP_DIR}" >> "${log_file}" 2>&1 || result=$?
+    docker build --progress=plain --no-cache ${build_args} -f "${dockerfile}" -t "${IMAGE_NAME}:${tag}" "${APP_DIR}" >> "${log_file}" 2>&1 || result=$?
 
     # Cleanup
     if needs_db "$tag"; then
@@ -332,7 +329,7 @@ push_image() {
     echo "$push_output" >> "${log_file}"
 
     # SOCI index for soci method
-    if [[ "$tag" == "05-soci" ]]; then
+    if [[ "$tag" == "04-soci" ]]; then
         echo "=== SOCI INDEX ===" >> "${log_file}"
         sudo soci create "${ecr_uri}:${tag}" >> "${log_file}" 2>&1 || true
         sudo soci push "${ecr_uri}:${tag}" >> "${log_file}" 2>&1 || true
@@ -349,7 +346,7 @@ push_image() {
 get_startup_time() {
     local tag="$1"
     local log_pattern="Started StoreApplication"
-    [[ "$tag" == "09-crac" ]] && log_pattern="Restored StoreApplication"
+    [[ "$tag" == "08-crac" ]] && log_pattern="Restored StoreApplication"
 
     kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
         | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring 2>/dev/null \
@@ -393,21 +390,23 @@ deploy_watcher() {
                     continue
                 fi
 
-                # Handle special deploy-only methods
+                # Handle special deploy variants and normal deployments
                 case "$tag" in
-                    01-baseline-1cpu)
-                        log_info "Deploying baseline with 1 CPU..."
-                        # Ensure 1 CPU and restart
+                    01-multi-stage)
+                        log_info "Deploying 01-multi-stage with 1 CPU (baseline)..."
+                        # Ensure 1 CPU
                         kubectl patch deployment unicorn-store-spring -n unicorn-store-spring \
                             --type='json' -p='[
                                 {"op": "replace", "path": "/spec/template/spec/containers/0/resources/requests/cpu", "value": "1"},
                                 {"op": "replace", "path": "/spec/template/spec/containers/0/resources/limits/cpu", "value": "1"}
                             ]' >> "${deploy_log}" 2>&1
-                        kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring >> "${deploy_log}" 2>&1
+                        # Deploy the image
+                        kubectl set image deployment/unicorn-store-spring \
+                            unicorn-store-spring="${ecr_uri}:${tag}" -n unicorn-store-spring >> "${deploy_log}" 2>&1
                         ;;
-                    01-baseline-2cpu)
-                        log_info "Deploying baseline with 2 CPUs..."
-                        # Increase to 2 CPU and restart
+                    01-multi-stage-2cpu)
+                        log_info "Deploying 01-multi-stage with 2 CPUs..."
+                        # Increase to 2 CPU, use same 01-multi-stage image
                         kubectl patch deployment unicorn-store-spring -n unicorn-store-spring \
                             --type='json' -p='[
                                 {"op": "replace", "path": "/spec/template/spec/containers/0/resources/requests/cpu", "value": "2"},
@@ -415,8 +414,8 @@ deploy_watcher() {
                             ]' >> "${deploy_log}" 2>&1
                         kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring >> "${deploy_log}" 2>&1
                         ;;
-                    01-pod-resize)
-                        log_info "Deploying with in-place pod resize (CPU boost)..."
+                    01-multi-stage-pod-resize)
+                        log_info "Deploying 01-multi-stage with in-place pod resize (CPU boost)..."
                         # Revert to 1 CPU first
                         kubectl patch deployment unicorn-store-spring -n unicorn-store-spring \
                             --type='json' -p='[
@@ -465,8 +464,13 @@ BOOST_EOF
                         kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring >> "${deploy_log}" 2>&1
                         ;;
                     *)
-                        # Normal image deployment
+                        # Normal image deployment - ensure 1 CPU
                         log_info "Deploying ${tag}..."
+                        kubectl patch deployment unicorn-store-spring -n unicorn-store-spring \
+                            --type='json' -p='[
+                                {"op": "replace", "path": "/spec/template/spec/containers/0/resources/requests/cpu", "value": "1"},
+                                {"op": "replace", "path": "/spec/template/spec/containers/0/resources/limits/cpu", "value": "1"}
+                            ]' >> "${deploy_log}" 2>&1 || true
                         echo "--- kubectl set image ---" >> "${deploy_log}"
                         kubectl set image deployment/unicorn-store-spring \
                             unicorn-store-spring="${ecr_uri}:${tag}" -n unicorn-store-spring >> "${deploy_log}" 2>&1
@@ -487,7 +491,7 @@ BOOST_EOF
                 echo "Startup time: ${startup_time}" >> "${deploy_log}"
 
                 # Cleanup after pod-resize test
-                if [[ "$tag" == "01-pod-resize" ]]; then
+                if [[ "$tag" == "01-multi-stage-pod-resize" ]]; then
                     log_info "Cleaning up CPU boost..."
                     kubectl delete startupcpuboost unicorn-store-spring -n unicorn-store-spring >> "${deploy_log}" 2>&1 || true
                     kubectl delete -f https://github.com/google/kube-startup-cpu-boost/releases/download/v0.17.1/manifests.yaml >> "${deploy_log}" 2>&1 || true
@@ -542,6 +546,17 @@ rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
 log_info "Output: ${OUTPUT_DIR}"
 
+# Pre-clean Docker if requested
+if [[ "$PRE_CLEAN" == true ]]; then
+    log_info "Pre-cleaning Docker (full prune)..."
+    docker system prune -af --volumes
+    docker builder prune -af
+    # Clean Jib cache (macOS and Linux)
+    rm -rf ~/.cache/google-cloud-tools-java/jib 2>/dev/null || true
+    rm -rf ~/Library/Caches/google-cloud-tools-java/jib 2>/dev/null || true
+    log_info "Docker pre-clean complete"
+fi
+
 # Initialize database configuration (AWS or local Docker)
 init_db_config
 
@@ -591,14 +606,14 @@ for tag in "${METHODS[@]}"; do
     if build_image "$tag" "$build_log"; then
         build_status="✅"
 
-        # Deploy-only methods don't have local images
-        if ! is_deploy_only "$tag"; then
+        # Deploy variants don't have local images
+        if ! is_deploy_variant "$tag"; then
             size_local=$(docker images "${IMAGE_NAME}:${tag}" --format "{{.Size}}" 2>/dev/null || echo "N/A")
         fi
 
-        # Deploy mode: push and queue for deployment (skip push for deploy-only methods)
+        # Deploy mode: push and queue for deployment (skip push for deploy variants)
         if [[ "$DEPLOY_MODE" == true ]]; then
-            if ! is_deploy_only "$tag"; then
+            if ! is_deploy_variant "$tag"; then
                 size_ecr=$(push_image "$tag" "$build_log")
                 # Check if push failed
                 if [[ "$size_ecr" == PUSH_FAILED:* ]]; then
