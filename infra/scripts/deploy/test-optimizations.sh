@@ -62,6 +62,9 @@ WATCHER_PID_FILE="${OUTPUT_DIR}/watcher.pid"
 
 # Methods in order (tag names)
 METHODS=(
+    "01-baseline-1cpu"
+    "01-baseline-2cpu"
+    "01-pod-resize"
     "02-multi-stage"
     "03-jib"
     "04-custom-jre"
@@ -113,6 +116,14 @@ needs_db() {
 # Check if method needs code changes (CRaC)
 needs_code_change() {
     [[ "$1" == "09-crac" ]]
+}
+
+# Check if method is a special deploy-only method (no build)
+is_deploy_only() {
+    case "$1" in
+        01-baseline-1cpu|01-baseline-2cpu|01-pod-resize) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 # Database configuration - try AWS first, fallback to local Docker
@@ -210,10 +221,15 @@ format_time() {
 build_image() {
     local tag="$1"
     local log_file="$2"
-    local dockerfile="${DOCKERFILES_DIR}/Dockerfile.${tag}"
     local build_args=""
 
     log_info "Building ${tag}..."
+
+    # Deploy-only methods (baseline, pod-resize) - no build needed
+    if is_deploy_only "$tag"; then
+        log_info "Deploy-only method, skipping build..."
+        return 0
+    fi
 
     # Special case: jib uses maven
     if [[ "$tag" == "03-jib" ]]; then
@@ -249,6 +265,9 @@ build_image() {
         return $result
     fi
 
+    # Dockerfile name matches tag (e.g., 02-multi-stage -> Dockerfile.02-multi-stage)
+    local dockerfile="${DOCKERFILES_DIR}/Dockerfile.${tag}"
+
     # Check Dockerfile exists
     if [[ ! -f "${dockerfile}" ]]; then
         log_error "Dockerfile not found: ${dockerfile}"
@@ -270,7 +289,7 @@ build_image() {
     fi
 
     # Build with --progress=plain for cleaner logs
-    # Use --no-cache for methods that need fresh training (CDS, AOT, CRaC)
+    # Use --no-cache for methods that need fresh training (AOT, CRaC)
     local no_cache=""
     if needs_db "$tag"; then
         no_cache="--no-cache"
@@ -359,11 +378,6 @@ deploy_watcher() {
 
                 # Check for END marker
                 if [[ "$status" == "END" ]]; then
-                    # Revert to baseline (disabled for testing)
-                    # log_info "Reverting to baseline (:latest)..."
-                    # kubectl set image deployment/unicorn-store-spring \
-                    #     unicorn-store-spring="${ecr_uri}:latest" -n unicorn-store-spring 2>/dev/null
-                    # kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s 2>/dev/null
                     return 0
                 fi
 
@@ -379,11 +393,79 @@ deploy_watcher() {
                     continue
                 fi
 
-                # Deploy with new image
-                log_info "Deploying ${tag}..."
-                echo "--- kubectl set image ---" >> "${deploy_log}"
-                kubectl set image deployment/unicorn-store-spring \
-                    unicorn-store-spring="${ecr_uri}:${tag}" -n unicorn-store-spring >> "${deploy_log}" 2>&1
+                # Handle special deploy-only methods
+                case "$tag" in
+                    01-baseline-1cpu)
+                        log_info "Deploying baseline with 1 CPU..."
+                        # Ensure 1 CPU and restart
+                        kubectl patch deployment unicorn-store-spring -n unicorn-store-spring \
+                            --type='json' -p='[
+                                {"op": "replace", "path": "/spec/template/spec/containers/0/resources/requests/cpu", "value": "1"},
+                                {"op": "replace", "path": "/spec/template/spec/containers/0/resources/limits/cpu", "value": "1"}
+                            ]' >> "${deploy_log}" 2>&1
+                        kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring >> "${deploy_log}" 2>&1
+                        ;;
+                    01-baseline-2cpu)
+                        log_info "Deploying baseline with 2 CPUs..."
+                        # Increase to 2 CPU and restart
+                        kubectl patch deployment unicorn-store-spring -n unicorn-store-spring \
+                            --type='json' -p='[
+                                {"op": "replace", "path": "/spec/template/spec/containers/0/resources/requests/cpu", "value": "2"},
+                                {"op": "replace", "path": "/spec/template/spec/containers/0/resources/limits/cpu", "value": "2"}
+                            ]' >> "${deploy_log}" 2>&1
+                        kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring >> "${deploy_log}" 2>&1
+                        ;;
+                    01-pod-resize)
+                        log_info "Deploying with in-place pod resize (CPU boost)..."
+                        # Revert to 1 CPU first
+                        kubectl patch deployment unicorn-store-spring -n unicorn-store-spring \
+                            --type='json' -p='[
+                                {"op": "replace", "path": "/spec/template/spec/containers/0/resources/requests/cpu", "value": "1"},
+                                {"op": "replace", "path": "/spec/template/spec/containers/0/resources/limits/cpu", "value": "1"}
+                            ]' >> "${deploy_log}" 2>&1
+
+                        # Install Kube Startup CPU Boost if not present
+                        if ! kubectl get crd startupcpuboosts.autoscaling.x-k8s.io &>/dev/null; then
+                            log_info "Installing Kube Startup CPU Boost..."
+                            kubectl apply -f https://github.com/google/kube-startup-cpu-boost/releases/download/v0.17.1/manifests.yaml >> "${deploy_log}" 2>&1
+                            kubectl wait --for=condition=ready pod -l control-plane=controller-manager \
+                                -n kube-startup-cpu-boost-system --timeout=120s >> "${deploy_log}" 2>&1
+                        fi
+
+                        # Create StartupCPUBoost resource
+                        cat <<BOOST_EOF | kubectl apply -f - >> "${deploy_log}" 2>&1
+apiVersion: autoscaling.x-k8s.io/v1alpha1
+kind: StartupCPUBoost
+metadata:
+  name: unicorn-store-spring
+  namespace: unicorn-store-spring
+selector:
+  matchExpressions:
+  - key: app
+    operator: In
+    values: ["unicorn-store-spring"]
+spec:
+  resourcePolicy:
+    containerPolicies:
+    - containerName: unicorn-store-spring
+      percentageIncrease:
+        value: 100
+  durationPolicy:
+    podCondition:
+      type: Ready
+      status: "True"
+BOOST_EOF
+                        kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring >> "${deploy_log}" 2>&1
+                        ;;
+                    *)
+                        # Normal image deployment
+                        log_info "Deploying ${tag}..."
+                        echo "--- kubectl set image ---" >> "${deploy_log}"
+                        kubectl set image deployment/unicorn-store-spring \
+                            unicorn-store-spring="${ecr_uri}:${tag}" -n unicorn-store-spring >> "${deploy_log}" 2>&1
+                        ;;
+                esac
+
                 echo "--- kubectl rollout status ---" >> "${deploy_log}"
                 if ! kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s >> "${deploy_log}" 2>&1; then
                     echo "--- kubectl describe deployment ---" >> "${deploy_log}"
@@ -396,6 +478,13 @@ deploy_watcher() {
                 sleep 15
                 local startup_time=$(get_startup_time "$tag")
                 echo "Startup time: ${startup_time}" >> "${deploy_log}"
+
+                # Cleanup after pod-resize test
+                if [[ "$tag" == "01-pod-resize" ]]; then
+                    log_info "Cleaning up CPU boost..."
+                    kubectl delete startupcpuboost unicorn-store-spring -n unicorn-store-spring >> "${deploy_log}" 2>&1 || true
+                    kubectl delete -f https://github.com/google/kube-startup-cpu-boost/releases/download/v0.17.1/manifests.yaml >> "${deploy_log}" 2>&1 || true
+                fi
 
                 echo "${tag} | ${size_local} | ${size_ecr} | ${build_time} | ${startup_time}" >> "${RESULTS_FILE}"
                 log_info "${tag}: startup=${startup_time}"
@@ -494,16 +583,22 @@ for tag in "${METHODS[@]}"; do
 
     if build_image "$tag" "$build_log"; then
         build_status="✅"
-        size_local=$(docker images "${IMAGE_NAME}:${tag}" --format "{{.Size}}" 2>/dev/null || echo "N/A")
 
-        # Deploy mode: push and queue for deployment
+        # Deploy-only methods don't have local images
+        if ! is_deploy_only "$tag"; then
+            size_local=$(docker images "${IMAGE_NAME}:${tag}" --format "{{.Size}}" 2>/dev/null || echo "N/A")
+        fi
+
+        # Deploy mode: push and queue for deployment (skip push for deploy-only methods)
         if [[ "$DEPLOY_MODE" == true ]]; then
-            size_ecr=$(push_image "$tag" "$build_log")
-            # Check if push failed
-            if [[ "$size_ecr" == PUSH_FAILED:* ]]; then
-                error_msg="${size_ecr#PUSH_FAILED:}"
-                size_ecr="N/A"
-                push_status="FAILED"
+            if ! is_deploy_only "$tag"; then
+                size_ecr=$(push_image "$tag" "$build_log")
+                # Check if push failed
+                if [[ "$size_ecr" == PUSH_FAILED:* ]]; then
+                    error_msg="${size_ecr#PUSH_FAILED:}"
+                    size_ecr="N/A"
+                    push_status="FAILED"
+                fi
             fi
         fi
     else

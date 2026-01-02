@@ -4,7 +4,7 @@ Build and test all Java container optimization methods for the Unicorn Store Spr
 
 ## Prerequisites
 
-1. Run `containerize.sh` - creates ECR repo, builds baseline image with `:latest` and `:02-multi-stage` tags
+1. Run `containerize.sh` - creates ECR repo, builds baseline image with `:latest` tag
 2. Run `eks.sh` - deploys to EKS with deployment using `:latest` image
 
 ## Usage
@@ -14,6 +14,7 @@ Build and test all Java container optimization methods for the Unicorn Store Spr
 ./test-optimizations.sh --deploy     # Build, push to ECR, deploy to EKS, measure startup
 ./test-optimizations.sh --only cds   # Build single method
 ./test-optimizations.sh --only cds --deploy
+./test-optimizations.sh --deploy --revert  # Revert to :latest on exit
 ```
 
 ## Options
@@ -21,21 +22,25 @@ Build and test all Java container optimization methods for the Unicorn Store Spr
 | Option | Description |
 |--------|-------------|
 | (none) | Build all images locally, output results to stdout |
-| `--deploy` | Push to ECR, deploy to EKS, measure startup/restart times |
+| `--deploy` | Push to ECR, deploy to EKS, measure startup times |
 | `--only <method>` | Build only specified method (partial match: `cds`, `native`, etc.) |
+| `--revert` | Revert deployment to `:latest` on exit (use with `--deploy`) |
 
 ## Methods
 
-| Tag | Method | Needs DB | Code Change | Special |
-|-----|--------|----------|-------------|---------|
-| 02-multi-stage | Optimized Dockerfile | No | No | Baseline |
-| 03-jib | Google Jib Maven plugin | No | No | No Dockerfile |
-| 04-custom-jre | Custom JRE with jlink | No | No | |
-| 05-soci | Seekable OCI (lazy loading) | No | No | SOCI index after push |
-| 06-cds | Class Data Sharing | Yes | No | Training run |
-| 07-aot | Ahead-of-Time compilation | Yes | No | Training run |
-| 08-native | GraalVM Native Image | No | No | Long build time |
-| 09-crac | Coordinated Restore at Checkpoint | Yes | Yes | UnicornPublisher swap |
+| Tag | Method | Build | Needs DB | Code Change | Notes |
+|-----|--------|-------|----------|-------------|-------|
+| 01-baseline-1cpu | Baseline with 1 CPU | No | No | No | Deploy-only, ~10-12s |
+| 01-baseline-2cpu | Baseline with 2 CPUs | No | No | No | Deploy-only, ~6s |
+| 01-pod-resize | In-place pod resize | No | No | No | Deploy-only, CPU boost controller |
+| 02-multi-stage | Optimized Dockerfile | Yes | No | No | Baseline build |
+| 03-jib | Google Jib Maven plugin | Yes | No | No | No Dockerfile |
+| 04-custom-jre | Custom JRE with jlink | Yes | No | No | Smaller image |
+| 05-soci | Seekable OCI (lazy loading) | Yes | No | No | SOCI index after push |
+| 06-cds | Class Data Sharing | Yes | Yes | No | Paketo Buildpacks |
+| 07-aot | Ahead-of-Time compilation | Yes | Yes | No | Java 25+ AOT cache |
+| 08-native | GraalVM Native Image | Yes | No | No | Long build time |
+| 09-crac | Coordinated Restore at Checkpoint | Yes | Yes | Yes | UnicornPublisher swap |
 
 ## Flow
 
@@ -43,12 +48,13 @@ Build and test all Java container optimization methods for the Unicorn Store Spr
 
 ```
 For each method:
-  1. Pre-build hooks (CRaC: swap UnicornPublisher.crac)
-  2. Start PostgreSQL if needed (CDS, AOT, CRaC)
-  3. Build image (docker build or mvn jib:dockerBuild)
-  4. Stop PostgreSQL
-  5. Post-build hooks (CRaC: restore UnicornPublisher.java)
-  6. Output: Method | ✅/❌ | Size | Time
+  1. Skip if deploy-only (01-baseline-*, 01-pod-resize)
+  2. Pre-build hooks (CRaC: swap UnicornPublisher.crac)
+  3. Start PostgreSQL if needed (CDS, AOT, CRaC) - AWS RDS or local Docker
+  4. Build image (docker build, mvn jib:dockerBuild, or pack build)
+  5. Stop PostgreSQL
+  6. Post-build hooks (CRaC: restore UnicornPublisher.java)
+  7. Output: Method | ✅/❌ | Size | Time
 ```
 
 ### Deploy mode (`--deploy`)
@@ -60,19 +66,24 @@ For each method:
 │  Start watcher ──────────────────► Initialize results file      │
 │                                                                 │
 │  For each method:                                               │
-│    Build image                                                  │
-│    Push to ECR (:tag)                                          │
+│    Build image (skip for 01-*)                                  │
+│    Push to ECR (skip for 01-*)                                  │
 │    Write to queue ───────────────► Read queue                   │
-│    Continue immediately            kubectl set image :tag       │
+│    Continue immediately                                         │
+│                                    Handle deploy-only methods:  │
+│                                      01-baseline-1cpu: set 1 CPU│
+│                                      01-baseline-2cpu: set 2 CPU│
+│                                      01-pod-resize: install     │
+│                                        CPU boost controller     │
+│                                    Or: kubectl set image :tag   │
 │                                    Wait for rollout             │
 │                                    Record startup time          │
-│                                    kubectl rollout restart      │
-│                                    Record restart time          │
+│                                    Cleanup (pod-resize)         │
 │                                    Write to results file        │
 │                                                                 │
-│  Write END marker ───────────────► kubectl set image :latest    │
-│  Wait for watcher                  (revert to baseline)         │
-│  Print final results               Exit                         │
+│  Write END marker ───────────────► Exit                         │
+│  Wait for watcher                                               │
+│  Print final results                                            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -94,32 +105,63 @@ All output goes to `/tmp/test-optimizations/` (or `${SCRIPT_DIR}/.test-optimizat
 ```
 Method         | Build | Size Local | Time
 ---------------|-------|------------|------
+01-baseline-1cpu | ✅  | N/A        | 0s
 02-multi-stage | ✅    | 598MB      | 45s
-06-cds         | ✅    | 1.34GB     | 2m15s
+06-cds         | ✅    | 1.23GB     | 2m23s
 08-native      | ❌    | N/A        | 5m30s
 ```
 
 ### Deploy mode results file
 ```
-Method         | Size Local | Size ECR | Build Time | Startup Time
----------------|------------|----------|------------|-------------
-02-multi-stage | 598MB      | 580MB    | 45s        | 8.234 seconds
-06-cds         | 1.34GB     | 1.2GB    | 2m15s      | 2.156 seconds
-09-crac        | 1.1GB      | 1.0GB    | 3m20s      | 0.087 seconds
+Method           | Size Local | Size ECR | Build Time | Startup Time
+-----------------|------------|----------|------------|-------------
+01-baseline-1cpu | N/A        | N/A      | 0s         | 10.234 seconds
+01-baseline-2cpu | N/A        | N/A      | 0s         | 6.123 seconds
+01-pod-resize    | N/A        | N/A      | 0s         | 5.987 seconds
+02-multi-stage   | 598MB      | 580MB    | 45s        | 10.234 seconds
+06-cds           | 1.23GB     | 578MB    | 2m23s      | 3.916 seconds
+07-aot           | 1.34GB     | 428MB    | 56s        | 4.0 seconds
+09-crac          | 1.1GB      | 1.0GB    | 3m20s      | 0.087 seconds
 ```
+
+## Database Configuration
+
+The script automatically detects database configuration:
+
+1. **AWS RDS** (preferred): Tries to get credentials from SSM Parameter Store and Secrets Manager
+   - `workshop-db-connection-string` - JDBC URL
+   - `workshop-db-secret` - username/password
+
+2. **Local Docker** (fallback): Starts PostgreSQL container if AWS credentials not available
+   - Uses `host.docker.internal:5432` for Docker build access
+
+## Special Build Methods
+
+### CDS (06-cds)
+Uses Paketo Buildpacks instead of Dockerfile:
+- Installs `pack` CLI if not available
+- `BP_JVM_CDS_ENABLED=true` - creates CDS archive during build
+- `BPL_JVM_CDS_ENABLED=true` - uses CDS archive at runtime
+
+### Pod Resize (01-pod-resize)
+Installs Kube Startup CPU Boost controller:
+- Creates `StartupCPUBoost` resource with 100% CPU increase
+- Automatically removes boost when pod becomes ready
+- Cleans up controller after test
 
 ## Environment
 
 Requires workshop environment (`/etc/profile.d/workshop.sh`) with:
 - `ACCOUNT_ID` - AWS account ID
 - `AWS_REGION` - AWS region
-- `SPRING_DATASOURCE_URL` - Database connection string (for CDS/AOT/CRaC builds)
-- `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD`
+
+Database credentials are fetched automatically from AWS or use local Docker fallback.
 
 ## Notes
 
-- Build uses local PostgreSQL container for training (CDS, AOT, CRaC)
-- Deploy uses real RDS database via Secrets Manager
+- Deploy-only methods (01-*) don't build images, they modify deployment config
+- CDS uses Paketo Buildpacks (not Dockerfile) for proper CDS archive creation
 - Native image may fail on ARM (macOS) - works on x86-64 Linux
 - CRaC requires x86-64 for `-XX:CPUFeatures=generic`
 - SOCI requires `soci` CLI tool installed
+- Pod resize requires EKS 1.27+ with in-place pod resize support
