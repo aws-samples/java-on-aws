@@ -76,13 +76,17 @@ For each method:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Output Files (deploy mode only)
+## Output Files (deploy mode)
+
+All output goes to `/tmp/test-optimizations/` (or `${SCRIPT_DIR}/.test-optimizations/` if /tmp not writable):
 
 | File | Description |
 |------|-------------|
-| `test-optimizations-queue.txt` | Build→Deploy queue (status\|tag\|size\|build_time) |
-| `test-optimizations-results.txt` | Final results table |
-| `.watcher.pid` | Background watcher PID (temporary) |
+| `queue.txt` | Build→Deploy queue (status\|tag\|size_local\|size_ecr\|build_time\|error) |
+| `results.txt` | Final results table |
+| `watcher.pid` | Background watcher PID (temporary) |
+| `<tag>-build.txt` | Build and push logs per image |
+| `<tag>-deploy.txt` | Deploy logs per image |
 
 ## Results Format
 
@@ -97,11 +101,11 @@ Method         | Build | Size Local | Time
 
 ### Deploy mode results file
 ```
-Method         | Size Local | Size ECR | Build Time | Startup Time  | Restart Time
----------------|------------|----------|------------|---------------|-------------
-02-multi-stage | 598MB      | 580MB    | 45s        | 8.234 seconds | 7.891 seconds
-06-cds         | 1.34GB     | 1.2GB    | 2m15s      | 2.156 seconds | 2.089 seconds
-09-crac        | 1.1GB      | 1.0GB    | 3m20s      | 0.087 seconds | 0.072 seconds
+Method         | Size Local | Size ECR | Build Time | Startup Time
+---------------|------------|----------|------------|-------------
+02-multi-stage | 598MB      | 580MB    | 45s        | 8.234 seconds
+06-cds         | 1.34GB     | 1.2GB    | 2m15s      | 2.156 seconds
+09-crac        | 1.1GB      | 1.0GB    | 3m20s      | 0.087 seconds
 ```
 
 ## Environment

@@ -20,13 +20,12 @@ RUN java -XX:ArchiveClassesAtExit=/app.jsa \
 
 FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
 
-RUN yum install -y shadow-utils
-
-COPY --from=builder /store-spring.jar /store-spring.jar
-COPY --from=builder /app.jsa /app.jsa
-
-RUN groupadd --system spring -g 1000 && \
+RUN yum install -y shadow-utils && \
+    groupadd --system spring -g 1000 && \
     adduser spring -u 1000 -g 1000
+
+COPY --from=builder --chown=1000:1000 /store-spring.jar /store-spring.jar
+COPY --from=builder --chown=1000:1000 /app.jsa /app.jsa
 
 USER 1000:1000
 EXPOSE 8080

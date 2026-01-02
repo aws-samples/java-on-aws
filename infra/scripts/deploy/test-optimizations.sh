@@ -17,10 +17,48 @@ APP_DIR="${REPO_ROOT}/apps/unicorn-store-spring-java25"
 DOCKERFILES_DIR="${REPO_ROOT}/apps/dockerfiles-java25"
 IMAGE_NAME="unicorn-store-spring"
 
-# Output files (only used in deploy mode)
-QUEUE_FILE="${SCRIPT_DIR}/test-optimizations-queue.txt"
-RESULTS_FILE="${SCRIPT_DIR}/test-optimizations-results.txt"
-WATCHER_PID_FILE="${SCRIPT_DIR}/.watcher.pid"
+# Output directory (use /tmp if writable, otherwise script dir)
+if [[ -w /tmp ]]; then
+    OUTPUT_DIR="/tmp/test-optimizations"
+else
+    OUTPUT_DIR="${SCRIPT_DIR}/.test-optimizations"
+fi
+
+# Cleanup on exit/interrupt
+cleanup() {
+    local exit_code=$?
+    log_info "Cleaning up..."
+
+    # Kill watcher if running
+    if [[ -f "${WATCHER_PID_FILE}" ]]; then
+        local pid=$(cat "${WATCHER_PID_FILE}")
+        kill "$pid" 2>/dev/null || true
+        rm -f "${WATCHER_PID_FILE}"
+    fi
+
+    # Stop build database if running
+    docker rm -f build-postgres 2>/dev/null || true
+
+    # Restore UnicornPublisher if backup exists
+    if [[ -f "${APP_DIR}/src/main/java/com/unicorn/store/data/UnicornPublisher.java.orig" ]]; then
+        mv "${APP_DIR}/src/main/java/com/unicorn/store/data/UnicornPublisher.java.orig" \
+           "${APP_DIR}/src/main/java/com/unicorn/store/data/UnicornPublisher.java"
+    fi
+
+    # Revert deployment to baseline if in deploy mode (disabled for testing)
+    # if [[ "$DEPLOY_MODE" == true && -n "$ACCOUNT_ID" ]]; then
+    #     log_info "Reverting deployment to :latest..."
+    #     local ecr_uri="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}"
+    #     kubectl set image deployment/unicorn-store-spring \
+    #         unicorn-store-spring="${ecr_uri}:latest" -n unicorn-store-spring 2>/dev/null || true
+    # fi
+
+    exit $exit_code
+}
+trap cleanup EXIT INT TERM
+QUEUE_FILE="${OUTPUT_DIR}/queue.txt"
+RESULTS_FILE="${OUTPUT_DIR}/results.txt"
+WATCHER_PID_FILE="${OUTPUT_DIR}/watcher.pid"
 
 # Methods in order (tag names)
 METHODS=(
@@ -125,6 +163,7 @@ format_time() {
 # Build single image
 build_image() {
     local tag="$1"
+    local log_file="$2"
     local dockerfile="${DOCKERFILES_DIR}/Dockerfile.${tag}"
     local build_args=""
 
@@ -133,13 +172,14 @@ build_image() {
     # Special case: jib uses maven
     if [[ "$tag" == "03-jib" ]]; then
         log_info "Using Maven Jib plugin..."
-        (cd "${APP_DIR}" && mvn compile jib:dockerBuild -Dimage=${IMAGE_NAME}:${tag} -q)
+        (cd "${APP_DIR}" && mvn compile jib:dockerBuild -Dimage=${IMAGE_NAME}:${tag}) >> "${log_file}" 2>&1
         return $?
     fi
 
     # Check Dockerfile exists
     if [[ ! -f "${dockerfile}" ]]; then
         log_error "Dockerfile not found: ${dockerfile}"
+        echo "ERROR: Dockerfile not found: ${dockerfile}" >> "${log_file}"
         return 1
     fi
 
@@ -156,9 +196,14 @@ build_image() {
         build_args="${build_args} --build-arg SPRING_DATASOURCE_PASSWORD=unicorn"
     fi
 
-    # Build
+    # Build with --progress=plain for cleaner logs
+    # Use --no-cache for methods that need fresh training (CDS, AOT, CRaC)
+    local no_cache=""
+    if needs_db "$tag"; then
+        no_cache="--no-cache"
+    fi
     local result=0
-    docker build ${build_args} -f "${dockerfile}" -t "${IMAGE_NAME}:${tag}" "${APP_DIR}" || result=$?
+    docker build --progress=plain ${no_cache} ${build_args} -f "${dockerfile}" -t "${IMAGE_NAME}:${tag}" "${APP_DIR}" >> "${log_file}" 2>&1 || result=$?
 
     # Cleanup
     if needs_db "$tag"; then
@@ -174,18 +219,31 @@ build_image() {
 }
 
 # Push image to ECR and return ECR size
+# Returns: "SIZE" on success, "PUSH_FAILED:reason" on failure
 push_image() {
     local tag="$1"
+    local log_file="$2"
     local ecr_uri="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}"
 
+    echo "=== PUSH ${tag} ===" >> "${log_file}"
     docker tag "${IMAGE_NAME}:${tag}" "${ecr_uri}:${tag}"
-    docker push "${ecr_uri}:${tag}"
+
+    # Capture push output for error reporting and logging
+    local push_output
+    if ! push_output=$(docker push "${ecr_uri}:${tag}" 2>&1); then
+        echo "$push_output" >> "${log_file}"
+        # Extract last meaningful error line
+        local error_msg=$(echo "$push_output" | grep -iE '(error|denied|failed|unauthorized)' | tail -1 | cut -c1-50)
+        echo "PUSH_FAILED:${error_msg:-push failed}"
+        return 1
+    fi
+    echo "$push_output" >> "${log_file}"
 
     # SOCI index for soci method
     if [[ "$tag" == "05-soci" ]]; then
-        log_info "Creating SOCI index..."
-        sudo soci create "${ecr_uri}:${tag}" 2>/dev/null || true
-        sudo soci push "${ecr_uri}:${tag}" 2>/dev/null || true
+        echo "=== SOCI INDEX ===" >> "${log_file}"
+        sudo soci create "${ecr_uri}:${tag}" >> "${log_file}" 2>&1 || true
+        sudo soci push "${ecr_uri}:${tag}" >> "${log_file}" 2>&1 || true
     fi
 
     # Get ECR image size
@@ -211,8 +269,8 @@ deploy_watcher() {
     local ecr_uri="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}"
 
     # Initialize results file
-    echo "Method | Size Local | Size ECR | Build Time | Startup Time | Restart Time" > "${RESULTS_FILE}"
-    echo "-------|------------|----------|------------|--------------|-------------" >> "${RESULTS_FILE}"
+    echo "Method | Size Local | Size ECR | Build Time | Startup Time" > "${RESULTS_FILE}"
+    echo "-------|------------|----------|------------|-------------" >> "${RESULTS_FILE}"
 
     local last_line_num=0
 
@@ -228,41 +286,46 @@ deploy_watcher() {
 
                 # Check for END marker
                 if [[ "$status" == "END" ]]; then
-                    # Revert to baseline
-                    log_info "Reverting to baseline (:latest)..."
-                    kubectl set image deployment/unicorn-store-spring \
-                        unicorn-store-spring="${ecr_uri}:latest" -n unicorn-store-spring 2>/dev/null
-                    kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s 2>/dev/null
+                    # Revert to baseline (disabled for testing)
+                    # log_info "Reverting to baseline (:latest)..."
+                    # kubectl set image deployment/unicorn-store-spring \
+                    #     unicorn-store-spring="${ecr_uri}:latest" -n unicorn-store-spring 2>/dev/null
+                    # kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s 2>/dev/null
                     return 0
                 fi
 
-                # Handle failed builds
+                local deploy_log="${OUTPUT_DIR}/${tag}-deploy.txt"
+                echo "=== DEPLOY ${tag} ===" > "${deploy_log}"
+
+                # Handle failed builds/pushes
                 if [[ "$status" == "FAILED" ]]; then
-                    echo "${tag} | ${size_local:-N/A} | ${size_ecr:-N/A} | ${build_time:-N/A} | BUILD FAILED | -" >> "${RESULTS_FILE}"
+                    local fail_reason="${error_msg:-BUILD FAILED}"
+                    echo "${tag} | ${size_local:-N/A} | ${size_ecr:-N/A} | ${build_time:-N/A} | ${fail_reason}" >> "${RESULTS_FILE}"
+                    echo "Skipped: ${fail_reason}" >> "${deploy_log}"
+                    log_info "${tag}: ${fail_reason}"
                     continue
                 fi
 
-                # Deploy with new image (cold start)
+                # Deploy with new image
                 log_info "Deploying ${tag}..."
+                echo "--- kubectl set image ---" >> "${deploy_log}"
                 kubectl set image deployment/unicorn-store-spring \
-                    unicorn-store-spring="${ecr_uri}:${tag}" -n unicorn-store-spring 2>/dev/null
-                if ! kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s 2>/dev/null; then
-                    echo "${tag} | ${size_local} | ${size_ecr} | ${build_time} | DEPLOY FAILED | -" >> "${RESULTS_FILE}"
+                    unicorn-store-spring="${ecr_uri}:${tag}" -n unicorn-store-spring >> "${deploy_log}" 2>&1
+                echo "--- kubectl rollout status ---" >> "${deploy_log}"
+                if ! kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s >> "${deploy_log}" 2>&1; then
+                    echo "--- kubectl describe deployment ---" >> "${deploy_log}"
+                    kubectl describe deployment unicorn-store-spring -n unicorn-store-spring >> "${deploy_log}" 2>&1
+                    echo "--- kubectl get events ---" >> "${deploy_log}"
+                    kubectl get events -n unicorn-store-spring --sort-by='.lastTimestamp' | tail -20 >> "${deploy_log}" 2>&1
+                    echo "${tag} | ${size_local} | ${size_ecr} | ${build_time} | DEPLOY FAILED" >> "${RESULTS_FILE}"
                     continue
                 fi
                 sleep 15
                 local startup_time=$(get_startup_time "$tag")
+                echo "Startup time: ${startup_time}" >> "${deploy_log}"
 
-                # Restart (warm restart)
-                kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring 2>/dev/null
-                local restart_time="RESTART FAILED"
-                if kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s 2>/dev/null; then
-                    sleep 15
-                    restart_time=$(get_startup_time "$tag")
-                fi
-
-                echo "${tag} | ${size_local} | ${size_ecr} | ${build_time} | ${startup_time} | ${restart_time}" >> "${RESULTS_FILE}"
-                log_info "${tag}: startup=${startup_time}, restart=${restart_time}"
+                echo "${tag} | ${size_local} | ${size_ecr} | ${build_time} | ${startup_time}" >> "${RESULTS_FILE}"
+                log_info "${tag}: startup=${startup_time}"
             done
         fi
 
@@ -272,10 +335,6 @@ deploy_watcher() {
 
 # Start deploy watcher in background
 start_watcher() {
-    # Clean up old files
-    rm -f "${QUEUE_FILE}" "${RESULTS_FILE}" "${WATCHER_PID_FILE}"
-    touch "${QUEUE_FILE}"
-
     # Start watcher in background
     deploy_watcher &
     echo $! > "${WATCHER_PID_FILE}"
@@ -292,21 +351,27 @@ wait_for_watcher() {
     fi
 }
 
-# Write to queue
+# Write to queue (atomic write to avoid race conditions)
 queue_build_result() {
     local status="$1"
     local tag="$2"
     local size_local="$3"
     local size_ecr="$4"
     local build_time="$5"
-    local error_msg="$6"
+    local error_msg="${6:-}"
 
-    if [[ "$status" == "OK" ]]; then
-        echo "OK|${tag}|${size_local}|${size_ecr}|${build_time}|" >> "${QUEUE_FILE}"
-    else
-        echo "FAILED|${tag}|${size_local}|${size_ecr}|${build_time}|${error_msg}" >> "${QUEUE_FILE}"
-    fi
+    # Sanitize fields - remove newlines and limit length
+    size_ecr=$(echo "$size_ecr" | tr -d '\n' | head -c 20)
+    error_msg=$(echo "$error_msg" | tr -d '\n' | head -c 50)
+
+    # Use consistent format: status|tag|size_local|size_ecr|build_time|error_msg
+    echo "${status}|${tag}|${size_local}|${size_ecr}|${build_time}|${error_msg}" >> "${QUEUE_FILE}"
 }
+
+# Initialize output directory
+rm -rf "${OUTPUT_DIR}"
+mkdir -p "${OUTPUT_DIR}"
+log_info "Output: ${OUTPUT_DIR}"
 
 # Initialize deploy mode
 if [[ "$DEPLOY_MODE" == true ]]; then
@@ -324,7 +389,8 @@ if [[ "$DEPLOY_MODE" == true ]]; then
     aws ecr get-login-password --region "${AWS_REGION}" \
         | docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
-    # Start deploy watcher in background
+    # Initialize queue and start deploy watcher
+    touch "${QUEUE_FILE}"
     start_watcher
 fi
 
@@ -343,17 +409,29 @@ for tag in "${METHODS[@]}"; do
     start_time=$(date +%s)
 
     build_status="❌"
+    push_status="OK"
     size_local="N/A"
     size_ecr="N/A"
+    error_msg=""
 
-    if build_image "$tag" >/dev/null 2>&1; then
+    build_log="${OUTPUT_DIR}/${tag}-build.txt"
+
+    if build_image "$tag" "$build_log"; then
         build_status="✅"
         size_local=$(docker images "${IMAGE_NAME}:${tag}" --format "{{.Size}}" 2>/dev/null || echo "N/A")
 
         # Deploy mode: push and queue for deployment
         if [[ "$DEPLOY_MODE" == true ]]; then
-            size_ecr=$(push_image "$tag" 2>/dev/null)
+            size_ecr=$(push_image "$tag" "$build_log")
+            # Check if push failed
+            if [[ "$size_ecr" == PUSH_FAILED:* ]]; then
+                error_msg="${size_ecr#PUSH_FAILED:}"
+                size_ecr="N/A"
+                push_status="FAILED"
+            fi
         fi
+    else
+        error_msg="Build failed"
     fi
 
     end_time=$(date +%s)
@@ -369,10 +447,10 @@ for tag in "${METHODS[@]}"; do
 
     # Queue for deploy watcher
     if [[ "$DEPLOY_MODE" == true ]]; then
-        if [[ "$build_status" == "✅" ]]; then
+        if [[ "$build_status" == "✅" && "$push_status" == "OK" ]]; then
             queue_build_result "OK" "$tag" "$size_local" "$size_ecr" "$elapsed_fmt"
         else
-            queue_build_result "FAILED" "$tag" "$size_local" "$size_ecr" "$elapsed_fmt" "Build failed"
+            queue_build_result "FAILED" "$tag" "$size_local" "$size_ecr" "$elapsed_fmt" "$error_msg"
         fi
     fi
 done
@@ -388,4 +466,4 @@ if [[ "$DEPLOY_MODE" == true ]]; then
 fi
 
 echo ""
-log_info "Complete"
+log_info "Complete (logs: ${OUTPUT_DIR})"
