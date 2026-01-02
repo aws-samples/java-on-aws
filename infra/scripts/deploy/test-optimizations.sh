@@ -428,8 +428,15 @@ deploy_watcher() {
                         if ! kubectl get crd startupcpuboosts.autoscaling.x-k8s.io &>/dev/null; then
                             log_info "Installing Kube Startup CPU Boost..."
                             kubectl apply -f https://github.com/google/kube-startup-cpu-boost/releases/download/v0.17.1/manifests.yaml >> "${deploy_log}" 2>&1
-                            kubectl wait --for=condition=ready pod -l control-plane=controller-manager \
-                                -n kube-startup-cpu-boost-system --timeout=120s >> "${deploy_log}" 2>&1
+                            # Wait for controller with shorter timeout, continue even if it fails
+                            if ! kubectl wait --for=condition=ready pod -l control-plane=controller-manager \
+                                -n kube-startup-cpu-boost-system --timeout=60s >> "${deploy_log}" 2>&1; then
+                                log_info "CPU boost controller not ready, skipping pod-resize test"
+                                echo "${tag} | ${size_local:-N/A} | ${size_ecr:-N/A} | ${build_time:-N/A} | CONTROLLER NOT READY" >> "${RESULTS_FILE}"
+                                # Cleanup
+                                kubectl delete -f https://github.com/google/kube-startup-cpu-boost/releases/download/v0.17.1/manifests.yaml >> "${deploy_log}" 2>&1 || true
+                                continue
+                            fi
                         fi
 
                         # Create StartupCPUBoost resource
