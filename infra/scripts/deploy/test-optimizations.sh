@@ -222,6 +222,33 @@ build_image() {
         return $?
     fi
 
+    # Special case: CDS uses Paketo Buildpacks
+    if [[ "$tag" == "06-cds" ]]; then
+        log_info "Using Paketo Buildpacks for CDS..."
+
+        # Install pack CLI if not available
+        if ! command -v pack &> /dev/null; then
+            log_info "Installing pack CLI..."
+            curl -sSL "https://github.com/buildpacks/pack/releases/download/v0.38.2/pack-v0.38.2-linux.tgz" | \
+                sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack >> "${log_file}" 2>&1
+        fi
+
+        start_build_db
+        pack build "${IMAGE_NAME}:${tag}" \
+            --builder paketobuildpacks/builder-noble-java-tiny \
+            --path "${APP_DIR}" \
+            --env BP_JVM_VERSION=25 \
+            --env BP_JVM_CDS_ENABLED=true \
+            --env BPL_JVM_CDS_ENABLED=true \
+            --env SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL}" \
+            --env SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME}" \
+            --env SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD}" \
+            >> "${log_file}" 2>&1
+        local result=$?
+        stop_build_db
+        return $result
+    fi
+
     # Check Dockerfile exists
     if [[ ! -f "${dockerfile}" ]]; then
         log_error "Dockerfile not found: ${dockerfile}"
