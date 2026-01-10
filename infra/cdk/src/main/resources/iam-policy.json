@@ -1,0 +1,131 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet",
+			"Effect": "Allow",
+			"Action": [
+				"aws-marketplace:Subscribe"
+			],
+			"Resource": "*",
+			"Condition": {
+				"Null": {
+					"aws-marketplace:ProductId": "false"
+				},
+				"ForAllValues:StringEquals": {
+					"aws-marketplace:ProductId": [
+						"prod-jhuafngbly644",
+						"prod-mxcfnwvpd6kb4",
+						"prod-4pmewlybdftbs"
+					]
+				}
+			}
+		},
+		{
+			"Sid": "AllowedServices",
+			"Effect": "Allow",
+			"Action": [
+				"aws-marketplace:Unsubscribe",
+				"aws-marketplace:ViewSubscriptions",
+				"acm:*",
+				"bedrock:*",
+				"bedrock-agentcore:*",
+				"apigateway:*",
+				"application-autoscaling:*",
+				"application-signals:*",
+				"cloudformation:*",
+				"cloudtrail:*",
+				"cloudwatch:*",
+				"codewhisperer:*",
+				"ec2:*",
+				"ecr:*",
+				"ecs:*",
+				"eks:*",
+				"elasticloadbalancing:*",
+				"events:*",
+				"lambda:*",
+				"logs:*",
+				"rds:*",
+				"s3:*",
+				"secretsmanager:*",
+				"ssm:*",
+				"sts:*",
+				"tag:*",
+				"xray:*",
+				"q:*"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "PassRole",
+			"Effect": "Allow",
+			"Action": [
+				"iam:PassRole"
+			],
+			"Resource": [
+				"arn:aws:iam::{{.AccountId}}:role/unicorn*",
+				"arn:aws:iam::{{.AccountId}}:role/service-role/unicorn*",
+				"arn:aws:iam::{{.AccountId}}:role/ai-jvm-analyzer*",
+				"arn:aws:iam::{{.AccountId}}:role/workshop-*"
+			]
+		},
+		{
+			"Sid": "CreateServiceLinkedRole",
+			"Effect": "Allow",
+			"Action": [
+				"iam:CreateServiceLinkedRole"
+			],
+			"Resource": [
+				"arn:aws:iam::*:role/aws-service-role/application-signals.cloudwatch.amazonaws.com/*",
+				"arn:aws:iam::*:role/aws-service-role/cloudtrail.amazonaws.com/*"
+			]
+		},
+		{
+			"Sid": "GetRole",
+			"Effect": "Allow",
+			"Action": [
+				"iam:GetRole",
+				"iam:ListRoles"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "DenyXXLInstances",
+			"Effect": "Deny",
+			"Action": "ec2:RunInstances",
+			"Condition": {
+				"StringLike": {
+					"ec2:InstanceType": [
+						"*4xlarge",
+						"*6xlarge",
+						"*8xlarge",
+						"*9xlarge",
+						"*10xlarge",
+						"*12xlarge",
+						"*16xlarge",
+						"*18xlarge",
+						"*24xlarge",
+						"f1*",
+						"x1*",
+						"z1*",
+						"*metal"
+					]
+				}
+			},
+			"Resource": ["arn:aws:ec2:*:*:instance/*"]
+		},
+		{
+			"Sid": "DenyReservations",
+			"Effect": "Deny",
+			"Action": [
+				"ec2:ModifyReservedInstances",
+				"ec2:PurchaseHostReservation",
+				"ec2:PurchaseReservedInstancesOffering",
+				"ec2:PurchaseScheduledInstances",
+				"rds:PurchaseReservedDBInstancesOffering",
+				"dynamodb:PurchaseReservedCapacityOfferings"
+			],
+			"Resource": "*"
+		}
+	]
+}

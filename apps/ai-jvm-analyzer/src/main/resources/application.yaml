@@ -1,0 +1,68 @@
+# =============================================================================
+# AI JVM Analyzer - Spring Boot 4 Configuration
+# =============================================================================
+# AI-powered JVM performance analysis using Amazon Bedrock.
+# Triggered by webhooks from monitoring systems (Grafana, CloudWatch, etc.)
+# =============================================================================
+
+spring:
+  application:
+    name: ai-jvm-analyzer
+
+  threads:
+    virtual:
+      enabled: true
+
+  jmx:
+    enabled: false
+
+  ai:
+    bedrock:
+      aws:
+        region: ${AWS_REGION:us-east-1}
+      converse:
+        chat:
+          options:
+            model: anthropic.claude-sonnet-4-20250514-v1:0
+            max-tokens: 10000
+
+# === Analyzer Configuration ===
+analyzer:
+  thread-dump:
+    url-template: http://{podIp}:8080/actuator/threaddump
+  s3:
+    bucket: ${AWS_S3_BUCKET:ai-jvm-analyzer-bucket}
+    prefix:
+      analysis: analysis/
+      profiling: profiling/
+
+# === Server Configuration ===
+server:
+  error:
+    include-message: always
+  shutdown: graceful
+
+# === Actuator Configuration ===
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,threaddump
+
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState
+    prometheus:
+      access: unrestricted
+
+  metrics:
+    enable:
+      all: true
+    tags:
+      application: ai-jvm-analyzer

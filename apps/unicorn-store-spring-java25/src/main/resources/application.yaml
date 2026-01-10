@@ -1,0 +1,95 @@
+# =============================================================================
+# Unicorn Store Spring Boot 4 Configuration
+# =============================================================================
+# This configuration is optimized for containerized deployments on EKS/ECS.
+# Key features: Virtual Threads, minimal connection pool, production-ready probes.
+# =============================================================================
+
+# === Spring Core Configuration ===
+spring:
+  # Enable Virtual Threads (Java 21+) for improved scalability
+  threads:
+    virtual:
+      enabled: true
+  application:
+    name: unicorn-store-spring
+
+  # Disable JMX to reduce memory footprint in containers
+  jmx:
+    enabled: false
+
+# === Database Configuration ===
+  datasource:
+    username: postgres
+    # HikariCP pool optimized for containers with limited resources
+    hikari:
+      # Single connection for workshop demo - increase for production
+      maximum-pool-size: 1
+      # Allow pool suspension for graceful shutdown
+      allow-pool-suspension: true
+      # Don't fail on startup if DB is temporarily unavailable
+      initialization-fail-timeout: 0
+      data-source-properties:
+        # Disable prepared statement caching for simpler connection management
+        prepared-statement-cache-queries: 0
+
+  # Initialize schema on startup
+  sql:
+    init:
+      mode: always
+
+# === JPA/Hibernate Configuration ===
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    # Disable Open Session in View anti-pattern
+    open-in-view: false
+    hibernate:
+      # Schema managed by SQL init, not Hibernate
+      ddl-auto: none
+    properties:
+      hibernate:
+        boot:
+          # Skip JDBC metadata lookup for faster startup
+          "[allow_jdbc_metadata_access]": false
+
+# === Server Configuration ===
+server:
+  # Graceful shutdown for container orchestration
+  shutdown: graceful
+
+# === Web Configuration ===
+spring.web:
+  error:
+    # Include error messages in responses for debugging
+    include-message: always
+
+# === Actuator/Management Configuration ===
+management:
+  endpoints:
+    web:
+      exposure:
+        # Expose endpoints needed for monitoring and debugging
+        include: health,info,prometheus,threaddump
+
+  endpoint:
+    health:
+      # Enable Kubernetes-style health probes
+      probes:
+        enabled: true
+      group:
+        # Liveness probe - is the app alive?
+        liveness:
+          include: livenessState
+        # Readiness probe - is the app ready to receive traffic?
+        readiness:
+          include: readinessState
+    prometheus:
+      # Allow unauthenticated access to metrics endpoint
+      access: unrestricted
+
+  # Metrics configuration for observability
+  metrics:
+    enable:
+      all: true
+    tags:
+      application: unicorn-store-spring

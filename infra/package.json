@@ -1,0 +1,11 @@
+{
+  "name": "workshop-infrastructure",
+  "version": "1.0.0",
+  "description": "Unified AWS workshop infrastructure",
+  "scripts": {
+    "generate": "./scripts/cfn/generate.sh",
+    "sync": "./scripts/cfn/sync.sh"
+  },
+  "author": "",
+  "license": "ISC"
+}

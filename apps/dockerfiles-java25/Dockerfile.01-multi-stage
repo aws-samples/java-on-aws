@@ -1,0 +1,20 @@
+FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
+
+COPY ./pom.xml ./pom.xml
+COPY src ./src/
+
+RUN mvn clean package -DskipTests -ntp && mv target/store-spring-1.0.0-exec.jar store-spring.jar
+
+FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
+
+RUN yum install -y shadow-utils
+
+COPY --from=builder store-spring.jar store-spring.jar
+
+RUN groupadd --system spring -g 1000
+RUN adduser spring -u 1000 -g 1000
+
+USER 1000:1000
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "-Dserver.port=8080", "/store-spring.jar"]
