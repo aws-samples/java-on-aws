@@ -1,0 +1,37 @@
+FROM azul/zulu-openjdk:25-jdk-crac-latest AS builder
+
+RUN apt-get -qq update && apt-get -qq install -y curl maven
+
+ARG SPRING_DATASOURCE_URL
+ENV SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL
+ARG SPRING_DATASOURCE_USERNAME
+ENV SPRING_DATASOURCE_USERNAME=$SPRING_DATASOURCE_USERNAME
+ARG SPRING_DATASOURCE_PASSWORD
+ENV SPRING_DATASOURCE_PASSWORD=$SPRING_DATASOURCE_PASSWORD
+
+COPY ./pom.xml ./pom.xml
+COPY src ./src/
+
+RUN mvn clean package -DskipTests -ntp && mv target/store-spring-1.0.0-exec.jar store-spring.jar
+
+# Take checkpoint using Warp engine (no CRIU, no extra privileges)
+RUN java -Dspring.context.checkpoint=onRefresh \
+    -Djdk.crac.collect-fd-stacktraces=true \
+    -XX:CRaCEngine=warp \
+    -XX:CPUFeatures=generic \
+    -XX:CRaCCheckpointTo=/opt/crac-files \
+    -jar /store-spring.jar & PID=$! && wait ${PID} || true
+
+FROM azul/zulu-openjdk:25-jdk-crac-latest
+
+RUN apt-get -qq update && apt-get -qq install -y adduser \
+    && addgroup --system --gid 1000 spring \
+    && adduser --system --disabled-password --gecos "" --uid 1000 --gid 1000 spring
+
+COPY --from=builder --chown=1000:1000 /opt/crac-files /opt/crac-files
+COPY --from=builder --chown=1000:1000 /store-spring.jar /store-spring.jar
+
+USER 1000:1000
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-XX:CRaCEngine=warp", "-XX:CRaCRestoreFrom=/opt/crac-files", "-Dserver.port=8080"]

@@ -1,0 +1,1087 @@
+Metadata:
+  cdk_nag:
+    rules_to_suppress:
+      - id: AwsSolutions-APIG1
+        reason: API Gateway access logging not needed for workshop
+      - id: AwsSolutions-APIG2
+        reason: API Gateway request validation not needed for workshop
+      - id: AwsSolutions-APIG3
+        reason: Workshop API Gateways do not need AWS WAF
+      - id: AwsSolutions-APIG4
+        reason: Workshop environment does not require API Gateway authorization
+      - id: AwsSolutions-APIG6
+        reason: API Gateway access logging not needed for workshop
+      - id: AwsSolutions-COG4
+        reason: Workshop environment does not require Cognito User Pool authorization
+      - id: AwsSolutions-IAM4
+        reason: AWS Managed policies are acceptable for workshop
+      - id: AwsSolutions-IAM5
+        reason: Wildcard permissions acceptable for workshop parallel resource creation
+      - id: AwsSolutions-RDS2
+        reason: Workshop non-sensitive test database does not need encryption at rest
+      - id: AwsSolutions-RDS3
+        reason: Workshop environment does not need Multi-AZ to reduce cost
+      - id: AwsSolutions-RDS6
+        reason: Workshop environment uses user/password authentication
+      - id: AwsSolutions-RDS10
+        reason: Workshop environment is ephemeral - database deleted at end
+      - id: AwsSolutions-RDS11
+        reason: Database in private subnet can use default port
+      - id: AwsSolutions-RDS13
+        reason: Workshop database does not need backups
+      - id: AwsSolutions-VPC7
+        reason: Workshop environment does not need VPC flow logs
+      - id: AwsSolutions-EC23
+        reason: Workshop security groups allow broad access for learning
+      - id: AwsSolutions-SMG4
+        reason: Ephemeral workshop environment does not need secret rotation
+      - id: AwsSolutions-CFR1
+        reason: Workshop environment should be accessible from any geo
+      - id: AwsSolutions-CFR2
+        reason: Ephemeral workshop environment does not need WAF
+      - id: AwsSolutions-CFR3
+        reason: Ephemeral workshop environment does not need logging
+      - id: AwsSolutions-CFR4
+        reason: Workshop IDE uses HTTP origin
+      - id: AwsSolutions-CFR5
+        reason: Workshop IDE uses HTTP origin
+      - id: AwsSolutions-EKS1
+        reason: Workshop EKS cluster uses public access for learning
+      - id: AwsSolutions-EKS2
+        reason: Workshop EKS cluster does not need control plane logging
+      - id: AwsSolutions-EC28
+        reason: Workshop instance does not need detailed monitoring
+      - id: AwsSolutions-EC29
+        reason: Workshop instance does not need termination protection
+      - id: AwsSolutions-CB4
+        reason: CodeBuild uses default AWS-managed CMK for S3
+      - id: AwsSolutions-S1
+        reason: Workshop S3 bucket does not need access logs
+      - id: AwsSolutions-L1
+        reason: Workshop environment uses CDK default Lambda runtimes
+      - id: AwsSolutions-ELB2
+        reason: Workshop environment does not need ALB logs
+      - id: AwsSolutions-ECS2
+        reason: Workshop environment uses temporary containers
+      - id: AwsSolutions-ECS4
+        reason: Workshop environment does not need Container Insights
+      - id: CdkNagValidationFailure
+        reason: Suppress CDK Nag validation warnings
+Outputs:
+  IdePassword:
+    Description: Workshop IDE Password
+    Export:
+      Name: ide-password
+    Value:
+      Fn::GetAtt:
+        - IdePasswordResource07883F17
+        - password
+  IdeUrl:
+    Description: Workshop IDE Url
+    Export:
+      Name: ide-url
+    Value:
+      Fn::Join:
+        - ""
+        - - https://
+          - Fn::GetAtt:
+              - IdeDistribution042A6660
+              - DomainName
+          - /?folder=/home/ec2-user/environment&tkn=
+          - Fn::GetAtt:
+              - IdePasswordResource07883F17
+              - password
+Parameters:
+  SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter:
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+Resources:
+  IdeDistribution042A6660:
+    DeletionPolicy: Delete
+    DependsOn:
+      - IdeEipAssociationDFF81215
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - PATCH
+            - POST
+            - DELETE
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          Compress: true
+          OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
+          TargetOriginId: WorkshopStackIdeDistributionOrigin10FECA386
+          ViewerProtocolPolicy: allow-all
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+              OriginSSLProtocols:
+                - TLSv1.2
+            DomainName:
+              Fn::Join:
+                - ""
+                - - ec2-
+                  - Fn::Select:
+                      - 0
+                      - Fn::Split:
+                          - "."
+                          - Fn::GetAtt:
+                              - IdeElasticIP3327A0B5
+                              - PublicIp
+                  - "-"
+                  - Fn::Select:
+                      - 1
+                      - Fn::Split:
+                          - "."
+                          - Fn::GetAtt:
+                              - IdeElasticIP3327A0B5
+                              - PublicIp
+                  - "-"
+                  - Fn::Select:
+                      - 2
+                      - Fn::Split:
+                          - "."
+                          - Fn::GetAtt:
+                              - IdeElasticIP3327A0B5
+                              - PublicIp
+                  - "-"
+                  - Fn::Select:
+                      - 3
+                      - Fn::Split:
+                          - "."
+                          - Fn::GetAtt:
+                              - IdeElasticIP3327A0B5
+                              - PublicIp
+                  - .compute-1.amazonaws.com
+            Id: WorkshopStackIdeDistributionOrigin10FECA386
+    Type: AWS::CloudFront::Distribution
+    UpdateReplacePolicy: Delete
+  IdeEC2InstanceResource438B3605:
+    DeletionPolicy: Delete
+    Properties:
+      IamInstanceProfileArn:
+        Fn::GetAtt:
+          - IdeInstanceProfile61B92038
+          - Arn
+      ImageId:
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+      InstanceName: ide
+      InstanceTypes: m6a.xlarge,m7a.xlarge
+      SecurityGroupIds:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - IdeSecurityGroup73B02454
+                - GroupId
+            - ","
+            - Fn::GetAtt:
+                - IdeInternalSecurityGroupB0A5D76B
+                - GroupId
+      ServiceToken:
+        Fn::GetAtt:
+          - IdeInstanceLauncherFunction803C5A2A
+          - Arn
+      SubnetIds:
+        Fn::Join:
+          - ""
+          - - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+            - ","
+            - Ref: VpcPublicSubnet2SubnetA811849C
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+            - ""
+            - - |-
+                #!/bin/bash
+                #!/bin/bash
+                set -e
+
+                # Minimal EC2 UserData script - downloads and runs full bootstrap
+                # This keeps UserData under size limits while allowing unlimited bootstrap size
+
+                # Configuration from CDK
+                export GIT_BRANCH="new-ws-infra"
+                export AWS_REGION="
+              - Ref: AWS::Region
+              - |-
+                "
+                export TEMPLATE_TYPE="base"
+                export ARCH="x86_64"
+                export IDE_TYPE="code-editor"
+                export WAIT_CONDITION_HANDLE_URL="
+              - Ref: IdeWaitConditionHandleE8345861
+              - |-
+                "
+                export PREFIX="workshop"
+
+                # Setup logging - use PREFIX for log group name
+                LOG_GROUP_NAME="workshop-ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
+                echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
+
+                # Install CloudWatch agent for logging
+                dnf install -y amazon-cloudwatch-agent
+
+                # Create CloudWatch agent configuration
+                cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << EOF
+                {
+                  "logs": {
+                    "logs_collected": {
+                      "files": {
+                        "collect_list": [
+                          {
+                            "file_path": "/var/log/bootstrap.log",
+                            "log_group_name": "$LOG_GROUP_NAME",
+                            "log_stream_name": "{instance_id}",
+                            "retention_in_days": 7
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+                EOF
+
+                # Start CloudWatch agent
+                /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+                  -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+
+                # Redirect all output to log file and console
+                exec > >(tee -a /var/log/bootstrap.log)
+                exec 2>&1
+
+                echo "UserData started at $(date) - Logging to $LOG_GROUP_NAME"
+
+                # Set up error trap for UserData failures (before bootstrap.sh takes over)
+                trap 'echo "UserData failed at line $LINENO"; /opt/aws/bin/cfn-signal -e 1 "
+              - Ref: IdeWaitConditionHandleE8345861
+              - |-
+                " 2>/dev/null || true; exit 1' ERR
+
+                # Install git (required for cloning repository)
+                echo "Installing git..."
+                dnf install -y git
+
+                # Clone repository to ec2-user home directory
+                clone_repository() {
+                    local max_attempts=5
+                    local delay=5
+
+                    for attempt in $(seq 1 $max_attempts); do
+                        echo "Clone attempt $attempt of $max_attempts"
+
+                        # Remove existing directory if it exists
+                        sudo -u ec2-user rm -rf /home/ec2-user/java-on-aws
+
+                        # Clone as ec2-user to their home directory
+                        if sudo -u ec2-user git clone https://github.com/aws-samples/java-on-aws.git /home/ec2-user/java-on-aws; then
+                            # Checkout the correct branch as ec2-user
+                            if sudo -u ec2-user bash -c "cd /home/ec2-user/java-on-aws && git checkout $GIT_BRANCH"; then
+                                echo "Successfully cloned repository and checked out branch $GIT_BRANCH on attempt $attempt"
+                                return 0
+                            else
+                                echo "Failed to checkout branch $GIT_BRANCH on attempt $attempt"
+                            fi
+                        else
+                            echo "Failed to clone repository on attempt $attempt"
+                        fi
+
+                        if [ $attempt -lt $max_attempts ]; then
+                            echo "Clone failed on attempt $attempt, waiting ${delay}s before retry..."
+                            sleep $delay
+                        fi
+                    done
+
+                    echo "All clone attempts failed after $max_attempts tries"
+                    return 1
+                }
+
+                if clone_repository; then
+                    # Make scripts executable
+                    sudo -u ec2-user chmod +x /home/ec2-user/java-on-aws/infra/scripts/ide/*.sh
+
+                    echo "Executing full bootstrap script..."
+                    # Run bootstrap script as root from the cloned directory
+                    if cd /home/ec2-user/java-on-aws && WAIT_CONDITION_HANDLE_URL="
+              - Ref: IdeWaitConditionHandleE8345861
+              - |-
+                " infra/scripts/ide/bootstrap.sh "$GIT_BRANCH" "$TEMPLATE_TYPE"; then
+                        echo "Bootstrap completed successfully"
+                        # Bootstrap script already signaled success
+                    else
+                        echo "FATAL: Bootstrap script failed"
+                        /opt/aws/bin/cfn-signal -e 1 "
+              - Ref: IdeWaitConditionHandleE8345861
+              - |-
+                "
+                        exit 1
+                    fi
+                else
+                    echo "FATAL: Could not clone repository"
+                    /opt/aws/bin/cfn-signal -e 1 "
+              - Ref: IdeWaitConditionHandleE8345861
+              - |-
+                "
+                    exit 1
+                fi
+      VolumeSize: "50"
+    Type: AWS::CloudFormation::CustomResource
+    UpdateReplacePolicy: Delete
+  IdeEipAssociationDFF81215:
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - IdeElasticIP3327A0B5
+          - AllocationId
+      InstanceId:
+        Fn::GetAtt:
+          - IdeEC2InstanceResource438B3605
+          - InstanceId
+    Type: AWS::EC2::EIPAssociation
+  IdeElasticIP3327A0B5:
+    Properties:
+      Domain: vpc
+    Type: AWS::EC2::EIP
+  IdeInstanceLauncherFunction803C5A2A:
+    DependsOn:
+      - IdeLambdaRoleDefaultPolicy099093D2
+      - IdeLambdaRole82392143
+    Properties:
+      Code:
+        ZipFile: |-
+          import boto3
+          import traceback
+          import cfnresponse
+
+          ec2 = boto3.client('ec2')
+
+          def lambda_handler(event, context):
+              print(f'Event: {event}')
+              responseData = {}
+              status = cfnresponse.SUCCESS
+              physical_id = event.get('PhysicalResourceId', 'InstanceLauncher')
+
+              try:
+                  if event['RequestType'] == 'Delete':
+                      # Terminate the instance if it exists
+                      instance_id = event.get('PhysicalResourceId')
+                      if instance_id and instance_id.startswith('i-'):
+                          try:
+                              ec2.terminate_instances(InstanceIds=[instance_id])
+                              print(f'Terminated instance: {instance_id}')
+                          except Exception as e:
+                              print(f'Error terminating instance: {e}')
+                      responseData = {'Message': 'Instance terminated'}
+                      cfnresponse.send(event, context, status, responseData, physical_id)
+                      return
+
+                  if event['RequestType'] == 'Update':
+                      # For updates, return existing instance
+                      instance_id = event.get('PhysicalResourceId')
+                      if instance_id and instance_id.startswith('i-'):
+                          responseData = {'InstanceId': instance_id}
+                          cfnresponse.send(event, context, status, responseData, instance_id)
+                          return
+
+                  # Create new instance
+                  props = event['ResourceProperties']
+                  subnet_ids = props['SubnetIds'].split(',')
+                  instance_types = props['InstanceTypes'].split(',')
+
+                  instance_id = None
+                  last_error = None
+
+                  # Try each instance type across all AZs
+                  for instance_type in instance_types:
+                      for subnet_id in subnet_ids:
+                          try:
+                              print(f'Attempting to launch {instance_type} in subnet {subnet_id}')
+
+                              response = ec2.run_instances(
+                                  ImageId=props['ImageId'],
+                                  InstanceType=instance_type,
+                                  SubnetId=subnet_id,
+                                  SecurityGroupIds=props['SecurityGroupIds'].split(','),
+                                  IamInstanceProfile={'Arn': props['IamInstanceProfileArn']},
+                                  BlockDeviceMappings=[{
+                                      'DeviceName': '/dev/xvda',
+                                      'Ebs': {
+                                          'VolumeSize': int(props['VolumeSize']),
+                                          'VolumeType': 'gp3',
+                                          'DeleteOnTermination': True,
+                                          'Encrypted': True
+                                      }
+                                  }],
+                                  TagSpecifications=[{
+                                      'ResourceType': 'instance',
+                                      'Tags': [
+                                          {'Key': 'Name', 'Value': props['InstanceName']},
+                                          {'Key': 'Workshop', 'Value': 'true'}
+                                      ]
+                                  }],
+                                  UserData=props.get('UserData', ''),
+                                  MinCount=1,
+                                  MaxCount=1
+                              )
+
+                              instance_id = response['Instances'][0]['InstanceId']
+                              print(f'Successfully launched instance {instance_id} ({instance_type} in {subnet_id})')
+
+                              # Wait for instance to reach running state before returning
+                              print(f'Waiting for instance {instance_id} to reach running state...')
+                              waiter = ec2.get_waiter('instance_running')
+                              waiter.wait(
+                                  InstanceIds=[instance_id],
+                                  WaiterConfig={
+                                      'Delay': 10,
+                                      'MaxAttempts': 30  # 30 * 10 = 300 seconds (5 minutes) max wait
+                                  }
+                              )
+                              print(f'Instance {instance_id} is now running')
+
+                              responseData = {
+                                  'InstanceId': instance_id,
+                                  'InstanceType': instance_type,
+                                  'SubnetId': subnet_id
+                              }
+                              cfnresponse.send(event, context, status, responseData, instance_id)
+                              return
+
+                          except Exception as e:
+                              error_msg = str(e)
+                              print(f'Failed to launch {instance_type} in {subnet_id}: {error_msg}')
+
+                              # Check if it's a retryable error (capacity or instance type issues)
+                              retryable_errors = [
+                                  'InsufficientInstanceCapacity',  # No capacity in AZ
+                                  'Unsupported',                    # Instance type not supported
+                                  'InstanceLimitExceeded',          # Hit instance limit
+                                  'VcpuLimitExceeded',              # Hit vCPU limit
+                                  'InvalidParameterValue',          # Invalid instance type or config
+                              ]
+
+                              if any(err in error_msg for err in retryable_errors):
+                                  last_error = error_msg
+                                  continue  # Try next combination
+                              else:
+                                  # Other error (permissions, network, etc), fail immediately
+                                  raise
+
+                  # All attempts failed
+                  status = cfnresponse.FAILED
+                  responseData = {'Error': f'No capacity available. Last error: {last_error}'}
+
+              except Exception as e:
+                  status = cfnresponse.FAILED
+                  tb_err = traceback.format_exc()
+                  print(tb_err)
+                  responseData = {'Error': tb_err}
+
+              cfnresponse.send(event, context, status, responseData, physical_id)
+      FunctionName: workshop-ide-launcher
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - IdeLambdaRole82392143
+          - Arn
+      Runtime: python3.13
+      Timeout: 300
+    Type: AWS::Lambda::Function
+  IdeInstanceProfile61B92038:
+    Properties:
+      InstanceProfileName: workshop-ide-instance-profile
+      Roles:
+        - Ref: IdeRole4650E22E
+    Type: AWS::IAM::InstanceProfile
+  IdeInternalSecurityGroupB0A5D76B:
+    Properties:
+      GroupDescription: IDE internal security group
+      GroupName: workshop-ide-internal-sg
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::EC2::SecurityGroup
+  IdeInternalSecurityGroupfromWorkshopStackIdeInternalSecurityGroup2A6A3A7DALLTRAFFIC101F9997:
+    Properties:
+      Description: Allow all internal traffic
+      GroupId:
+        Fn::GetAtt:
+          - IdeInternalSecurityGroupB0A5D76B
+          - GroupId
+      IpProtocol: "-1"
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - IdeInternalSecurityGroupB0A5D76B
+          - GroupId
+    Type: AWS::EC2::SecurityGroupIngress
+  IdeInternalSecurityGrouptoWorkshopStackIdeInternalSecurityGroup2A6A3A7DALLTRAFFICCB660737:
+    Properties:
+      Description: Allow all internal traffic
+      DestinationSecurityGroupId:
+        Fn::GetAtt:
+          - IdeInternalSecurityGroupB0A5D76B
+          - GroupId
+      GroupId:
+        Fn::GetAtt:
+          - IdeInternalSecurityGroupB0A5D76B
+          - GroupId
+      IpProtocol: "-1"
+    Type: AWS::EC2::SecurityGroupEgress
+  IdeLambdaRole82392143:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Type: AWS::IAM::Role
+  IdeLambdaRoleDefaultPolicy099093D2:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - ec2:CreateTags
+              - ec2:DescribeInstanceStatus
+              - ec2:DescribeInstances
+              - ec2:DescribeManagedPrefixLists
+              - ec2:DescribeSubnets
+              - ec2:RunInstances
+              - ec2:TerminateInstances
+              - iam:PassRole
+              - secretsmanager:DescribeSecret
+              - secretsmanager:GetSecretValue
+              - ssm:DescribeInstanceInformation
+              - ssm:GetCommandInvocation
+              - ssm:SendCommand
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: IdeLambdaRoleDefaultPolicy099093D2
+      Roles:
+        - Ref: IdeLambdaRole82392143
+    Type: AWS::IAM::Policy
+  IdePasswordFunctionFD1F967F:
+    DependsOn:
+      - IdePasswordFunctionServiceRoleDefaultPolicy282A360C
+      - IdePasswordFunctionServiceRole971421B6
+    Properties:
+      Code:
+        ZipFile: |-
+          import boto3
+          import json
+          import traceback
+          import cfnresponse
+
+          secretsmanager = boto3.client('secretsmanager')
+
+          def lambda_handler(event, context):
+              print(f'Event: {event}')
+              responseData = {}
+              status = cfnresponse.SUCCESS
+              physical_id = event.get('PhysicalResourceId', 'PasswordExporter')
+
+              try:
+                  if event['RequestType'] == 'Delete':
+                      # Nothing to clean up for password export
+                      responseData = {'Message': 'Password exporter deleted'}
+                      cfnresponse.send(event, context, status, responseData, physical_id)
+                      return
+
+                  if event['RequestType'] in ['Create', 'Update']:
+                      # Get password from Secrets Manager
+                      props = event['ResourceProperties']
+                      password_name = props['PasswordName']
+
+                      print('Retrieving password from secret in Secrets Manager')
+
+                      response = secretsmanager.get_secret_value(SecretId=password_name)
+                      secret_data = json.loads(response['SecretString'])
+
+                      # Return the password value for CloudFormation output
+                      responseData = {
+                          'password': secret_data['password']
+                      }
+
+                      print('Successfully retrieved password from Secrets Manager')
+
+              except Exception as e:
+                  status = cfnresponse.FAILED
+                  tb_err = traceback.format_exc()
+                  print(tb_err)
+                  responseData = {'Error': tb_err}
+
+              cfnresponse.send(event, context, status, responseData, physical_id)
+      FunctionName: workshop-ide-password
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - IdePasswordFunctionServiceRole971421B6
+          - Arn
+      Runtime: python3.13
+      Timeout: 180
+    Type: AWS::Lambda::Function
+  IdePasswordFunctionServiceRole971421B6:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Type: AWS::IAM::Role
+  IdePasswordFunctionServiceRoleDefaultPolicy282A360C:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - secretsmanager:DescribeSecret
+              - secretsmanager:GetSecretValue
+            Effect: Allow
+            Resource:
+              Ref: IdePasswordSecretF907B9F2
+        Version: "2012-10-17"
+      PolicyName: IdePasswordFunctionServiceRoleDefaultPolicy282A360C
+      Roles:
+        - Ref: IdePasswordFunctionServiceRole971421B6
+    Type: AWS::IAM::Policy
+  IdePasswordResource07883F17:
+    DeletionPolicy: Delete
+    Properties:
+      PasswordName:
+        Fn::Join:
+          - "-"
+          - - Fn::Select:
+                - 0
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: IdePasswordSecretF907B9F2
+            - Fn::Select:
+                - 1
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: IdePasswordSecretF907B9F2
+            - Fn::Select:
+                - 2
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 6
+                        - Fn::Split:
+                            - ":"
+                            - Ref: IdePasswordSecretF907B9F2
+      ServiceToken:
+        Fn::GetAtt:
+          - IdePasswordFunctionFD1F967F
+          - Arn
+    Type: AWS::CloudFormation::CustomResource
+    UpdateReplacePolicy: Delete
+  IdePasswordSecretF907B9F2:
+    DeletionPolicy: Delete
+    Properties:
+      GenerateSecretString:
+        ExcludeCharacters: '"@/\\'
+        ExcludePunctuation: true
+        GenerateStringKey: password
+        IncludeSpace: false
+        PasswordLength: 32
+        SecretStringTemplate: '{"password":""}'
+      Name: workshop-ide-password
+    Type: AWS::SecretsManager::Secret
+    UpdateReplacePolicy: Delete
+  IdePrefixListLookupFunction9E5A63DE:
+    DependsOn:
+      - IdeLambdaRoleDefaultPolicy099093D2
+      - IdeLambdaRole82392143
+    Properties:
+      Code:
+        ZipFile: |-
+          from __future__ import print_function
+          import boto3
+          import traceback
+          import cfnresponse
+
+          def lambda_handler(event, context):
+              print('Event: {}'.format(event))
+              print('context: {}'.format(context))
+              responseData = {}
+
+              status = cfnresponse.SUCCESS
+
+              if event['RequestType'] == 'Delete':
+                  responseData = {'Success': 'Custom Resource removed'}
+                  cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+              else:
+                  try:
+                      # Open AWS clients
+                      ec2 = boto3.client('ec2')
+
+                      res = ec2.describe_managed_prefix_lists(
+                         Filters=[{
+                            'Name': 'prefix-list-name',
+                            'Values': ['com.amazonaws.global.cloudfront.origin-facing']
+                         }]
+                      )
+
+                      responseData = {'PrefixListId': str(res['PrefixLists'][0]['PrefixListId'])}
+                  except Exception as e:
+                      status = cfnresponse.FAILED
+                      tb_err = traceback.format_exc()
+                      print(tb_err)
+                      responseData = {'Error': tb_err}
+                  finally:
+                      cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+      FunctionName: workshop-ide-prefixlist
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - IdeLambdaRole82392143
+          - Arn
+      Runtime: python3.13
+      Timeout: 180
+    Type: AWS::Lambda::Function
+  IdePrefixListResourceD2EAC007:
+    DeletionPolicy: Delete
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - IdePrefixListLookupFunction9E5A63DE
+          - Arn
+    Type: AWS::CloudFormation::CustomResource
+    UpdateReplacePolicy: Delete
+  IdeRole4650E22E:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/ReadOnlyAccess
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonSSMManagedInstanceCore
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/CloudWatchAgentServerPolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AdministratorAccess
+      RoleName: workshop-ide-user
+    Type: AWS::IAM::Role
+  IdeRoleDefaultPolicyFD4BDE67:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: cloudformation:SignalResource
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - secretsmanager:DescribeSecret
+              - secretsmanager:GetSecretValue
+            Effect: Allow
+            Resource:
+              Ref: IdePasswordSecretF907B9F2
+        Version: "2012-10-17"
+      PolicyName: IdeRoleDefaultPolicyFD4BDE67
+      Roles:
+        - Ref: IdeRole4650E22E
+    Type: AWS::IAM::Policy
+  IdeSecurityGroup73B02454:
+    Properties:
+      GroupDescription: IDE security group
+      GroupName: workshop-ide-cloudfront-sg
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::EC2::SecurityGroup
+  IdeSecurityGroupfromIndirectPeer80C006C8A1:
+    Properties:
+      Description: HTTP from CloudFront only
+      FromPort: 80
+      GroupId:
+        Fn::GetAtt:
+          - IdeSecurityGroup73B02454
+          - GroupId
+      IpProtocol: tcp
+      SourcePrefixListId:
+        Fn::GetAtt:
+          - IdePrefixListResourceD2EAC007
+          - PrefixListId
+      ToPort: 80
+    Type: AWS::EC2::SecurityGroupIngress
+  IdeWaitConditionCC35C186:
+    DependsOn:
+      - IdeEC2InstanceResource438B3605
+    Properties:
+      Count: 1
+      Handle:
+        Ref: IdeWaitConditionHandleE8345861
+      Timeout: "1800"
+    Type: AWS::CloudFormation::WaitCondition
+  IdeWaitConditionHandleE8345861:
+    Type: AWS::CloudFormation::WaitConditionHandle
+  VpcC3027511:
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: workshop-vpc
+    Type: AWS::EC2::VPC
+  VpcIGW488B0FEB:
+    Properties:
+      Tags:
+        - Key: Name
+          Value: workshop-vpc
+    Type: AWS::EC2::InternetGateway
+  VpcPrivateSubnet1DefaultRouteF704DE9F:
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: VpcPublicSubnet1NATGateway8185E366
+      RouteTableId:
+        Ref: VpcPrivateSubnet1RouteTable901BAEEE
+    Type: AWS::EC2::Route
+  VpcPrivateSubnet1RouteTable901BAEEE:
+    Properties:
+      Tags:
+        - Key: Name
+          Value: WorkshopStack/Vpc/Vpc/PrivateSubnet1
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::EC2::RouteTable
+  VpcPrivateSubnet1RouteTableAssociation2BC202CB:
+    Properties:
+      RouteTableId:
+        Ref: VpcPrivateSubnet1RouteTable901BAEEE
+      SubnetId:
+        Ref: VpcPrivateSubnet1Subnet67A4DBCB
+    Type: AWS::EC2::SubnetRouteTableAssociation
+  VpcPrivateSubnet1Subnet67A4DBCB:
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Private
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: WorkshopStack/Vpc/Vpc/PrivateSubnet1
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::EC2::Subnet
+  VpcPrivateSubnet2DefaultRoute5FAC9901:
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: VpcPublicSubnet1NATGateway8185E366
+      RouteTableId:
+        Ref: VpcPrivateSubnet2RouteTable1EA00C9D
+    Type: AWS::EC2::Route
+  VpcPrivateSubnet2RouteTable1EA00C9D:
+    Properties:
+      Tags:
+        - Key: Name
+          Value: WorkshopStack/Vpc/Vpc/PrivateSubnet2
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::EC2::RouteTable
+  VpcPrivateSubnet2RouteTableAssociationFA51927B:
+    Properties:
+      RouteTableId:
+        Ref: VpcPrivateSubnet2RouteTable1EA00C9D
+      SubnetId:
+        Ref: VpcPrivateSubnet2SubnetC8EB537D
+    Type: AWS::EC2::SubnetRouteTableAssociation
+  VpcPrivateSubnet2SubnetC8EB537D:
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.3.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Private
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: WorkshopStack/Vpc/Vpc/PrivateSubnet2
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::EC2::Subnet
+  VpcPublicSubnet1DefaultRoute0F5C6C43:
+    DependsOn:
+      - VpcVPCGW42EC8516
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: VpcIGW488B0FEB
+      RouteTableId:
+        Ref: VpcPublicSubnet1RouteTable431DD755
+    Type: AWS::EC2::Route
+  VpcPublicSubnet1EIP2293BAA3:
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+    Type: AWS::EC2::EIP
+  VpcPublicSubnet1NATGateway8185E366:
+    DependsOn:
+      - VpcPublicSubnet1DefaultRoute0F5C6C43
+      - VpcPublicSubnet1RouteTableAssociationBBCB7AA1
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - VpcPublicSubnet1EIP2293BAA3
+          - AllocationId
+      SubnetId:
+        Ref: VpcPublicSubnet1Subnet8E8DEDC0
+      Tags:
+        - Key: Name
+          Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+    Type: AWS::EC2::NatGateway
+  VpcPublicSubnet1RouteTable431DD755:
+    Properties:
+      Tags:
+        - Key: Name
+          Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::EC2::RouteTable
+  VpcPublicSubnet1RouteTableAssociationBBCB7AA1:
+    Properties:
+      RouteTableId:
+        Ref: VpcPublicSubnet1RouteTable431DD755
+      SubnetId:
+        Ref: VpcPublicSubnet1Subnet8E8DEDC0
+    Type: AWS::EC2::SubnetRouteTableAssociation
+  VpcPublicSubnet1Subnet8E8DEDC0:
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::EC2::Subnet
+  VpcPublicSubnet2DefaultRouteD629179A:
+    DependsOn:
+      - VpcVPCGW42EC8516
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: VpcIGW488B0FEB
+      RouteTableId:
+        Ref: VpcPublicSubnet2RouteTable77FB35FC
+    Type: AWS::EC2::Route
+  VpcPublicSubnet2RouteTable77FB35FC:
+    Properties:
+      Tags:
+        - Key: Name
+          Value: WorkshopStack/Vpc/Vpc/PublicSubnet2
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::EC2::RouteTable
+  VpcPublicSubnet2RouteTableAssociation3AFE92E6:
+    Properties:
+      RouteTableId:
+        Ref: VpcPublicSubnet2RouteTable77FB35FC
+      SubnetId:
+        Ref: VpcPublicSubnet2SubnetA811849C
+    Type: AWS::EC2::SubnetRouteTableAssociation
+  VpcPublicSubnet2SubnetA811849C:
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: WorkshopStack/Vpc/Vpc/PublicSubnet2
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::EC2::Subnet
+  VpcVPCGW42EC8516:
+    Properties:
+      InternetGatewayId:
+        Ref: VpcIGW488B0FEB
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::EC2::VPCGatewayAttachment
+  VpcVpcIdParameter240F384B:
+    Properties:
+      Description: Workshop VPC ID for cross-stack reference
+      Name: workshop-vpc-id
+      Type: String
+      Value:
+        Ref: VpcC3027511
+    Type: AWS::SSM::Parameter

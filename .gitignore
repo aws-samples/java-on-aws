@@ -35,6 +35,8 @@ build/
 ### VS Code ###
 .vscode/
 
+### Kiro ###
+.kiro/debug/
 
 ### Other
 

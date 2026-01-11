@@ -1,0 +1,82 @@
+extends:
+  - config:base
+schedule:
+  - "before 6am on monday"
+regexManagers:
+  # Development tools
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "NVM_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: nvm-sh/nvm
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "NODE_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: node-version
+    depNameTemplate: node
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "MAVEN_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: apache/maven
+
+  # VS Code tools
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "VSCODE_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: coder/code-server
+
+  # Kubernetes tools
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "KUBECTL_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: kubernetes/kubernetes
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "HELM_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: helm/helm
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "EKS_NODE_VIEWER_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: awslabs/eks-node-viewer
+
+  # Container tools
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "SOCI_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: awslabs/soci-snapshotter
+
+  # Utilities
+  - fileMatch:
+      - "^infra/scripts/.*\\.sh$"
+    matchStrings:
+      - "YQ_VERSION=\"(?<currentValue>.*?)\""
+    datasourceTemplate: github-releases
+    depNameTemplate: mikefarah/yq
+
+  # Commented out tools (disabled for now)
+  # - fileMatch:
+  #     - "^infra/scripts/.*\\.sh$"
+  #   matchStrings:
+  #     - "# EKSCTL_VERSION=\"(?<currentValue>.*?)\""
+  #   datasourceTemplate: github-releases
+  #   depNameTemplate: weaveworks/eksctl
+  # - fileMatch:
+  #     - "^infra/scripts/.*\\.sh$"
+  #   matchStrings:
+  #     - "# DOCKER_COMPOSE_VERSION=\"(?<currentValue>.*?)\""
+  #   datasourceTemplate: github-releases
+  #   depNameTemplate: docker/compose
