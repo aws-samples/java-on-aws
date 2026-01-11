@@ -30,7 +30,7 @@ jobs:
       run: java --version
     - name: Build unicorn-store-spring with Maven
       run: mvn -B clean package --file pom.xml --no-transfer-progress
-      working-directory: ./apps/unicorn-store-spring/
+      working-directory: ./apps/java21/unicorn-store-spring/
     - name: Build unicorn-spring-ai-agent with Maven
       run: mvn -B clean package --file pom.xml --no-transfer-progress -DskipTests
       working-directory: ./apps/unicorn-spring-ai-agent/
@@ -70,7 +70,7 @@ jobs:
       run: java --version
     - name: Build unicorn-store-spring with Maven
       run: mvn -B clean package --file pom.xml --no-transfer-progress
-      working-directory: ./apps/unicorn-store-spring-java25/
+      working-directory: ./apps/unicorn-store-spring/
     - name: Build jvm-ai-analyzer with Maven
       run: mvn -B clean package --file pom.xml --no-transfer-progress
       working-directory: ./apps/jvm-analysis-service/
