@@ -5,11 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unicorn.store.model.Unicorn;
 import com.unicorn.store.model.UnicornEventType;
 
-import io.micrometer.observation.annotation.Observed;
 import jakarta.annotation.PostConstruct;
-import org.crac.Context;
-import org.crac.Resource;
-import org.crac.Core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +20,7 @@ import software.amazon.awssdk.services.eventbridge.model.PutEventsResponse;
 import java.util.concurrent.CompletableFuture;
 
 @Service
-public class UnicornPublisher implements Resource {
+public final class UnicornPublisher {
 
     private final ObjectMapper objectMapper;
 
@@ -39,10 +35,8 @@ public class UnicornPublisher implements Resource {
     @PostConstruct
     public void init() {
         createClient();
-        Core.getGlobalContext().register(this);
     }
 
-    @Observed(name = "unicorn.publish")
     public CompletableFuture<PutEventsResponse> publish(Unicorn unicorn, UnicornEventType unicornEventType) {
         try {
             var unicornJson = objectMapper.writeValueAsString(unicorn);
@@ -53,12 +47,12 @@ public class UnicornPublisher implements Resource {
             return eventBridgeClient.putEvents(eventsRequest)
                     .thenApply(response -> {
                         logger.info("Successfully published event type: {} for unicorn ID: {}",
-                                unicornEventType, unicorn.getId());
+                            unicornEventType, unicorn.getId());
                         return response;
                     })
                     .exceptionally(throwable -> {
                         logger.error("Failed to publish event type: {} for unicorn ID: {}",
-                                unicornEventType, unicorn.getId(), throwable);
+                            unicornEventType, unicorn.getId(), throwable);
                         throw new RuntimeException("Failed to publish event", throwable);
                     });
         } catch (JsonProcessingException e) {
@@ -90,17 +84,5 @@ public class UnicornPublisher implements Resource {
     public void closeClient() {
         logger.info("Closing EventBridgeAsyncClient");
         eventBridgeClient.close();
-    }
-
-    @Override
-    public void beforeCheckpoint(Context<? extends Resource> context) throws Exception {
-        logger.info("Executing beforeCheckpoint...");
-        closeClient();
-    }
-
-    @Override
-    public void afterRestore(Context<? extends Resource> context) throws Exception {
-        logger.info("Executing afterRestore ...");
-        createClient();
     }
 }

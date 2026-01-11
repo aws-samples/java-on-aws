@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unicorn.store.model.Unicorn;
 import com.unicorn.store.model.UnicornEventType;
 
+import io.micrometer.observation.annotation.Observed;
 import jakarta.annotation.PostConstruct;
 
 import org.slf4j.Logger;
@@ -20,7 +21,7 @@ import software.amazon.awssdk.services.eventbridge.model.PutEventsResponse;
 import java.util.concurrent.CompletableFuture;
 
 @Service
-public final class UnicornPublisher {
+public class UnicornPublisher {
 
     private final ObjectMapper objectMapper;
 
@@ -37,6 +38,7 @@ public final class UnicornPublisher {
         createClient();
     }
 
+    @Observed(name = "unicorn.publish")
     public CompletableFuture<PutEventsResponse> publish(Unicorn unicorn, UnicornEventType unicornEventType) {
         try {
             var unicornJson = objectMapper.writeValueAsString(unicorn);
@@ -47,12 +49,12 @@ public final class UnicornPublisher {
             return eventBridgeClient.putEvents(eventsRequest)
                     .thenApply(response -> {
                         logger.info("Successfully published event type: {} for unicorn ID: {}",
-                            unicornEventType, unicorn.getId());
+                                unicornEventType, unicorn.getId());
                         return response;
                     })
                     .exceptionally(throwable -> {
                         logger.error("Failed to publish event type: {} for unicorn ID: {}",
-                            unicornEventType, unicorn.getId(), throwable);
+                                unicornEventType, unicorn.getId(), throwable);
                         throw new RuntimeException("Failed to publish event", throwable);
                     });
         } catch (JsonProcessingException e) {

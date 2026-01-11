@@ -336,7 +336,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1768133320144"
+      ContentHash: "1768135314413"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -428,7 +428,7 @@ Resources:
             Value: java-spring-ai-agents
           - Name: GIT_BRANCH
             Type: PLAINTEXT
-            Value: new-ws-infra
+            Value: main
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1256,7 +1256,7 @@ Resources:
                 # This keeps UserData under size limits while allowing unlimited bootstrap size
 
                 # Configuration from CDK
-                export GIT_BRANCH="new-ws-infra"
+                export GIT_BRANCH="main"
                 export AWS_REGION="
               - Ref: AWS::Region
               - |-
@@ -2101,7 +2101,7 @@ Resources:
         Fn::GetAtt:
           - PlaceholderImageBuildRole66BA72FE
           - Arn
-      ContentHash: "1768133320461"
+      ContentHash: "1768135314750"
       ProjectName:
         Ref: PlaceholderImageBuildProjectC08F4D66
       ServiceToken:
@@ -3340,7 +3340,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260111130840"
+            - "-20260111134154"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

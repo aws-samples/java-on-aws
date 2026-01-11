@@ -156,31 +156,31 @@ rm session-manager-plugin.rpm
 #     echo "Installation log saved to /tmp/kiro-install.log"
 # fi || true
 
-# Installing Q CLI (with error handling)
-echo "Installing Q CLI..."
+# # Installing Q CLI (with error handling)
+# echo "Installing Q CLI..."
 
-{
-    curl --proto '=https' --tlsv1.2 -sSf "https://desktop-release.codewhisperer.us-east-1.amazonaws.com/latest/q-x86_64-linux.zip" -o /home/ec2-user/q.zip && \
-    unzip -q /home/ec2-user/q.zip -d /home/ec2-user/ && \
-    chmod +x /home/ec2-user/q/install.sh && \
-    sudo Q_INSTALL_GLOBAL=1 /home/ec2-user/q/install.sh && \
-    echo "✓ Q CLI installed successfully"
+# {
+#     curl --proto '=https' --tlsv1.2 -sSf "https://desktop-release.codewhisperer.us-east-1.amazonaws.com/latest/q-x86_64-linux.zip" -o /home/ec2-user/q.zip && \
+#     unzip -q /home/ec2-user/q.zip -d /home/ec2-user/ && \
+#     chmod +x /home/ec2-user/q/install.sh && \
+#     sudo Q_INSTALL_GLOBAL=1 /home/ec2-user/q/install.sh && \
+#     echo "✓ Q CLI installed successfully"
 
-    # Fix bash-preexec if install succeeded
-    if [ -f "$(dirname "$0")/fix-bash-preexec.sh" ]; then
-        bash "$(dirname "$0")/fix-bash-preexec.sh" || echo "⚠ Warning: bash-preexec fix failed (non-critical)"
-    fi
+#     # Fix bash-preexec if install succeeded
+#     if [ -f "$(dirname "$0")/fix-bash-preexec.sh" ]; then
+#         bash "$(dirname "$0")/fix-bash-preexec.sh" || echo "⚠ Warning: bash-preexec fix failed (non-critical)"
+#     fi
 
-    # Add Q CLI alias
-    echo "alias qc='AMAZON_Q_SIGV4=1 q chat'" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
-    echo "✓ Q CLI alias 'qc' added"
-} || echo "⚠ Warning: Q CLI installation failed (non-critical)"
+#     # Add Q CLI alias
+#     echo "alias qc='AMAZON_Q_SIGV4=1 q chat'" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
+#     echo "✓ Q CLI alias 'qc' added"
+# } || echo "⚠ Warning: Q CLI installation failed (non-critical)"
 
-# Cleanup (always runs)
-rm -f /home/ec2-user/q.zip 2>/dev/null || true
-rm -rf /home/ec2-user/q 2>/dev/null || true
+# # Cleanup (always runs)
+# rm -f /home/ec2-user/q.zip 2>/dev/null || true
+# rm -rf /home/ec2-user/q 2>/dev/null || true
 
-echo "Continuing with setup..."
+# echo "Continuing with setup..."
 
 echo "Installing Spring CLI (optional) ..."
 if curl -L https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-cli/3.5.0/spring-boot-cli-3.5.0-bin.zip -o /home/ec2-user/spring-boot-cli-3.5.0-bin.zip 2>/dev/null; then
@@ -197,3 +197,49 @@ aws configure get default.region
 # env
 
 echo "IDE setup is complete."
+
+# Clean up Java 25 infrastructure and apps, restore Java 21 as default
+echo "Cleaning up Java 25 files and restoring Java 21 structure..."
+cd ~/java-on-aws
+
+# Remove new infra (Java 25 only)
+if [ -d ~/java-on-aws/infra ]; then
+    echo "Removing new infra folder..."
+    rm -rf ~/java-on-aws/infra
+fi
+
+# Remove Java 25 app and dockerfiles (now at root level after rename)
+if [ -d ~/java-on-aws/apps/unicorn-store-spring ] && [ -d ~/java-on-aws/apps/java21/unicorn-store-spring ]; then
+    echo "Removing Java 25 unicorn-store-spring..."
+    rm -rf ~/java-on-aws/apps/unicorn-store-spring
+fi
+
+if [ -d ~/java-on-aws/apps/dockerfiles ] && [ -d ~/java-on-aws/apps/java21/dockerfiles ]; then
+    echo "Removing Java 25 dockerfiles..."
+    rm -rf ~/java-on-aws/apps/dockerfiles
+fi
+
+# Move Java 21 app and dockerfiles to root apps folder
+if [ -d ~/java-on-aws/apps/java21/unicorn-store-spring ]; then
+    echo "Moving Java 21 unicorn-store-spring to apps root..."
+    mv ~/java-on-aws/apps/java21/unicorn-store-spring ~/java-on-aws/apps/
+else
+    echo "ERROR: Java 21 unicorn-store-spring not found at ~/java-on-aws/apps/java21/unicorn-store-spring"
+    exit 1
+fi
+
+if [ -d ~/java-on-aws/apps/java21/dockerfiles ]; then
+    echo "Moving Java 21 dockerfiles to apps root..."
+    mv ~/java-on-aws/apps/java21/dockerfiles ~/java-on-aws/apps/
+else
+    echo "ERROR: Java 21 dockerfiles not found at ~/java-on-aws/apps/java21/dockerfiles"
+    exit 1
+fi
+
+# Remove empty java21 folder
+if [ -d ~/java-on-aws/apps/java21 ]; then
+    echo "Removing empty java21 folder..."
+    rmdir ~/java-on-aws/apps/java21 2>/dev/null || rm -rf ~/java-on-aws/apps/java21
+fi
+
+echo "Java 21 structure restored successfully."

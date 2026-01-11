@@ -380,7 +380,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1768133312898"
+      ContentHash: "1768135304324"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -469,7 +469,7 @@ Resources:
         EnvironmentVariables:
           - Name: GIT_BRANCH
             Type: PLAINTEXT
-            Value: new-ws-infra
+            Value: main
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-on-amazon-eks
@@ -1315,7 +1315,7 @@ Resources:
                 # This keeps UserData under size limits while allowing unlimited bootstrap size
 
                 # Configuration from CDK
-                export GIT_BRANCH="new-ws-infra"
+                export GIT_BRANCH="main"
                 export AWS_REGION="
               - Ref: AWS::Region
               - |-
@@ -3063,7 +3063,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260111130833"
+            - "-20260111134144"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

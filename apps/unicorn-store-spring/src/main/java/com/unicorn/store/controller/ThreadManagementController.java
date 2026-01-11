@@ -16,26 +16,50 @@ public class ThreadManagementController {
 
     @PostMapping("/start")
     public ResponseEntity<String> startThreads(@RequestParam(defaultValue = "500") int count) {
-        try {
-            threadGeneratorService.startThreads(count);
-            return ResponseEntity.ok("Successfully started " + count + " threads");
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+        var result = tryStartThreads(count);
+        if (result instanceof Success success) {
+            return ResponseEntity.ok(success.message());
+        } else if (result instanceof Failure failure) {
+            return ResponseEntity.badRequest().body(failure.error());
         }
+        return ResponseEntity.internalServerError().body("Unknown result type");
     }
 
     @PostMapping("/stop")
     public ResponseEntity<String> stopThreads() {
-        try {
-            threadGeneratorService.stopThreads();
-            return ResponseEntity.ok("Successfully stopped all threads");
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+        var result = tryStopThreads();
+        if (result instanceof Success success) {
+            return ResponseEntity.ok(success.message());
+        } else if (result instanceof Failure failure) {
+            return ResponseEntity.badRequest().body(failure.error());
         }
+        return ResponseEntity.internalServerError().body("Unknown result type");
     }
 
     @GetMapping("/count")
     public ResponseEntity<Integer> getThreadCount() {
         return ResponseEntity.ok(threadGeneratorService.getActiveThreadCount());
     }
+
+    private Result tryStartThreads(int count) {
+        try {
+            threadGeneratorService.startThreads(count);
+            return new Success("Successfully started " + count + " threads");
+        } catch (IllegalStateException e) {
+            return new Failure(e.getMessage());
+        }
+    }
+
+    private Result tryStopThreads() {
+        try {
+            threadGeneratorService.stopThreads();
+            return new Success("Successfully stopped all threads");
+        } catch (IllegalStateException e) {
+            return new Failure(e.getMessage());
+        }
+    }
+
+    private interface Result {}
+    private record Success(String message) implements Result {}
+    private record Failure(String error) implements Result {}
 }

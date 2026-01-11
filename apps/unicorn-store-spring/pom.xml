@@ -1,15 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project
-        xmlns="http://maven.apache.org/POM/4.0.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.8</version>
+        <version>4.0.1</version>
         <relativePath/>
-        <!-- lookup parent from repository -->
     </parent>
     <groupId>com.unicorn</groupId>
     <artifactId>store-spring</artifactId>
@@ -17,22 +13,26 @@
     <name>store</name>
     <description>Unicorn storage service</description>
     <properties>
-        <java.version>21</java.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <java.version>25</java.version>
+        <maven.compiler.release>25</maven.compiler.release>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <testcontainers.version>2.0.3</testcontainers.version>
     </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>bom</artifactId>
-                <version>2.39.2</version>
+                <version>2.40.15</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency><!-- overriding https://github.com/testcontainers/testcontainers-java/issues/8338 -->
+            <!-- Override commons-compress for Testcontainers CVE fix -->
+            <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-compress</artifactId>
                 <version>1.27.1</version>
@@ -41,14 +41,24 @@
         </dependencies>
     </dependencyManagement>
     <dependencies>
-        <!-- Spring Boot dependencies -->
+        <!-- Spring Boot starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <artifactId>spring-boot-starter</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -56,14 +66,10 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/io.micrometer/micrometer-registry-prometheus -->
-        <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-registry-prometheus</artifactId>
-        </dependency>
-        <!-- AWS SDK dependencies -->
+
+        <!-- AWS SDK -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>eventbridge</artifactId>
@@ -74,32 +80,27 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+        <!-- Observability -->
         <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>sts</artifactId>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
+
+        <!-- Serialization -->
         <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>s3</artifactId>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>dynamodb</artifactId>
-        </dependency>
-        <!-- PostgreSQL driver dependencies -->
+
+        <!-- Database -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Spring dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
+        <!-- Test dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -107,74 +108,63 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-testcontainers</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <!-- Testcontainers dependencies -->
         <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Property-based testing -->
         <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>localstack</artifactId>
+            <groupId>net.jqwik</groupId>
+            <artifactId>jqwik</artifactId>
+            <version>1.9.3</version>
             <scope>test</scope>
         </dependency>
 
-        <!-- Rest assured dependencies -->
+        <!-- Testcontainers 2.0 (new artifact coordinates) -->
         <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-localstack</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
-    <pluginRepositories>
-        <pluginRepository>
-            <id>graalvm-native-build-tools-snapshots</id>
-            <name>GraalVM native-build-tools Snapshots</name>
-            <url>https://raw.githubusercontent.com/graalvm/native-build-tools/snapshots</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </pluginRepository>
-    </pluginRepositories>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>
+            </plugin>
+        </plugins>
+    </build>
 
     <profiles>
-        <profile>
-            <id>otel-manual</id>
-            <dependencies>
-                <dependency>
-                    <groupId>io.opentelemetry.instrumentation</groupId>
-                    <artifactId>opentelemetry-spring-boot-starter</artifactId>
-                </dependency>
-                <dependency>
-                    <groupId>io.opentelemetry.instrumentation</groupId>
-                    <artifactId>opentelemetry-aws-sdk-2.2</artifactId>
-                    <version>2.15.0-alpha</version>
-                </dependency>
-                <dependency>
-                    <groupId>io.opentelemetry.contrib</groupId>
-                    <artifactId>opentelemetry-aws-xray</artifactId>
-                    <version>1.46.0</version>
-                </dependency>
-                <dependency>
-                    <groupId>io.opentelemetry.contrib</groupId>
-                    <artifactId>opentelemetry-aws-xray-propagator</artifactId>
-                    <version>1.46.0-alpha</version>
-                </dependency>
-            </dependencies>
-        </profile>
         <profile>
             <id>native</id>
             <build>
@@ -184,6 +174,15 @@
                         <artifactId>native-maven-plugin</artifactId>
                         <version>0.11.3</version>
                         <extensions>true</extensions>
+                        <configuration>
+                            <metadataRepository>
+                                <enabled>true</enabled>
+                            </metadataRepository>
+                            <requiredVersion>25</requiredVersion>
+                            <buildArgs>
+                                <arg>--verbose</arg>
+                            </buildArgs>
+                        </configuration>
                         <executions>
                             <execution>
                                 <id>build-native</id>
@@ -200,18 +199,6 @@
                                 <phase>test</phase>
                             </execution>
                         </executions>
-                        <configuration>
-                            <metadataRepository>
-                                <enabled>true</enabled>
-                            </metadataRepository>
-                            <requiredVersion>21</requiredVersion><!-- Spring Boot parent defines 22.3 -->
-                            <buildArgs>
-                                <arg>--verbose</arg>
-                                <arg>
-                                    --initialize-at-build-time=org.apache.commons.logging.LogFactory,org.apache.commons.logging.LogFactoryService
-                                </arg>
-                            </buildArgs>
-                        </configuration>
                     </plugin>
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
@@ -224,58 +211,32 @@
             </build>
         </profile>
         <profile>
-            <id>soci</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <layers>
-                                <enabled>true</enabled>
-                            </layers>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>buildpacks</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <image>
-                                <name>unicorn-store-spring:latest</name>
-                                <buildpacks>
-                                    <buildpack>paketobuildpacks/amazon-corretto:9.0.1</buildpack>
-                                    <buildpack>paketobuildpacks/java:17.6.0</buildpack>
-                                    <buildpack>paketobuildpacks/syft:2.7.0</buildpack>
-                                    <buildpack>paketobuildpacks/spring-boot:5.32.0</buildpack>
-                                    <buildpack>paketobuildpacks/executable-jar:6.12.0</buildpack>
-                                </buildpacks>
-                                <env>
-                                    <SPRING_DATASOURCE_URL>${env.SPRING_DATASOURCE_URL}</SPRING_DATASOURCE_URL>
-                                    <SPRING_DATASOURCE_PASSWORD>${env.SPRING_DATASOURCE_PASSWORD}</SPRING_DATASOURCE_PASSWORD>
-                                    <BP_JVM_VERSION>21</BP_JVM_VERSION>
-                                    <BP_JVM_CDS_ENABLED>true</BP_JVM_CDS_ENABLED>
-                                    <BP_SPRING_AOT_ENABLED>true</BP_SPRING_AOT_ENABLED>
-                                </env>
-                            </image>
-                    </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
             <id>jvm</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.crac</groupId>
+                    <artifactId>crac</artifactId>
+                    <version>1.5.0</version>
+                </dependency>
+            </dependencies>
             <build>
                 <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <version>3.5.1</version>
+                        <configuration>
+                            <from>
+                                <image>public.ecr.aws/docker/library/amazoncorretto:25-al2023</image>
+                            </from>
+                            <container>
+                                <user>1000</user>
+                            </container>
+                        </configuration>
+                    </plugin>
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
@@ -289,19 +250,6 @@
                                 </configuration>
                             </execution>
                         </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>com.google.cloud.tools</groupId>
-                        <artifactId>jib-maven-plugin</artifactId>
-                        <version>3.5.1</version>
-                        <configuration>
-                            <from>
-                                <image>public.ecr.aws/docker/library/amazoncorretto:21-alpine</image>
-                            </from>
-                            <container>
-                                <user>1000</user>
-                            </container>
-                        </configuration>
                     </plugin>
                 </plugins>
             </build>

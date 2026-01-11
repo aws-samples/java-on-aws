@@ -1,5 +1,5 @@
 #!/bin/bash
-# Extract Dockerfiles from workshop content to apps/dockerfiles-java25/
+# Extract Dockerfiles from workshop content to apps/dockerfiles/
 # Run this script periodically to sync Dockerfiles with content changes
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -7,7 +7,7 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 CONTENT_DIR="${REPO_ROOT}/../java-on-amazon-eks/content"
-OUTPUT_DIR="${REPO_ROOT}/apps/dockerfiles-java25"
+OUTPUT_DIR="${REPO_ROOT}/apps/dockerfiles"
 
 mkdir -p "${OUTPUT_DIR}"
 

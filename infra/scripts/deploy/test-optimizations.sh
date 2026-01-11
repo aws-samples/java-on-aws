@@ -13,8 +13,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../lib/common.sh"
 
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
-APP_DIR="${REPO_ROOT}/apps/unicorn-store-spring-java25"
-DOCKERFILES_DIR="${REPO_ROOT}/apps/dockerfiles-java25"
+APP_DIR="${REPO_ROOT}/apps/unicorn-store-spring"
+DOCKERFILES_DIR="${REPO_ROOT}/apps/dockerfiles"
 IMAGE_NAME="unicorn-store-spring"
 
 # Output directory (use /tmp if writable, otherwise script dir)
