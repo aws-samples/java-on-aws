@@ -92,7 +92,7 @@ def lambda_handler(event, context):
                 SecretId=secret_name
             )
             secret_arn = secret_details['ARN']
-            print(f"Secret ARN: {secret_arn}")
+            print("Secret ARN retrieved successfully.")
         except ClientError as e:
             print(f"Error retrieving secret details: {str(e)}")
             raise
@@ -115,7 +115,7 @@ def lambda_handler(event, context):
             region,
             account_id
         )
-        print(f"Cluster ARN: {cluster_arn}")
+        print("Cluster ARN resolved successfully.")
 
         # Initialize RDS Data API client
         rds_data = boto3.client('rds-data')

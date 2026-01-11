@@ -57,6 +57,13 @@ generate_template() {
         return 1
     fi
 
+    # Sort YAML keys for deterministic output
+    log_info "Sorting keys in $template_type template..."
+    yq -i 'sort_keys(..)' "$output_file" || {
+        log_error "Failed to sort keys in $output_file"
+        return 1
+    }
+
     log_success "Generated $template_type template: $output_file"
 }
 

@@ -23,7 +23,7 @@ def lambda_handler(event, context):
             props = event['ResourceProperties']
             password_name = props['PasswordName']
 
-            print(f'Retrieving password from secret: {password_name}')
+            print('Retrieving password from secret in Secrets Manager')
 
             response = secretsmanager.get_secret_value(SecretId=password_name)
             secret_data = json.loads(response['SecretString'])
