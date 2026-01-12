@@ -3,7 +3,8 @@ pipeline:
   identifier: Dayforce_Build_and_Deploy
   projectIdentifier: soto_sandbox
   orgIdentifier: sandbox
-  tags: {}
+  tags:
+    owner: soto
   variables:
     - name: skip_build
       type: String
