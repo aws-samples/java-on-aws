@@ -31,7 +31,7 @@ pipeline:
           cloneCodebase: true
           caching:
             enabled: true
-            key: maven-{{ checksum "apps/unicorn-store-jakarta/pom.xml" }}
+            key: maven-<+codebase.commitSha>
             paths:
               - /root/.m2/repository
           buildIntelligence:
