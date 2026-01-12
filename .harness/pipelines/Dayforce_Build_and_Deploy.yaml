@@ -44,41 +44,43 @@ pipeline:
             spec: {}
           execution:
             steps:
-              - step:
-                  type: RunTests
-                  name: Run Tests with TI
-                  identifier: Run_Tests_with_TI
-                  spec:
-                    connectorRef: account.harnessImage
-                    image: maven:3.9.9-amazoncorretto-21
-                    language: Java
-                    buildTool: Maven
-                    args: test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
-                    runOnlySelectedTests: true
-                    preCommand: |
-                      export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
-                    reports:
-                      type: JUnit
+              - parallel:
+                  - step:
+                      type: RunTests
+                      name: Run Tests
+                      identifier: Run_Tests_with_TI
                       spec:
-                        paths:
-                          - "**/target/surefire-reports/*.xml"
-              - step:
-                  type: Test
-                  name: Test Intelligence
-                  identifier: Test_Intelligence
-                  spec:
-                    connectorRef: account.harnessImage
-                    image: maven:3.9.9-amazoncorretto-21
-                    shell: Sh
-                    command: |
-                      export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
-                      mvn test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
-                    reports:
-                      type: JUnit
+                        connectorRef: account.harnessImage
+                        image: maven:3.9.9-amazoncorretto-21
+                        language: Java
+                        buildTool: Maven
+                        args: test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
+                        runOnlySelectedTests: false
+                        preCommand: |
+                          export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
+                        reports:
+                          type: JUnit
+                          spec:
+                            paths:
+                              - "**/target/surefire-reports/*.xml"
+                        enableTestSplitting: false
+                  - step:
+                      type: Test
+                      name: Test Intelligence
+                      identifier: Test_Intelligence
                       spec:
-                        paths:
-                          - "**/target/surefire-reports/*.xml"
-                    intelligenceMode: true
+                        connectorRef: account.harnessImage
+                        image: maven:3.9.9-amazoncorretto-21
+                        shell: Sh
+                        command: |
+                          export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
+                          mvn test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
+                        reports:
+                          type: JUnit
+                          spec:
+                            paths:
+                              - "**/target/surefire-reports/*.xml"
+                        intelligenceMode: true
               - step:
                   type: Run
                   name: Build WAR
