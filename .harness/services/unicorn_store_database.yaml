@@ -1,6 +1,6 @@
 service:
-  name: unicorn-store-jakarta
-  identifier: unicorn_store_jakarta
+  name: unicorn-store-database
+  identifier: unicorn_store_database
   orgIdentifier: sandbox
   projectIdentifier: soto_sandbox
   serviceDefinition:
@@ -8,7 +8,7 @@ service:
     spec:
       manifests:
         - manifest:
-            identifier: k8s_manifests
+            identifier: postgres_manifests
             type: K8sManifest
             spec:
               store:
@@ -17,19 +17,9 @@ service:
                   connectorRef: alexsotoharness
                   gitFetchType: Branch
                   paths:
-                    - apps/unicorn-store-jakarta/k8s/templates/unicorn-store.yaml
+                    - apps/unicorn-store-jakarta/k8s/templates/postgres.yaml
                   repoName: java-on-aws
                   branch: main
               valuesPaths:
                 - apps/unicorn-store-jakarta/k8s/values.yaml
               skipResourceVersioning: false
-      artifacts:
-        primary:
-          primaryArtifactRef: <+input>
-          sources:
-            - identifier: dockerhub_image
-              type: DockerRegistry
-              spec:
-                connectorRef: dockerhubalexsotoharness
-                imagePath: alexsotoharness/unicorn-store-jakarta
-                tag: <+input>
