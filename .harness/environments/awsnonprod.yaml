@@ -1,0 +1,6 @@
+environment:
+  name: aws-nonprod
+  identifier: awsnonprod
+  orgIdentifier: sandbox
+  projectIdentifier: soto_sandbox
+  type: PreProduction
