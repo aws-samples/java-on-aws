@@ -1,0 +1,15 @@
+infrastructureDefinition:
+  name: eks-parson-unicorn-dev
+  identifier: eksparsonunicorndev
+  branch: main
+  filePath: .harness/environments/awsnonprod/eksparsonunicorndev.yaml
+  orgIdentifier: sandbox
+  projectIdentifier: soto_sandbox
+  environmentRef: awsnonprod
+  deploymentType: Kubernetes
+  type: KubernetesDirect
+  spec:
+    connectorRef: eksparson
+    namespace: unicorn-dev
+    releaseName: release-<+INFRA_KEY_SHORT_ID>
+  allowSimultaneousDeployments: false
