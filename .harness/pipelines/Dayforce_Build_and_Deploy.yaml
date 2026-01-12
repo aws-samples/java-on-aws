@@ -14,7 +14,7 @@ pipeline:
     - stage:
         name: Build
         identifier: Build
-        description: ""
+        description: "Build and test unicorn-store-jakarta with Test Intelligence"
         type: CI
         spec:
           cloneCodebase: true
@@ -32,8 +32,92 @@ pipeline:
           execution:
             steps:
               - step:
+                  type: RunTests
+                  name: Run Tests with TI
+                  identifier: Run_Tests_with_TI
+                  spec:
+                    language: Java
+                    buildTool: Maven
+                    args: clean test -f apps/unicorn-store-jakarta/pom.xml
+                    runOnlySelectedTests: true
+                    preCommand: |
+                      java -version
+                      mvn -version
+                    reports:
+                      type: JUnit
+                      spec:
+                        paths:
+                          - "**/*.xml"
+              - step:
                   type: Run
-                  name: Run_1
-                  identifier: Run_1
+                  name: Build WAR
+                  identifier: Build_WAR
                   spec:
                     shell: Sh
+                    command: |
+                      cd apps/unicorn-store-jakarta
+                      mvn clean package -DskipTests
+                      ls -la target/
+              - step:
+                  type: BuildAndPushDockerRegistry
+                  name: Build and Push to DockerHub
+                  identifier: Build_and_Push_to_DockerHub
+                  spec:
+                    connectorRef: dockerhubalexsotoharness
+                    repo: alexsotoharness/unicorn-store-jakarta
+                    tags:
+                      - <+pipeline.sequenceId>
+                      - latest
+                    dockerfile: apps/unicorn-store-jakarta/wildfly/Dockerfile
+                    context: apps/unicorn-store-jakarta
+    - stage:
+        name: Deploy to OrbStack
+        identifier: Deploy_to_OrbStack
+        description: "Deploy unicorn-store-jakarta to local OrbStack Kubernetes cluster"
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: unicorn_store_jakarta
+            serviceInputs:
+              serviceDefinition:
+                type: Kubernetes
+                spec:
+                  artifacts:
+                    primary:
+                      primaryArtifactRef: dockerhub_image
+                      sources:
+                        - identifier: dockerhub_image
+                          type: DockerRegistry
+                          spec:
+                            tag: <+pipeline.sequenceId>
+          environment:
+            environmentRef: harnessdevenv
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: orbstack_local
+          execution:
+            steps:
+              - step:
+                  type: K8sRollingDeploy
+                  name: Rolling Deployment
+                  identifier: Rolling_Deployment
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+                  timeout: 10m
+            rollbackSteps:
+              - step:
+                  type: K8sRollingRollback
+                  name: Rollback
+                  identifier: Rollback
+                  spec:
+                    pruningEnabled: false
+                  timeout: 10m
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback

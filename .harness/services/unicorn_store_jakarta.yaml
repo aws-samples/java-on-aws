@@ -1,0 +1,35 @@
+service:
+  name: unicorn-store-jakarta
+  identifier: unicorn_store_jakarta
+  orgIdentifier: sandbox
+  projectIdentifier: soto_sandbox
+  serviceDefinition:
+    type: Kubernetes
+    spec:
+      manifests:
+        - manifest:
+            identifier: k8s_manifests
+            type: K8sManifest
+            spec:
+              store:
+                type: Github
+                spec:
+                  connectorRef: alexsotoharness
+                  gitFetchType: Branch
+                  paths:
+                    - apps/unicorn-store-jakarta/k8s/templates
+                  repoName: java-on-aws
+                  branch: main
+              valuesPaths:
+                - apps/unicorn-store-jakarta/k8s/values.yaml
+              skipResourceVersioning: false
+      artifacts:
+        primary:
+          primaryArtifactRef: <+input>
+          sources:
+            - identifier: dockerhub_image
+              type: DockerRegistry
+              spec:
+                connectorRef: dockerhubalexsotoharness
+                imagePath: alexsotoharness/unicorn-store-jakarta
+                tag: <+input>

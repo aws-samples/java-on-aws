@@ -1,0 +1,13 @@
+infrastructureDefinition:
+  name: orbstack-local
+  identifier: orbstack_local
+  orgIdentifier: sandbox
+  projectIdentifier: soto_sandbox
+  environmentRef: harnessdevenv
+  deploymentType: Kubernetes
+  type: KubernetesDirect
+  spec:
+    connectorRef: harnessk8sconnector
+    namespace: unicorn-store-jakarta
+    releaseName: release-<+INFRA_KEY_SHORT_ID>
+  allowSimultaneousDeployments: false

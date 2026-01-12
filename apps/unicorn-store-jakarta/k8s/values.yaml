@@ -1,0 +1,45 @@
+# Unicorn Store Jakarta - Helm/Go Template Values
+# Used by Harness CD for Kubernetes deployment
+
+# Application settings
+app:
+  name: unicorn-store-jakarta
+  namespace: unicorn-store-jakarta
+  replicas: 1
+
+# Container image settings
+image:
+  repository: alexsotoharness/unicorn-store-jakarta
+  tag: latest
+  pullPolicy: Always
+
+# Service settings
+service:
+  type: NodePort
+  port: 80
+  targetPort: 8080
+  nodePort: 30089
+
+# Resource limits
+resources:
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+  limits:
+    cpu: "1"
+    memory: "1Gi"
+
+# Health check settings
+probes:
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  failureThreshold: 6
+
+# Database settings
+database:
+  host: postgres
+  port: 5432
+  name: unicorns
+  username: postgres
+  secretName: postgres-secret
+  secretKey: POSTGRES_PASSWORD
