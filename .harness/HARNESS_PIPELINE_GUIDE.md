@@ -247,7 +247,7 @@ After successful deployment:
 
 ### 1. DB DevOps Stage (Liquibase/Flyway)
 
-Currently, the database schema is managed by Hibernate auto-DDL (`hibernate.hbm2ddl.auto=update`). To add controlled database migrations:
+Currently, the database schema is managed by Hibernate auto-DDL (`hibernate.hbm2ddl.auto=update`), to add controlled database migrations:
 
 1. Create a JDBC connector for PostgreSQL
 2. Add Liquibase/Flyway migration files
