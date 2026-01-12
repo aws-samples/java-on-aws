@@ -53,17 +53,15 @@ pipeline:
                     image: maven:3.9.9-amazoncorretto-21
                     language: Java
                     buildTool: Maven
-                    args: clean test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
+                    args: test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
                     runOnlySelectedTests: true
                     preCommand: |
                       export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
-                      java -version
-                      mvn -version
                     reports:
                       type: JUnit
                       spec:
                         paths:
-                          - "**/*.xml"
+                          - "**/target/surefire-reports/*.xml"
               - step:
                   type: Run
                   name: Build WAR
