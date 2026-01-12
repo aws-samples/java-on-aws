@@ -31,7 +31,7 @@ pipeline:
           cloneCodebase: true
           caching:
             enabled: true
-            key: maven-cache-<+pipeline.sequenceId>
+            key: maven-cache-<+codebase.branch>
             paths:
               - /harness/.m2
           buildIntelligence:
