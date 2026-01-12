@@ -63,6 +63,23 @@ pipeline:
                         paths:
                           - "**/target/surefire-reports/*.xml"
               - step:
+                  type: Test
+                  name: Test Intelligence
+                  identifier: Test_Intelligence
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: maven:3.9.9-amazoncorretto-21
+                    shell: Sh
+                    command: |
+                      export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
+                      mvn test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
+                    reports:
+                      type: JUnit
+                      spec:
+                        paths:
+                          - "**/target/surefire-reports/*.xml"
+                    intelligenceMode: true
+              - step:
                   type: Run
                   name: Build WAR
                   identifier: Build_WAR
