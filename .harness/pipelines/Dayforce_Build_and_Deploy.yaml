@@ -36,6 +36,8 @@ pipeline:
                   name: Run Tests with TI
                   identifier: Run_Tests_with_TI
                   spec:
+                    connectorRef: account.harnessImage
+                    image: maven:3.9.9-amazoncorretto-21
                     language: Java
                     buildTool: Maven
                     args: clean test -f apps/unicorn-store-jakarta/pom.xml
@@ -53,6 +55,8 @@ pipeline:
                   name: Build WAR
                   identifier: Build_WAR
                   spec:
+                    connectorRef: account.harnessImage
+                    image: maven:3.9.9-amazoncorretto-21
                     shell: Sh
                     command: |
                       cd apps/unicorn-store-jakarta
