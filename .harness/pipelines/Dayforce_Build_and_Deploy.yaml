@@ -14,7 +14,7 @@ pipeline:
     - stage:
         name: Build
         identifier: Build
-        description: "Build and test unicorn-store-jakarta with Test Intelligence"
+        description: Build and test unicorn-store-jakarta with Test Intelligence
         type: CI
         spec:
           cloneCodebase: true
@@ -72,12 +72,13 @@ pipeline:
                     tags:
                       - <+pipeline.sequenceId>
                       - latest
+                    caching: true
                     dockerfile: apps/unicorn-store-jakarta/wildfly/Dockerfile
                     context: apps/unicorn-store-jakarta
     - stage:
         name: Deploy to OrbStack
         identifier: Deploy_to_OrbStack
-        description: "Deploy unicorn-store-jakarta to local OrbStack Kubernetes cluster"
+        description: Deploy unicorn-store-jakarta to local OrbStack Kubernetes cluster
         type: Deployment
         spec:
           deploymentType: Kubernetes
