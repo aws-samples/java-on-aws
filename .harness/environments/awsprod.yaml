@@ -1,0 +1,6 @@
+environment:
+  name: aws-prod
+  identifier: awsprod
+  orgIdentifier: sandbox
+  projectIdentifier: soto_sandbox
+  type: Production
