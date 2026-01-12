@@ -107,7 +107,7 @@ pipeline:
                     dockerfile: apps/unicorn-store-jakarta/wildfly/Dockerfile
                     context: apps/unicorn-store-jakarta
     - stage:
-        name: Deploy to OrbStack
+        name: Local Deploy
         identifier: Deploy_to_OrbStack
         description: Deploy unicorn-store-jakarta to local OrbStack Kubernetes cluster
         type: Deployment
@@ -150,6 +150,86 @@ pipeline:
                   spec:
                     pruningEnabled: false
                   timeout: 10m
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+    - stage:
+        name: EKS Dev Deploy
+        identifier: EKS_Dev_Deploy
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          environment:
+            environmentRef: awsnonprod
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: eksparsonunicorndev
+          execution:
+            steps:
+              - step:
+                  name: Rollout Deployment
+                  identifier: rolloutDeployment
+                  type: K8sRollingDeploy
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+            rollbackSteps:
+              - step:
+                  name: Rollback Rollout Deployment
+                  identifier: rollbackRolloutDeployment
+                  type: K8sRollingRollback
+                  timeout: 10m
+                  spec:
+                    pruningEnabled: false
+          service:
+            useFromStage:
+              stage: Deploy_to_OrbStack
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+    - stage:
+        name: EKS Prod Deploy
+        identifier: EKS_Prod_Deploy
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            useFromStage:
+              stage: Deploy_to_OrbStack
+          environment:
+            environmentRef: awsprod
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: eksparsonunicornprod
+          execution:
+            steps:
+              - step:
+                  name: Rollout Deployment
+                  identifier: rolloutDeployment
+                  type: K8sRollingDeploy
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+            rollbackSteps:
+              - step:
+                  name: Rollback Rollout Deployment
+                  identifier: rollbackRolloutDeployment
+                  type: K8sRollingRollback
+                  timeout: 10m
+                  spec:
+                    pruningEnabled: false
         tags: {}
         failureStrategies:
           - onFailure:
