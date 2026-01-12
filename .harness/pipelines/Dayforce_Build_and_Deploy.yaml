@@ -55,7 +55,7 @@ pipeline:
                         language: Java
                         buildTool: Maven
                         args: test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
-                        runOnlySelectedTests: false
+                        runOnlySelectedTests: true
                         preCommand: |
                           export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
                         reports:
