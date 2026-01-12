@@ -31,9 +31,9 @@ pipeline:
           cloneCodebase: true
           caching:
             enabled: true
-            key: maven-<+codebase.commitSha>
+            key: maven-cache-<+pipeline.sequenceId>
             paths:
-              - /root/.m2/repository
+              - /harness/.m2
           buildIntelligence:
             enabled: true
           platform:
@@ -53,9 +53,10 @@ pipeline:
                     image: maven:3.9.9-amazoncorretto-21
                     language: Java
                     buildTool: Maven
-                    args: clean test -f apps/unicorn-store-jakarta/pom.xml
+                    args: clean test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
                     runOnlySelectedTests: true
                     preCommand: |
+                      export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
                       java -version
                       mvn -version
                     reports:
@@ -73,7 +74,7 @@ pipeline:
                     shell: Sh
                     command: |
                       cd apps/unicorn-store-jakarta
-                      mvn clean package -DskipTests
+                      mvn clean package -DskipTests -Dmaven.repo.local=/harness/.m2/repository
                       ls -la target/
               - step:
                   type: BuildAndPushDockerRegistry
