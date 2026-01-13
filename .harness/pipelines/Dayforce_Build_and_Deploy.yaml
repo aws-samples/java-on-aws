@@ -255,3 +255,4 @@ pipeline:
             when:
               pipelineStatus: Success
               condition: "false"
+  allowStageExecutions: true
