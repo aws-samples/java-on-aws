@@ -44,6 +44,19 @@ pipeline:
             spec: {}
           execution:
             steps:
+              - step:
+                  type: Gitleaks
+                  name: Secret Detection
+                  identifier: Secret_Detection
+                  spec:
+                    mode: orchestration
+                    config: default
+                    target:
+                      type: repository
+                      detection: auto
+                    advanced:
+                      log:
+                        level: info
               - parallel:
                   - step:
                       type: RunTests
@@ -81,6 +94,46 @@ pipeline:
                             paths:
                               - "**/target/surefire-reports/*.xml"
                         intelligenceMode: true
+              - parallel:
+                  - step:
+                      type: Owasp
+                      name: Owasp
+                      identifier: Owasp
+                      spec:
+                        mode: orchestration
+                        config: default
+                        target:
+                          type: repository
+                          detection: auto
+                        advanced:
+                          log:
+                            level: info
+                  - step:
+                      type: OsvScanner
+                      name: OsvScanner
+                      identifier: OsvScanner
+                      spec:
+                        mode: orchestration
+                        config: default
+                        target:
+                          type: repository
+                          detection: auto
+                        advanced:
+                          log:
+                            level: info
+              - step:
+                  type: Semgrep
+                  name: Semgrep
+                  identifier: Semgrep
+                  spec:
+                    mode: orchestration
+                    config: default
+                    target:
+                      type: repository
+                      detection: auto
+                    advanced:
+                      log:
+                        level: info
               - step:
                   type: BuildAndPushECR
                   name: Build and Push to ECR
@@ -96,6 +149,32 @@ pipeline:
                     caching: true
                     dockerfile: apps/unicorn-store-jakarta/wildfly/Dockerfile
                     context: apps/unicorn-store-jakarta
+              - step:
+                  type: AquaTrivy
+                  name: AquaTrivy
+                  identifier: AquaTrivy
+                  spec:
+                    mode: orchestration
+                    config: default
+                    target:
+                      type: container
+                      detection: auto
+                    advanced:
+                      log:
+                        level: info
+                    privileged: true
+                    image:
+                      region: us-east-1
+                      type: aws_ecr
+                      tag: latest
+                      access_id: <+secrets.getValue("account.AWS_Access_Key")>
+                      access_token: <+secrets.getValue("account.AWS_Secret_Access_Key")>
+                      name: unicorn-store-jakarta
+                      domain: us-east1-docker.pkg.dev
+                    sbom:
+                      format: spdx-json
+          sharedPaths:
+            - /var/run
     - stage:
         name: EKS Dev Deploy
         identifier: EKS_Dev_Deploy
