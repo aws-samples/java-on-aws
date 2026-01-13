@@ -30,7 +30,7 @@ service:
             - spec:
                 connectorRef: account.AWS
                 imagePath: unicorn-store-spring
-                tag: <+input>
+                tag: <+input>.default("latest")
                 digest: ""
                 region: us-east-1
                 registryId: "759984737373"
