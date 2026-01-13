@@ -22,7 +22,7 @@ pipeline:
     - stage:
         name: Build
         identifier: Build
-        description: Build and test unicorn-store-jakarta with Test Intelligence
+        description: Build and test unicorn-store-spring with Test Intelligence
         type: CI
         when:
           pipelineStatus: Success
@@ -129,7 +129,7 @@ pipeline:
                               image: maven:3.9.9-amazoncorretto-21
                               language: Java
                               buildTool: Maven
-                              args: test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
+                              args: test -f apps/unicorn-store-spring/pom.xml -Dmaven.repo.local=/harness/.m2/repository
                               runOnlySelectedTests: true
                               preCommand: |
                                 export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
@@ -150,7 +150,7 @@ pipeline:
                               shell: Sh
                               command: |
                                 export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
-                                mvn test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
+                                mvn test -f apps/unicorn-store-spring/pom.xml -Dmaven.repo.local=/harness/.m2/repository
                               reports:
                                 type: JUnit
                                 spec:
@@ -165,13 +165,13 @@ pipeline:
                     connectorRef: account.AWS
                     region: us-east-1
                     account: "759984737373"
-                    imageName: unicorn-store-jakarta
+                    imageName: unicorn-store-spring
                     tags:
                       - latest
                       - <+pipeline.sequenceId>
                     caching: true
-                    dockerfile: apps/unicorn-store-jakarta/wildfly/Dockerfile
-                    context: apps/unicorn-store-jakarta
+                    dockerfile: apps/unicorn-store-spring/Dockerfile
+                    context: apps/unicorn-store-spring
                 contextType: Pipeline
               - stepGroup:
                   name: Container Scans
@@ -197,7 +197,7 @@ pipeline:
                             tag: latest
                             access_id: <+secrets.getValue("account.AWS_Access_Key")>
                             access_token: <+secrets.getValue("account.AWS_Secret_Access_Key")>
-                            name: unicorn-store-jakarta
+                            name: unicorn-store-spring
                             domain: us-east1-docker.pkg.dev
                           sbom:
                             format: spdx-json
