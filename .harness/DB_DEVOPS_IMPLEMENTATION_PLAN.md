@@ -18,9 +18,9 @@ This document outlines the step-by-step plan to integrate Harness DB DevOps into
 - [x] Harness DB DevOps feature flag (`DBOPS_ENABLED`) enabled
 - [x] Delegate can reach PostgreSQL in EKS Dev cluster
 - [x] PostgreSQL instance running in EKS Dev
-- [ ] JDBC Connector created in Harness
-- [ ] DB Instance registered in Harness
-- [ ] DB Schema registered in Harness
+- [x] JDBC Connector created in Harness
+- [x] DB Instance registered in Harness
+- [x] DB Schema registered in Harness
 
 ---
 
