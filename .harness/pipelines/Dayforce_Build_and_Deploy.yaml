@@ -107,6 +107,36 @@ pipeline:
                     dockerfile: apps/unicorn-store-jakarta/wildfly/Dockerfile
                     context: apps/unicorn-store-jakarta
     - stage:
+        name: Database DevOps
+        identifier: Database_DevOps
+        description: ""
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - stepGroup:
+                  name: Deploy DB Changes
+                  identifier: Deploy_DB_Changes
+                  steps:
+                    - step:
+                        type: DBSchemaApply
+                        name: Apply Schema
+                        identifier: Apply_Schema
+                        spec:
+                          connectorRef: account.harnessImage
+                          migrationType: Liquibase
+                          dbSchema: unicornstoreschema
+                          dbInstance: unicornstorepostgresdev
+                        timeout: 10m
+                  stepGroupInfra:
+                    type: KubernetesDirect
+                    spec:
+                      connectorRef: eksparson
+                      namespace: unicorn-dev
+            rollbackSteps: []
+          serviceDependencies: []
+        tags: {}
+    - stage:
         name: Local Deploy
         identifier: Deploy_to_OrbStack
         description: Deploy unicorn-store-jakarta to local OrbStack Kubernetes cluster
