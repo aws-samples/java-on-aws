@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-unicorns-table
+      author: unicorn-store-team
+      labels: initial-schema
+      comment: Create initial unicorns table (baseline from Hibernate auto-DDL)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              tableName: unicorns
+      changes:
+        - createTable:
+            tableName: unicorns
+            columns:
+              - column:
+                  name: id
+                  type: VARCHAR(255)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+              - column:
+                  name: age
+                  type: VARCHAR(255)
+              - column:
+                  name: size
+                  type: VARCHAR(255)
+              - column:
+                  name: type
+                  type: VARCHAR(255)
+      rollback:
+        - dropTable:
+            tableName: unicorns
