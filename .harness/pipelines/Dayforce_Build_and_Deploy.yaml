@@ -82,18 +82,6 @@ pipeline:
                               - "**/target/surefire-reports/*.xml"
                         intelligenceMode: true
               - step:
-                  type: Run
-                  name: Build WAR
-                  identifier: Build_WAR
-                  spec:
-                    connectorRef: account.harnessImage
-                    image: maven:3.9.9-amazoncorretto-21
-                    shell: Sh
-                    command: |
-                      cd apps/unicorn-store-jakarta
-                      mvn clean package -DskipTests -Dmaven.repo.local=/harness/.m2/repository
-                      ls -la target/
-              - step:
                   type: BuildAndPushECR
                   name: Build and Push to ECR
                   identifier: Build_and_Push_to_ECR
@@ -108,36 +96,6 @@ pipeline:
                     caching: true
                     dockerfile: apps/unicorn-store-jakarta/wildfly/Dockerfile
                     context: apps/unicorn-store-jakarta
-    - stage:
-        name: Database DevOps
-        identifier: Database_DevOps
-        description: ""
-        type: Custom
-        spec:
-          execution:
-            steps:
-              - stepGroup:
-                  name: Deploy DB Changes
-                  identifier: Deploy_DB_Changes
-                  steps:
-                    - step:
-                        type: DBSchemaApply
-                        name: Apply Schema
-                        identifier: Apply_Schema
-                        spec:
-                          connectorRef: account.harnessImage
-                          migrationType: Liquibase
-                          dbSchema: unicornstoreschema
-                          dbInstance: unicornstorepostgresdev
-                        timeout: 10m
-                  stepGroupInfra:
-                    type: KubernetesDirect
-                    spec:
-                      connectorRef: eksparson
-                      namespace: unicorn-dev
-            rollbackSteps: []
-          serviceDependencies: []
-        tags: {}
     - stage:
         name: EKS Dev Deploy
         identifier: EKS_Dev_Deploy
