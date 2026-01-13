@@ -80,7 +80,7 @@ pipeline:
                                 log:
                                   level: info
                                 args:
-                                  cli: "--cveStartYear 2020 --disableOssIndex --disableRetireJS"
+                                  cli: "--cveStartYear 2020 --disableOssIndex --disableRetireJS --data /tmp/dependency-check-db"
                             failureStrategies:
                               - onFailure:
                                   errors:
