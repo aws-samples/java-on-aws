@@ -211,20 +211,6 @@ pipeline:
         type: Deployment
         spec:
           deploymentType: Kubernetes
-          service:
-            serviceRef: unicorn_store_jakarta
-            serviceInputs:
-              serviceDefinition:
-                type: Kubernetes
-                spec:
-                  artifacts:
-                    primary:
-                      primaryArtifactRef: ecr_image
-                      sources:
-                        - identifier: ecr_image
-                          type: Ecr
-                          spec:
-                            tag: <+input>.default(latest)
           environment:
             environmentRef: awsprod
             deployToAll: false
@@ -289,6 +275,9 @@ pipeline:
                   timeout: 10m
                   spec:
                     pruningEnabled: false
+          service:
+            useFromStage:
+              stage: EKS_Dev_Deploy
         tags: {}
         failureStrategies:
           - onFailure:
