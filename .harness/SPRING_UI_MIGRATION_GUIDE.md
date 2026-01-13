@@ -663,7 +663,164 @@ The K8s template in Step 2.3 uses Spring's environment variable names.
 
 ---
 
-## Part 5: Testing Checklist
+## Part 5: Unit Tests for WebController
+
+The Spring Boot app already has comprehensive tests using Testcontainers for the REST API. You'll need to add tests for the new `WebController`.
+
+### Step 5.1: Create WebController Test
+
+**File:** `apps/unicorn-store-spring/src/test/java/com/unicorn/store/integration/WebControllerTest.java`
+
+```java
+package com.unicorn.store.integration;
+
+import com.unicorn.store.model.Unicorn;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.reactive.server.WebTestClient;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestInfrastructure
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+class WebControllerTest {
+
+    @LocalServerPort
+    private int port;
+
+    private WebTestClient webTestClient;
+
+    @BeforeEach
+    void setUp() {
+        webTestClient = WebTestClient.bindToServer()
+            .baseUrl("http://localhost:" + port)
+            .build();
+    }
+
+    @Test
+    @Order(1)
+    void shouldLoadWebUIPage() {
+        webTestClient.get()
+            .uri("/webui")
+            .exchange()
+            .expectStatus().isOk()
+            .expectHeader().contentType(MediaType.TEXT_HTML);
+    }
+
+    @Test
+    @Order(2)
+    void shouldLoadIndexPage() {
+        webTestClient.get()
+            .uri("/")
+            .exchange()
+            .expectStatus().isOk()
+            .expectHeader().contentType(MediaType.TEXT_HTML);
+    }
+
+    static String createdId;
+
+    @Test
+    @Order(3)
+    void shouldCreateUnicornViaForm() {
+        // First create via REST API to get an ID
+        Unicorn unicorn = new Unicorn("WebTestUnicorn", "5", "Medium", "Rainbow");
+        
+        createdId = webTestClient.post()
+            .uri("/unicorns")
+            .bodyValue(unicorn)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(Unicorn.class)
+            .returnResult()
+            .getResponseBody()
+            .getId();
+
+        assertThat(createdId).isNotNull();
+    }
+
+    @Test
+    @Order(4)
+    void shouldLoadListFragment() {
+        webTestClient.get()
+            .uri("/webui/list")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(String.class)
+            .value(html -> assertThat(html).contains("WebTestUnicorn"));
+    }
+
+    @Test
+    @Order(5)
+    void shouldLoadEditForm() {
+        webTestClient.get()
+            .uri("/webui/edit/" + createdId)
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(String.class)
+            .value(html -> {
+                assertThat(html).contains("WebTestUnicorn");
+                assertThat(html).contains("form");
+            });
+    }
+
+    @Test
+    @Order(6)
+    void shouldDeleteViaWebUI() {
+        webTestClient.delete()
+            .uri("/webui/delete/" + createdId)
+            .exchange()
+            .expectStatus().isOk();
+
+        // Verify deleted
+        webTestClient.get()
+            .uri("/unicorns/" + createdId)
+            .exchange()
+            .expectStatus().isNotFound();
+    }
+}
+```
+
+### Step 5.2: Run Tests Locally
+
+```bash
+cd apps/unicorn-store-spring
+
+# Run all tests (uses Testcontainers for PostgreSQL)
+mvn test
+
+# Run only WebController tests
+mvn test -Dtest=WebControllerTest
+
+# Run with verbose output
+mvn test -Dtest=WebControllerTest -X
+```
+
+### Step 5.3: Existing Tests (No Changes Needed)
+
+The following tests already exist and will continue to work:
+
+| Test Class | Purpose |
+|------------|---------|
+| `UnicornControllerTest` | REST API integration tests (CRUD) |
+| `StoreApplicationTest` | Application context loads |
+| `UnicornEqualsPropertyTest` | Property-based testing for equals/hashCode |
+| `UnicornValidationPropertyTest` | Property-based testing for validation |
+| `RequestContextPropertyTest` | Request context tests |
+
+These tests use `@TestInfrastructure` annotation which automatically:
+- Spins up PostgreSQL via Testcontainers
+- Falls back to H2 if Testcontainers unavailable
+
+---
+
+## Part 6: Testing Checklist
 
 ### Local Testing
 
@@ -712,6 +869,7 @@ curl http://localhost:8080/actuator/health
 | `apps/unicorn-store-spring/src/main/resources/templates/index.html` | Landing page |
 | `apps/unicorn-store-spring/src/main/resources/templates/fragments/unicorn-table.html` | Table fragment |
 | `apps/unicorn-store-spring/src/main/resources/templates/fragments/edit-form.html` | Edit form fragment |
+| `apps/unicorn-store-spring/src/test/java/.../WebControllerTest.java` | Unit tests for Web UI |
 | `apps/unicorn-store-spring/k8s/templates/unicorn-store.yaml` | K8s deployment |
 | `apps/unicorn-store-spring/k8s/values.yaml` | K8s values |
 | `.harness/services/unicorn_store_spring.yaml` | Harness service definition |
