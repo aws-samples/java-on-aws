@@ -12,6 +12,12 @@ pipeline:
       required: false
       default: "false"
       value: <+input>.allowedValues(true,false)
+    - name: service_to_deploy
+      type: String
+      description: The service to deploy
+      required: false
+      default: unicorn_store_spring
+      value: <+input>
   properties:
     ci:
       codebase:
@@ -291,7 +297,7 @@ pipeline:
                   spec:
                     pruningEnabled: false
           service:
-            serviceRef: unicorn_store_jakarta
+            serviceRef: <+pipeline.variables.service_to_deploy>
             serviceInputs:
               serviceDefinition:
                 type: Kubernetes
