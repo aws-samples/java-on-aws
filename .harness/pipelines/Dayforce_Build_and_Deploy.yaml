@@ -297,19 +297,8 @@ pipeline:
                   spec:
                     pruningEnabled: false
           service:
-            serviceRef: <+pipeline.variables.service_to_deploy>
-            serviceInputs:
-              serviceDefinition:
-                type: Kubernetes
-                spec:
-                  artifacts:
-                    primary:
-                      primaryArtifactRef: ecr_image
-                      sources:
-                        - identifier: ecr_image
-                          type: Ecr
-                          spec:
-                            tag: <+input>.default(latest)
+            serviceRef: <+input>.default("unicorn_store_spring")
+            serviceInputs: <+input>
         tags: {}
         failureStrategies:
           - onFailure:
