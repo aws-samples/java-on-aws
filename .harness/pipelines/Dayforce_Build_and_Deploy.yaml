@@ -191,24 +191,20 @@ pipeline:
                       timeout: 10m
                       spec:
                         pruningEnabled: false
-              services:
-                values:
-                  - serviceRef: unicorn_store_database
-                  - serviceRef: unicorn_store_jakarta
-                    serviceInputs:
-                      serviceDefinition:
-                        type: Kubernetes
-                        spec:
-                          artifacts:
-                            primary:
-                              primaryArtifactRef: dockerhub_image
-                              sources:
-                                - identifier: dockerhub_image
-                                  type: DockerRegistry
-                                  spec:
-                                    tag: <+input>.default(latest)
-                metadata:
-                  parallel: false
+              service:
+                serviceRef: unicorn_store_jakarta
+                serviceInputs:
+                  serviceDefinition:
+                    type: Kubernetes
+                    spec:
+                      artifacts:
+                        primary:
+                          primaryArtifactRef: dockerhub_image
+                          sources:
+                            - identifier: dockerhub_image
+                              type: DockerRegistry
+                              spec:
+                                tag: <+input>.default(latest)
             tags: {}
             failureStrategies:
               - onFailure:
