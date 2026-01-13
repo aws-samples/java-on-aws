@@ -14,10 +14,9 @@ image:
 
 # Service settings
 service:
-  type: NodePort
+  type: LoadBalancer
   port: 80
   targetPort: 8080
-  nodePort: 30089
 
 # Resource limits
 resources:
