@@ -47,6 +47,7 @@ spec:
               port: {{.Values.service.targetPort}}
             initialDelaySeconds: {{.Values.probes.initialDelaySeconds}}
             periodSeconds: {{.Values.probes.periodSeconds}}
+            timeoutSeconds: {{.Values.probes.timeoutSeconds}}
             failureThreshold: {{.Values.probes.failureThreshold}}
           readinessProbe:
             httpGet:
@@ -54,6 +55,7 @@ spec:
               port: {{.Values.service.targetPort}}
             initialDelaySeconds: {{.Values.probes.initialDelaySeconds}}
             periodSeconds: {{.Values.probes.periodSeconds}}
+            timeoutSeconds: {{.Values.probes.timeoutSeconds}}
             failureThreshold: {{.Values.probes.failureThreshold}}
 ---
 apiVersion: v1
