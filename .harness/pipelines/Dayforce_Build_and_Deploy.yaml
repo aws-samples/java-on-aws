@@ -292,18 +292,7 @@ pipeline:
                     pruningEnabled: false
           service:
             serviceRef: <+input>.default("unicorn_store_spring")
-            serviceInputs:
-              serviceDefinition:
-                type: Kubernetes
-                spec:
-                  artifacts:
-                    primary:
-                      primaryArtifactRef: ecr_image
-                      sources:
-                        - identifier: ecr_image
-                          type: Ecr
-                          spec:
-                            tag: <+input>.default(latest)
+            serviceInputs: <+input>
         tags: {}
         failureStrategies:
           - onFailure:
