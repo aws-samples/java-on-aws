@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<form th:fragment="editForm" id="edit-form"
+      th:hx-post="@{/webui/update/{id}(id=${unicorn.id})}"
+      hx-target="#unicorn-table"
+      hx-swap="innerHTML">
+    <div class="mb-3">
+        <label class="form-label">Name</label>
+        <input type="text" class="form-control" name="name" th:value="${unicorn.name}" required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Age</label>
+        <input type="text" class="form-control" name="age" th:value="${unicorn.age}">
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Size</label>
+        <input type="text" class="form-control" name="size" th:value="${unicorn.size}">
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Type</label>
+        <input type="text" class="form-control" name="type" th:value="${unicorn.type}" required>
+    </div>
+    <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+</form>
+</body>
+</html>

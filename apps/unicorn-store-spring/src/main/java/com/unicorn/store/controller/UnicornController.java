@@ -131,8 +131,4 @@ public class UnicornController {
                 .body(Map.of("errors", errors));
     }
 
-    @GetMapping("/")
-    public ResponseEntity<String> getWelcomeMessage() {
-        return ResponseEntity.ok("Welcome to the Unicorn Store!");
-    }
 }

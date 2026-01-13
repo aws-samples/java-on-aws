@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicorn Store</title>
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+    <script th:src="@{/webjars/htmx.org/dist/htmx.min.js}"></script>
+    <style>
+        .htmx-indicator { display: none; }
+        .htmx-request .htmx-indicator { display: inline-block; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="mb-4">🦄 Unicorn Store</h1>
+        
+        <!-- Create Form -->
+        <div class="card mb-4">
+            <div class="card-header">Add New Unicorn</div>
+            <div class="card-body">
+                <form hx-post="/webui/create" hx-target="#unicorn-table" hx-swap="innerHTML">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" name="name" placeholder="Name" required>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="text" class="form-control" name="age" placeholder="Age">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="text" class="form-control" name="size" placeholder="Size">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" name="type" placeholder="Type" required>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-success w-100">
+                                <span class="htmx-indicator spinner-border spinner-border-sm"></span>
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Unicorn Table -->
+        <div class="card">
+            <div class="card-header">Unicorns</div>
+            <div class="card-body">
+                <div id="unicorn-table">
+                    <div th:replace="~{fragments/unicorn-table :: unicornTable}"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div class="modal fade" id="editModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Unicorn</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="edit-form-container">
+                        <!-- Edit form loaded via HTMX -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+    <script>
+        // Show modal when edit form is loaded
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.id === 'edit-form-container') {
+                new bootstrap.Modal(document.getElementById('editModal')).show();
+            }
+        });
+        // Hide modal and refresh table after update
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            if (evt.detail.elt.id === 'edit-form') {
+                bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            }
+        });
+    </script>
+</body>
+</html>

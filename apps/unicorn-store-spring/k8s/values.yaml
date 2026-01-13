@@ -1,0 +1,44 @@
+# Unicorn Store Spring - Helm/Go Template Values
+# Used by Harness CD for Kubernetes deployment
+
+# Application settings
+app:
+  name: unicorn-store-spring
+  replicas: 1
+
+# Container image settings
+image:
+  repository: alexsotoharness/unicorn-store-spring
+  tag: latest
+  pullPolicy: Always
+
+# Service settings
+service:
+  type: NodePort
+  port: 80
+  targetPort: 8080
+
+# Resource limits (Spring Boot needs less than WildFly)
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# Health check settings (Spring Boot starts faster)
+probes:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Database settings (same as Jakarta version - reuses existing postgres)
+database:
+  host: postgres
+  port: 5432
+  name: unicorns
+  username: postgres
+  secretName: postgres-secret
+  secretKey: POSTGRES_PASSWORD

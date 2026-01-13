@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="unicornTable">
+    <table class="table table-striped table-hover" th:if="${not #lists.isEmpty(unicorns)}">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Age</th>
+                <th>Size</th>
+                <th>Type</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="unicorn : ${unicorns}">
+                <td th:text="${unicorn.id}"></td>
+                <td th:text="${unicorn.name}"></td>
+                <td th:text="${unicorn.age}"></td>
+                <td th:text="${unicorn.size}"></td>
+                <td th:text="${unicorn.type}"></td>
+                <td>
+                    <button class="btn btn-sm btn-primary"
+                            th:hx-get="@{/webui/edit/{id}(id=${unicorn.id})}"
+                            hx-target="#edit-form-container"
+                            hx-swap="innerHTML">
+                        Edit
+                    </button>
+                    <button class="btn btn-sm btn-danger"
+                            th:hx-delete="@{/webui/delete/{id}(id=${unicorn.id})}"
+                            hx-target="#unicorn-table"
+                            hx-swap="innerHTML"
+                            hx-confirm="Are you sure you want to delete this unicorn?">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <div th:if="${#lists.isEmpty(unicorns)}" class="alert alert-info">
+        No unicorns found. Add one above!
+    </div>
+</div>
+</body>
+</html>

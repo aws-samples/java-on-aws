@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Values.app.name}}
+  labels:
+    app: {{.Values.app.name}}
+spec:
+  replicas: {{.Values.app.replicas}}
+  selector:
+    matchLabels:
+      app: {{.Values.app.name}}
+  template:
+    metadata:
+      labels:
+        app: {{.Values.app.name}}
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z postgres {{.Values.database.port}}; do echo "Waiting for PostgreSQL..."; sleep 2; done; echo "PostgreSQL is ready!"']
+      containers:
+        - name: {{.Values.app.name}}
+          image: {{.Values.image.repository}}:{{.Values.image.tag}}
+          imagePullPolicy: {{.Values.image.pullPolicy}}
+          ports:
+            - containerPort: {{.Values.service.targetPort}}
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://{{.Values.database.host}}:{{.Values.database.port}}/{{.Values.database.name}}"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "{{.Values.database.username}}"
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{.Values.database.secretName}}
+                  key: {{.Values.database.secretKey}}
+          resources:
+            requests:
+              cpu: {{.Values.resources.requests.cpu}}
+              memory: {{.Values.resources.requests.memory}}
+            limits:
+              cpu: {{.Values.resources.limits.cpu}}
+              memory: {{.Values.resources.limits.memory}}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: {{.Values.service.targetPort}}
+            initialDelaySeconds: {{.Values.probes.initialDelaySeconds}}
+            periodSeconds: {{.Values.probes.periodSeconds}}
+            timeoutSeconds: {{.Values.probes.timeoutSeconds}}
+            failureThreshold: {{.Values.probes.failureThreshold}}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: {{.Values.service.targetPort}}
+            initialDelaySeconds: {{.Values.probes.initialDelaySeconds}}
+            periodSeconds: {{.Values.probes.periodSeconds}}
+            timeoutSeconds: {{.Values.probes.timeoutSeconds}}
+            failureThreshold: {{.Values.probes.failureThreshold}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Values.app.name}}
+spec:
+  type: {{.Values.service.type}}
+  selector:
+    app: {{.Values.app.name}}
+  ports:
+    - port: {{.Values.service.port}}
+      targetPort: {{.Values.service.targetPort}}

@@ -69,6 +69,33 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- Thymeleaf for server-side rendering -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
+        <!-- Bootstrap CSS/JS via WebJars -->
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>bootstrap</artifactId>
+            <version>5.3.3</version>
+        </dependency>
+
+        <!-- HTMX for dynamic updates without full page reload -->
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>htmx.org</artifactId>
+            <version>1.9.10</version>
+        </dependency>
+
+        <!-- WebJars locator for version-agnostic paths -->
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>webjars-locator-core</artifactId>
+            <version>0.58</version>
+        </dependency>
+
         <!-- AWS SDK -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
