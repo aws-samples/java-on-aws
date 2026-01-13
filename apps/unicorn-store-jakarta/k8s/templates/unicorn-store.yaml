@@ -24,16 +24,16 @@ spec:
           imagePullPolicy: {{.Values.image.pullPolicy}}
           ports:
             - containerPort: {{.Values.service.targetPort}}
-          env:
-            - name: DATASOURCE_JDBC_URL
-              value: "jdbc:postgresql://{{.Values.database.host}}:{{.Values.database.port}}/{{.Values.database.name}}"
-            - name: DATASOURCE_USERNAME
-              value: "{{.Values.database.username}}"
-            - name: DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{.Values.database.secretName}}
-                  key: {{.Values.database.secretKey}}
+          # env:
+          #   - name: DATASOURCE_JDBC_URL
+          #     value: "jdbc:postgresql://{{.Values.database.host}}:{{.Values.database.port}}/{{.Values.database.name}}"
+          #   - name: DATASOURCE_USERNAME
+          #     value: "{{.Values.database.username}}"
+          #   - name: DATASOURCE_PASSWORD
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: {{.Values.database.secretName}}
+          #         key: {{.Values.database.secretKey}}
           resources:
             requests:
               cpu: {{.Values.resources.requests.cpu}}
