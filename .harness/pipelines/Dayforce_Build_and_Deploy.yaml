@@ -93,19 +93,35 @@ pipeline:
                       cd apps/unicorn-store-jakarta
                       mvn clean package -DskipTests -Dmaven.repo.local=/harness/.m2/repository
                       ls -la target/
-              - step:
-                  type: BuildAndPushDockerRegistry
-                  name: Build and Push to DockerHub
-                  identifier: Build_and_Push_to_DockerHub
-                  spec:
-                    connectorRef: dockerhubalexsotoharness
-                    repo: alexsotoharness/unicorn-store-jakarta
-                    tags:
-                      - <+pipeline.sequenceId>
-                      - latest
-                    caching: true
-                    dockerfile: apps/unicorn-store-jakarta/wildfly/Dockerfile
-                    context: apps/unicorn-store-jakarta
+              - parallel:
+                  - step:
+                      type: BuildAndPushDockerRegistry
+                      name: Build and Push to DockerHub
+                      identifier: Build_and_Push_to_DockerHub
+                      spec:
+                        connectorRef: dockerhubalexsotoharness
+                        repo: alexsotoharness/unicorn-store-jakarta
+                        tags:
+                          - <+pipeline.sequenceId>
+                          - latest
+                        caching: true
+                        dockerfile: apps/unicorn-store-jakarta/wildfly/Dockerfile
+                        context: apps/unicorn-store-jakarta
+                  - step:
+                      type: BuildAndPushECR
+                      name: Build and Push to ECR
+                      identifier: Build_and_Push_to_ECR
+                      spec:
+                        connectorRef: account.AWS
+                        region: us-east-1
+                        account: <placeholder>
+                        imageName: <placeholder>
+                        tags:
+                          - latest
+                          - <+pipeline.sequenceId>
+                        caching: true
+                        dockerfile: <placeholder>
+                        context: <placeholder>
     - stage:
         name: Database DevOps
         identifier: Database_DevOps
