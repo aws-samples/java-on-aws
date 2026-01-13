@@ -6,8 +6,8 @@ This guide walks you through building, containerizing, and deploying the **unico
 
 - [x] OrbStack with Kubernetes enabled
 - [x] `kubectl` configured to use OrbStack
-- [ ] Docker CLI (comes with OrbStack)
-- [ ] DockerHub account (for pushing images)
+- [x] Docker CLI (comes with OrbStack)
+- [x] DockerHub account (for pushing images)
 
 ## Architecture Overview
 

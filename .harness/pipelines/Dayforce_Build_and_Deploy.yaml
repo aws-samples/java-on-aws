@@ -114,14 +114,14 @@ pipeline:
                       spec:
                         connectorRef: account.AWS
                         region: us-east-1
-                        account: <placeholder>
-                        imageName: <placeholder>
+                        account: "759984737373"
+                        imageName: unicorn-store-jakarta
                         tags:
                           - latest
                           - <+pipeline.sequenceId>
                         caching: true
-                        dockerfile: <placeholder>
-                        context: <placeholder>
+                        dockerfile: apps/unicorn-store-jakarta/wildfly/Dockerfile
+                        context: apps/unicorn-store-jakarta
     - stage:
         name: Database DevOps
         identifier: Database_DevOps
