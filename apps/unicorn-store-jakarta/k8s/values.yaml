@@ -4,8 +4,7 @@
 # Application settings
 app:
   name: unicorn-store-jakarta
-  namespace: unicorn-store-jakarta
-  replicas: 1
+  replicas: 3
 
 # Container image settings
 image:

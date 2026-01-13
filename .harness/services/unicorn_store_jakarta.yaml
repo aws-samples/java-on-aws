@@ -17,6 +17,7 @@ service:
                   connectorRef: alexsotoharness
                   gitFetchType: Branch
                   paths:
+#                    - apps/unicorn-store-jakarta/k8s/templates/postgres.yaml
                     - apps/unicorn-store-jakarta/k8s/templates/unicorn-store.yaml
                   repoName: java-on-aws
                   branch: main
@@ -33,3 +34,4 @@ service:
                 connectorRef: dockerhubalexsotoharness
                 imagePath: alexsotoharness/unicorn-store-jakarta
                 tag: <+input>
+

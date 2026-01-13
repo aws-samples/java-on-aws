@@ -1,13 +1,7 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: {{.Values.app.namespace}}
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{.Values.app.name}}
-  namespace: {{.Values.app.namespace}}
   labels:
     app: {{.Values.app.name}}
 spec:
@@ -20,10 +14,10 @@ spec:
       labels:
         app: {{.Values.app.name}}
     spec:
-      initContainers:
-        - name: wait-for-postgres
-          image: busybox:1.36
-          command: ['sh', '-c', 'until nc -z postgres {{.Values.database.port}}; do echo "Waiting for PostgreSQL..."; sleep 2; done; echo "PostgreSQL is ready!"']
+      # initContainers:
+      #   - name: wait-for-postgres
+      #     image: busybox:1.36
+      #     command: ['sh', '-c', 'until nc -z postgres {{.Values.database.port}}; do echo "Waiting for PostgreSQL..."; sleep 2; done; echo "PostgreSQL is ready!"']
       containers:
         - name: {{.Values.app.name}}
           image: {{.Values.image.repository}}:{{.Values.image.tag}}
@@ -66,7 +60,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{.Values.app.name}}
-  namespace: {{.Values.app.namespace}}
 spec:
   type: {{.Values.service.type}}
   selector:
