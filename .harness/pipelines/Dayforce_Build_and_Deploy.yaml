@@ -235,10 +235,10 @@ pipeline:
                     primary:
                       primaryArtifactRef: dockerhub_image
                       sources:
-                        - identifier: dockerhub_image
-                          type: DockerRegistry
+                        - identifier: ecr_image
+                          type: Ecr
                           spec:
-                            tag: <+input>.default(latest)
+                            tag: <+input>
         tags: {}
         failureStrategies:
           - onFailure:
