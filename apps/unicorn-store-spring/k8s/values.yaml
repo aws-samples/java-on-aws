@@ -8,7 +8,7 @@ app:
 
 # Container image settings
 image:
-  repository: alexsotoharness/unicorn-store-spring
+  repository: 759984737373.dkr.ecr.us-east-1.amazonaws.com/unicorn-store-spring
   tag: latest
   pullPolicy: Always
 

@@ -126,7 +126,7 @@ pipeline:
                             identifier: Run_Tests_with_TI
                             spec:
                               connectorRef: account.harnessImage
-                              image: maven:3.9.9-amazoncorretto-21
+                              image: public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023
                               language: Java
                               buildTool: Maven
                               args: test -f apps/unicorn-store-spring/pom.xml -Dmaven.repo.local=/harness/.m2/repository
@@ -146,7 +146,7 @@ pipeline:
                             identifier: Test_Intelligence
                             spec:
                               connectorRef: account.harnessImage
-                              image: maven:3.9.9-amazoncorretto-21
+                              image: public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023
                               shell: Sh
                               command: |
                                 export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
@@ -198,7 +198,7 @@ pipeline:
                             access_id: <+secrets.getValue("account.AWS_Access_Key")>
                             access_token: <+secrets.getValue("account.AWS_Secret_Access_Key")>
                             name: unicorn-store-spring
-                            domain: us-east1-docker.pkg.dev
+                            domain: 759984737373.dkr.ecr.us-east-1.amazonaws.com
                           sbom:
                             format: spdx-json
           sharedPaths:
