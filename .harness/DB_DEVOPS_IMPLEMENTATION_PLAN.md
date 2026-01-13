@@ -136,9 +136,11 @@ Create the instance that links the schema to the actual database connection.
 | Field | Value |
 |-------|-------|
 | **Name** | `unicorn-store-postgres-dev` |
-| **Identifier** | `unicorn_store_postgres_dev` |
-| **Schema** | `unicorn_store_schema` (from Step 3) |
-| **Connector** | `postgres_eks_dev` (from Step 1) |
+| **Tags** | (leave empty) |
+| **Select Branch** | `main` |
+| **Connector** | `postgres-eks-dev` (from Step 1) |
+| **Context** | (leave empty - used for Liquibase contexts) |
+| **Substitute Properties** | (leave empty - used for changelog placeholders) |
 
 ---
 
@@ -152,34 +154,35 @@ Add this stage **before** the EKS Dev Deploy stage:
 
 ```yaml
 - stage:
-    name: Database Migration
-    identifier: Database_Migration
-    description: Apply database schema changes using Harness DB DevOps
-    type: DbDevOps
+    name: Database DevOps
+    identifier: Database_DevOps
+    description: Apply database schema changes
+    type: Custom
     spec:
       execution:
         steps:
-          - step:
-              type: DbDevOpsApplySchema
-              name: Apply Schema Changes
-              identifier: Apply_Schema_Changes
-              spec:
-                schemaRef: unicorn_store_schema
-              timeout: 10m
-      rollbackSteps:
-        - step:
-            type: DbDevOpsRollbackSchema
-            name: Rollback Schema
-            identifier: Rollback_Schema
-            spec:
-              schemaRef: unicorn_store_schema
-            timeout: 10m
-    failureStrategies:
-      - onFailure:
-          errors:
-            - AllErrors
-          action:
-            type: StageRollback
+          - stepGroup:
+              name: Deploy DB Changes
+              identifier: Deploy_DB_Changes
+              steps:
+                - step:
+                    type: DBSchemaApply
+                    name: Apply Schema
+                    identifier: Apply_Schema
+                    spec:
+                      connectorRef: account.harnessImage
+                      migrationType: Liquibase
+                      dbSchema: unicornstoreschema
+                      dbInstance: unicornstorepostgresdev
+                    timeout: 10m
+              stepGroupInfra:
+                type: KubernetesDirect
+                spec:
+                  connectorRef: eksparson
+                  namespace: unicorn-dev
+        rollbackSteps: []
+      serviceDependencies: []
+    tags: {}
 ```
 
 ---

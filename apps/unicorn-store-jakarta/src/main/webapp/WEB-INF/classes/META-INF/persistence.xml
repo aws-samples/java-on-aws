@@ -4,7 +4,7 @@
   <persistence-unit name="unicorns">
     <jta-data-source>java:/jdbc/unicorns</jta-data-source>
     <properties>
-      <property name="hibernate.hbm2ddl.auto" value="update" />
+      <property name="hibernate.hbm2ddl.auto" value="validate" />
       <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect" />
     </properties>
   </persistence-unit>
