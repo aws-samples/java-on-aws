@@ -30,7 +30,7 @@ resources:
 
 # Health check settings
 probes:
-  initialDelaySeconds: 60
+  initialDelaySeconds: 90
   periodSeconds: 10
   failureThreshold: 6
 
