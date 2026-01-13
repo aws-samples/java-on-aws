@@ -80,7 +80,7 @@ pipeline:
                                 log:
                                   level: info
                                 args:
-                                  cli: "--cveStartYear 2020 --disableOssIndex --disableRetireJS --data /tmp/dependency-check-db"
+                                  cli: "-n"
                             failureStrategies:
                               - onFailure:
                                   errors:
@@ -128,7 +128,7 @@ pipeline:
                             identifier: Run_Tests_with_TI
                             spec:
                               connectorRef: account.harnessImage
-                              image: public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023
+                              image: maven:3.9-amazoncorretto-21
                               language: Java
                               buildTool: Maven
                               args: test -f apps/unicorn-store-spring/pom.xml -Dmaven.repo.local=/harness/.m2/repository
@@ -148,7 +148,7 @@ pipeline:
                             identifier: Test_Intelligence
                             spec:
                               connectorRef: account.harnessImage
-                              image: public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023
+                              image: maven:3.9-amazoncorretto-21
                               shell: Sh
                               command: |
                                 export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
