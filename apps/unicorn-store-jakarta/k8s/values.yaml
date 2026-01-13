@@ -4,7 +4,7 @@
 # Application settings
 app:
   name: unicorn-store-jakarta
-  replicas: 3
+  replicas: 1
 
 # Container image settings
 image:
@@ -22,11 +22,11 @@ service:
 # Resource limits
 resources:
   requests:
+    cpu: "250m"
+    memory: "256Mi"
+  limits:
     cpu: "500m"
     memory: "512Mi"
-  limits:
-    cpu: "1"
-    memory: "1Gi"
 
 # Health check settings
 probes:
