@@ -79,6 +79,8 @@ pipeline:
                               advanced:
                                 log:
                                   level: info
+                                args:
+                                  cli: "--cveStartYear 2020 --disableOssIndex --disableRetireJS"
                             failureStrategies:
                               - onFailure:
                                   errors:
