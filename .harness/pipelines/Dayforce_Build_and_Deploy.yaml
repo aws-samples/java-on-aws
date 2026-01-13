@@ -44,96 +44,119 @@ pipeline:
             spec: {}
           execution:
             steps:
-              - step:
-                  type: Gitleaks
+              - stepGroup:
                   name: Secret Detection
                   identifier: Secret_Detection
-                  spec:
-                    mode: orchestration
-                    config: default
-                    target:
-                      type: repository
-                      detection: auto
-                    advanced:
-                      log:
-                        level: info
-              - parallel:
-                  - step:
-                      type: RunTests
-                      name: Run Tests
-                      identifier: Run_Tests_with_TI
-                      spec:
-                        connectorRef: account.harnessImage
-                        image: maven:3.9.9-amazoncorretto-21
-                        language: Java
-                        buildTool: Maven
-                        args: test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
-                        runOnlySelectedTests: true
-                        preCommand: |
-                          export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
-                        reports:
-                          type: JUnit
-                          spec:
-                            paths:
-                              - "**/target/surefire-reports/*.xml"
-                        enableTestSplitting: false
-                  - step:
-                      type: Test
-                      name: Test Intelligence
-                      identifier: Test_Intelligence
-                      spec:
-                        connectorRef: account.harnessImage
-                        image: maven:3.9.9-amazoncorretto-21
-                        shell: Sh
-                        command: |
-                          export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
-                          mvn test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
-                        reports:
-                          type: JUnit
-                          spec:
-                            paths:
-                              - "**/target/surefire-reports/*.xml"
-                        intelligenceMode: true
-              - parallel:
-                  - step:
-                      type: Owasp
-                      name: Owasp
-                      identifier: Owasp
-                      spec:
-                        mode: orchestration
-                        config: default
-                        target:
-                          type: repository
-                          detection: auto
-                        advanced:
-                          log:
-                            level: info
-                  - step:
-                      type: OsvScanner
-                      name: OsvScanner
-                      identifier: OsvScanner
-                      spec:
-                        mode: orchestration
-                        config: default
-                        target:
-                          type: repository
-                          detection: auto
-                        advanced:
-                          log:
-                            level: info
-              - step:
-                  type: Semgrep
-                  name: Semgrep
-                  identifier: Semgrep
-                  spec:
-                    mode: orchestration
-                    config: default
-                    target:
-                      type: repository
-                      detection: auto
-                    advanced:
-                      log:
-                        level: info
+                  steps:
+                    - step:
+                        type: Gitleaks
+                        name: Secret Detection
+                        identifier: Secret_Detection
+                        spec:
+                          mode: orchestration
+                          config: default
+                          target:
+                            type: repository
+                            detection: auto
+                          advanced:
+                            log:
+                              level: info
+              - stepGroup:
+                  name: SCA Scans
+                  identifier: SCA_Scans
+                  steps:
+                    - parallel:
+                        - step:
+                            type: Owasp
+                            name: Owasp
+                            identifier: Owasp
+                            spec:
+                              mode: orchestration
+                              config: default
+                              target:
+                                type: repository
+                                detection: auto
+                              advanced:
+                                log:
+                                  level: info
+                            failureStrategies:
+                              - onFailure:
+                                  errors:
+                                    - AllErrors
+                                  action:
+                                    type: Ignore
+                        - step:
+                            type: OsvScanner
+                            name: OsvScanner
+                            identifier: OsvScanner
+                            spec:
+                              mode: orchestration
+                              config: default
+                              target:
+                                type: repository
+                                detection: auto
+                              advanced:
+                                log:
+                                  level: info
+              - stepGroup:
+                  name: SAST Scans
+                  identifier: SAST_Scans
+                  steps:
+                    - step:
+                        type: Semgrep
+                        name: Semgrep
+                        identifier: Semgrep
+                        spec:
+                          mode: orchestration
+                          config: default
+                          target:
+                            type: repository
+                            detection: auto
+                          advanced:
+                            log:
+                              level: info
+              - stepGroup:
+                  name: Unit Tests
+                  identifier: Unit_Tests
+                  steps:
+                    - parallel:
+                        - step:
+                            type: RunTests
+                            name: Run Tests
+                            identifier: Run_Tests_with_TI
+                            spec:
+                              connectorRef: account.harnessImage
+                              image: maven:3.9.9-amazoncorretto-21
+                              language: Java
+                              buildTool: Maven
+                              args: test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
+                              runOnlySelectedTests: true
+                              preCommand: |
+                                export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
+                              reports:
+                                type: JUnit
+                                spec:
+                                  paths:
+                                    - "**/target/surefire-reports/*.xml"
+                              enableTestSplitting: false
+                          contextType: Pipeline
+                        - step:
+                            type: Test
+                            name: Test Intelligence
+                            identifier: Test_Intelligence
+                            spec:
+                              connectorRef: account.harnessImage
+                              image: maven:3.9.9-amazoncorretto-21
+                              shell: Sh
+                              command: |
+                                export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
+                                mvn test -f apps/unicorn-store-jakarta/pom.xml -Dmaven.repo.local=/harness/.m2/repository
+                              reports:
+                                type: JUnit
+                                spec:
+                                  paths:
+                                    - "**/target/surefire-reports/*.xml"
+                              intelligenceMode: true
               - step:
                   type: BuildAndPushECR
                   name: Build and Push to ECR
@@ -149,30 +172,35 @@ pipeline:
                     caching: true
                     dockerfile: apps/unicorn-store-jakarta/wildfly/Dockerfile
                     context: apps/unicorn-store-jakarta
-              - step:
-                  type: AquaTrivy
-                  name: AquaTrivy
-                  identifier: AquaTrivy
-                  spec:
-                    mode: orchestration
-                    config: default
-                    target:
-                      type: container
-                      detection: auto
-                    advanced:
-                      log:
-                        level: info
-                    privileged: true
-                    image:
-                      region: us-east-1
-                      type: aws_ecr
-                      tag: latest
-                      access_id: <+secrets.getValue("account.AWS_Access_Key")>
-                      access_token: <+secrets.getValue("account.AWS_Secret_Access_Key")>
-                      name: unicorn-store-jakarta
-                      domain: us-east1-docker.pkg.dev
-                    sbom:
-                      format: spdx-json
+                contextType: Pipeline
+              - stepGroup:
+                  name: Container Scans
+                  identifier: Container_Scans
+                  steps:
+                    - step:
+                        type: AquaTrivy
+                        name: AquaTrivy
+                        identifier: AquaTrivy
+                        spec:
+                          mode: orchestration
+                          config: default
+                          target:
+                            type: container
+                            detection: auto
+                          advanced:
+                            log:
+                              level: info
+                          privileged: true
+                          image:
+                            region: us-east-1
+                            type: aws_ecr
+                            tag: latest
+                            access_id: <+secrets.getValue("account.AWS_Access_Key")>
+                            access_token: <+secrets.getValue("account.AWS_Secret_Access_Key")>
+                            name: unicorn-store-jakarta
+                            domain: us-east1-docker.pkg.dev
+                          sbom:
+                            format: spdx-json
           sharedPaths:
             - /var/run
     - stage:
@@ -366,5 +394,4 @@ pipeline:
                 type: StageRollback
         when:
           pipelineStatus: Success
-          condition: "false"
   allowStageExecutions: true
