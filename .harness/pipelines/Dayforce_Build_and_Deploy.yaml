@@ -106,6 +106,9 @@ pipeline:
                     caching: true
                     dockerfile: apps/unicorn-store-jakarta/wildfly/Dockerfile
                     context: apps/unicorn-store-jakarta
+                  when:
+                    stageStatus: Success
+                    condition: "false"
               - step:
                   type: BuildAndPushECR
                   name: Build and Push to ECR
