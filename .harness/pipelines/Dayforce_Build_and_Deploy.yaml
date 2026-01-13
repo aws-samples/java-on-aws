@@ -191,9 +191,24 @@ pipeline:
                       timeout: 10m
                       spec:
                         pruningEnabled: false
-              service:
-                useFromStage:
-                  stage: Deploy_to_OrbStack
+              services:
+                values:
+                  - serviceRef: unicorn_store_database
+                  - serviceRef: unicorn_store_jakarta
+                    serviceInputs:
+                      serviceDefinition:
+                        type: Kubernetes
+                        spec:
+                          artifacts:
+                            primary:
+                              primaryArtifactRef: dockerhub_image
+                              sources:
+                                - identifier: dockerhub_image
+                                  type: DockerRegistry
+                                  spec:
+                                    tag: <+input>.default(latest)
+                metadata:
+                  parallel: false
             tags: {}
             failureStrategies:
               - onFailure:
@@ -241,3 +256,6 @@ pipeline:
                     - AllErrors
                   action:
                     type: StageRollback
+            when:
+              pipelineStatus: Success
+              condition: "false"
