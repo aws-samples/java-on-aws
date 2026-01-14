@@ -1,5 +1,6 @@
 FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
 
+ARG CACHE_BUST=1
 RUN yum install -y shadow-utils
 
 COPY ./pom.xml ./pom.xml
