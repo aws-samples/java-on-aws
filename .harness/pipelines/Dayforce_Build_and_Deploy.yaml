@@ -141,6 +141,9 @@ pipeline:
                                   paths:
                                     - "**/target/surefire-reports/*.xml"
                               enableTestSplitting: false
+                            when:
+                              stageStatus: Success
+                              condition: "false"
                           contextType: Pipeline
                         - step:
                             type: Test
