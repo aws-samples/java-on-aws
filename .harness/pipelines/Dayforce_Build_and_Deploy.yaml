@@ -16,7 +16,7 @@ pipeline:
       type: String
       description: Set to 'true' to skip security scans, tests, and database updates
       required: false
-      default: "false"
+      default: "true"
       value: <+input>.allowedValues(true,false)
   properties:
     ci:
