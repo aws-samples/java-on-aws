@@ -141,7 +141,6 @@ pipeline:
                   identifier: Unit_Tests
                   when:
                     stageStatus: Success
-                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
                         type: Test
