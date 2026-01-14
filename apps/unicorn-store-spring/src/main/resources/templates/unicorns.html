@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unicorn Store</title>
+    <title th:text="${pageTitle}">Unicorn Store</title>
     <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
     <script th:src="@{/webjars/htmx.org/1.9.10/dist/htmx.min.js}"></script>
     <style>
@@ -13,7 +13,7 @@
 </head>
 <body>
     <div class="container mt-4">
-        <h1 class="mb-4">🦄 Unicorn Store</h1>
+        <h1 class="mb-4">Unicorn Store</h1>
         
         <!-- Create Form -->
         <div class="card mb-4">

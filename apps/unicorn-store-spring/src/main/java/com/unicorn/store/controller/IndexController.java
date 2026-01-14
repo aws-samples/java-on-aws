@@ -26,6 +26,7 @@ public class IndexController {
         model.addAttribute("deploymentType", releaseInfo.getDeploymentType());
         model.addAttribute("deploymentTypeColor", releaseInfo.getDeploymentTypeColor());
         model.addAttribute("deploymentTypeLabel", releaseInfo.getDeploymentTypeLabel());
+        model.addAttribute("pageTitle", releaseInfo.getPageTitle());
         return "index";
     }
 }

@@ -114,8 +114,22 @@ public class ReleaseInfo {
         String type = getDeploymentType();
         return switch (type) {
             case "Blue", "Green" -> "Blue/Green";
-            case "Canary" -> "Canary";
-            default -> "Rolling";
+            case "Canary", "Rolling" -> "Progressive";
+            default -> "Progressive";
         };
+    }
+
+    public String getEnvironmentShort() {
+        String env = getEnvironment();
+        if (env.contains("NonProd")) {
+            return "NonProd";
+        } else if (env.contains("Prod")) {
+            return "Prod";
+        }
+        return "Local";
+    }
+
+    public String getPageTitle() {
+        return getEnvironmentShort() + " " + getDeploymentType();
     }
 }

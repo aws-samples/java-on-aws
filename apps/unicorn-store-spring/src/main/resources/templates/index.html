@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unicorn Store</title>
+    <title th:text="${pageTitle}">Unicorn Store</title>
     <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
     <style>
         body {
@@ -31,8 +31,8 @@
 <body>
     <div class="container">
         <div class="hero-section text-center">
-            <h1 class="display-4 mb-3">🦄 Unicorn Store</h1>
-            <p class="lead text-muted mb-5">Your magical marketplace for unicorns</p>
+            <h1 class="display-4 mb-3">Unicorn Store</h1>
+            <p class="lead text-muted mb-5">Enterprise unicorn management platform</p>
         </div>
 
         <div class="row justify-content-center g-4 mb-5">
@@ -101,7 +101,7 @@
         </div>
 
         <div class="text-center text-muted">
-            <small>Built with Spring Boot &amp; Bootstrap</small>
+            <small>Built with Spring Boot &amp; Bootstrap | Deployed by Harness</small>
         </div>
     </div>
 </body>
