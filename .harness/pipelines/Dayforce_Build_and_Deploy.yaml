@@ -261,18 +261,6 @@ pipeline:
                         identifier: Swap_Stage_and_Primary
                         spec: {}
                         timeout: 10m
-              - stepGroup:
-                  name: Primary Deployment
-                  identifier: Primary_Deployment
-                  steps:
-                    - step:
-                        name: Rollout Deployment
-                        identifier: rolloutDeployment
-                        type: K8sRollingDeploy
-                        timeout: 10m
-                        spec:
-                          skipDryRun: false
-                          pruningEnabled: false
             rollbackSteps:
               - step:
                   name: Rollback Rollout Deployment
