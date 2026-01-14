@@ -103,6 +103,8 @@ pipeline:
                               advanced:
                                 log:
                                   level: info
+                                args:
+                                  cli: "-r /harness/apps/unicorn-store-spring"
               - stepGroup:
                   name: SAST Scans
                   identifier: SAST_Scans
