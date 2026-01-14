@@ -278,6 +278,7 @@ pipeline:
                             timeout: 1d
                             when:
                               stageStatus: Success
+                              condition: "false"
                         - step:
                             type: K8sBGSwapServices
                             name: Swap Stage and Primary
