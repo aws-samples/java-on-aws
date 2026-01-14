@@ -12,6 +12,12 @@ pipeline:
       required: false
       default: "false"
       value: <+input>.allowedValues(true,false)
+    - name: skip_checks
+      type: String
+      description: Set to 'true' to skip security scans, tests, and database updates
+      required: false
+      default: "false"
+      value: <+input>.allowedValues(true,false)
   properties:
     ci:
       codebase:
@@ -47,6 +53,9 @@ pipeline:
               - stepGroup:
                   name: Secret Detection
                   identifier: Secret_Detection
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
                         type: Gitleaks
@@ -64,6 +73,9 @@ pipeline:
               - stepGroup:
                   name: SCA Scans
                   identifier: SCA_Scans
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - parallel:
                         - step:
@@ -107,6 +119,9 @@ pipeline:
               - stepGroup:
                   name: SAST Scans
                   identifier: SAST_Scans
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
                         type: Semgrep
@@ -124,6 +139,9 @@ pipeline:
               - stepGroup:
                   name: Unit Tests
                   identifier: Unit_Tests
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
                         type: RunTests
@@ -163,6 +181,9 @@ pipeline:
               - stepGroup:
                   name: Container Scans
                   identifier: Container_Scans
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
                         type: AquaTrivy
@@ -207,6 +228,9 @@ pipeline:
               - stepGroup:
                   name: Database Updates
                   identifier: Database_Updates
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
                         type: DBSchemaApply
@@ -295,6 +319,9 @@ pipeline:
               - stepGroup:
                   name: Database Updates
                   identifier: Database_Updates
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
                         type: DBSchemaApply
