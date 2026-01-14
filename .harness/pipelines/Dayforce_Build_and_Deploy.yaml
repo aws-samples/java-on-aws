@@ -406,4 +406,63 @@ pipeline:
                     type: StageRollback
             when:
               pipelineStatus: Success
+    - stage:
+        name: Approval
+        identifier: Approval
+        description: ""
+        type: Approval
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: Create Ticket
+                  identifier: Create_Ticket
+                  type: JiraCreate
+                  timeout: 5m
+                  spec:
+                    connectorRef: account.Harness_JIRA
+                    projectKey: HD
+                    issueType: Story
+                    fields:
+                      - name: Description
+                        value: "Promote <+service.name> to production \\\\ Pipeline Name: <+pipeline.name> \\\\ Artifact: <+artifact.image> \\\\ Deployment URL: <+pipeline.executionUrl> \\\\ Requested by <+pipeline.triggeredBy.name>"
+                      - name: Summary
+                        value: "Release Tracker: <+service.name>"
+              - step:
+                  name: Approval
+                  identifier: Approval
+                  type: JiraApproval
+                  timeout: 1d
+                  spec:
+                    approvalCriteria:
+                      type: KeyValues
+                      spec:
+                        matchAnyCondition: true
+                        conditions:
+                          - key: Status
+                            operator: equals
+                            value: Approved
+                    rejectionCriteria:
+                      type: Jexl
+                      spec:
+                        expression: ""
+                    connectorRef: account.Harness_JIRA
+                    projectKey: HD
+                    issueType: Story
+                    retryInterval: 10s
+                    issueKey: <+pipeline.stages.Approval.spec.execution.steps.Create_Ticket.key>
+              - step:
+                  name: Update Ticket
+                  identifier: Update_Ticket
+                  type: JiraUpdate
+                  timeout: 5m
+                  spec:
+                    connectorRef: account.Harness_JIRA
+                    issueKey: <+pipeline.stages.Approval.spec.execution.steps.Create_Ticket.key>
+                    fields:
+                      - name: Comment
+                        value: "Beginning promotion to <+env.name> environment security and testing gates. \\\\ Aritfact:  <+artifacts.primary.imagePath>:<+artifacts.primary.tag> \\\\ Service: <+service.name> \\\\  Pipeline link: <+step.executionUrl>"
+                    issueType: Story
+                    projectKey: HD
+        tags: {}
   allowStageExecutions: true
