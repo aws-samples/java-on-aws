@@ -300,6 +300,7 @@ pipeline:
                     - AllErrors
                   action:
                     type: StageRollback
+            allowSimultaneousDeployments: true
         - stage:
             name: EKS Prod Deploy
             identifier: EKS_Prod_Deploy
@@ -404,6 +405,7 @@ pipeline:
                     - AllErrors
                   action:
                     type: StageRollback
+            allowSimultaneousDeployments: true
             when:
               pipelineStatus: Success
     - stage:
