@@ -34,6 +34,16 @@ spec:
                 secretKeyRef:
                   name: {{.Values.database.secretName}}
                   key: {{.Values.database.secretKey}}
+            - name: RELEASE_VERSION
+              value: "{{.Values.release.version}}"
+            - name: RELEASE_DEPLOYMENT_TIME
+              value: "{{.Values.release.deploymentTime}}"
+            - name: RELEASE_COMMIT
+              value: "{{.Values.release.commit}}"
+            - name: RELEASE_POD
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           resources:
             requests:
               cpu: {{.Values.resources.requests.cpu}}

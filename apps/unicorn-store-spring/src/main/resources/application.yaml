@@ -93,3 +93,10 @@ management:
       all: true
     tags:
       application: unicorn-store-spring
+
+# === Release Information ===
+release:
+  version: ${RELEASE_VERSION:local}
+  deployment-time: ${RELEASE_DEPLOYMENT_TIME:N/A}
+  commit: ${RELEASE_COMMIT:local}
+  pod: ${RELEASE_POD:unknown}

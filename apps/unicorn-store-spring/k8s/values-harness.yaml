@@ -1,0 +1,7 @@
+# Harness Pipeline Values Override
+# These values are populated by Harness expressions during deployment
+
+release:
+  version: <+pipeline.sequenceId>
+  deploymentTime: <+pipeline.startTs>
+  commit: <+codebase.shortCommitSha>

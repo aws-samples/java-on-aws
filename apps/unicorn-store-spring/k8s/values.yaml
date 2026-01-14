@@ -42,3 +42,9 @@ database:
   username: postgres
   secretName: postgres-secret
   secretKey: POSTGRES_PASSWORD
+
+# Release information (populated by Harness pipeline)
+release:
+  version: "local"
+  deploymentTime: "N/A"
+  commit: "local"

@@ -2,13 +2,93 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unicorn Store</title>
-    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .hero-section {
+            padding: 60px 0;
+        }
+        .card-link {
+            text-decoration: none;
+            transition: transform 0.2s;
+        }
+        .card-link:hover {
+            transform: translateY(-5px);
+        }
+        .card-link .card {
+            height: 100%;
+        }
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+    </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h1>🦄 Unicorn Store</h1>
-        <p class="lead">You can use <a href="/unicorns">REST API</a> and <a href="/webui">Web UI</a> to work with the application.</p>
+    <div class="container">
+        <div class="hero-section text-center">
+            <h1 class="display-4 mb-3">🦄 Unicorn Store</h1>
+            <p class="lead text-muted mb-5">Your magical marketplace for unicorns</p>
+        </div>
+
+        <div class="row justify-content-center g-4 mb-5">
+            <div class="col-md-5">
+                <a href="/webui" class="card-link">
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <div class="feature-icon">🖥️</div>
+                            <h3 class="card-title">Web UI</h3>
+                            <p class="card-text text-muted">Browse, add, and manage unicorns with our interactive web interface.</p>
+                            <span class="btn btn-success">Open Web UI</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-5">
+                <a href="/unicorns" class="card-link">
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <div class="feature-icon">🔌</div>
+                            <h3 class="card-title">REST API</h3>
+                            <p class="card-text text-muted">Access unicorn data programmatically via our RESTful API endpoints.</p>
+                            <span class="btn btn-outline-primary">View API</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div class="row justify-content-center mb-5">
+            <div class="col-md-10">
+                <div class="card shadow-sm">
+                    <div class="card-header">Release Information</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <p><strong>Version:</strong> <span th:text="${version}">local</span></p>
+                            </div>
+                            <div class="col-md-3">
+                                <p><strong>Deployment Time:</strong> <span th:text="${deploymentTime}">N/A</span></p>
+                            </div>
+                            <div class="col-md-3">
+                                <p><strong>Commit:</strong> <span th:text="${commit}">local</span></p>
+                            </div>
+                            <div class="col-md-3">
+                                <p><strong>Pod:</strong> <span th:text="${pod}">unknown</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center text-muted">
+            <small>Built with Spring Boot &amp; Bootstrap</small>
+        </div>
     </div>
 </body>
 </html>

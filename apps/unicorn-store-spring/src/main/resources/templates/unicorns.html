@@ -45,11 +45,32 @@
         </div>
 
         <!-- Unicorn Table -->
-        <div class="card">
+        <div class="card mb-4">
             <div class="card-header">Unicorns</div>
             <div class="card-body">
                 <div id="unicorn-table">
                     <div th:replace="~{fragments/unicorn-table :: unicornTable}"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Release Information -->
+        <div class="card mb-4">
+            <div class="card-header">Release Information</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <p><strong>Version:</strong> <span th:text="${version}">local</span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>Deployment Time:</strong> <span th:text="${deploymentTime}">N/A</span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>Commit:</strong> <span th:text="${commit}">local</span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>Pod:</strong> <span th:text="${pod}">unknown</span></p>
+                    </div>
                 </div>
             </div>
         </div>

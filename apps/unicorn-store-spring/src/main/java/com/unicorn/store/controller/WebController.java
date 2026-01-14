@@ -1,5 +1,6 @@
 package com.unicorn.store.controller;
 
+import com.unicorn.store.config.ReleaseInfo;
 import com.unicorn.store.model.Unicorn;
 import com.unicorn.store.service.UnicornService;
 import org.springframework.stereotype.Controller;
@@ -11,15 +12,21 @@ import org.springframework.web.bind.annotation.*;
 public class WebController {
 
     private final UnicornService unicornService;
+    private final ReleaseInfo releaseInfo;
 
-    public WebController(UnicornService unicornService) {
+    public WebController(UnicornService unicornService, ReleaseInfo releaseInfo) {
         this.unicornService = unicornService;
+        this.releaseInfo = releaseInfo;
     }
 
     @GetMapping
     public String index(Model model) {
         model.addAttribute("unicorns", unicornService.getAllUnicorns());
         model.addAttribute("newUnicorn", new Unicorn());
+        model.addAttribute("version", releaseInfo.getVersion());
+        model.addAttribute("deploymentTime", releaseInfo.getDeploymentTime());
+        model.addAttribute("commit", releaseInfo.getCommit());
+        model.addAttribute("pod", releaseInfo.getPod());
         return "unicorns";
     }
 

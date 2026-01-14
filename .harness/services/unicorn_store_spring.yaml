@@ -22,6 +22,7 @@ service:
                   branch: main
               valuesPaths:
                 - apps/unicorn-store-spring/k8s/values.yaml
+                - apps/unicorn-store-spring/k8s/values-harness.yaml
               skipResourceVersioning: false
       artifacts:
         primary:
