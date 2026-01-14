@@ -87,6 +87,9 @@ pipeline:
                                     - AllErrors
                                   action:
                                     type: Ignore
+                            when:
+                              stageStatus: Success
+                              condition: "false"
                         - step:
                             type: OsvScanner
                             name: OsvScanner
