@@ -19,7 +19,10 @@ public class IndexController {
         model.addAttribute("version", releaseInfo.getVersion());
         model.addAttribute("deploymentTime", releaseInfo.getDeploymentTime());
         model.addAttribute("commit", releaseInfo.getCommit());
+        model.addAttribute("commitUrl", releaseInfo.getCommitUrl());
         model.addAttribute("pod", releaseInfo.getPod());
+        model.addAttribute("environment", releaseInfo.getEnvironment());
+        model.addAttribute("deploymentType", releaseInfo.getDeploymentType());
         return "index";
     }
 }

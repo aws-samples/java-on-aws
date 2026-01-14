@@ -48,3 +48,4 @@ release:
   version: "local"
   deploymentTime: "N/A"
   commit: "local"
+  environment: "local"

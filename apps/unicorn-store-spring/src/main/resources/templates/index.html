@@ -68,17 +68,23 @@
                     <div class="card-header">Release Information</div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
+                                <p><strong>Type:</strong> <span th:text="${deploymentType}">Unknown</span></p>
+                            </div>
+                            <div class="col-md-2">
                                 <p><strong>Version:</strong> <span th:text="${version}">local</span></p>
                             </div>
                             <div class="col-md-3">
                                 <p><strong>Deployment Time:</strong> <span th:text="${deploymentTime}">N/A</span></p>
                             </div>
-                            <div class="col-md-3">
-                                <p><strong>Commit:</strong> <span th:text="${commit}">local</span></p>
+                            <div class="col-md-2">
+                                <p><strong>Commit:</strong> 
+                                    <a th:if="${commitUrl}" th:href="${commitUrl}" th:text="${commit}" target="_blank">local</a>
+                                    <span th:unless="${commitUrl}" th:text="${commit}">local</span>
+                                </p>
                             </div>
-                            <div class="col-md-3">
-                                <p><strong>Pod:</strong> <span th:text="${pod}">unknown</span></p>
+                            <div class="col-md-2">
+                                <p><strong>Environment:</strong> <span th:text="${environment}">local</span></p>
                             </div>
                         </div>
                     </div>

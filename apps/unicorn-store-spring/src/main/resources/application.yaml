@@ -100,3 +100,4 @@ release:
   deployment-time: ${RELEASE_DEPLOYMENT_TIME:N/A}
   commit: ${RELEASE_COMMIT:local}
   pod: ${RELEASE_POD:unknown}
+  environment: ${RELEASE_ENVIRONMENT:local}

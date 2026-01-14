@@ -5,3 +5,4 @@ release:
   version: <+pipeline.sequenceId>
   deploymentTime: <+pipeline.startTs>
   commit: <+codebase.shortCommitSha>
+  environment: <+infra.name>
