@@ -25,8 +25,7 @@ public class TestInfrastructureInitializer implements BeforeAllCallback {
             DockerClientFactory.instance().client();
             logger.info("Docker is available, initializing Testcontainers infrastructure...");
             initializeTestcontainers();
-        } catch (Exception _) {
-            // Java 22 unnamed variable (_)
+        } catch (Exception ignored) {
             logger.warn("Docker is not available, falling back to H2 database");
             initializeH2Fallback();
         }
@@ -73,8 +72,7 @@ public class TestInfrastructureInitializer implements BeforeAllCallback {
             logger.info("Successfully initialized Testcontainers infrastructure.");
             logger.info("PostgreSQL URL: {}", postgres.getJdbcUrl());
             logger.info("LocalStack URL: {}", localstack.getEndpoint());
-        } catch (Exception _) {
-            // Java 22 unnamed variable (_)
+        } catch (Exception ignored) {
             logger.error("Failed to initialize Testcontainers, falling back to H2");
             initializeH2Fallback();
         }
