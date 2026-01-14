@@ -100,11 +100,10 @@ pipeline:
                               target:
                                 type: repository
                                 detection: auto
+                                workspace: /harness/apps/unicorn-store-spring
                               advanced:
                                 log:
                                   level: info
-                                args:
-                                  cli: "-r /harness/apps/unicorn-store-spring"
               - stepGroup:
                   name: SAST Scans
                   identifier: SAST_Scans
