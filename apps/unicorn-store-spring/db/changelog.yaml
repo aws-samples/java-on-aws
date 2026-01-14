@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: changesets/001-initial-schema.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changesets/002-insert-sample-unicorn.yaml
+      relativeToChangelogFile: true

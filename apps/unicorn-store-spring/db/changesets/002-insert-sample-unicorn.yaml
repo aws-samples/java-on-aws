@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-insert-sample-unicorn
+      author: unicorn-store-team
+      labels: sample-data
+      runAlways: true
+      comment: Insert a sample unicorn for testing DB DevOps (runs always, skips if exists)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            sqlCheck:
+              expectedResult: 1
+              sql: SELECT COUNT(*) FROM unicorns WHERE id = 'db-devops-001'
+      changes:
+        - insert:
+            tableName: unicorns
+            columns:
+              - column:
+                  name: id
+                  value: "db-devops-001"
+              - column:
+                  name: name
+                  value: "Sparkle"
+              - column:
+                  name: age
+                  value: "5"
+              - column:
+                  name: size
+                  value: "Medium"
+              - column:
+                  name: type
+                  value: "Rainbow"
+      rollback:
+        - delete:
+            tableName: unicorns
+            where: id = 'db-devops-001'
