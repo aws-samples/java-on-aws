@@ -13,7 +13,9 @@ import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-// Property tests for Scoped Values (JEP 506) - validates thread isolation
+/**
+ * Property tests for ThreadLocal-based RequestContext - validates thread isolation.
+ */
 class RequestContextPropertyTest {
 
     @Property(tries = 100)
@@ -31,10 +33,13 @@ class RequestContextPropertyTest {
                         startLatch.await();
                         String requestId = UUID.randomUUID().toString();
 
-                        ScopedValue.where(RequestContext.REQUEST_ID, requestId).run(() -> {
-                            String capturedId = RequestContext.REQUEST_ID.orElse("missing");
+                        RequestContext.set(requestId);
+                        try {
+                            String capturedId = RequestContext.getOrDefault("missing");
                             capturedIds.add(capturedId);
-                        });
+                        } finally {
+                            RequestContext.clear();
+                        }
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     } finally {
@@ -53,18 +58,23 @@ class RequestContextPropertyTest {
     }
 
     @Property(tries = 100)
-    @Label("Scoped Value returns bound value within scope")
-    void scopedValueReturnsCorrectValue(@ForAll("uuids") String expectedId) {
-        ScopedValue.where(RequestContext.REQUEST_ID, expectedId).run(() -> {
-            String actualId = RequestContext.REQUEST_ID.orElse("missing");
+    @Label("ThreadLocal returns bound value within scope")
+    void threadLocalReturnsCorrectValue(@ForAll("uuids") String expectedId) {
+        RequestContext.set(expectedId);
+        try {
+            String actualId = RequestContext.getOrDefault("missing");
             assertThat(actualId).isEqualTo(expectedId);
-        });
+        } finally {
+            RequestContext.clear();
+        }
     }
 
     @Property(tries = 100)
-    @Label("Scoped Value returns default outside scope")
-    void scopedValueReturnsDefaultOutsideScope(@ForAll("defaults") String defaultValue) {
-        String actualId = RequestContext.REQUEST_ID.orElse(defaultValue);
+    @Label("ThreadLocal returns default when not set")
+    void threadLocalReturnsDefaultWhenNotSet(@ForAll("defaults") String defaultValue) {
+        // Ensure clean state
+        RequestContext.clear();
+        String actualId = RequestContext.getOrDefault(defaultValue);
         assertThat(actualId).isEqualTo(defaultValue);
     }
 

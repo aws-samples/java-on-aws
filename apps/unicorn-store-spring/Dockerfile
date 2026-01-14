@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
+FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-21-al2023 AS builder
 
 ARG CACHE_BUST=1
 RUN yum install -y shadow-utils
@@ -15,4 +15,4 @@ RUN adduser spring -u 1000 -g 1000
 USER 1000:1000
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-XX:+UseCompactObjectHeaders", "-jar", "-Dserver.port=8080", "/store-spring.jar"]
+ENTRYPOINT ["java", "-jar", "-Dserver.port=8080", "/store-spring.jar"]

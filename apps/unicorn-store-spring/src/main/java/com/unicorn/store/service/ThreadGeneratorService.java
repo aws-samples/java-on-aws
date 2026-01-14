@@ -45,8 +45,7 @@ public class ThreadGeneratorService {
         activeThreads.forEach(thread -> {
             try {
                 thread.join(java.time.Duration.ofSeconds(5));
-            } catch (InterruptedException _) {
-                // Java 22 unnamed variable (_)
+            } catch (InterruptedException ignored) {
                 logger.warn("Interrupted while waiting for thread {} to stop", thread.getName());
                 Thread.currentThread().interrupt();
             }
@@ -80,8 +79,7 @@ public class ThreadGeneratorService {
                     }
                     blackhole = result;
                     Thread.sleep(java.time.Duration.ofMillis(100));
-                } catch (InterruptedException _) {
-                    // Java 22 unnamed variable (_)
+                } catch (InterruptedException ignored) {
                     Thread.currentThread().interrupt();
                     break;
                 }

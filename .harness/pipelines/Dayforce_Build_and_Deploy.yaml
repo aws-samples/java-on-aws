@@ -149,7 +149,7 @@ pipeline:
                         identifier: Test_1
                         spec:
                           connectorRef: account.harnessImage
-                          image: maven:3.9-amazoncorretto-25
+                          image: maven:3.9-amazoncorretto-21
                           shell: Sh
                           command: |
                             export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"

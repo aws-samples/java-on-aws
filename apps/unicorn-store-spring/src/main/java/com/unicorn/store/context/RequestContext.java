@@ -1,10 +1,29 @@
 package com.unicorn.store.context;
 
-// Java 25 Scoped Values (JEP 506) - thread-safe request context without ThreadLocal
-// https://openjdk.org/jeps/506
+/**
+ * Thread-safe request context using ThreadLocal.
+ * Stores request ID for the duration of each HTTP request.
+ */
 public final class RequestContext {
 
-    public static final ScopedValue<String> REQUEST_ID = ScopedValue.newInstance();
+    private static final ThreadLocal<String> REQUEST_ID = new ThreadLocal<>();
 
     private RequestContext() {}
+
+    public static void set(String requestId) {
+        REQUEST_ID.set(requestId);
+    }
+
+    public static String get() {
+        return REQUEST_ID.get();
+    }
+
+    public static String getOrDefault(String defaultValue) {
+        String value = REQUEST_ID.get();
+        return value != null ? value : defaultValue;
+    }
+
+    public static void clear() {
+        REQUEST_ID.remove();
+    }
 }

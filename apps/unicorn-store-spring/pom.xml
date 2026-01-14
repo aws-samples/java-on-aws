@@ -13,10 +13,10 @@
     <name>store</name>
     <description>Unicorn storage service</description>
     <properties>
-        <java.version>25</java.version>
-        <maven.compiler.release>25</maven.compiler.release>
-        <maven.compiler.source>25</maven.compiler.source>
-        <maven.compiler.target>25</maven.compiler.target>
+        <java.version>21</java.version>
+        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <testcontainers.version>2.0.3</testcontainers.version>
@@ -209,7 +209,7 @@
                             <metadataRepository>
                                 <enabled>true</enabled>
                             </metadataRepository>
-                            <requiredVersion>25</requiredVersion>
+                            <requiredVersion>21</requiredVersion>
                             <buildArgs>
                                 <arg>--verbose</arg>
                             </buildArgs>
@@ -261,7 +261,7 @@
                         <version>3.5.1</version>
                         <configuration>
                             <from>
-                                <image>public.ecr.aws/docker/library/amazoncorretto:25-al2023</image>
+                                <image>public.ecr.aws/docker/library/amazoncorretto:21-al2023</image>
                             </from>
                             <container>
                                 <user>1000</user>

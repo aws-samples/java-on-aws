@@ -25,8 +25,6 @@ public class Unicorn {
 
     public Unicorn() {}
 
-    // Java 25 Flexible Constructor Bodies (JEP 513) - validation before super()
-    // https://openjdk.org/jeps/513
     public Unicorn(String name, String age, String size, String type) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Unicorn name is required and cannot be blank");
