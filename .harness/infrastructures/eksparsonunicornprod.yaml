@@ -10,4 +10,4 @@ infrastructureDefinition:
     connectorRef: eksparson
     namespace: unicorn-prod
     releaseName: release-<+INFRA_KEY_SHORT_ID>
-  allowSimultaneousDeployments: false
+  allowSimultaneousDeployments: true
