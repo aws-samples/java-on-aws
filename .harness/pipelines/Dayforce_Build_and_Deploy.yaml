@@ -293,6 +293,24 @@ pipeline:
           execution:
             steps:
               - stepGroup:
+                  name: Database Updates
+                  identifier: Database_Updates
+                  steps:
+                    - step:
+                        type: DBSchemaApply
+                        name: Apply Schema
+                        identifier: Apply_Schema
+                        spec:
+                          connectorRef: account.harnessImage
+                          migrationType: Liquibase
+                          dbSchema: unicornstoreschema
+                          dbInstance: unicornstorepostgresprod
+                        timeout: 10m
+                  stepGroupInfra:
+                    type: KubernetesDirect
+                    spec:
+                      connectorRef: eksparson
+              - stepGroup:
                   name: Canary Deployment
                   identifier: Canary_Deployment
                   steps:
