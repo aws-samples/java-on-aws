@@ -144,24 +144,22 @@ pipeline:
                     condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
-                        type: RunTests
-                        name: Run Tests with TI
-                        identifier: Run_Tests_with_TI
+                        type: Test
+                        name: Test Intelligence
+                        identifier: Test_1
                         spec:
                           connectorRef: account.harnessImage
-                          image: maven:3.9-amazoncorretto-25
-                          language: Java
-                          buildTool: Maven
-                          args: test -f apps/unicorn-store-spring/pom.xml -Dmaven.repo.local=/harness/.m2/repository
-                          runOnlySelectedTests: true
-                          preCommand: |
+                          image: maven:3.9-amazoncorretto-21
+                          shell: Sh
+                          command: |
                             export MAVEN_OPTS="-Dmaven.repo.local=/harness/.m2/repository"
+                            mvn test -f apps/unicorn-store-spring/pom.xml -Dmaven.repo.local=/harness/.m2/repository
                           reports:
                             type: JUnit
                             spec:
                               paths:
                                 - "**/target/surefire-reports/*.xml"
-                          enableTestSplitting: false
+                          intelligenceMode: true
               - step:
                   type: BuildAndPushECR
                   name: Build and Push to ECR
