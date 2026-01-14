@@ -3,20 +3,25 @@ package com.unicorn.store.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Component
 public class ReleaseInfo {
 
     private static final String GITHUB_REPO_URL = "https://github.com/alexsoto-harness/java-on-aws";
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter
-            .ofPattern("yyyy-MM-dd HH:mm:ss z")
-            .withZone(ZoneId.of("America/New_York"));
+    private static final ZoneId EST_ZONE = ZoneId.of("America/New_York");
+    private static final DateTimeFormatter OUTPUT_FORMATTER = DateTimeFormatter
+            .ofPattern("yyyy-MM-dd hh:mm:ss a z")
+            .withZone(EST_ZONE);
+    private static final DateTimeFormatter ISO_PARSER = DateTimeFormatter.ISO_DATE_TIME;
 
     @Value("${release.version:local}")
     private String version;
+
+    @Value("${release.version-url:}")
+    private String versionUrl;
 
     @Value("${release.deployment-time:N/A}")
     private String deploymentTime;
@@ -34,14 +39,21 @@ public class ReleaseInfo {
         return version;
     }
 
+    public String getVersionUrl() {
+        if (versionUrl == null || versionUrl.isEmpty()) {
+            return null;
+        }
+        return versionUrl;
+    }
+
     public String getDeploymentTime() {
         if (deploymentTime == null || deploymentTime.equals("N/A") || deploymentTime.equals("local")) {
             return deploymentTime;
         }
         try {
-            long timestamp = Long.parseLong(deploymentTime);
-            return FORMATTER.format(Instant.ofEpochMilli(timestamp));
-        } catch (NumberFormatException e) {
+            ZonedDateTime zdt = ZonedDateTime.parse(deploymentTime, ISO_PARSER);
+            return OUTPUT_FORMATTER.format(zdt.withZoneSameInstant(EST_ZONE));
+        } catch (Exception e) {
             return deploymentTime;
         }
     }
@@ -65,7 +77,8 @@ public class ReleaseInfo {
         if (environment == null) {
             return "Unknown";
         }
-        return switch (environment) {
+        String envLower = environment.toLowerCase().replace("-", "");
+        return switch (envLower) {
             case "eksparsonunicorndev" -> "AWS NonProd";
             case "eksparsonunicornprod" -> "AWS Prod";
             default -> environment;
@@ -78,12 +91,31 @@ public class ReleaseInfo {
         }
         String podLower = pod.toLowerCase();
         if (podLower.contains("blue")) {
-            return "Blue/Green : Blue";
+            return "Blue";
         } else if (podLower.contains("green")) {
-            return "Blue/Green : Green";
+            return "Green";
         } else if (podLower.contains("canary")) {
             return "Canary";
         }
         return "Rolling";
+    }
+
+    public String getDeploymentTypeColor() {
+        String type = getDeploymentType();
+        return switch (type) {
+            case "Blue" -> "text-primary";
+            case "Green" -> "text-success";
+            case "Canary" -> "text-warning";
+            default -> "";
+        };
+    }
+
+    public String getDeploymentTypeLabel() {
+        String type = getDeploymentType();
+        return switch (type) {
+            case "Blue", "Green" -> "Blue/Green";
+            case "Canary" -> "Canary";
+            default -> "Rolling";
+        };
     }
 }

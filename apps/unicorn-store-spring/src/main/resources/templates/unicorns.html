@@ -58,24 +58,32 @@
         <div class="card mb-4">
             <div class="card-header">Release Information</div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-2">
-                        <p><strong>Type:</strong> <span th:text="${deploymentType}">Unknown</span></p>
+                <div class="row text-center">
+                    <div class="col">
+                        <p class="mb-1"><strong>Type</strong></p>
+                        <p><span th:text="${deploymentTypeLabel}">Rolling</span> : <span th:class="${deploymentTypeColor}" th:text="${deploymentType}">Unknown</span></p>
                     </div>
-                    <div class="col-md-2">
-                        <p><strong>Version:</strong> <span th:text="${version}">local</span></p>
+                    <div class="col">
+                        <p class="mb-1"><strong>Version</strong></p>
+                        <p>
+                            <a th:if="${versionUrl}" th:href="${versionUrl}" th:text="${version}" target="_blank">local</a>
+                            <span th:unless="${versionUrl}" th:text="${version}">local</span>
+                        </p>
                     </div>
-                    <div class="col-md-3">
-                        <p><strong>Deployment Time:</strong> <span th:text="${deploymentTime}">N/A</span></p>
+                    <div class="col">
+                        <p class="mb-1"><strong>Deployment Time</strong></p>
+                        <p th:text="${deploymentTime}">N/A</p>
                     </div>
-                    <div class="col-md-2">
-                        <p><strong>Commit:</strong> 
+                    <div class="col">
+                        <p class="mb-1"><strong>Commit</strong></p>
+                        <p>
                             <a th:if="${commitUrl}" th:href="${commitUrl}" th:text="${commit}" target="_blank">local</a>
                             <span th:unless="${commitUrl}" th:text="${commit}">local</span>
                         </p>
                     </div>
-                    <div class="col-md-2">
-                        <p><strong>Environment:</strong> <span th:text="${environment}">local</span></p>
+                    <div class="col">
+                        <p class="mb-1"><strong>Environment</strong></p>
+                        <p th:text="${environment}">local</p>
                     </div>
                 </div>
             </div>

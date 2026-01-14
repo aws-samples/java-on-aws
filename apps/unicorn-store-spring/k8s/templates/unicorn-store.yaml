@@ -46,6 +46,8 @@ spec:
                   fieldPath: metadata.name
             - name: RELEASE_ENVIRONMENT
               value: "{{.Values.release.environment}}"
+            - name: RELEASE_VERSION_URL
+              value: "{{.Values.release.versionUrl}}"
           resources:
             requests:
               cpu: {{.Values.resources.requests.cpu}}

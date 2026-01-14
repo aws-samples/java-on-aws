@@ -46,6 +46,7 @@ database:
 # Release information (populated by Harness pipeline)
 release:
   version: "local"
+  versionUrl: ""
   deploymentTime: "N/A"
   commit: "local"
   environment: "local"

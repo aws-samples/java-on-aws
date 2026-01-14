@@ -97,6 +97,7 @@ management:
 # === Release Information ===
 release:
   version: ${RELEASE_VERSION:local}
+  version-url: ${RELEASE_VERSION_URL:}
   deployment-time: ${RELEASE_DEPLOYMENT_TIME:N/A}
   commit: ${RELEASE_COMMIT:local}
   pod: ${RELEASE_POD:unknown}
