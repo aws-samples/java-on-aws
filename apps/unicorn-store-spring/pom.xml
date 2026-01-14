@@ -20,6 +20,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <testcontainers.version>2.0.3</testcontainers.version>
+        <argLine></argLine>
     </properties>
 
     <dependencyManagement>
@@ -188,7 +189,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.4</version>
                 <configuration>
-                    <argLine>${argLine}</argLine>
+                    <argLine>@{argLine}</argLine>
                 </configuration>
             </plugin>
         </plugins>
