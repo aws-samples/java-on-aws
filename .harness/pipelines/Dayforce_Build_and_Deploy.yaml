@@ -211,202 +211,201 @@ pipeline:
                             format: spdx-json
           sharedPaths:
             - /var/run
-    - stage:
-        name: EKS Dev Deploy
-        identifier: EKS_Dev_Deploy
-        description: ""
-        type: Deployment
-        spec:
-          deploymentType: Kubernetes
-          environment:
-            environmentRef: awsnonprod
-            deployToAll: false
-            infrastructureDefinitions:
-              - identifier: eksparsonunicorndev
-          execution:
-            steps:
-              - stepGroup:
-                  name: Database Updates
-                  identifier: Database_Updates
-                  when:
-                    stageStatus: Success
-                    condition: <+pipeline.variables.skip_checks> != "true"
-                  steps:
-                    - step:
-                        type: DBSchemaApply
-                        name: Apply Schema
-                        identifier: Apply_Schema
-                        spec:
-                          connectorRef: account.harnessImage
-                          migrationType: Liquibase
-                          dbSchema: unicornstoreschema
-                          dbInstance: unicornstorepostgresdev
-                        timeout: 10m
-                  stepGroupInfra:
-                    type: KubernetesDirect
-                    spec:
-                      connectorRef: eksparson
-              - stepGroup:
-                  name: Blue Green Deployment
-                  identifier: Blue_Green_Deployment
-                  steps:
-                    - step:
-                        type: K8sBlueGreenDeploy
-                        name: Stage Deployment
-                        identifier: Stage_Deployment
-                        spec:
-                          skipDryRun: false
-                          pruningEnabled: false
-                          skipUnchangedManifest: false
-                        timeout: 10m
-                      contextType: Pipeline
-                    - step:
-                        type: HarnessApproval
-                        name: Approval
-                        identifier: Approval
-                        spec:
-                          approvalMessage: Please review the following information and approve the pipeline progression
-                          includePipelineExecutionHistory: true
-                          isAutoRejectEnabled: false
-                          approvers:
-                            userGroups:
-                              - account._account_all_users
-                            minimumCount: 1
-                            disallowPipelineExecutor: false
-                          approverInputs: []
-                        timeout: 1d
-                        when:
-                          stageStatus: Success
-                          condition: "false"
-                    - step:
-                        type: K8sBGSwapServices
-                        name: Swap Stage and Primary
-                        identifier: Swap_Stage_and_Primary
-                        spec: {}
-                        timeout: 10m
-            rollbackSteps:
-              - step:
-                  name: Rollback Rollout Deployment
-                  identifier: rollbackRolloutDeployment
-                  type: K8sRollingRollback
-                  timeout: 10m
-                  spec:
-                    pruningEnabled: false
-          service:
-            serviceRef: <+input>.default("unicorn_store_spring")
-            serviceInputs: <+input>
-        tags: {}
-        failureStrategies:
-          - onFailure:
-              errors:
-                - AllErrors
-              action:
-                type: StageRollback
-    - stage:
-        name: EKS Prod Deploy
-        identifier: EKS_Prod_Deploy
-        description: ""
-        type: Deployment
-        spec:
-          deploymentType: Kubernetes
-          environment:
-            environmentRef: awsprod
-            deployToAll: false
-            infrastructureDefinitions:
-              - identifier: eksparsonunicornprod
-          execution:
-            steps:
-              - stepGroup:
-                  name: Database Updates
-                  identifier: Database_Updates
-                  when:
-                    stageStatus: Success
-                    condition: <+pipeline.variables.skip_checks> != "true"
-                  steps:
-                    - step:
-                        type: DBSchemaApply
-                        name: Apply Schema
-                        identifier: Apply_Schema
-                        spec:
-                          connectorRef: account.harnessImage
-                          migrationType: Liquibase
-                          dbSchema: unicornstoreschema
-                          dbInstance: unicornstorepostgresprod
-                        timeout: 10m
-                  stepGroupInfra:
-                    type: KubernetesDirect
-                    spec:
-                      connectorRef: eksparson
-              - stepGroup:
-                  name: Canary Deployment
-                  identifier: Canary_Deployment
-                  steps:
-                    - step:
-                        type: K8sCanaryDeploy
-                        name: Canary Deploy
-                        identifier: Canary_Deploy
-                        spec:
-                          skipDryRun: false
-                          instanceSelection:
+    - parallel:
+        - stage:
+            name: EKS Dev Deploy
+            identifier: EKS_Dev_Deploy
+            description: ""
+            type: Deployment
+            spec:
+              deploymentType: Kubernetes
+              environment:
+                environmentRef: awsnonprod
+                deployToAll: false
+                infrastructureDefinitions:
+                  - identifier: eksparsonunicorndev
+              execution:
+                steps:
+                  - stepGroup:
+                      name: Database Updates
+                      identifier: Database_Updates
+                      when:
+                        stageStatus: Success
+                        condition: <+pipeline.variables.skip_checks> != "true"
+                      steps:
+                        - step:
+                            type: DBSchemaApply
+                            name: Apply Schema
+                            identifier: Apply_Schema
                             spec:
-                              percentage: 10
-                            type: Percentage
-                        timeout: 10m
-                    - step:
-                        type: HarnessApproval
-                        name: Approval
-                        identifier: Approval
+                              connectorRef: account.harnessImage
+                              migrationType: Liquibase
+                              dbSchema: unicornstoreschema
+                              dbInstance: unicornstorepostgresdev
+                            timeout: 10m
+                      stepGroupInfra:
+                        type: KubernetesDirect
                         spec:
-                          approvalMessage: Please review the following information and approve the pipeline progression
-                          includePipelineExecutionHistory: true
-                          isAutoRejectEnabled: false
-                          approvers:
-                            userGroups:
-                              - account._account_all_users
-                            minimumCount: 1
-                            disallowPipelineExecutor: false
-                          approverInputs: []
-                        timeout: 1d
-                        when:
-                          stageStatus: Success
-                          condition: "false"
-                      contextType: Pipeline
-                    - step:
-                        type: K8sCanaryDelete
-                        name: Canary Delete
-                        identifier: Canary_Delete
-                        spec: {}
-                        timeout: 10m
-              - stepGroup:
-                  name: Primary Deployment
-                  identifier: Primary_Deployment
-                  steps:
-                    - step:
-                        type: K8sRollingDeploy
-                        name: Rollout Deployment
-                        identifier: Rollout_Deployment
+                          connectorRef: eksparson
+                  - stepGroup:
+                      name: Blue Green Deployment
+                      identifier: Blue_Green_Deployment
+                      steps:
+                        - step:
+                            type: K8sBlueGreenDeploy
+                            name: Stage Deployment
+                            identifier: Stage_Deployment
+                            spec:
+                              skipDryRun: false
+                              pruningEnabled: false
+                              skipUnchangedManifest: false
+                            timeout: 10m
+                          contextType: Pipeline
+                        - step:
+                            type: HarnessApproval
+                            name: Approval
+                            identifier: Approval
+                            spec:
+                              approvalMessage: Please review the following information and approve the pipeline progression
+                              includePipelineExecutionHistory: true
+                              isAutoRejectEnabled: false
+                              approvers:
+                                userGroups:
+                                  - account._account_all_users
+                                minimumCount: 1
+                                disallowPipelineExecutor: false
+                              approverInputs: []
+                            timeout: 1d
+                            when:
+                              stageStatus: Success
+                        - step:
+                            type: K8sBGSwapServices
+                            name: Swap Stage and Primary
+                            identifier: Swap_Stage_and_Primary
+                            spec: {}
+                            timeout: 10m
+                rollbackSteps:
+                  - step:
+                      name: Rollback Rollout Deployment
+                      identifier: rollbackRolloutDeployment
+                      type: K8sRollingRollback
+                      timeout: 10m
+                      spec:
+                        pruningEnabled: false
+              service:
+                serviceRef: <+input>.default("unicorn_store_spring")
+                serviceInputs: <+input>
+            tags: {}
+            failureStrategies:
+              - onFailure:
+                  errors:
+                    - AllErrors
+                  action:
+                    type: StageRollback
+        - stage:
+            name: EKS Prod Deploy
+            identifier: EKS_Prod_Deploy
+            description: ""
+            type: Deployment
+            spec:
+              deploymentType: Kubernetes
+              environment:
+                environmentRef: awsprod
+                deployToAll: false
+                infrastructureDefinitions:
+                  - identifier: eksparsonunicornprod
+              execution:
+                steps:
+                  - stepGroup:
+                      name: Database Updates
+                      identifier: Database_Updates
+                      when:
+                        stageStatus: Success
+                        condition: <+pipeline.variables.skip_checks> != "true"
+                      steps:
+                        - step:
+                            type: DBSchemaApply
+                            name: Apply Schema
+                            identifier: Apply_Schema
+                            spec:
+                              connectorRef: account.harnessImage
+                              migrationType: Liquibase
+                              dbSchema: unicornstoreschema
+                              dbInstance: unicornstorepostgresprod
+                            timeout: 10m
+                      stepGroupInfra:
+                        type: KubernetesDirect
                         spec:
-                          skipDryRun: false
-                          pruningEnabled: false
-                        timeout: 10m
-            rollbackSteps:
-              - step:
-                  name: Rollback Rollout Deployment
-                  identifier: rollbackRolloutDeployment
-                  type: K8sRollingRollback
-                  timeout: 10m
-                  spec:
-                    pruningEnabled: false
-          service:
-            useFromStage:
-              stage: EKS_Dev_Deploy
-        tags: {}
-        failureStrategies:
-          - onFailure:
-              errors:
-                - AllErrors
-              action:
-                type: StageRollback
-        when:
-          pipelineStatus: Success
+                          connectorRef: eksparson
+                  - stepGroup:
+                      name: Canary Deployment
+                      identifier: Canary_Deployment
+                      steps:
+                        - step:
+                            type: K8sCanaryDeploy
+                            name: Canary Deploy
+                            identifier: Canary_Deploy
+                            spec:
+                              skipDryRun: false
+                              instanceSelection:
+                                spec:
+                                  percentage: 10
+                                type: Percentage
+                            timeout: 10m
+                        - step:
+                            type: HarnessApproval
+                            name: Approval
+                            identifier: Approval
+                            spec:
+                              approvalMessage: Please review the following information and approve the pipeline progression
+                              includePipelineExecutionHistory: true
+                              isAutoRejectEnabled: false
+                              approvers:
+                                userGroups:
+                                  - account._account_all_users
+                                minimumCount: 1
+                                disallowPipelineExecutor: false
+                              approverInputs: []
+                            timeout: 1d
+                            when:
+                              stageStatus: Success
+                          contextType: Pipeline
+                        - step:
+                            type: K8sCanaryDelete
+                            name: Canary Delete
+                            identifier: Canary_Delete
+                            spec: {}
+                            timeout: 10m
+                  - stepGroup:
+                      name: Primary Deployment
+                      identifier: Primary_Deployment
+                      steps:
+                        - step:
+                            type: K8sRollingDeploy
+                            name: Rollout Deployment
+                            identifier: Rollout_Deployment
+                            spec:
+                              skipDryRun: false
+                              pruningEnabled: false
+                            timeout: 10m
+                rollbackSteps:
+                  - step:
+                      name: Rollback Rollout Deployment
+                      identifier: rollbackRolloutDeployment
+                      type: K8sRollingRollback
+                      timeout: 10m
+                      spec:
+                        pruningEnabled: false
+              service:
+                serviceRef: <+input>.default("unicorn_store_spring")
+                serviceInputs: <+input>
+            tags: {}
+            failureStrategies:
+              - onFailure:
+                  errors:
+                    - AllErrors
+                  action:
+                    type: StageRollback
+            when:
+              pipelineStatus: Success
   allowStageExecutions: true
