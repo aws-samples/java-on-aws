@@ -1,0 +1,37 @@
+inputSet:
+  name: express
+  identifier: express
+  orgIdentifier: sandbox
+  projectIdentifier: soto_sandbox
+  pipeline:
+    identifier: Dayforce_Build_and_Deploy
+    variables:
+      - name: skip_build
+        type: String
+        default: "false"
+        value: "false"
+      - name: skip_checks
+        type: String
+        default: "true"
+        value: "true"
+    properties:
+      ci:
+        codebase:
+          build:
+            type: branch
+            spec:
+              branch: main
+    stages:
+      - stage:
+          identifier: EKS_Dev_Deploy
+          type: Deployment
+          spec:
+            service:
+              serviceInputs:
+                serviceDefinition:
+                  type: Kubernetes
+                  spec:
+                    artifacts:
+                      primary:
+                        primaryArtifactRef: ecr_image
+              serviceRef: unicorn_store_spring
