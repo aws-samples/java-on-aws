@@ -1,0 +1,86 @@
+/* Dark Mode Styles for Unicorn Store */
+
+/* Theme toggle button */
+.theme-toggle {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1050;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.theme-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.theme-toggle .icon {
+    font-size: 1.5rem;
+    transition: transform 0.3s ease;
+}
+
+/* Light mode specific */
+[data-bs-theme="light"] {
+    --unicorn-bg: #f8f9fa;
+    --unicorn-card-bg: #ffffff;
+}
+
+[data-bs-theme="light"] .theme-toggle .icon-sun {
+    display: none;
+}
+
+[data-bs-theme="light"] .theme-toggle .icon-moon {
+    display: inline;
+}
+
+/* Dark mode specific */
+[data-bs-theme="dark"] {
+    --unicorn-bg: #1a1d21;
+    --unicorn-card-bg: #212529;
+}
+
+[data-bs-theme="dark"] .theme-toggle .icon-sun {
+    display: inline;
+}
+
+[data-bs-theme="dark"] .theme-toggle .icon-moon {
+    display: none;
+}
+
+[data-bs-theme="dark"] body {
+    background-color: var(--unicorn-bg);
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: var(--unicorn-card-bg);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .hero-section h1,
+[data-bs-theme="dark"] .hero-section .display-4 {
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .card-link:hover .card {
+    box-shadow: 0 0.5rem 1rem rgba(255, 255, 255, 0.1);
+}
+
+/* Smooth transitions */
+body,
+.card,
+.btn,
+.form-control,
+.table,
+.modal-content {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}

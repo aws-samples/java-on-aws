@@ -1,0 +1,29 @@
+# Local development profile with H2 in-memory database
+# Run with: mvn spring-boot:run -Dspring-boot.run.profiles=local
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:unicorndb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+    hikari:
+      maximum-pool-size: 5
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        boot:
+          "[allow_jdbc_metadata_access]": true
+
+  sql:
+    init:
+      mode: never

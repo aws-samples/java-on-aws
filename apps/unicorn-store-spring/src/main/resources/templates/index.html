@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${pageTitle}">Unicorn Store</title>
     <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/css/dark-mode.css}">
+    <script th:src="@{/js/dark-mode.js}"></script>
     <style>
         body {
             background-color: #f8f9fa;
@@ -29,6 +31,12 @@
     </style>
 </head>
 <body>
+    <!-- Dark Mode Toggle Button -->
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+        <span class="icon icon-moon">🌙</span>
+        <span class="icon icon-sun">☀️</span>
+    </button>
+
     <div class="container">
         <div class="hero-section text-center">
             <h1 class="display-4 mb-3">Unicorn Store</h1>
