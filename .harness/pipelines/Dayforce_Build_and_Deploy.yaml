@@ -431,7 +431,7 @@ pipeline:
                               errors:
                                 - Verification
                               action:
-                                type: MarkAsFailure
+                                type: StageRollback
                           - onFailure:
                               errors:
                                 - Unknown
