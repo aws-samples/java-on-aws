@@ -487,7 +487,7 @@ pipeline:
                           migrationType: Liquibase
                           dbSchema: unicornstoreschema
                           dbInstance: unicornstorepostgresprod
-                          changeSetCount: 1
+                          tag: <+pipeline.stages.EKS_Prod_Deploy.spec.execution.steps.Database_Updates.steps.Apply_Schema.output.preStartTag>
                         timeout: 10m
                   stepGroupInfra:
                     type: KubernetesDirect
