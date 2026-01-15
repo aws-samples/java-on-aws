@@ -462,6 +462,12 @@ pipeline:
                         timeout: 10m
             rollbackSteps:
               - step:
+                  type: K8sCanaryDelete
+                  name: "Delete Canary "
+                  identifier: Delete_Canary
+                  spec: {}
+                  timeout: 10m
+              - step:
                   name: Rollback Rollout Deployment
                   identifier: rollbackRolloutDeployment
                   type: K8sRollingRollback
