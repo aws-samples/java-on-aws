@@ -5,6 +5,7 @@ pipeline:
   orgIdentifier: sandbox
   tags:
     owner: soto
+    tag: ""
   variables:
     - name: skip_build
       type: String
