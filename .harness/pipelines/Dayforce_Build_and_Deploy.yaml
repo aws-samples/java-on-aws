@@ -474,6 +474,25 @@ pipeline:
                   timeout: 10m
                   spec:
                     pruningEnabled: false
+              - stepGroup:
+                  name: Database Rollback
+                  identifier: Database_Rollback
+                  steps:
+                    - step:
+                        type: DBSchemaRollback
+                        name: Schema Rollback
+                        identifier: Schema_Rollback
+                        spec:
+                          connectorRef: account.harnessImage
+                          migrationType: Liquibase
+                          dbSchema: unicornstoreschema
+                          dbInstance: unicornstorepostgresprod
+                          changeSetCount: 1
+                        timeout: 10m
+                  stepGroupInfra:
+                    type: KubernetesDirect
+                    spec:
+                      connectorRef: eksparson
           service:
             serviceRef: unicorn_store_spring
             serviceInputs:
