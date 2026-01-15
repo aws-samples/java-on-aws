@@ -6,6 +6,7 @@ pipeline:
   tags:
     owner: soto
     tag: ""
+    sync: "true"
   variables:
     - name: skip_build
       type: String
