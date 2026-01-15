@@ -413,23 +413,35 @@ pipeline:
                             type: Percentage
                         timeout: 10m
                     - step:
-                        type: HarnessApproval
-                        name: Approval
-                        identifier: Approval
+                        type: Verify
+                        name: Continuous Verification
+                        identifier: Continuous_Verification
                         spec:
-                          approvalMessage: Please review the following information and approve the pipeline progression
-                          includePipelineExecutionHistory: true
-                          isAutoRejectEnabled: false
-                          approvers:
-                            userGroups:
-                              - account._account_all_users
-                            minimumCount: 1
-                            disallowPipelineExecutor: false
-                          approverInputs: []
-                        timeout: 1d
-                        when:
-                          stageStatus: Success
-                      contextType: Pipeline
+                          isMultiServicesOrEnvs: false
+                          type: Canary
+                          monitoredService:
+                            type: Default
+                            spec: {}
+                          spec:
+                            sensitivity: HIGH
+                            duration: 5m
+                        timeout: 2h
+                        failureStrategies:
+                          - onFailure:
+                              errors:
+                                - Verification
+                              action:
+                                type: StageRollback
+                          - onFailure:
+                              errors:
+                                - Unknown
+                              action:
+                                type: ManualIntervention
+                                spec:
+                                  timeout: 2h
+                                  onTimeout:
+                                    action:
+                                      type: Ignore
                     - step:
                         type: K8sCanaryDelete
                         name: Canary Delete
@@ -457,8 +469,14 @@ pipeline:
                   spec:
                     pruningEnabled: false
           service:
-            serviceRef: <+input>.default("unicorn_store_spring")
-            serviceInputs: <+input>
+            serviceRef: unicorn_store_spring
+            serviceInputs:
+              serviceDefinition:
+                type: Kubernetes
+                spec:
+                  artifacts:
+                    primary:
+                      primaryArtifactRef: <+pipeline.sequenceId>
         tags: {}
         failureStrategies:
           - onFailure:
