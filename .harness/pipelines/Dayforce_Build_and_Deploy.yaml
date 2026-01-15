@@ -426,10 +426,12 @@ pipeline:
                     projectKey: HD
                     issueType: Story
                     fields:
+                      - name: Assignee
+                        value: alejandro.soto@harness.io
                       - name: Description
                         value: "Promote <+pipeline.stages.EKS_Dev_Deploy.spec.service.name> to production \\\\ Pipeline Name: <+pipeline.name> \\\\ Artifact: <+pipeline.stages.Build.spec.execution.steps.Build_and_Push_to_ECR.artifact_Build_and_Push_to_ECR.stepArtifacts.publishedImageArtifacts[1].imageName>:<+pipeline.stages.Build.spec.execution.steps.Build_and_Push_to_ECR.artifact_Build_and_Push_to_ECR.stepArtifacts.publishedImageArtifacts[1].tag> \\\\ Deployment URL: <+pipeline.executionUrl> \\\\ Requested by <+pipeline.triggeredBy.name>"
                       - name: Summary
-                        value: "Release Tracker: <+service.name>"
+                        value: "Release Tracker: <+pipeline.stages.EKS_Dev_Deploy.spec.service.name>"
               - step:
                   name: Approval
                   identifier: Approval
