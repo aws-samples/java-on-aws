@@ -5,3 +5,6 @@ databaseChangeLog:
   - include:
       file: changesets/002-insert-sample-unicorn.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changesets/003-add-colour-column.yaml
+      relativeToChangelogFile: true

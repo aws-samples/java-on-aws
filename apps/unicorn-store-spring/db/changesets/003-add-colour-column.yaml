@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-colour-column
+      author: unicorn-store-team
+      labels: add-colour
+      comment: Add colour column to unicorns table
+      changes:
+        - addColumn:
+            tableName: unicorns
+            columns:
+              - column:
+                  name: colour
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: unicorns
+            columnName: colour
