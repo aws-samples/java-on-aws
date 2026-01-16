@@ -44,7 +44,7 @@ class UnicornControllerTest {
     @Test
     @Order(2)
     void shouldPostUnicorn1() {
-        Unicorn unicorn = new Unicorn("Unicorn1", "10", "Big", "standard");
+        Unicorn unicorn = new Unicorn("Unicorn1", "10", "Big", "standard", "Golden");
 
         id1 = webTestClient.post()
             .uri("/unicorns")
@@ -64,7 +64,7 @@ class UnicornControllerTest {
     @Test
     @Order(3)
     void shouldPostUnicorn2() {
-        Unicorn unicorn = new Unicorn("Unicorn2", "10", "Big", "standard");
+        Unicorn unicorn = new Unicorn("Unicorn2", "10", "Big", "standard", "Silver");
 
         id2 = webTestClient.post()
             .uri("/unicorns")
@@ -82,7 +82,7 @@ class UnicornControllerTest {
     @Test
     @Order(4)
     void shouldPutUnicorn1() {
-        Unicorn unicorn = new Unicorn("Unicorn11", "10", "Big", "standard");
+        Unicorn unicorn = new Unicorn("Unicorn11", "10", "Big", "standard", "Rainbow");
 
         webTestClient.put()
             .uri("/unicorns/" + id1)
@@ -93,6 +93,7 @@ class UnicornControllerTest {
             .value(u -> {
                 assertThat(u.getId()).isEqualTo(id1);
                 assertThat(u.getName()).isEqualTo("Unicorn11");
+                assertThat(u.getColour()).isEqualTo("Rainbow");
             });
     }
 
@@ -136,6 +137,7 @@ class UnicornControllerTest {
             .value(u -> {
                 assertThat(u.getId()).isEqualTo(id1);
                 assertThat(u.getName()).isEqualTo("Unicorn11");
+                assertThat(u.getColour()).isEqualTo("Rainbow");
             });
     }
 

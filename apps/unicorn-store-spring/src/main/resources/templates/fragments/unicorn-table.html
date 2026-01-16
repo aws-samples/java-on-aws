@@ -10,6 +10,7 @@
                 <th>Age</th>
                 <th>Size</th>
                 <th>Type</th>
+                <th>Colour</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -20,6 +21,7 @@
                 <td th:text="${unicorn.age}"></td>
                 <td th:text="${unicorn.size}"></td>
                 <td th:text="${unicorn.type}"></td>
+                <td th:text="${unicorn.colour}"></td>
                 <td>
                     <button class="btn btn-sm btn-primary"
                             th:hx-get="@{/webui/edit/{id}(id=${unicorn.id})}"

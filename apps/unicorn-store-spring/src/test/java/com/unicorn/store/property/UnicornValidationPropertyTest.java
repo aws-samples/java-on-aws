@@ -13,23 +13,26 @@ class UnicornValidationPropertyTest {
             @ForAll("validNames") String name,
             @ForAll("validAges") String age,
             @ForAll("validSizes") String size,
-            @ForAll("validTypes") String type) {
+            @ForAll("validTypes") String type,
+            @ForAll("validColours") String colour) {
 
-        var unicorn = new Unicorn(name, age, size, type);
+        var unicorn = new Unicorn(name, age, size, type, colour);
 
         assertThat(unicorn.getName()).isEqualTo(name);
         assertThat(unicorn.getAge()).isEqualTo(age);
         assertThat(unicorn.getSize()).isEqualTo(size);
         assertThat(unicorn.getType()).isEqualTo(type);
+        assertThat(unicorn.getColour()).isEqualTo(colour);
     }
 
     @Property(tries = 100)
     void nullNameIsRejected(
             @ForAll("validAges") String age,
             @ForAll("validSizes") String size,
-            @ForAll("validTypes") String type) {
+            @ForAll("validTypes") String type,
+            @ForAll("validColours") String colour) {
 
-        assertThatThrownBy(() -> new Unicorn(null, age, size, type))
+        assertThatThrownBy(() -> new Unicorn(null, age, size, type, colour))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("name");
     }
@@ -39,9 +42,10 @@ class UnicornValidationPropertyTest {
             @ForAll("blankStrings") String name,
             @ForAll("validAges") String age,
             @ForAll("validSizes") String size,
-            @ForAll("validTypes") String type) {
+            @ForAll("validTypes") String type,
+            @ForAll("validColours") String colour) {
 
-        assertThatThrownBy(() -> new Unicorn(name, age, size, type))
+        assertThatThrownBy(() -> new Unicorn(name, age, size, type, colour))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("name");
     }
@@ -50,9 +54,10 @@ class UnicornValidationPropertyTest {
     void nullTypeIsRejected(
             @ForAll("validNames") String name,
             @ForAll("validAges") String age,
-            @ForAll("validSizes") String size) {
+            @ForAll("validSizes") String size,
+            @ForAll("validColours") String colour) {
 
-        assertThatThrownBy(() -> new Unicorn(name, age, size, null))
+        assertThatThrownBy(() -> new Unicorn(name, age, size, null, colour))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("type");
     }
@@ -62,9 +67,10 @@ class UnicornValidationPropertyTest {
             @ForAll("validNames") String name,
             @ForAll("validAges") String age,
             @ForAll("validSizes") String size,
-            @ForAll("blankStrings") String type) {
+            @ForAll("blankStrings") String type,
+            @ForAll("validColours") String colour) {
 
-        assertThatThrownBy(() -> new Unicorn(name, age, size, type))
+        assertThatThrownBy(() -> new Unicorn(name, age, size, type, colour))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("type");
     }
@@ -94,6 +100,11 @@ class UnicornValidationPropertyTest {
     @Provide
     Arbitrary<String> validSizes() {
         return Arbitraries.of("SMALL", "MEDIUM", "LARGE");
+    }
+
+    @Provide
+    Arbitrary<String> validColours() {
+        return Arbitraries.of("Golden", "Silver", "Rainbow", "Purple", "Blue", null);
     }
 
     @Provide

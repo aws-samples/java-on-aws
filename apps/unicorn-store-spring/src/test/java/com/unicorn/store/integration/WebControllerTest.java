@@ -55,7 +55,7 @@ class WebControllerTest {
     @Test
     @Order(3)
     void shouldCreateUnicornViaRestAPI() {
-        Unicorn unicorn = new Unicorn("WebTestUnicorn", "5", "Medium", "Rainbow");
+        Unicorn unicorn = new Unicorn("WebTestUnicorn", "5", "Medium", "Rainbow", "Purple");
         
         createdId = webTestClient.post()
             .uri("/unicorns")
@@ -78,7 +78,10 @@ class WebControllerTest {
             .exchange()
             .expectStatus().isOk()
             .expectBody(String.class)
-            .value(html -> assertThat(html).contains("WebTestUnicorn"));
+            .value(html -> {
+                assertThat(html).contains("WebTestUnicorn");
+                assertThat(html).contains("Purple");
+            });
     }
 
     @Test

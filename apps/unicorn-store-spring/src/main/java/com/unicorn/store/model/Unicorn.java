@@ -23,9 +23,16 @@ public class Unicorn {
     @JsonProperty("type")
     private String type;
 
+    @JsonProperty("colour")
+    private String colour;
+
     public Unicorn() {}
 
     public Unicorn(String name, String age, String size, String type) {
+        this(name, age, size, type, null);
+    }
+
+    public Unicorn(String name, String age, String size, String type, String colour) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Unicorn name is required and cannot be blank");
         }
@@ -36,10 +43,11 @@ public class Unicorn {
         this.age = age;
         this.size = size;
         this.type = type;
+        this.colour = colour;
     }
 
     public Unicorn withId(String newId) {
-        var unicorn = new Unicorn(name, age, size, type);
+        var unicorn = new Unicorn(name, age, size, type, colour);
         unicorn.id = newId;
         return unicorn;
     }
@@ -49,12 +57,14 @@ public class Unicorn {
     public String getAge() { return age; }
     public String getSize() { return size; }
     public String getType() { return type; }
+    public String getColour() { return colour; }
 
     public void setId(String id) { this.id = id; }
     public void setName(String name) { this.name = name; }
     public void setAge(String age) { this.age = age; }
     public void setSize(String size) { this.size = size; }
     public void setType(String type) { this.type = type; }
+    public void setColour(String colour) { this.colour = colour; }
 
     @Override
     public boolean equals(Object o) {
@@ -70,7 +80,7 @@ public class Unicorn {
 
     @Override
     public String toString() {
-        return "Unicorn{id='%s', name='%s', age='%s', size='%s', type='%s'}"
-            .formatted(id, name, age, size, type);
+        return "Unicorn{id='%s', name='%s', age='%s', size='%s', type='%s', colour='%s'}"
+            .formatted(id, name, age, size, type, colour);
     }
 }
