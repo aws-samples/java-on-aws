@@ -1,0 +1,13 @@
+infrastructureDefinition:
+  name: eks-parson-unicorn-ha
+  identifier: eksparsonunicornha
+  orgIdentifier: sandbox
+  projectIdentifier: soto_sandbox
+  environmentRef: awsprod
+  deploymentType: Kubernetes
+  type: KubernetesDirect
+  spec:
+    connectorRef: eksparson
+    namespace: unicorn-ha
+    releaseName: release-<+INFRA_KEY_SHORT_ID>
+  allowSimultaneousDeployments: true
