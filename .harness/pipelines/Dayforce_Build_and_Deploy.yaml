@@ -486,15 +486,11 @@ pipeline:
                   artifacts:
                     primary:
                       primaryArtifactRef: <+pipeline.sequenceId>
-          environments:
-            metadata:
-              parallel: true
-            values:
-              - environmentRef: awsprod
-                deployToAll: false
-                infrastructureDefinitions:
-                  - identifier: eksparsonunicornprod
-                  - identifier: eksparsonunicornha
+          environment:
+            environmentRef: awsprod
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: eksparsonunicornprod
         tags: {}
         failureStrategies:
           - onFailure:
