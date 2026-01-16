@@ -143,6 +143,7 @@ pipeline:
                   identifier: Unit_Tests
                   when:
                     stageStatus: Success
+                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
                         type: Test
@@ -229,7 +230,6 @@ pipeline:
                   identifier: Database_Updates
                   when:
                     stageStatus: Success
-                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
                         type: DBSchemaApply
@@ -260,23 +260,11 @@ pipeline:
                         timeout: 10m
                       contextType: Pipeline
                     - step:
-                        type: HarnessApproval
-                        name: Approval
-                        identifier: Approval
-                        spec:
-                          approvalMessage: Please review the following information and approve the pipeline progression
-                          includePipelineExecutionHistory: true
-                          isAutoRejectEnabled: false
-                          approvers:
-                            userGroups:
-                              - account._account_all_users
-                            minimumCount: 1
-                            disallowPipelineExecutor: false
-                          approverInputs: []
-                        timeout: 1d
-                        when:
-                          stageStatus: Success
-                          condition: "false"
+                        name: Integration Tests
+                        identifier: Integration_Tests
+                        template:
+                          templateRef: account.Regression_Suite
+                          versionLabel: "0.2"
                     - step:
                         type: K8sBGSwapServices
                         name: Swap Stage and Primary
@@ -370,11 +358,6 @@ pipeline:
         type: Deployment
         spec:
           deploymentType: Kubernetes
-          environment:
-            environmentRef: awsprod
-            deployToAll: false
-            infrastructureDefinitions:
-              - identifier: eksparsonunicornprod
           execution:
             steps:
               - stepGroup:
@@ -382,7 +365,6 @@ pipeline:
                   identifier: Database_Updates
                   when:
                     stageStatus: Success
-                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
                         type: DBSchemaApply
@@ -418,7 +400,7 @@ pipeline:
                         name: Continuous Verification
                         identifier: Continuous_Verification
                         spec:
-                          isMultiServicesOrEnvs: false
+                          isMultiServicesOrEnvs: true
                           type: Canary
                           monitoredService:
                             type: Default
@@ -426,11 +408,12 @@ pipeline:
                           spec:
                             sensitivity: HIGH
                             duration: 5m
-                        timeout: 2h
+                        timeout: 10s
                         failureStrategies:
                           - onFailure:
                               errors:
                                 - Verification
+                                - Timeout
                               action:
                                 type: StageRollback
                           - onFailure:
@@ -488,7 +471,7 @@ pipeline:
                           migrationType: Liquibase
                           dbSchema: unicornstoreschema
                           dbInstance: unicornstorepostgresprod
-                          tag: <+pipeline.stages.EKS_Prod_Deploy.spec.execution.steps.Database_Updates.steps.Apply_Schema.output.preStartTag>
+                          tag: <+execution.steps.Database_Updates.steps.Apply_Schema.output.preStartTag>
                         timeout: 10m
                   stepGroupInfra:
                     type: KubernetesDirect
@@ -503,6 +486,15 @@ pipeline:
                   artifacts:
                     primary:
                       primaryArtifactRef: <+pipeline.sequenceId>
+          environments:
+            metadata:
+              parallel: true
+            values:
+              - environmentRef: awsprod
+                deployToAll: false
+                infrastructureDefinitions:
+                  - identifier: eksparsonunicornprod
+                  - identifier: eksparsonunicornha
         tags: {}
         failureStrategies:
           - onFailure:
