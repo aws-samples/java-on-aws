@@ -31,6 +31,8 @@
 				"bedrock:*",
 				"bedrock-agentcore:*",
 				"apigateway:*",
+				"cloudfront:*",
+				"cognito-idp:*",
 				"application-autoscaling:*",
 				"application-signals:*",
 				"cloudformation:*",
@@ -47,6 +49,7 @@
 				"logs:*",
 				"rds:*",
 				"s3:*",
+				"s3vectors:*",
 				"secretsmanager:*",
 				"ssm:*",
 				"sts:*",
@@ -66,9 +69,9 @@
 				"arn:aws:iam::{{.AccountId}}:role/unicorn*",
 				"arn:aws:iam::{{.AccountId}}:role/service-role/unicorn*",
 				"arn:aws:iam::{{.AccountId}}:role/ai-jvm-analyzer*",
-				"arn:aws:iam::{{.AccountId}}:role/workshop-*",
-				"arn:aws:iam::{{.AccountId}}:role/ai-agent*",
-				"arn:aws:iam::{{.AccountId}}:role/mcp-server*"
+				"arn:aws:iam::{{.AccountId}}:role/workshop*",
+				"arn:aws:iam::{{.AccountId}}:role/aiagent*",
+				"arn:aws:iam::{{.AccountId}}:role/mcpserver*"
 			]
 		},
 		{

@@ -168,6 +168,39 @@ public class WorkshopStack extends Stack {
 
             // java-spring-ai-agents specific resources
             if (isSpringAi) {
+                // AI Agent Runtime role for AgentCore deployment
+                software.amazon.awscdk.services.iam.Role aiAgentRuntimeRole = software.amazon.awscdk.services.iam.Role.Builder.create(this, "AiAgentRuntimeRole")
+                    .roleName("aiagent-agentcore-runtime-role")
+                    .assumedBy(software.amazon.awscdk.services.iam.ServicePrincipal.Builder.create("bedrock-agentcore.amazonaws.com")
+                        .conditions(java.util.Map.of(
+                            "StringEquals", java.util.Map.of("aws:SourceAccount", this.getAccount()),
+                            "ArnLike", java.util.Map.of("aws:SourceArn", "arn:aws:bedrock-agentcore:" + this.getRegion() + ":" + this.getAccount() + ":*")
+                        ))
+                        .build())
+                    .description("Role for AI Agent AgentCore Runtime")
+                    .inlinePolicies(java.util.Map.of("AgentCoreExecutionPolicy",
+                        software.amazon.awscdk.services.iam.PolicyDocument.Builder.create()
+                            .statements(java.util.List.of(
+                                software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                                    .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                                    .actions(java.util.List.of("bedrock:*", "bedrock-agentcore:*"))
+                                    .resources(java.util.List.of("*"))
+                                    .build(),
+                                software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                                    .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                                    .actions(java.util.List.of("ecr:*", "logs:*", "xray:*", "cloudwatch:*"))
+                                    .resources(java.util.List.of("*"))
+                                    .build(),
+                                software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                                    .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                                    .actions(java.util.List.of("aws-marketplace:Subscribe", "aws-marketplace:Unsubscribe", "aws-marketplace:ViewSubscriptions"))
+                                    .resources(java.util.List.of("*"))
+                                    .build()
+                            ))
+                            .build()
+                    ))
+                    .build();
+
                 // AI Agent EKS Pod Identity role with Bedrock access
                 software.amazon.awscdk.services.iam.Role aiAgentEksRole = software.amazon.awscdk.services.iam.Role.Builder.create(this, "AiAgentEksRole")
                     .roleName("ai-agent-eks-pod-role")
