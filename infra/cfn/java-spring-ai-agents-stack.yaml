@@ -96,6 +96,188 @@ Parameters:
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
 Resources:
+  AiAgentEcsCluster79AA4F07:
+    Properties:
+      ClusterName: ai-agent
+    Type: AWS::ECS::Cluster
+  AiAgentExpressService300C1B09:
+    DependsOn:
+      - PlaceholderImageBuild084DA641
+    Properties:
+      Cluster:
+        Ref: AiAgentEcsCluster79AA4F07
+      Cpu: "1024"
+      ExecutionRoleArn:
+        Fn::GetAtt:
+          - AiAgentTaskExecutionRoleDB6B93A6
+          - Arn
+      HealthCheckPath: /
+      InfrastructureRoleArn:
+        Fn::GetAtt:
+          - AiAgentInfrastructureRoleD13D8106
+          - Arn
+      Memory: "2048"
+      NetworkConfiguration:
+        SecurityGroups:
+          - Fn::GetAtt:
+              - DatabaseSG562817C8
+              - GroupId
+        Subnets:
+          - Ref: VpcPublicSubnet1Subnet8E8DEDC0
+          - Ref: VpcPublicSubnet2SubnetA811849C
+      PrimaryContainer:
+        AwsLogsConfiguration:
+          LogGroup:
+            Ref: AiAgentLogGroup9D1D96C1
+          LogStreamPrefix: ecs
+        ContainerPort: 8080
+        Image:
+          Fn::Sub: ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/ai-agent:latest
+        Secrets:
+          - Name: SPRING_DATASOURCE_URL
+            ValueFrom:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ssm:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :parameter/
+                  - Ref: DatabaseConnectionString52D1E98E
+          - Name: SPRING_DATASOURCE_USERNAME
+            ValueFrom:
+              Fn::Join:
+                - ""
+                - - Ref: DatabaseSecret3B817195
+                  - ":username::"
+          - Name: SPRING_DATASOURCE_PASSWORD
+            ValueFrom:
+              Fn::Join:
+                - ""
+                - - Ref: DatabaseSecret3B817195
+                  - ":password::"
+      ScalingTarget:
+        AutoScalingMetric: AVERAGE_CPU
+        AutoScalingTargetValue: 70
+        MaxTaskCount: 4
+        MinTaskCount: 1
+      ServiceName: ai-agent
+      TaskRoleArn:
+        Fn::GetAtt:
+          - AiAgentTaskRole77A94BF0
+          - Arn
+    Type: AWS::ECS::ExpressGatewayService
+  AiAgentInfrastructureRoleD13D8106:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs.amazonaws.com
+        Version: "2012-10-17"
+      Description: ECS infrastructure role for Express Mode
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices
+      Path: /service-role/
+      RoleName: ai-agent-ecs-infrastructure-role
+    Type: AWS::IAM::Role
+  AiAgentLogGroup9D1D96C1:
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: /aws/ecs/ai-agent
+      RetentionInDays: 731
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
+  AiAgentTaskExecutionRoleDB6B93A6:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: "2012-10-17"
+      Description: ECS task execution role for pulling images and injecting secrets
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Path: /service-role/
+      RoleName: ai-agent-ecs-task-execution-role
+    Type: AWS::IAM::Role
+  AiAgentTaskExecutionRoleDefaultPolicy1E8C5A54:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: logs:CreateLogGroup
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - secretsmanager:DescribeSecret
+              - secretsmanager:GetSecretValue
+            Effect: Allow
+            Resource:
+              Ref: DatabaseSecret3B817195
+          - Action:
+              - ssm:DescribeParameters
+              - ssm:GetParameter
+              - ssm:GetParameterHistory
+              - ssm:GetParameters
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ssm:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :parameter/
+                  - Ref: DatabaseConnectionString52D1E98E
+        Version: "2012-10-17"
+      PolicyName: AiAgentTaskExecutionRoleDefaultPolicy1E8C5A54
+      Roles:
+        - Ref: AiAgentTaskExecutionRoleDB6B93A6
+    Type: AWS::IAM::Policy
+  AiAgentTaskRole77A94BF0:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: "2012-10-17"
+      Description: ECS task role for application runtime permissions
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/CloudWatchAgentServerPolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AWSXrayWriteOnlyAccess
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonBedrockFullAccess
+      Path: /service-role/
+      RoleName: ai-agent-ecs-task-role
+    Type: AWS::IAM::Role
   CfnPreDeleteCleanupFA953B95:
     DeletionPolicy: Delete
     Properties:
@@ -336,7 +518,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1768135314413"
+      ContentHash: "1768663316263"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -423,12 +605,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: java-spring-ai-agents
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: main
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-spring-ai-agents
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -2012,7 +2194,7 @@ Resources:
     Type: AWS::CloudFormation::WaitConditionHandle
   McpServerEcsCluster1366256B:
     Properties:
-      ClusterName: unicorn-store-spring
+      ClusterName: mcp-server1
     Type: AWS::ECS::Cluster
   McpServerExpressService4E43A84E:
     DependsOn:
@@ -2023,12 +2205,12 @@ Resources:
       Cpu: "1024"
       ExecutionRoleArn:
         Fn::GetAtt:
-          - UnicornUnicornStoreEcsTaskExecutionRoleC2148AE8
+          - McpServerTaskExecutionRoleFF5CEEEE
           - Arn
       HealthCheckPath: /
       InfrastructureRoleArn:
         Fn::GetAtt:
-          - UnicornUnicornStoreEcsInfrastructureRoleEDFFC1E6
+          - McpServerInfrastructureRole15C3E8B3
           - Arn
       Memory: "2048"
       NetworkConfiguration:
@@ -2046,7 +2228,7 @@ Resources:
           LogStreamPrefix: ecs
         ContainerPort: 8080
         Image:
-          Fn::Sub: ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/unicorn-store-spring:latest
+          Fn::Sub: ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/mcp-server1:latest
         Secrets:
           - Name: SPRING_DATASOURCE_URL
             ValueFrom:
@@ -2077,19 +2259,131 @@ Resources:
         AutoScalingTargetValue: 70
         MaxTaskCount: 4
         MinTaskCount: 1
-      ServiceName: unicorn-store-spring
+      ServiceName: mcp-server1
       TaskRoleArn:
         Fn::GetAtt:
-          - UnicornUnicornStoreEcsTaskRoleD7FBB789
+          - McpServerTaskRoleD830EA97
           - Arn
     Type: AWS::ECS::ExpressGatewayService
+  McpServerInfrastructureRole15C3E8B3:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs.amazonaws.com
+        Version: "2012-10-17"
+      Description: ECS infrastructure role for Express Mode
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices
+      Path: /service-role/
+      RoleName: mcp-server1-ecs-infrastructure-role
+    Type: AWS::IAM::Role
   McpServerLogGroup767EA142:
     DeletionPolicy: Delete
     Properties:
-      LogGroupName: /aws/ecs/unicorn-store-spring
+      LogGroupName: /aws/ecs/mcp-server1
       RetentionInDays: 731
     Type: AWS::Logs::LogGroup
     UpdateReplacePolicy: Delete
+  McpServerTaskExecutionRoleDefaultPolicyCC264E0B:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: logs:CreateLogGroup
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - secretsmanager:DescribeSecret
+              - secretsmanager:GetSecretValue
+            Effect: Allow
+            Resource:
+              Ref: DatabaseSecret3B817195
+          - Action:
+              - ssm:DescribeParameters
+              - ssm:GetParameter
+              - ssm:GetParameterHistory
+              - ssm:GetParameters
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ssm:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :parameter/
+                  - Ref: DatabaseConnectionString52D1E98E
+        Version: "2012-10-17"
+      PolicyName: McpServerTaskExecutionRoleDefaultPolicyCC264E0B
+      Roles:
+        - Ref: McpServerTaskExecutionRoleFF5CEEEE
+    Type: AWS::IAM::Policy
+  McpServerTaskExecutionRoleFF5CEEEE:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: "2012-10-17"
+      Description: ECS task execution role for pulling images and injecting secrets
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Path: /service-role/
+      RoleName: mcp-server1-ecs-task-execution-role
+    Type: AWS::IAM::Role
+  McpServerTaskRoleD830EA97:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: "2012-10-17"
+      Description: ECS task role for application runtime permissions
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/CloudWatchAgentServerPolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AWSXrayWriteOnlyAccess
+      Path: /service-role/
+      RoleName: mcp-server1-ecs-task-role
+    Type: AWS::IAM::Role
+  McpServerTaskRoleDefaultPolicy72825DAD:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: events:PutEvents
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - UnicornUnicornEventBusB728845C
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: McpServerTaskRoleDefaultPolicy72825DAD
+      Roles:
+        - Ref: McpServerTaskRoleD830EA97
+    Type: AWS::IAM::Policy
   PlaceholderImageBuild084DA641:
     DeletionPolicy: Delete
     DependsOn:
@@ -2101,7 +2395,7 @@ Resources:
         Fn::GetAtt:
           - PlaceholderImageBuildRole66BA72FE
           - Arn
-      ContentHash: "1768135314750"
+      ContentHash: "1768663316599"
       ProjectName:
         Ref: PlaceholderImageBuildProjectC08F4D66
       ServiceToken:
@@ -2223,10 +2517,10 @@ Resources:
 
                   # Build and push placeholder to both repos (create-on-push creates repos)
                   docker build -t placeholder /tmp
-                  docker tag placeholder $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/unicorn-spring-ai-agent:latest
-                  docker tag placeholder $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/unicorn-store-spring:latest
-                  docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/unicorn-spring-ai-agent:latest
-                  docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/unicorn-store-spring:latest
+                  for REPO in ai-agent mcp-server1; do
+                    docker tag placeholder $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO:latest
+                    docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO:latest
+                  done
         Type: NO_SOURCE
       TimeoutInMinutes: 30
       VpcConfig:
@@ -2513,86 +2807,6 @@ Resources:
       Runtime: python3.13
       Timeout: 120
     Type: AWS::Lambda::Function
-  SpringAiAgentEcsCluster2D8EE367:
-    Properties:
-      ClusterName: unicorn-spring-ai-agent
-    Type: AWS::ECS::Cluster
-  SpringAiAgentExpressService575ED7B5:
-    DependsOn:
-      - PlaceholderImageBuild084DA641
-    Properties:
-      Cluster:
-        Ref: SpringAiAgentEcsCluster2D8EE367
-      Cpu: "1024"
-      ExecutionRoleArn:
-        Fn::GetAtt:
-          - UnicornUnicornStoreEcsTaskExecutionRoleC2148AE8
-          - Arn
-      HealthCheckPath: /
-      InfrastructureRoleArn:
-        Fn::GetAtt:
-          - UnicornUnicornStoreEcsInfrastructureRoleEDFFC1E6
-          - Arn
-      Memory: "2048"
-      NetworkConfiguration:
-        SecurityGroups:
-          - Fn::GetAtt:
-              - DatabaseSG562817C8
-              - GroupId
-        Subnets:
-          - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-          - Ref: VpcPublicSubnet2SubnetA811849C
-      PrimaryContainer:
-        AwsLogsConfiguration:
-          LogGroup:
-            Ref: SpringAiAgentLogGroup04C48BEB
-          LogStreamPrefix: ecs
-        ContainerPort: 8080
-        Image:
-          Fn::Sub: ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/unicorn-spring-ai-agent:latest
-        Secrets:
-          - Name: SPRING_DATASOURCE_URL
-            ValueFrom:
-              Fn::Join:
-                - ""
-                - - "arn:"
-                  - Ref: AWS::Partition
-                  - ":ssm:"
-                  - Ref: AWS::Region
-                  - ":"
-                  - Ref: AWS::AccountId
-                  - :parameter/
-                  - Ref: DatabaseConnectionString52D1E98E
-          - Name: SPRING_DATASOURCE_USERNAME
-            ValueFrom:
-              Fn::Join:
-                - ""
-                - - Ref: DatabaseSecret3B817195
-                  - ":username::"
-          - Name: SPRING_DATASOURCE_PASSWORD
-            ValueFrom:
-              Fn::Join:
-                - ""
-                - - Ref: DatabaseSecret3B817195
-                  - ":password::"
-      ScalingTarget:
-        AutoScalingMetric: AVERAGE_CPU
-        AutoScalingTargetValue: 70
-        MaxTaskCount: 4
-        MinTaskCount: 1
-      ServiceName: unicorn-spring-ai-agent
-      TaskRoleArn:
-        Fn::GetAtt:
-          - UnicornUnicornStoreEcsTaskRoleD7FBB789
-          - Arn
-    Type: AWS::ECS::ExpressGatewayService
-  SpringAiAgentLogGroup04C48BEB:
-    DeletionPolicy: Delete
-    Properties:
-      LogGroupName: /aws/ecs/unicorn-spring-ai-agent
-      RetentionInDays: 731
-    Type: AWS::Logs::LogGroup
-    UpdateReplacePolicy: Delete
   UnicornUnicornEventBusB728845C:
     Properties:
       Name: unicorns
@@ -2982,11 +3196,6 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AWSXrayWriteOnlyAccess
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonBedrockFullAccess
       Path: /service-role/
       RoleName: unicornstore-ecs-task-role
     Type: AWS::IAM::Role
@@ -3340,7 +3549,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260111134154"
+            - "-20260117162156"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

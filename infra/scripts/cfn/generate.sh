@@ -3,13 +3,37 @@
 # Template generation script
 source "$(dirname "$0")/../lib/common.sh"
 
-log_info "Generating CloudFormation templates..."
-
 # Change to CDK directory
 cd "$(dirname "$0")/../../cdk" || {
     log_error "Failed to change to CDK directory"
     exit 1
 }
+
+# Display menu
+echo ""
+echo "Select template to generate:"
+echo "  0) All templates"
+echo "  1) java-on-aws-immersion-day"
+echo "  2) java-on-amazon-eks"
+echo "  3) java-spring-ai-agents"
+echo "  4) java-ai-agents"
+echo ""
+read -p "Enter choice [0-4]: " choice
+
+# Determine which templates to generate
+case $choice in
+    0) templates=("java-on-aws-immersion-day" "java-on-amazon-eks" "java-spring-ai-agents" "java-ai-agents") ;;
+    1) templates=("java-on-aws-immersion-day") ;;
+    2) templates=("java-on-amazon-eks") ;;
+    3) templates=("java-spring-ai-agents") ;;
+    4) templates=("java-ai-agents") ;;
+    *)
+        log_error "Invalid choice: $choice"
+        exit 1
+        ;;
+esac
+
+log_info "Generating CloudFormation templates..."
 
 # Clean and build Maven project
 log_info "Building CDK project..."
@@ -28,7 +52,7 @@ mkdir -p ../cfn
 # Function to generate and process template
 generate_template() {
     local template_type=$1
-    local output_file=$2
+    local output_file="../cfn/${template_type}-stack.yaml"
 
     log_info "Generating $template_type template..."
 
@@ -67,16 +91,9 @@ generate_template() {
     log_success "Generated $template_type template: $output_file"
 }
 
-# Generate base template (IDE only)
-generate_template "base" "../cfn/base-stack.yaml"
+# Generate selected templates
+for template in "${templates[@]}"; do
+    generate_template "$template"
+done
 
-# Generate java-on-aws-immersion-day template (IDE + Database + EKS + Roles)
-generate_template "java-on-aws-immersion-day" "../cfn/java-on-aws-immersion-day-stack.yaml"
-
-# Generate java-on-amazon-eks template (same as java-on-aws-immersion-day)
-generate_template "java-on-amazon-eks" "../cfn/java-on-amazon-eks-stack.yaml"
-
-# Generate java-spring-ai-agents template (same as java-on-aws-immersion-day)
-generate_template "java-spring-ai-agents" "../cfn/java-spring-ai-agents-stack.yaml"
-
-log_success "All CloudFormation templates generated successfully"
+log_success "CloudFormation template generation complete"

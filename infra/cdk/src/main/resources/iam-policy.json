@@ -66,7 +66,9 @@
 				"arn:aws:iam::{{.AccountId}}:role/unicorn*",
 				"arn:aws:iam::{{.AccountId}}:role/service-role/unicorn*",
 				"arn:aws:iam::{{.AccountId}}:role/ai-jvm-analyzer*",
-				"arn:aws:iam::{{.AccountId}}:role/workshop-*"
+				"arn:aws:iam::{{.AccountId}}:role/workshop-*",
+				"arn:aws:iam::{{.AccountId}}:role/ai-agent*",
+				"arn:aws:iam::{{.AccountId}}:role/mcp-server*"
 			]
 		},
 		{

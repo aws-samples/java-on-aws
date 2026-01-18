@@ -14,7 +14,7 @@ cd "$SCRIPT_DIR/../.." || {
     exit 1
 }
 
-WORKSHOPS=("java-on-aws-immersion-day" "java-on-amazon-eks" "java-spring-ai-agents")
+WORKSHOPS=("java-on-aws-immersion-day" "java-on-amazon-eks" "java-spring-ai-agents" "java-ai-agents")
 
 # Shared IAM policy file used by all workshops
 SHARED_POLICY_FILE="cdk/src/main/resources/iam-policy.json"
@@ -24,11 +24,35 @@ if [[ ! -f "$SHARED_POLICY_FILE" ]]; then
     exit 1
 fi
 
+# Display menu
+echo ""
+echo "Select template to sync:"
+echo "  0) All templates"
+echo "  1) java-on-aws-immersion-day"
+echo "  2) java-on-amazon-eks"
+echo "  3) java-spring-ai-agents"
+echo "  4) java-ai-agents"
+echo ""
+read -p "Enter choice [0-4]: " choice
+
+# Determine which workshops to sync
+case $choice in
+    0) selected_workshops=("${WORKSHOPS[@]}") ;;
+    1) selected_workshops=("java-on-aws-immersion-day") ;;
+    2) selected_workshops=("java-on-amazon-eks") ;;
+    3) selected_workshops=("java-spring-ai-agents") ;;
+    4) selected_workshops=("java-ai-agents") ;;
+    *)
+        log_error "Invalid choice: $choice"
+        exit 1
+        ;;
+esac
+
 log_info "Syncing CloudFormation templates and policies to workshop directories..."
 
 synced_count=0
 
-for workshop in "${WORKSHOPS[@]}"; do
+for workshop in "${selected_workshops[@]}"; do
     # Target is sibling to repo root: ../../{workshop}/static
     target_dir="../../$workshop/static"
 

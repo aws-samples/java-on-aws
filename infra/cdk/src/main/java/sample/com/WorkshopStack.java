@@ -4,6 +4,7 @@ import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 import software.amazon.awscdk.services.ecr.Repository;
+import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.constructs.Construct;
 import sample.com.constructs.*;
 import sample.com.constructs.Ide.IdeProps;
@@ -69,19 +70,54 @@ public class WorkshopStack extends Stack {
             .build();
         Ide ide = new Ide(this, "Ide", ideProps);
 
+        // CodeBuild for workshop setup (service-linked role creation)
+        new CodeBuild(this, "CodeBuild",
+            CodeBuild.CodeBuildProps.builder()
+                .projectName(prefix + "-setup")
+                .vpc(vpc.getVpc())
+                .environmentVariables(Map.of(
+                    "TEMPLATE_TYPE", templateType,
+                    "GIT_BRANCH", gitBranch))
+                .buildSpec(buildSpec)
+                .build());
+
+        // Shared workshop bucket
+        WorkshopBucket workshopBucket = new WorkshopBucket(this, "WorkshopBucket",
+            WorkshopBucket.WorkshopBucketProps.builder()
+                .prefix(prefix)
+                .build());
+
+        // ECR Registry settings (Repository Creation Template for create-on-push)
+        new EcrRegistry(this, "EcrRegistry",
+            EcrRegistry.EcrRegistryProps.builder()
+                .prefix(prefix)
+                .build());
+
+        // Bedrock logging role (for model invocation logging to CloudWatch)
+        software.amazon.awscdk.services.iam.Role.Builder.create(this, "BedrockLoggingRole")
+            .roleName(prefix + "-bedrock-logging-role")
+            .assumedBy(software.amazon.awscdk.services.iam.ServicePrincipal.Builder.create("bedrock.amazonaws.com")
+                .conditions(java.util.Map.of(
+                    "StringEquals", java.util.Map.of("aws:SourceAccount", this.getAccount()),
+                    "ArnLike", java.util.Map.of("aws:SourceArn", "arn:aws:bedrock:" + this.getRegion() + ":" + this.getAccount() + ":*")
+                ))
+                .build())
+            .description("Role for Bedrock model invocation logging to CloudWatch")
+            .inlinePolicies(java.util.Map.of("BedrockLogging",
+                software.amazon.awscdk.services.iam.PolicyDocument.Builder.create()
+                    .statements(java.util.List.of(
+                        software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                            .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                            .actions(java.util.List.of("logs:CreateLogStream", "logs:PutLogEvents"))
+                            .resources(java.util.List.of("arn:aws:logs:" + this.getRegion() + ":" + this.getAccount() + ":log-group:/aws/bedrock/*"))
+                            .build()
+                    ))
+                    .build()
+            ))
+            .build();
+
         // Full template resources (java-on-aws-immersion-day, java-on-amazon-eks, java-spring-ai-agents)
         if (isFullTemplate) {
-            // CodeBuild for workshop setup (service-linked role creation)
-            new CodeBuild(this, "CodeBuild",
-                CodeBuild.CodeBuildProps.builder()
-                    .projectName(prefix + "-setup")
-                    .vpc(vpc.getVpc())
-                    .environmentVariables(Map.of(
-                        "TEMPLATE_TYPE", templateType,
-                        "GIT_BRANCH", gitBranch))
-                    .buildSpec(buildSpec)
-                    .build());
-
             // Database
             Database database = new Database(this, "Database", Database.DatabaseProps.builder()
                 .prefix(prefix)
@@ -95,18 +131,6 @@ public class WorkshopStack extends Stack {
                 .ideInstanceRole(ideProps.getIdeRole())
                 .ideInternalSecurityGroup(ide.getIdeInternalSecurityGroup())
                 .build());
-
-            // Shared workshop bucket
-            WorkshopBucket workshopBucket = new WorkshopBucket(this, "WorkshopBucket",
-                WorkshopBucket.WorkshopBucketProps.builder()
-                    .prefix(prefix)
-                    .build());
-
-            // ECR Registry settings (Repository Creation Template for create-on-push)
-            new EcrRegistry(this, "EcrRegistry",
-                EcrRegistry.EcrRegistryProps.builder()
-                    .prefix(prefix)
-                    .build());
 
             // Unicorn construct: EventBus, Roles, DB Setup (uses unicorn* naming for workshop content compatibility)
             Unicorn unicorn = new Unicorn(this, "Unicorn", Unicorn.UnicornProps.builder()
@@ -144,6 +168,40 @@ public class WorkshopStack extends Stack {
 
             // java-spring-ai-agents specific resources
             if (isSpringAi) {
+                // AI Agent EKS Pod Identity role with Bedrock access
+                software.amazon.awscdk.services.iam.Role aiAgentEksRole = software.amazon.awscdk.services.iam.Role.Builder.create(this, "AiAgentEksRole")
+                    .roleName("ai-agent-eks-pod-role")
+                    .assumedBy(software.amazon.awscdk.services.iam.ServicePrincipal.Builder.create("pods.eks.amazonaws.com").build())
+                    .description("EKS Pod Identity role for AI Agent with Bedrock access")
+                    .managedPolicies(java.util.List.of(
+                        ManagedPolicy.fromAwsManagedPolicyName("AmazonBedrockFullAccess")
+                    ))
+                    .build();
+                // Add sts:TagSession for Pod Identity
+                aiAgentEksRole.getAssumeRolePolicy().addStatements(
+                    software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                        .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                        .principals(java.util.List.of(software.amazon.awscdk.services.iam.ServicePrincipal.Builder.create("pods.eks.amazonaws.com").build()))
+                        .actions(java.util.List.of("sts:TagSession"))
+                        .build()
+                );
+                // Grant DB secrets access (same as unicornstore-eks-pod-role)
+                database.grantSecretsRead(aiAgentEksRole);
+
+                // AI Agent Lambda execution role with Bedrock access
+                software.amazon.awscdk.services.iam.Role aiAgentLambdaRole = software.amazon.awscdk.services.iam.Role.Builder.create(this, "AiAgentLambdaRole")
+                    .roleName("ai-agent-lambda-role")
+                    .assumedBy(software.amazon.awscdk.services.iam.ServicePrincipal.Builder.create("lambda.amazonaws.com").build())
+                    .description("Lambda execution role for AI Agent with Bedrock access")
+                    .managedPolicies(java.util.List.of(
+                        ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"),
+                        ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaVPCAccessExecutionRole"),
+                        ManagedPolicy.fromAwsManagedPolicyName("AmazonBedrockFullAccess")
+                    ))
+                    .build();
+                // Grant DB secrets access
+                database.grantSecretsRead(aiAgentLambdaRole);
+
                 // CodeBuild to push placeholder images (ECS Express needs images at deploy time)
                 // ECR repos are created automatically via create-on-push (EcrRegistry)
                 String placeholderBuildSpec = """
@@ -168,10 +226,10 @@ public class WorkshopStack extends Stack {
 
                             # Build and push placeholder to both repos (create-on-push creates repos)
                             docker build -t placeholder /tmp
-                            docker tag placeholder $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/unicorn-spring-ai-agent:latest
-                            docker tag placeholder $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/unicorn-store-spring:latest
-                            docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/unicorn-spring-ai-agent:latest
-                            docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/unicorn-store-spring:latest
+                            for REPO in ai-agent mcp-server1; do
+                              docker tag placeholder $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO:latest
+                              docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO:latest
+                            done
                     """;
 
                 CodeBuild placeholderImageBuild = new CodeBuild(this, "PlaceholderImageBuild",
@@ -184,23 +242,24 @@ public class WorkshopStack extends Stack {
                         .buildSpec(placeholderBuildSpec)
                         .build());
 
-                // ECS Express Service for Spring AI Agent
-                new EcsExpressService(this, "SpringAiAgent",
+                // ECS Express Service for AI Agent
+                new EcsExpressService(this, "AiAgent",
                     EcsExpressService.EcsExpressServiceProps.builder()
-                        .appName("unicorn-spring-ai-agent")
+                        .appName("ai-agent")
                         .vpc(vpc.getVpc())
                         .database(database)
-                        .unicorn(unicorn)
+                        .configureTaskRole(role ->
+                            role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AmazonBedrockFullAccess")))
                         .dependsOn(placeholderImageBuild.getCustomResource())
                         .build());
 
                 // ECS Express Service for MCP Server
                 new EcsExpressService(this, "McpServer",
                     EcsExpressService.EcsExpressServiceProps.builder()
-                        .appName("unicorn-store-spring")
+                        .appName("mcp-server1")
                         .vpc(vpc.getVpc())
                         .database(database)
-                        .unicorn(unicorn)
+                        .configureTaskRole(role -> unicorn.getEventBus().grantPutEventsTo(role))
                         .dependsOn(placeholderImageBuild.getCustomResource())
                         .build());
             }

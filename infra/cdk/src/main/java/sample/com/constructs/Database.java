@@ -8,6 +8,7 @@ import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.ISecurityGroup;
+import software.amazon.awscdk.services.iam.IGrantable;
 import software.amazon.awscdk.services.rds.AuroraPostgresClusterEngineProps;
 import software.amazon.awscdk.services.rds.ServerlessV2ClusterInstanceProps;
 import software.amazon.awscdk.services.rds.AuroraPostgresEngineVersion;
@@ -139,5 +140,14 @@ public class Database extends Construct {
 
     public String getDatabaseSecretString() {
         return databaseSecret.secretValueFromJson("password").toString();
+    }
+
+    /**
+     * Grants read access to database secrets (secret + connection string parameter).
+     * Use for ECS task execution roles that need to inject secrets at container startup.
+     */
+    public void grantSecretsRead(IGrantable grantee) {
+        databaseSecret.grantRead(grantee);
+        paramDBConnectionString.grantRead(grantee);
     }
 }
