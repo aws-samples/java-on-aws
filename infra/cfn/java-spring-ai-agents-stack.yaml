@@ -100,6 +100,58 @@ Resources:
     Properties:
       ClusterName: ai-agent
     Type: AWS::ECS::Cluster
+  AiAgentEksRole773CEF68:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+              - sts:TagSession
+            Effect: Allow
+            Principal:
+              Service: pods.eks.amazonaws.com
+        Version: "2012-10-17"
+      Description: EKS Pod Identity role for AI Agent with Bedrock access
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonBedrockFullAccess
+      RoleName: ai-agent-eks-pod-role
+    Type: AWS::IAM::Role
+  AiAgentEksRoleDefaultPolicy98379356:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - secretsmanager:DescribeSecret
+              - secretsmanager:GetSecretValue
+            Effect: Allow
+            Resource:
+              Ref: DatabaseSecret3B817195
+          - Action:
+              - ssm:DescribeParameters
+              - ssm:GetParameter
+              - ssm:GetParameterHistory
+              - ssm:GetParameters
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ssm:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :parameter/
+                  - Ref: DatabaseConnectionString52D1E98E
+        Version: "2012-10-17"
+      PolicyName: AiAgentEksRoleDefaultPolicy98379356
+      Roles:
+        - Ref: AiAgentEksRole773CEF68
+    Type: AWS::IAM::Policy
   AiAgentExpressService300C1B09:
     DependsOn:
       - PlaceholderImageBuild084DA641
@@ -188,6 +240,66 @@ Resources:
       Path: /service-role/
       RoleName: ai-agent-ecs-infrastructure-role
     Type: AWS::IAM::Role
+  AiAgentLambdaRoleDefaultPolicy499E8DB7:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - secretsmanager:DescribeSecret
+              - secretsmanager:GetSecretValue
+            Effect: Allow
+            Resource:
+              Ref: DatabaseSecret3B817195
+          - Action:
+              - ssm:DescribeParameters
+              - ssm:GetParameter
+              - ssm:GetParameterHistory
+              - ssm:GetParameters
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ssm:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :parameter/
+                  - Ref: DatabaseConnectionString52D1E98E
+        Version: "2012-10-17"
+      PolicyName: AiAgentLambdaRoleDefaultPolicy499E8DB7
+      Roles:
+        - Ref: AiAgentLambdaRoleE5D4841D
+    Type: AWS::IAM::Policy
+  AiAgentLambdaRoleE5D4841D:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      Description: Lambda execution role for AI Agent with Bedrock access
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonBedrockFullAccess
+      RoleName: ai-agent-lambda-role
+    Type: AWS::IAM::Role
   AiAgentLogGroup9D1D96C1:
     DeletionPolicy: Delete
     Properties:
@@ -195,6 +307,48 @@ Resources:
       RetentionInDays: 731
     Type: AWS::Logs::LogGroup
     UpdateReplacePolicy: Delete
+  AiAgentRuntimeRole4D8E9BEA:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Condition:
+              ArnLike:
+                aws:SourceArn:
+                  Fn::Join:
+                    - ""
+                    - - "arn:aws:bedrock-agentcore:"
+                      - Ref: AWS::Region
+                      - ":"
+                      - Ref: AWS::AccountId
+                      - :*
+              StringEquals:
+                aws:SourceAccount:
+                  Ref: AWS::AccountId
+            Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+        Version: "2012-10-17"
+      Description: Role for AI Agent AgentCore Runtime
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - aws-marketplace:Subscribe
+                  - aws-marketplace:Unsubscribe
+                  - aws-marketplace:ViewSubscriptions
+                  - bedrock-agentcore:*
+                  - bedrock:*
+                  - cloudwatch:*
+                  - ecr:*
+                  - logs:*
+                  - xray:*
+                Effect: Allow
+                Resource: "*"
+            Version: "2012-10-17"
+          PolicyName: AgentCoreExecutionPolicy
+      RoleName: aiagent-agentcore-runtime-role
+    Type: AWS::IAM::Role
   AiAgentTaskExecutionRoleDB6B93A6:
     Properties:
       AssumeRolePolicyDocument:
@@ -277,6 +431,48 @@ Resources:
               - :iam::aws:policy/AmazonBedrockFullAccess
       Path: /service-role/
       RoleName: ai-agent-ecs-task-role
+    Type: AWS::IAM::Role
+  BedrockLoggingRole71F633EF:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Condition:
+              ArnLike:
+                aws:SourceArn:
+                  Fn::Join:
+                    - ""
+                    - - "arn:aws:bedrock:"
+                      - Ref: AWS::Region
+                      - ":"
+                      - Ref: AWS::AccountId
+                      - :*
+              StringEquals:
+                aws:SourceAccount:
+                  Ref: AWS::AccountId
+            Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+        Version: "2012-10-17"
+      Description: Role for Bedrock model invocation logging to CloudWatch
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:aws:logs:"
+                      - Ref: AWS::Region
+                      - ":"
+                      - Ref: AWS::AccountId
+                      - :log-group:/aws/bedrock/*
+            Version: "2012-10-17"
+          PolicyName: BedrockLogging
+      RoleName: workshop-bedrock-logging-role
     Type: AWS::IAM::Role
   CfnPreDeleteCleanupFA953B95:
     DeletionPolicy: Delete
@@ -518,7 +714,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1768663316263"
+      ContentHash: "1768809163626"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2107,9 +2303,11 @@ Resources:
               - bedrock-agentcore:*
               - bedrock:*
               - cloudformation:*
+              - cloudfront:*
               - cloudtrail:*
               - cloudwatch:*
               - codewhisperer:*
+              - cognito-idp:*
               - ec2:*
               - ecr:*
               - ecs:*
@@ -2121,6 +2319,7 @@ Resources:
               - q:*
               - rds:*
               - s3:*
+              - s3vectors:*
               - secretsmanager:*
               - ssm:*
               - sts:*
@@ -2133,9 +2332,11 @@ Resources:
             Effect: Allow
             Resource:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/ai-jvm-analyzer*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/aiagent*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/mcpserver*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/workshop-*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/workshop*
             Sid: PassRole
           - Action: iam:CreateServiceLinkedRole
             Effect: Allow
@@ -2395,7 +2596,7 @@ Resources:
         Fn::GetAtt:
           - PlaceholderImageBuildRole66BA72FE
           - Arn
-      ContentHash: "1768663316599"
+      ContentHash: "1768809164692"
       ProjectName:
         Ref: PlaceholderImageBuildProjectC08F4D66
       ServiceToken:
@@ -3549,7 +3750,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260117162156"
+            - "-20260119085243"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
