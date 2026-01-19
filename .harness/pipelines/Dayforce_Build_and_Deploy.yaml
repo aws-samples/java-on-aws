@@ -230,6 +230,7 @@ pipeline:
                   identifier: Database_Updates
                   when:
                     stageStatus: Success
+                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
                         type: DBSchemaApply
@@ -365,6 +366,7 @@ pipeline:
                   identifier: Database_Updates
                   when:
                     stageStatus: Success
+                    condition: <+pipeline.variables.skip_checks> != "true"
                   steps:
                     - step:
                         type: DBSchemaApply
