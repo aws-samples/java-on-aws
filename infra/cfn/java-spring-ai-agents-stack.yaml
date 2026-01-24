@@ -98,7 +98,7 @@ Parameters:
 Resources:
   AiAgentEcsCluster79AA4F07:
     Properties:
-      ClusterName: ai-agent
+      ClusterName: aiagent
     Type: AWS::ECS::Cluster
   AiAgentEksRole773CEF68:
     Properties:
@@ -118,7 +118,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonBedrockFullAccess
-      RoleName: ai-agent-eks-pod-role
+      RoleName: aiagent-eks-pod-role
     Type: AWS::IAM::Role
   AiAgentEksRoleDefaultPolicy98379356:
     Properties:
@@ -184,7 +184,7 @@ Resources:
           LogStreamPrefix: ecs
         ContainerPort: 8080
         Image:
-          Fn::Sub: ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/ai-agent:latest
+          Fn::Sub: ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/aiagent:latest
         Secrets:
           - Name: SPRING_DATASOURCE_URL
             ValueFrom:
@@ -215,7 +215,7 @@ Resources:
         AutoScalingTargetValue: 70
         MaxTaskCount: 4
         MinTaskCount: 1
-      ServiceName: ai-agent
+      ServiceName: aiagent
       TaskRoleArn:
         Fn::GetAtt:
           - AiAgentTaskRole77A94BF0
@@ -238,7 +238,7 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices
       Path: /service-role/
-      RoleName: ai-agent-ecs-infrastructure-role
+      RoleName: aiagent-ecs-infrastructure-role
     Type: AWS::IAM::Role
   AiAgentLambdaRoleDefaultPolicy499E8DB7:
     Properties:
@@ -298,12 +298,12 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonBedrockFullAccess
-      RoleName: ai-agent-lambda-role
+      RoleName: aiagent-lambda-role
     Type: AWS::IAM::Role
   AiAgentLogGroup9D1D96C1:
     DeletionPolicy: Delete
     Properties:
-      LogGroupName: /aws/ecs/ai-agent
+      LogGroupName: /aws/ecs/aiagent
       RetentionInDays: 731
     Type: AWS::Logs::LogGroup
     UpdateReplacePolicy: Delete
@@ -366,7 +366,7 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       Path: /service-role/
-      RoleName: ai-agent-ecs-task-execution-role
+      RoleName: aiagent-ecs-task-execution-role
     Type: AWS::IAM::Role
   AiAgentTaskExecutionRoleDefaultPolicy1E8C5A54:
     Properties:
@@ -430,7 +430,7 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonBedrockFullAccess
       Path: /service-role/
-      RoleName: ai-agent-ecs-task-role
+      RoleName: aiagent-ecs-task-role
     Type: AWS::IAM::Role
   BedrockLoggingRole71F633EF:
     Properties:
@@ -714,7 +714,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1768809163626"
+      ContentHash: "1769256801727"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -801,12 +801,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: main
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-spring-ai-agents
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: main
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -2393,198 +2393,6 @@ Resources:
     Type: AWS::CloudFormation::WaitCondition
   IdeWaitConditionHandleE8345861:
     Type: AWS::CloudFormation::WaitConditionHandle
-  McpServerEcsCluster1366256B:
-    Properties:
-      ClusterName: mcp-server1
-    Type: AWS::ECS::Cluster
-  McpServerExpressService4E43A84E:
-    DependsOn:
-      - PlaceholderImageBuild084DA641
-    Properties:
-      Cluster:
-        Ref: McpServerEcsCluster1366256B
-      Cpu: "1024"
-      ExecutionRoleArn:
-        Fn::GetAtt:
-          - McpServerTaskExecutionRoleFF5CEEEE
-          - Arn
-      HealthCheckPath: /
-      InfrastructureRoleArn:
-        Fn::GetAtt:
-          - McpServerInfrastructureRole15C3E8B3
-          - Arn
-      Memory: "2048"
-      NetworkConfiguration:
-        SecurityGroups:
-          - Fn::GetAtt:
-              - DatabaseSG562817C8
-              - GroupId
-        Subnets:
-          - Ref: VpcPublicSubnet1Subnet8E8DEDC0
-          - Ref: VpcPublicSubnet2SubnetA811849C
-      PrimaryContainer:
-        AwsLogsConfiguration:
-          LogGroup:
-            Ref: McpServerLogGroup767EA142
-          LogStreamPrefix: ecs
-        ContainerPort: 8080
-        Image:
-          Fn::Sub: ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/mcp-server1:latest
-        Secrets:
-          - Name: SPRING_DATASOURCE_URL
-            ValueFrom:
-              Fn::Join:
-                - ""
-                - - "arn:"
-                  - Ref: AWS::Partition
-                  - ":ssm:"
-                  - Ref: AWS::Region
-                  - ":"
-                  - Ref: AWS::AccountId
-                  - :parameter/
-                  - Ref: DatabaseConnectionString52D1E98E
-          - Name: SPRING_DATASOURCE_USERNAME
-            ValueFrom:
-              Fn::Join:
-                - ""
-                - - Ref: DatabaseSecret3B817195
-                  - ":username::"
-          - Name: SPRING_DATASOURCE_PASSWORD
-            ValueFrom:
-              Fn::Join:
-                - ""
-                - - Ref: DatabaseSecret3B817195
-                  - ":password::"
-      ScalingTarget:
-        AutoScalingMetric: AVERAGE_CPU
-        AutoScalingTargetValue: 70
-        MaxTaskCount: 4
-        MinTaskCount: 1
-      ServiceName: mcp-server1
-      TaskRoleArn:
-        Fn::GetAtt:
-          - McpServerTaskRoleD830EA97
-          - Arn
-    Type: AWS::ECS::ExpressGatewayService
-  McpServerInfrastructureRole15C3E8B3:
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: ecs.amazonaws.com
-        Version: "2012-10-17"
-      Description: ECS infrastructure role for Express Mode
-      ManagedPolicyArns:
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices
-      Path: /service-role/
-      RoleName: mcp-server1-ecs-infrastructure-role
-    Type: AWS::IAM::Role
-  McpServerLogGroup767EA142:
-    DeletionPolicy: Delete
-    Properties:
-      LogGroupName: /aws/ecs/mcp-server1
-      RetentionInDays: 731
-    Type: AWS::Logs::LogGroup
-    UpdateReplacePolicy: Delete
-  McpServerTaskExecutionRoleDefaultPolicyCC264E0B:
-    Properties:
-      PolicyDocument:
-        Statement:
-          - Action: logs:CreateLogGroup
-            Effect: Allow
-            Resource: "*"
-          - Action:
-              - secretsmanager:DescribeSecret
-              - secretsmanager:GetSecretValue
-            Effect: Allow
-            Resource:
-              Ref: DatabaseSecret3B817195
-          - Action:
-              - ssm:DescribeParameters
-              - ssm:GetParameter
-              - ssm:GetParameterHistory
-              - ssm:GetParameters
-            Effect: Allow
-            Resource:
-              Fn::Join:
-                - ""
-                - - "arn:"
-                  - Ref: AWS::Partition
-                  - ":ssm:"
-                  - Ref: AWS::Region
-                  - ":"
-                  - Ref: AWS::AccountId
-                  - :parameter/
-                  - Ref: DatabaseConnectionString52D1E98E
-        Version: "2012-10-17"
-      PolicyName: McpServerTaskExecutionRoleDefaultPolicyCC264E0B
-      Roles:
-        - Ref: McpServerTaskExecutionRoleFF5CEEEE
-    Type: AWS::IAM::Policy
-  McpServerTaskExecutionRoleFF5CEEEE:
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-        Version: "2012-10-17"
-      Description: ECS task execution role for pulling images and injecting secrets
-      ManagedPolicyArns:
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-      Path: /service-role/
-      RoleName: mcp-server1-ecs-task-execution-role
-    Type: AWS::IAM::Role
-  McpServerTaskRoleD830EA97:
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-        Version: "2012-10-17"
-      Description: ECS task role for application runtime permissions
-      ManagedPolicyArns:
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/CloudWatchAgentServerPolicy
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AWSXrayWriteOnlyAccess
-      Path: /service-role/
-      RoleName: mcp-server1-ecs-task-role
-    Type: AWS::IAM::Role
-  McpServerTaskRoleDefaultPolicy72825DAD:
-    Properties:
-      PolicyDocument:
-        Statement:
-          - Action: events:PutEvents
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - UnicornUnicornEventBusB728845C
-                - Arn
-        Version: "2012-10-17"
-      PolicyName: McpServerTaskRoleDefaultPolicy72825DAD
-      Roles:
-        - Ref: McpServerTaskRoleD830EA97
-    Type: AWS::IAM::Policy
   PlaceholderImageBuild084DA641:
     DeletionPolicy: Delete
     DependsOn:
@@ -2596,7 +2404,7 @@ Resources:
         Fn::GetAtt:
           - PlaceholderImageBuildRole66BA72FE
           - Arn
-      ContentHash: "1768809164692"
+      ContentHash: "1769256802083"
       ProjectName:
         Ref: PlaceholderImageBuildProjectC08F4D66
       ServiceToken:
@@ -2718,7 +2526,7 @@ Resources:
 
                   # Build and push placeholder to both repos (create-on-push creates repos)
                   docker build -t placeholder /tmp
-                  for REPO in ai-agent mcp-server1; do
+                  for REPO in aiagent mcpserver1; do
                     docker tag placeholder $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO:latest
                     docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO:latest
                   done
@@ -3750,7 +3558,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260119085243"
+            - "-20260124131321"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

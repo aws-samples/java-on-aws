@@ -169,7 +169,7 @@ public class WorkshopStack extends Stack {
             // java-spring-ai-agents specific resources
             if (isSpringAi) {
                 // AI Agent Runtime role for AgentCore deployment
-                software.amazon.awscdk.services.iam.Role aiAgentRuntimeRole = software.amazon.awscdk.services.iam.Role.Builder.create(this, "AiAgentRuntimeRole")
+                software.amazon.awscdk.services.iam.Role.Builder.create(this, "AiAgentRuntimeRole")
                     .roleName("aiagent-agentcore-runtime-role")
                     .assumedBy(software.amazon.awscdk.services.iam.ServicePrincipal.Builder.create("bedrock-agentcore.amazonaws.com")
                         .conditions(java.util.Map.of(
@@ -203,7 +203,7 @@ public class WorkshopStack extends Stack {
 
                 // AI Agent EKS Pod Identity role with Bedrock access
                 software.amazon.awscdk.services.iam.Role aiAgentEksRole = software.amazon.awscdk.services.iam.Role.Builder.create(this, "AiAgentEksRole")
-                    .roleName("ai-agent-eks-pod-role")
+                    .roleName("aiagent-eks-pod-role")
                     .assumedBy(software.amazon.awscdk.services.iam.ServicePrincipal.Builder.create("pods.eks.amazonaws.com").build())
                     .description("EKS Pod Identity role for AI Agent with Bedrock access")
                     .managedPolicies(java.util.List.of(
@@ -223,7 +223,7 @@ public class WorkshopStack extends Stack {
 
                 // AI Agent Lambda execution role with Bedrock access
                 software.amazon.awscdk.services.iam.Role aiAgentLambdaRole = software.amazon.awscdk.services.iam.Role.Builder.create(this, "AiAgentLambdaRole")
-                    .roleName("ai-agent-lambda-role")
+                    .roleName("aiagent-lambda-role")
                     .assumedBy(software.amazon.awscdk.services.iam.ServicePrincipal.Builder.create("lambda.amazonaws.com").build())
                     .description("Lambda execution role for AI Agent with Bedrock access")
                     .managedPolicies(java.util.List.of(
@@ -259,7 +259,7 @@ public class WorkshopStack extends Stack {
 
                             # Build and push placeholder to both repos (create-on-push creates repos)
                             docker build -t placeholder /tmp
-                            for REPO in ai-agent mcp-server1; do
+                            for REPO in aiagent mcpserver1; do
                               docker tag placeholder $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO:latest
                               docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO:latest
                             done
@@ -278,21 +278,11 @@ public class WorkshopStack extends Stack {
                 // ECS Express Service for AI Agent
                 new EcsExpressService(this, "AiAgent",
                     EcsExpressService.EcsExpressServiceProps.builder()
-                        .appName("ai-agent")
+                        .appName("aiagent")
                         .vpc(vpc.getVpc())
                         .database(database)
                         .configureTaskRole(role ->
                             role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AmazonBedrockFullAccess")))
-                        .dependsOn(placeholderImageBuild.getCustomResource())
-                        .build());
-
-                // ECS Express Service for MCP Server
-                new EcsExpressService(this, "McpServer",
-                    EcsExpressService.EcsExpressServiceProps.builder()
-                        .appName("mcp-server1")
-                        .vpc(vpc.getVpc())
-                        .database(database)
-                        .configureTaskRole(role -> unicorn.getEventBus().grantPutEventsTo(role))
                         .dependsOn(placeholderImageBuild.getCustomResource())
                         .build());
             }

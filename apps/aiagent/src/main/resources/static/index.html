@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-white dark:bg-gray-900 min-h-screen text-gray-800 dark:text-slate-200 transition-colors duration-300">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="container mx-auto px-4 py-8 max-w-md">
+        <div class="bg-slate-50 dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
+            <h1 class="text-3xl font-bold text-indigo-500 mb-6 text-center flex items-center justify-center gap-2">
+                <img src="agent-icon.svg" alt="AI Agent" class="w-8 h-8 rounded" />
+                AI Agent
+            </h1>
+            <p id="loginMessage" class="text-gray-500 dark:text-slate-400 mb-6 text-center">Sign in to start chatting</p>
+
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium mb-2">Username</label>
+                    <input type="text" id="username" required
+                           class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-slate-200">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium mb-2">Password</label>
+                    <input type="password" id="password"
+                           class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-slate-200">
+                </div>
+                <button type="submit" class="w-full bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 transition">
+                    Sign In
+                </button>
+            </form>
+
+            <div id="loginError" class="mt-4 text-red-500 text-sm hidden"></div>
+        </div>
+    </div>
+
+    <!-- Chat Screen -->
+    <div id="chatScreen" class="container mx-auto px-4 py-8 hidden">
+        <header class="mb-8">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-indigo-500 flex items-center gap-2">
+                    <img src="agent-icon.svg" alt="AI Agent" class="w-8 h-8 rounded" />
+                    AI Agent
+                </h1>
+                <div class="flex items-center gap-3">
+                    <span id="userDisplay" class="text-xs text-gray-500 dark:text-slate-400"></span>
+                    <button id="logoutBtn" class="text-gray-500 dark:text-slate-400 px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-slate-200 transition text-sm">
+                        Sign out
+                    </button>
+                    <button id="themeToggle" class="text-gray-500 dark:text-slate-400 p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <span id="themeIcon">🌙</span>
+                    </button>
+                </div>
+            </div>
+            <p class="text-gray-500 dark:text-slate-400 mt-2">Chat with our AI Agent to help you with your questions!</p>
+        </header>
+
+        <div class="bg-slate-50 dark:bg-gray-800 rounded-xl shadow-lg p-6 chat-container border border-gray-200 dark:border-gray-700 flex flex-col">
+            <div class="message-container flex-grow mb-4 bg-white dark:bg-gray-900 rounded-lg p-4 relative" id="messageContainer">
+                <div class="flex mb-4">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 overflow-hidden">
+                        <img src="agent-icon.svg" alt="AI Agent" class="w-8 h-8" />
+                    </div>
+                    <div class="message-bubble-ai rounded-lg p-3 max-w-3xl">
+                        <p>Welcome to the AI Agent! How can I help you today?</p>
+                    </div>
+                </div>
+                <button id="scrollBottomBtn" class="scroll-bottom-btn" onclick="scrollToBottom()">↓ New messages</button>
+            </div>
+
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-auto">
+                <form id="chatForm" class="flex w-full">
+                    <input type="file" id="fileInput" class="hidden" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf">
+                    <button type="button" id="uploadBtn" class="hidden bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-slate-300 px-4 py-3 rounded-l-lg hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-indigo-500 transition" title="Upload document">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                    </button>
+                    <input type="text" id="userInput"
+                           class="flex-grow bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 dark:text-slate-200"
+                           placeholder="Please ask your question..." maxlength="10000">
+                    <button type="submit" class="bg-indigo-500 text-white px-6 py-3 rounded-r-lg hover:bg-indigo-600 hover:shadow-md active:scale-95 transition-all duration-150">Send</button>
+                </form>
+                <div id="filePreview" class="hidden mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                    <div class="flex items-center justify-between mb-2">
+                        <span id="fileName" class="text-sm text-gray-600 dark:text-gray-300"></span>
+                        <button type="button" id="clearFileBtn" class="text-red-500 hover:text-red-600 text-sm">✕ Clear</button>
+                    </div>
+                    <img id="filePreviewImg" class="hidden max-w-full max-h-48 rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:opacity-80 transition" onclick="openImageModal(this.src)" title="Click to enlarge" />
+                    <div id="pdfPreview" class="hidden flex items-center gap-2 p-4 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition" title="Click to open PDF">
+                        <span class="text-4xl">📄</span>
+                        <span class="text-sm text-indigo-500">Click to open PDF</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-80 hidden z-50 flex items-center justify-center" onclick="closeImageModal()">
+        <img id="modalImage" class="max-w-[90vw] max-h-[90vh] rounded-lg" />
+        <button class="absolute top-4 right-4 text-white text-3xl hover:text-gray-300" onclick="closeImageModal()">✕</button>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    <script src="chat.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
