@@ -169,15 +169,36 @@ function escapeHtml(unsafe) {
 
 function copyMessageContent(button) {
     const text = button.getAttribute('data-copy-text');
-    navigator.clipboard.writeText(text).then(() => {
-        const originalText = button.innerHTML;
-        button.innerHTML = '✓ Copied';
-        button.classList.add('copied');
-        setTimeout(() => {
-            button.innerHTML = originalText;
-            button.classList.remove('copied');
-        }, 2000);
-    }).catch(() => {});
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            showCopySuccess(button);
+        }).catch(() => fallbackCopy(text, button));
+    } else {
+        fallbackCopy(text, button);
+    }
+}
+
+function fallbackCopy(text, button) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    showCopySuccess(button);
+}
+
+function showCopySuccess(button) {
+    const originalText = button.innerHTML;
+    button.innerHTML = '✓ Copied';
+    button.classList.add('copied');
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.classList.remove('copied');
+    }, 2000);
 }
 
 async function sendMessage(message, config, auth) {
@@ -300,11 +321,11 @@ async function processStreamingResponse(response, loadingId = null) {
             }
 
             const chunk = decoder.decode(value, { stream: true });
-            
+
             if (isSSE === null) {
                 isSSE = chunk.trimStart().startsWith('data:');
             }
-            
+
             if (isSSE) {
                 buffer += chunk;
                 const lines = buffer.split('\n');

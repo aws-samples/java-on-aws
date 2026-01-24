@@ -30,6 +30,8 @@ public class WorkshopStack extends Stack {
                 # Resolution for when creating the first service in the account
                 aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
                 aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
+                aws iam create-service-linked-role --aws-service-name network.bedrock-agentcore.amazonaws.com 2>/dev/null || true
+                aws iam create-service-linked-role --aws-service-name runtime-identity.bedrock-agentcore.amazonaws.com 2>/dev/null || true
         """;
 
     public WorkshopStack(final Construct scope, final String id, final StackProps props) {
@@ -257,12 +259,10 @@ public class WorkshopStack extends Stack {
                             CMD ["nginx", "-g", "daemon off;"]
                             EOF
 
-                            # Build and push placeholder to both repos (create-on-push creates repos)
+                            # Build and push placeholder image (create-on-push creates repo)
                             docker build -t placeholder /tmp
-                            for REPO in aiagent mcpserver1; do
-                              docker tag placeholder $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO:latest
-                              docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO:latest
-                            done
+                            docker tag placeholder $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/aiagent:latest
+                            docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/aiagent:latest
                     """;
 
                 CodeBuild placeholderImageBuild = new CodeBuild(this, "PlaceholderImageBuild",
