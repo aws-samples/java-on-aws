@@ -86,7 +86,6 @@ cat > ~/environment/aiagent/src/main/resources/static/config.json << EOF
 {
   "userPoolId": "${USER_POOL_ID}",
   "clientId": "${CLIENT_ID}",
-  "region": "${AWS_REGION}",
   "apiEndpoint": "invocations"
 }
 EOF

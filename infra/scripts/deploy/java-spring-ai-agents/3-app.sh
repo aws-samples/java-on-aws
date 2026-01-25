@@ -400,7 +400,6 @@ if [[ -n "${USER_POOL_ID}" && "${USER_POOL_ID}" != "None" ]]; then
 {
   "userPoolId": "${USER_POOL_ID}",
   "clientId": "${CLIENT_ID}",
-  "region": "${AWS_REGION}",
   "apiEndpoint": "invocations"
 }
 EOF
