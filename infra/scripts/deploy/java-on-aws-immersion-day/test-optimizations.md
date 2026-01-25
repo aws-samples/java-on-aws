@@ -1,26 +1,26 @@
-# test-optimizations.sh
+# 4-test-optimizations.sh
 
 Build and test all Java container optimization methods for the Unicorn Store Spring application.
 
 ## Prerequisites
 
-1. Run `containerize.sh` - creates ECR repo, builds baseline image with `:latest` tag
-2. Run `eks.sh` - deploys to EKS with deployment using `:latest` image
+1. Run `1-containerize.sh` - creates ECR repo, builds baseline image with `:latest` tag
+2. Run `2-eks.sh` - deploys to EKS with deployment using `:latest` image
 
 ## Usage
 
 ```bash
 # Full benchmark: clean Docker, build all, deploy to EKS, measure startup, revert to :latest
-./test-optimizations.sh --pre-clean --deploy --revert
+./4-test-optimizations.sh --pre-clean --deploy --revert
 
 # Build all images locally (no deploy)
-./test-optimizations.sh
+./4-test-optimizations.sh
 
 # Build single method locally
-./test-optimizations.sh --only cds
+./4-test-optimizations.sh --only cds
 
 # Build, push, and deploy single method
-./test-optimizations.sh --only cds --deploy
+./4-test-optimizations.sh --only cds --deploy
 ```
 
 ## Options
