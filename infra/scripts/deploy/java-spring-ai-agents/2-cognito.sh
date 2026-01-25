@@ -101,3 +101,5 @@ echo "  Test users: admin, alice, bob (password: \${IDE_PASSWORD})"
 
 log_success "Amazon Cognito setup completed"
 echo "✅ Success: Cognito User Pool and test users created"
+echo "Test users: admin, alice, bob"
+echo "Password: ${IDE_PASSWORD}"

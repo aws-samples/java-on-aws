@@ -193,7 +193,8 @@ while true; do
   sleep 15
 done
 
-log_success "AI Agent URL: ${FUNCTION_URL}"
-
 log_success "Lambda deployment completed"
-echo "✅ Success: AI Agent deployed to Lambda (URL: ${FUNCTION_URL})"
+echo "✅ Success: AI Agent deployed to Lambda"
+echo "URL: ${FUNCTION_URL}"
+echo "Username: alice"
+echo "Password: ${IDE_PASSWORD}"

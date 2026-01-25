@@ -370,5 +370,12 @@ curl -X POST ${MCP_URL}/unicorns \
   -d '{"name": "rainbow", "age": "5", "type": "classic", "size": "medium"}'; echo
 log_success "MCP Server test completed"
 
+# Commit k8s manifests
+log_info "Committing k8s manifests..."
+cd ~/environment/mcpserver
+git add .
+git commit -m "Add k8s manifests"
+log_success "Changes committed"
+
 log_success "MCP Server deployment completed"
 echo "✅ Success: MCP Server deployed to EKS (URL: ${MCP_URL})"

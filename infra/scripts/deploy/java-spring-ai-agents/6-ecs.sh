@@ -123,7 +123,8 @@ while ! curl -s --max-time 5 "${SVC_URL}/actuator/health" | grep -q '"status":"U
   echo "Waiting for service..." && sleep 15
 done
 
-log_success "AI Agent URL: ${SVC_URL}"
-
 log_success "ECS deployment completed"
-echo "✅ Success: AI Agent deployed to ECS (URL: ${SVC_URL})"
+echo "✅ Success: AI Agent deployed to ECS"
+echo "URL: ${SVC_URL}"
+echo "Username: alice"
+echo "Password: ${IDE_PASSWORD}"
