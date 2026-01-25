@@ -90,7 +90,7 @@ public class WorkshopStack extends Stack {
                 .build());
 
         // ECR Registry settings (Repository Creation Template for create-on-push)
-        new EcrRegistry(this, "EcrRegistry",
+        EcrRegistry ecrRegistry = new EcrRegistry(this, "EcrRegistry",
             EcrRegistry.EcrRegistryProps.builder()
                 .prefix(prefix)
                 .build());
@@ -247,8 +247,23 @@ public class WorkshopStack extends Stack {
                       build:
                         commands:
                           - |
+                            set -e
                             ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-                            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+                            ECR_REGISTRY=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+                            # ECR login with retry (network can be slow on first attempt)
+                            for i in 1 2 3; do
+                              echo "ECR login attempt $i..."
+                              if aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY; then
+                                echo "ECR login successful"
+                                break
+                              fi
+                              if [ $i -eq 3 ]; then
+                                echo "ECR login failed after 3 attempts"
+                                exit 1
+                              fi
+                              sleep 10
+                            done
 
                             # Create placeholder Dockerfile
                             cat > /tmp/Dockerfile << 'EOF'
@@ -261,8 +276,8 @@ public class WorkshopStack extends Stack {
 
                             # Build and push placeholder image (create-on-push creates repo)
                             docker build -t placeholder /tmp
-                            docker tag placeholder $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/aiagent:latest
-                            docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/aiagent:latest
+                            docker tag placeholder $ECR_REGISTRY/aiagent:latest
+                            docker push $ECR_REGISTRY/aiagent:latest
                     """;
 
                 CodeBuild placeholderImageBuild = new CodeBuild(this, "PlaceholderImageBuild",
@@ -273,6 +288,10 @@ public class WorkshopStack extends Stack {
                         .environmentVariables(Map.of(
                             "TEMPLATE_TYPE", templateType))
                         .buildSpec(placeholderBuildSpec)
+                        .dependencies(java.util.List.of(
+                            vpc.getConcreteVpc(),  // Ensures NAT Gateway is ready
+                            ecrRegistry.getRepositoryCreationTemplate()  // Ensures ECR create-on-push is configured
+                        ))
                         .build());
 
                 // ECS Express Service for AI Agent

@@ -32,6 +32,7 @@ public class CodeBuild extends Construct {
         private IVpc vpc;
         private Map<String, String> environmentVariables;
         private String buildSpec;
+        private List<software.constructs.IDependable> dependencies;
 
         public static CodeBuildProps.Builder builder() { return new Builder(); }
 
@@ -46,6 +47,7 @@ public class CodeBuild extends Construct {
             public Builder vpc(IVpc vpc) { props.vpc = vpc; return this; }
             public Builder environmentVariables(Map<String, String> environmentVariables) { props.environmentVariables = environmentVariables; return this; }
             public Builder buildSpec(String buildSpec) { props.buildSpec = buildSpec; return this; }
+            public Builder dependencies(List<software.constructs.IDependable> dependencies) { props.dependencies = dependencies; return this; }
 
             public CodeBuildProps build() { return props; }
         }
@@ -59,6 +61,7 @@ public class CodeBuild extends Construct {
         public IVpc getVpc() { return vpc; }
         public Map<String, String> getEnvironmentVariables() { return environmentVariables; }
         public String getBuildSpec() { return buildSpec; }
+        public List<software.constructs.IDependable> getDependencies() { return dependencies; }
     }
 
     public CodeBuild(final Construct scope, final String id, final IVpc vpc, final Map<String, String> environmentVariables, final String buildSpec) {
@@ -164,6 +167,13 @@ public class CodeBuild extends Construct {
 
         this.customResource.getNode().addDependency(buildCompleteRule);
         this.customResource.getNode().addDependency(reportBuildFunction);
+
+        // Add external dependencies (e.g., NAT Gateway, ECR Registry)
+        if (props.getDependencies() != null) {
+            for (software.constructs.IDependable dep : props.getDependencies()) {
+                this.customResource.getNode().addDependency(dep);
+            }
+        }
     }
 
     public Project getCodeBuildProject() {

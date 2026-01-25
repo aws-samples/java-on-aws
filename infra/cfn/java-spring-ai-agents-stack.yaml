@@ -714,7 +714,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1769285698737"
+      ContentHash: "1769326880641"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -801,12 +801,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: main
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-spring-ai-agents
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: main
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -2398,15 +2398,37 @@ Resources:
   PlaceholderImageBuild084DA641:
     DeletionPolicy: Delete
     DependsOn:
+      - EcrRegistryTemplateD54113AB
       - PlaceholderImageBuildCompleteRuleAllowEventRuleWorkshopStackPlaceholderImageBuildReportLambdaFunction17D5E0E6696B4706
       - PlaceholderImageBuildCompleteRuleD3DA254B
       - PlaceholderImageBuildReportLambdaFunctionD1A0B620
+      - VpcIGW488B0FEB
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTable901BAEEE
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet1Subnet67A4DBCB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTable1EA00C9D
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+      - VpcPrivateSubnet2SubnetC8EB537D
+      - VpcPublicSubnet1DefaultRoute0F5C6C43
+      - VpcPublicSubnet1EIP2293BAA3
+      - VpcPublicSubnet1NATGateway8185E366
+      - VpcPublicSubnet1RouteTable431DD755
+      - VpcPublicSubnet1RouteTableAssociationBBCB7AA1
+      - VpcPublicSubnet1Subnet8E8DEDC0
+      - VpcPublicSubnet2DefaultRouteD629179A
+      - VpcPublicSubnet2RouteTable77FB35FC
+      - VpcPublicSubnet2RouteTableAssociation3AFE92E6
+      - VpcPublicSubnet2SubnetA811849C
+      - VpcC3027511
+      - VpcVPCGW42EC8516
     Properties:
       CodeBuildIamRoleArn:
         Fn::GetAtt:
           - PlaceholderImageBuildRole66BA72FE
           - Arn
-      ContentHash: "1769285699069"
+      ContentHash: "1769326881001"
       ProjectName:
         Ref: PlaceholderImageBuildProjectC08F4D66
       ServiceToken:
@@ -2514,8 +2536,23 @@ Resources:
             build:
               commands:
                 - |
+                  set -e
                   ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-                  aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+                  ECR_REGISTRY=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+                  # ECR login with retry (network can be slow on first attempt)
+                  for i in 1 2 3; do
+                    echo "ECR login attempt $i..."
+                    if aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY; then
+                      echo "ECR login successful"
+                      break
+                    fi
+                    if [ $i -eq 3 ]; then
+                      echo "ECR login failed after 3 attempts"
+                      exit 1
+                    fi
+                    sleep 10
+                  done
 
                   # Create placeholder Dockerfile
                   cat > /tmp/Dockerfile << 'EOF'
@@ -2528,8 +2565,8 @@ Resources:
 
                   # Build and push placeholder image (create-on-push creates repo)
                   docker build -t placeholder /tmp
-                  docker tag placeholder $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/aiagent:latest
-                  docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/aiagent:latest
+                  docker tag placeholder $ECR_REGISTRY/aiagent:latest
+                  docker push $ECR_REGISTRY/aiagent:latest
         Type: NO_SOURCE
       TimeoutInMinutes: 30
       VpcConfig:
@@ -3558,7 +3595,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260124211458"
+            - "-20260125084120"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

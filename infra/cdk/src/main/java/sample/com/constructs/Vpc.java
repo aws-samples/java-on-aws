@@ -6,7 +6,7 @@ import software.constructs.Construct;
 import java.util.List;
 
 public class Vpc extends Construct {
-    private final IVpc vpc;
+    private final software.amazon.awscdk.services.ec2.Vpc vpc;
 
     public static class VpcProps {
         private String prefix = "workshop";
@@ -62,6 +62,13 @@ public class Vpc extends Construct {
     }
 
     public IVpc getVpc() {
+        return vpc;
+    }
+
+    /**
+     * Returns the concrete VPC (not interface) to access NAT gateways for dependencies.
+     */
+    public software.amazon.awscdk.services.ec2.Vpc getConcreteVpc() {
         return vpc;
     }
 }
