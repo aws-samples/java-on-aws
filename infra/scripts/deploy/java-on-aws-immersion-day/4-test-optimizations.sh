@@ -10,7 +10,7 @@
 #   ./test-optimizations.sh --only cds --deploy            # Build, push, deploy single method
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/../lib/common.sh"
+source "${SCRIPT_DIR}/../../lib/common.sh"
 
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 APP_DIR="${REPO_ROOT}/apps/unicorn-store-spring"
