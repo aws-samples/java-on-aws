@@ -58,6 +58,13 @@ fi
 cp -r ~/java-on-aws/apps/unicorn-store-spring ~/environment/unicorn-store-spring
 log_success "Copied unicorn-store-spring to ~/environment"
 
+# Remove test folder (not needed for workshop)
+if [ -d ~/environment/unicorn-store-spring/src/test ]; then
+    log_info "Removing src/test folder..."
+    rm -rf ~/environment/unicorn-store-spring/src/test
+    log_success "src/test folder removed"
+fi
+
 # Initialize git repository in unicorn-store-spring
 log_info "Initializing git repository in unicorn-store-spring..."
 cd ~/environment/unicorn-store-spring
