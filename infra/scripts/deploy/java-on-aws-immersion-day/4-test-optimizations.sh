@@ -12,7 +12,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../../lib/common.sh"
 
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 APP_DIR="${REPO_ROOT}/apps/unicorn-store-spring"
 DOCKERFILES_DIR="${REPO_ROOT}/apps/dockerfiles"
 IMAGE_NAME="unicorn-store-spring"
@@ -78,6 +78,13 @@ METHODS=(
 DEPLOY_MODE=false
 REVERT_MODE=false
 PRE_CLEAN=false
+
+# Default to full test mode when no arguments provided
+if [[ $# -eq 0 ]]; then
+    PRE_CLEAN=true
+    DEPLOY_MODE=true
+    REVERT_MODE=true
+fi
 ONLY_METHOD=""
 
 while [[ $# -gt 0 ]]; do
