@@ -72,7 +72,7 @@
 				"arn:aws:iam::{{.AccountId}}:role/ai-jvm-analyzer*",
 				"arn:aws:iam::{{.AccountId}}:role/workshop*",
 				"arn:aws:iam::{{.AccountId}}:role/aiagent*",
-				"arn:aws:iam::{{.AccountId}}:role/mcp*"
+				"arn:aws:iam::{{.AccountId}}:role/mcpserver*"
 			]
 		},
 		{
@@ -98,7 +98,7 @@
 			"Resource": "*"
 		},
 		{
-			"Sid": "IAMRoleManagementWithBoundary",
+			"Sid": "AiAgentCreateRoles",
 			"Effect": "Allow",
 			"Action": [
 				"iam:CreateRole",
@@ -116,6 +116,26 @@
 			"Condition": {
 				"StringEquals": {
 					"iam:PermissionsBoundary": "arn:aws:iam::{{.AccountId}}:policy/workshop-boundary"
+				}
+			}
+		},
+		{
+			"Sid": "AiAgentPassRole",
+			"Effect": "Allow",
+			"Action": [
+				"iam:PassRole"
+			],
+			"Resource": [
+				"arn:aws:iam::{{.AccountId}}:role/aiagent*",
+				"arn:aws:iam::{{.AccountId}}:role/mcp*"
+			],
+			"Condition": {
+				"StringEquals": {
+					"iam:PassedToService": [
+						"bedrock.amazonaws.com",
+						"bedrock-agentcore.amazonaws.com",
+						"lambda.amazonaws.com"
+					]
 				}
 			}
 		},

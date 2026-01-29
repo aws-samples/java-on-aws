@@ -58,7 +58,7 @@ public class WorkshopStack extends Stack {
         boolean isSpringAi = "java-spring-ai-agents".equals(templateType);
         boolean isAiAgents = "java-ai-agents".equals(templateType);
         boolean isFullTemplate = isImmersionDay || isEks || isSpringAi;
-        boolean needsDatabase = isFullTemplate || isAiAgents;
+        boolean needsDatabase = isFullTemplate;
 
         // Core infrastructure (always created)
         Vpc vpc = new Vpc(this, "Vpc", Vpc.VpcProps.builder()
