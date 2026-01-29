@@ -138,6 +138,235 @@ Resources:
           PolicyName: BedrockLogging
       RoleName: workshop-bedrock-logging-role
     Type: AWS::IAM::Role
+  CfnPreDeleteCleanupFA953B95:
+    DeletionPolicy: Delete
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - CfnPreDeleteCleanupFunction580FB700
+          - Arn
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::CloudFormation::CustomResource
+    UpdateReplacePolicy: Delete
+  CfnPreDeleteCleanupFunction580FB700:
+    DependsOn:
+      - CfnPreDeleteCleanupRoleDefaultPolicy7B910EB7
+      - CfnPreDeleteCleanupRole2BF62B3D
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          import time
+          import cfnresponse
+
+          ec2 = boto3.client('ec2')
+          s3 = boto3.client('s3')
+          s3_resource = boto3.resource('s3')
+
+          def lambda_handler(event, context):
+              """
+              Custom Resource handler to cleanup resources before stack deletion.
+              - GuardDuty VPC endpoints that block VPC deletion
+              - GuardDuty managed security groups
+              - S3 bucket contents for workshop- buckets
+              Note: CloudWatch logs are kept for debugging/analysis
+              """
+              print(f"Event: {event}")
+
+              request_type = event['RequestType']
+              vpc_id = event['ResourceProperties'].get('VpcId', '')
+
+              try:
+                  if request_type == 'Delete':
+                      # Start VPC endpoint deletion (async)
+                      endpoint_ids = start_guardduty_endpoint_deletion(vpc_id)
+
+                      # While endpoints are deleting, clean up S3
+                      cleanup_s3_buckets()
+
+                      # Wait for VPC endpoint deletion to complete
+                      if endpoint_ids:
+                          wait_for_deletion(endpoint_ids, max_wait=300)
+
+                      # Delete GuardDuty security groups (after endpoints are deleted)
+                      cleanup_guardduty_security_groups(vpc_id)
+
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  print(f"Error: {e}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
+
+          def start_guardduty_endpoint_deletion(vpc_id):
+              """Find and start deletion of GuardDuty VPC endpoints."""
+
+              # Find GuardDuty data endpoints
+              filters = [{'Name': 'service-name', 'Values': ['*guardduty-data*']}]
+              if vpc_id:
+                  filters.append({'Name': 'vpc-id', 'Values': [vpc_id]})
+
+              response = ec2.describe_vpc_endpoints(Filters=filters)
+              endpoints = response.get('VpcEndpoints', [])
+
+              if not endpoints:
+                  print("No GuardDuty endpoints found")
+                  return []
+
+              endpoint_ids = [ep['VpcEndpointId'] for ep in endpoints]
+              print(f"Found GuardDuty endpoints: {endpoint_ids}")
+
+              # Start deletion (don't wait yet)
+              for endpoint_id in endpoint_ids:
+                  print(f"Deleting endpoint: {endpoint_id}")
+                  try:
+                      ec2.delete_vpc_endpoints(VpcEndpointIds=[endpoint_id])
+                  except Exception as e:
+                      print(f"Error deleting {endpoint_id}: {e}")
+
+              return endpoint_ids
+
+          def cleanup_guardduty_security_groups(vpc_id, max_retries=6, retry_delay=10):
+              """Delete GuardDuty managed security groups for the VPC with retry logic."""
+              if not vpc_id:
+                  print("No VPC ID provided, skipping security group cleanup")
+                  return
+
+              try:
+                  # Find GuardDuty managed security groups by name pattern
+                  response = ec2.describe_security_groups(
+                      Filters=[
+                          {'Name': 'vpc-id', 'Values': [vpc_id]},
+                          {'Name': 'group-name', 'Values': [f'GuardDutyManagedSecurityGroup-{vpc_id}']}
+                      ]
+                  )
+
+                  security_groups = response.get('SecurityGroups', [])
+
+                  if not security_groups:
+                      print("No GuardDuty security groups found")
+                      return
+
+                  for sg in security_groups:
+                      sg_id = sg['GroupId']
+                      sg_name = sg['GroupName']
+                      print(f"Deleting GuardDuty security group: {sg_name} ({sg_id})")
+
+                      # Retry deletion - ENIs may take time to detach after endpoint deletion
+                      for attempt in range(max_retries):
+                          try:
+                              ec2.delete_security_group(GroupId=sg_id)
+                              print(f"Deleted security group: {sg_id}")
+                              break
+                          except ec2.exceptions.ClientError as e:
+                              if 'DependencyViolation' in str(e) and attempt < max_retries - 1:
+                                  print(f"Security group has dependencies, waiting {retry_delay}s (attempt {attempt + 1}/{max_retries})...")
+                                  time.sleep(retry_delay)
+                              else:
+                                  print(f"Error deleting security group {sg_id}: {e}")
+                                  break
+
+              except Exception as e:
+                  print(f"Error listing GuardDuty security groups: {e}")
+
+              print("GuardDuty security group cleanup completed")
+
+          def cleanup_s3_buckets():
+              """Empty S3 buckets with workshop- prefix."""
+              try:
+                  response = s3.list_buckets()
+                  for bucket in response.get('Buckets', []):
+                      bucket_name = bucket['Name']
+                      if bucket_name.startswith('workshop-'):
+                          print(f"Emptying S3 bucket: {bucket_name}")
+                          empty_bucket(bucket_name)
+              except Exception as e:
+                  print(f"Error listing S3 buckets: {e}")
+
+              print("S3 bucket cleanup completed")
+
+          def empty_bucket(bucket_name):
+              """Delete all objects and versions from a bucket using boto3 resource API."""
+              try:
+                  bucket = s3_resource.Bucket(bucket_name)
+                  # Delete all object versions (handles both versioned and non-versioned buckets)
+                  bucket.object_versions.delete()
+                  print(f"Emptied bucket: {bucket_name}")
+              except Exception as e:
+                  print(f"Error emptying bucket {bucket_name}: {e}")
+
+          def wait_for_deletion(endpoint_ids, max_wait=300):
+              """Poll until endpoints are fully deleted (not just deleting) or timeout."""
+              start_time = time.time()
+
+              while time.time() - start_time < max_wait:
+                  try:
+                      response = ec2.describe_vpc_endpoints(VpcEndpointIds=endpoint_ids)
+                      endpoints = response.get('VpcEndpoints', [])
+
+                      # Wait for fully deleted state, not just deleting
+                      remaining = [ep for ep in endpoints if ep['State'] != 'deleted']
+
+                      if not remaining:
+                          print("All endpoints fully deleted")
+                          return
+
+                      states = {ep['VpcEndpointId']: ep['State'] for ep in remaining}
+                      print(f"Waiting for endpoints: {states}")
+                      time.sleep(10)
+                  except ec2.exceptions.ClientError as e:
+                      if 'InvalidVpcEndpointId.NotFound' in str(e):
+                          print("All endpoints deleted (not found)")
+                          return
+                      raise
+
+              print(f"Timeout waiting for endpoint deletion after {max_wait}s")
+      Description: Cleanup VPC endpoints, CloudWatch logs, and S3 buckets before stack deletion
+      FunctionName: workshop-cfn-pre-delete-cleanup
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - CfnPreDeleteCleanupRole2BF62B3D
+          - Arn
+      Runtime: python3.13
+      Timeout: 600
+    Type: AWS::Lambda::Function
+  CfnPreDeleteCleanupRole2BF62B3D:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Type: AWS::IAM::Role
+  CfnPreDeleteCleanupRoleDefaultPolicy7B910EB7:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - ec2:DeleteSecurityGroup
+              - ec2:DeleteVpcEndpoints
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeVpcEndpoints
+              - s3:DeleteObject
+              - s3:DeleteObjectVersion
+              - s3:ListAllMyBuckets
+              - s3:ListBucket
+              - s3:ListBucketVersions
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: CfnPreDeleteCleanupRoleDefaultPolicy7B910EB7
+      Roles:
+        - Ref: CfnPreDeleteCleanupRole2BF62B3D
+    Type: AWS::IAM::Policy
   CodeBuild2FDE9E35:
     DeletionPolicy: Delete
     DependsOn:
@@ -149,7 +378,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1768809173295"
+      ContentHash: "1769675524796"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -236,12 +465,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: java-ai-agents
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: main
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-ai-agents
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -270,6 +499,8 @@ Resources:
                   # Resolution for when creating the first service in the account
                   aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
                   aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
+                  aws iam create-service-linked-role --aws-service-name network.bedrock-agentcore.amazonaws.com 2>/dev/null || true
+                  aws iam create-service-linked-role --aws-service-name runtime-identity.bedrock-agentcore.amazonaws.com 2>/dev/null || true
         Type: NO_SOURCE
       TimeoutInMinutes: 30
       VpcConfig:
@@ -556,6 +787,122 @@ Resources:
       Runtime: python3.13
       Timeout: 120
     Type: AWS::Lambda::Function
+  DatabaseCluster5B53A178:
+    DeletionPolicy: Delete
+    Properties:
+      CopyTagsToSnapshot: true
+      DBClusterIdentifier: workshop-db-cluster
+      DBClusterParameterGroupName: default.aurora-postgresql16
+      DBSubnetGroupName:
+        Ref: DatabaseClusterSubnets5540150D
+      DatabaseName: workshop
+      EnableHttpEndpoint: true
+      Engine: aurora-postgresql
+      EngineVersion: "16.4"
+      MasterUserPassword:
+        Fn::Join:
+          - ""
+          - - "{{resolve:secretsmanager:"
+            - Ref: DatabaseSecret3B817195
+            - :SecretString:password::}}
+      MasterUsername:
+        Fn::Join:
+          - ""
+          - - "{{resolve:secretsmanager:"
+            - Ref: DatabaseSecret3B817195
+            - :SecretString:username::}}
+      Port: 5432
+      ServerlessV2ScalingConfiguration:
+        MaxCapacity: 4
+        MinCapacity: 0.5
+      VpcSecurityGroupIds:
+        - Fn::GetAtt:
+            - DatabaseSG562817C8
+            - GroupId
+    Type: AWS::RDS::DBCluster
+    UpdateReplacePolicy: Delete
+  DatabaseClusterDatabaseWriterF4C0B9A6:
+    DeletionPolicy: Delete
+    DependsOn:
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+    Properties:
+      AutoMinorVersionUpgrade: true
+      DBClusterIdentifier:
+        Ref: DatabaseCluster5B53A178
+      DBInstanceClass: db.serverless
+      DBInstanceIdentifier: workshop-db-writer
+      Engine: aurora-postgresql
+      PromotionTier: 0
+      PubliclyAccessible: false
+    Type: AWS::RDS::DBInstance
+    UpdateReplacePolicy: Delete
+  DatabaseClusterSubnets5540150D:
+    Properties:
+      DBSubnetGroupDescription: Subnets for Cluster database
+      SubnetIds:
+        - Ref: VpcPrivateSubnet1Subnet67A4DBCB
+        - Ref: VpcPrivateSubnet2SubnetC8EB537D
+    Type: AWS::RDS::DBSubnetGroup
+  DatabaseConnectionString52D1E98E:
+    Properties:
+      AllowedPattern: .*
+      Description: Database Connection String
+      Name: workshop-db-connection-string
+      Tier: Standard
+      Type: String
+      Value:
+        Fn::Join:
+          - ""
+          - - jdbc:postgresql://
+            - Fn::GetAtt:
+                - DatabaseCluster5B53A178
+                - Endpoint.Address
+            - :5432/workshop
+    Type: AWS::SSM::Parameter
+  DatabaseSG562817C8:
+    Properties:
+      GroupDescription: WorkshopStack/Database/SG
+      GroupName: workshop-db-sg
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: 10.0.0.0/16
+          Description: Allow Database Traffic from local network
+          FromPort: 5432
+          IpProtocol: tcp
+          ToPort: 5432
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::EC2::SecurityGroup
+  DatabaseSecret3B817195:
+    DeletionPolicy: Delete
+    Properties:
+      Description:
+        Fn::Join:
+          - ""
+          - - "Generated by the CDK for stack: "
+            - Ref: AWS::StackName
+      GenerateSecretString:
+        ExcludeCharacters: " %+~`#$&*()|[]{}:;<>?!'/@\"\\"
+        GenerateStringKey: password
+        PasswordLength: 30
+        SecretStringTemplate: '{"username":"postgres"}'
+      Name: workshop-db-secret
+    Type: AWS::SecretsManager::Secret
+    UpdateReplacePolicy: Delete
+  DatabaseSecretAttachmentE5D1B020:
+    Properties:
+      SecretId:
+        Ref: DatabaseSecret3B817195
+      TargetId:
+        Ref: DatabaseCluster5B53A178
+      TargetType: AWS::RDS::DBCluster
+    Type: AWS::SecretsManager::SecretTargetAttachment
   EcrRegistryTemplateD54113AB:
     Properties:
       AppliedFor:
@@ -1442,7 +1789,7 @@ Resources:
             Resource:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/ai-jvm-analyzer*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/aiagent*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/mcpserver*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/mcp*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/workshop*
@@ -1455,10 +1802,28 @@ Resources:
             Sid: CreateServiceLinkedRole
           - Action:
               - iam:GetRole
+              - iam:ListAttachedRolePolicies
+              - iam:ListRolePolicies
               - iam:ListRoles
             Effect: Allow
             Resource: "*"
             Sid: GetRole
+          - Action:
+              - iam:AttachRolePolicy
+              - iam:CreateRole
+              - iam:DeleteRole
+              - iam:DeleteRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:UpdateAssumeRolePolicy
+            Condition:
+              StringEquals:
+                iam:PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/workshop-boundary
+            Effect: Allow
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/aiagent*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/mcp*
+            Sid: IAMRoleManagementWithBoundary
           - Action: ec2:RunInstances
             Condition:
               StringLike:
@@ -1502,6 +1867,42 @@ Resources:
     Type: AWS::CloudFormation::WaitCondition
   IdeWaitConditionHandleE8345861:
     Type: AWS::CloudFormation::WaitConditionHandle
+  IdeWorkshopBoundaryDEE72AD4:
+    Properties:
+      Description: ""
+      ManagedPolicyName: workshop-boundary
+      Path: /
+      PolicyDocument:
+        Statement:
+          - Action:
+              - aws-marketplace:Subscribe
+              - aws-marketplace:Unsubscribe
+              - aws-marketplace:ViewSubscriptions
+              - bedrock-agentcore:*
+              - bedrock:*
+              - cloudfront:*
+              - cloudwatch:*
+              - cognito-idp:*
+              - dynamodb:*
+              - ecr:*
+              - lambda:InvokeFunction
+              - logs:*
+              - s3:*
+              - s3vectors:*
+              - secretsmanager:GetSecretValue
+              - xray:*
+            Effect: Allow
+            Resource: "*"
+            Sid: AllowedServicesForRoles
+          - Action:
+              - account:*
+              - iam:*
+              - organizations:*
+            Effect: Deny
+            Resource: "*"
+            Sid: DenyIAM
+        Version: "2012-10-17"
+    Type: AWS::IAM::ManagedPolicy
   VpcC3027511:
     Properties:
       CidrBlock: 10.0.0.0/16
@@ -1741,7 +2142,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260119085253"
+            - "-20260129093204"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

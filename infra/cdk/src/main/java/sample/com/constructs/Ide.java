@@ -200,6 +200,14 @@ public class Ide extends Construct {
                 .document(policyDocument)
                 .build();
             this.ideRole.addManagedPolicy(policy);
+
+            // Create permissions boundary for roles created by workshop scripts
+            String boundaryJson = loadFile("/workshop-boundary.json");
+            var boundaryDocument = PolicyDocument.fromJson(new JSONObject(boundaryJson).toMap());
+            ManagedPolicy.Builder.create(this, "WorkshopBoundary")
+                .managedPolicyName("workshop-boundary")
+                .document(boundaryDocument)
+                .build();
         }
 
         // Create Lambda role for IDE Lambda functions

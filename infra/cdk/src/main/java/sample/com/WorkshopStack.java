@@ -56,7 +56,9 @@ public class WorkshopStack extends Stack {
         boolean isImmersionDay = "java-on-aws-immersion-day".equals(templateType);
         boolean isEks = "java-on-amazon-eks".equals(templateType);
         boolean isSpringAi = "java-spring-ai-agents".equals(templateType);
+        boolean isAiAgents = "java-ai-agents".equals(templateType);
         boolean isFullTemplate = isImmersionDay || isEks || isSpringAi;
+        boolean needsDatabase = isFullTemplate || isAiAgents;
 
         // Core infrastructure (always created)
         Vpc vpc = new Vpc(this, "Vpc", Vpc.VpcProps.builder()
@@ -119,13 +121,17 @@ public class WorkshopStack extends Stack {
             .build();
 
         // Full template resources (java-on-aws-immersion-day, java-on-amazon-eks, java-spring-ai-agents)
-        if (isFullTemplate) {
+        // or java-ai-agents (database only)
+        Database database = null;
+        if (needsDatabase) {
             // Database
-            Database database = new Database(this, "Database", Database.DatabaseProps.builder()
+            database = new Database(this, "Database", Database.DatabaseProps.builder()
                 .prefix(prefix)
                 .vpc(vpc.getVpc())
                 .build());
+        }
 
+        if (isFullTemplate) {
             // EKS cluster
             Eks eks = new Eks(this, "Eks", Eks.EksProps.builder()
                 .prefix(prefix)
@@ -135,7 +141,7 @@ public class WorkshopStack extends Stack {
                 .build());
 
             // Unicorn construct: EventBus, Roles, DB Setup (uses unicorn* naming for workshop content compatibility)
-            Unicorn unicorn = new Unicorn(this, "Unicorn", Unicorn.UnicornProps.builder()
+            new Unicorn(this, "Unicorn", Unicorn.UnicornProps.builder()
                 .vpc(vpc.getVpc())
                 .database(database)
                 .workshopBucket(workshopBucket.getBucket())
@@ -305,13 +311,14 @@ public class WorkshopStack extends Stack {
                         .dependsOn(placeholderImageBuild.getCustomResource())
                         .build());
             }
-
-            // Pre-delete cleanup (removes VPC endpoints, CloudWatch logs, S3 contents before stack deletion)
-            new CfnPreDeleteCleanup(this, "CfnPreDeleteCleanup",
-                CfnPreDeleteCleanup.CfnPreDeleteCleanupProps.builder()
-                    .prefix(prefix)
-                    .vpc(vpc.getVpc())
-                    .build());
         }
+
+        // Pre-delete cleanup (removes VPC endpoints, CloudWatch logs, S3 contents before stack deletion)
+        // Runs for all templates
+        new CfnPreDeleteCleanup(this, "CfnPreDeleteCleanup",
+            CfnPreDeleteCleanup.CfnPreDeleteCleanupProps.builder()
+                .prefix(prefix)
+                .vpc(vpc.getVpc())
+                .build());
     }
 }

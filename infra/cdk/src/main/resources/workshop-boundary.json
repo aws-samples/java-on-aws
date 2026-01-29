@@ -1,0 +1,38 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "AllowedServicesForRoles",
+			"Effect": "Allow",
+			"Action": [
+				"aws-marketplace:Subscribe",
+				"aws-marketplace:Unsubscribe",
+				"aws-marketplace:ViewSubscriptions",
+				"bedrock:*",
+				"bedrock-agentcore:*",
+				"cognito-idp:*",
+				"cloudfront:*",
+				"cloudwatch:*",
+				"dynamodb:*",
+				"ecr:*",
+				"lambda:InvokeFunction",
+				"logs:*",
+				"s3:*",
+				"s3vectors:*",
+				"secretsmanager:GetSecretValue",
+				"xray:*"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "DenyIAM",
+			"Effect": "Deny",
+			"Action": [
+				"iam:*",
+				"organizations:*",
+				"account:*"
+			],
+			"Resource": "*"
+		}
+	]
+}

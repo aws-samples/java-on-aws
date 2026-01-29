@@ -71,7 +71,7 @@
 				"arn:aws:iam::{{.AccountId}}:role/ai-jvm-analyzer*",
 				"arn:aws:iam::{{.AccountId}}:role/workshop*",
 				"arn:aws:iam::{{.AccountId}}:role/aiagent*",
-				"arn:aws:iam::{{.AccountId}}:role/mcpserver*"
+				"arn:aws:iam::{{.AccountId}}:role/mcp*"
 			]
 		},
 		{
@@ -90,9 +90,33 @@
 			"Effect": "Allow",
 			"Action": [
 				"iam:GetRole",
-				"iam:ListRoles"
+				"iam:ListRoles",
+				"iam:ListRolePolicies",
+				"iam:ListAttachedRolePolicies"
 			],
 			"Resource": "*"
+		},
+		{
+			"Sid": "IAMRoleManagementWithBoundary",
+			"Effect": "Allow",
+			"Action": [
+				"iam:CreateRole",
+				"iam:DeleteRole",
+				"iam:PutRolePolicy",
+				"iam:DeleteRolePolicy",
+				"iam:AttachRolePolicy",
+				"iam:DetachRolePolicy",
+				"iam:UpdateAssumeRolePolicy"
+			],
+			"Resource": [
+				"arn:aws:iam::{{.AccountId}}:role/aiagent*",
+				"arn:aws:iam::{{.AccountId}}:role/mcp*"
+			],
+			"Condition": {
+				"StringEquals": {
+					"iam:PermissionsBoundary": "arn:aws:iam::{{.AccountId}}:policy/workshop-boundary"
+				}
+			}
 		},
 		{
 			"Sid": "DenyXXLInstances",
