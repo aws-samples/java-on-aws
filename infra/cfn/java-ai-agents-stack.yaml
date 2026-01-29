@@ -378,7 +378,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1769675524796"
+      ContentHash: "1769675941707"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -465,12 +465,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: main
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-ai-agents
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: main
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1741,14 +1741,15 @@ Resources:
             Condition:
               ForAllValues:StringEquals:
                 aws-marketplace:ProductId:
-                  - prod-jhuafngbly644
+                  - prod-xdkflymybwmvi
                   - prod-mxcfnwvpd6kb4
+                  - prod-jhuafngbly644
                   - prod-4pmewlybdftbs
               "Null":
                 aws-marketplace:ProductId: "false"
             Effect: Allow
             Resource: "*"
-            Sid: MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet
+            Sid: MarketplaceSubscribeClaude
           - Action:
               - acm:*
               - apigateway:*
@@ -2142,7 +2143,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260129093204"
+            - "-20260129093901"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

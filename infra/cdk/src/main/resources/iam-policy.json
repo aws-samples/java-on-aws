@@ -2,7 +2,7 @@
 	"Version": "2012-10-17",
 	"Statement": [
 		{
-			"Sid": "MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet",
+			"Sid": "MarketplaceSubscribeClaude",
 			"Effect": "Allow",
 			"Action": [
 				"aws-marketplace:Subscribe"
@@ -14,8 +14,9 @@
 				},
 				"ForAllValues:StringEquals": {
 					"aws-marketplace:ProductId": [
-						"prod-jhuafngbly644",
+						"prod-xdkflymybwmvi",
 						"prod-mxcfnwvpd6kb4",
+						"prod-jhuafngbly644",
 						"prod-4pmewlybdftbs"
 					]
 				}
