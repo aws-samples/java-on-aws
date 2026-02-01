@@ -4,7 +4,7 @@ COPY ./pom.xml ./pom.xml
 COPY src ./src/
 RUN mvn clean package --no-transfer-progress
 
-FROM public.ecr.aws/docker/library/amazoncorretto:21-al2023
+FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
 RUN yum install -y shadow-utils
 
 COPY --from=builder target/quarkus-app quarkus-app
