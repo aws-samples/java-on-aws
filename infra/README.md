@@ -6,7 +6,7 @@ CDK project for generating CloudFormation templates for AWS workshops. Uses a un
 
 ```bash
 # Generate all CloudFormation templates
-npm run generate
+npm run gen
 
 # Sync templates to workshop directories
 npm run sync

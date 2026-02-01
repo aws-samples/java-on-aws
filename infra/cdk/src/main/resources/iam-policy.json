@@ -111,7 +111,8 @@
 			],
 			"Resource": [
 				"arn:aws:iam::{{.AccountId}}:role/aiagent*",
-				"arn:aws:iam::{{.AccountId}}:role/mcp*"
+				"arn:aws:iam::{{.AccountId}}:role/mcp*",
+				"arn:aws:iam::{{.AccountId}}:role/backoffice*"
 			],
 			"Condition": {
 				"StringEquals": {

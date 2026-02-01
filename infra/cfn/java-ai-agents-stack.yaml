@@ -378,7 +378,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1769679323540"
+      ContentHash: "1769949962117"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -1707,6 +1707,7 @@ Resources:
             Effect: Allow
             Resource:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/aiagent*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/backoffice*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/mcp*
             Sid: AiAgentCreateRoles
           - Action: iam:PassRole
@@ -1781,6 +1782,12 @@ Resources:
               - cloudwatch:*
               - cognito-idp:*
               - dynamodb:*
+              - ec2:CreateNetworkInterface
+              - ec2:DeleteNetworkInterface
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeSubnets
+              - ec2:DescribeVpcs
               - ecr:*
               - lambda:InvokeFunction
               - logs:*
@@ -2039,7 +2046,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260129103523"
+            - "-20260201134602"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
