@@ -167,6 +167,7 @@ EOF
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/WeatherTools.java
 package com.example.agent;
 
+import java.net.http.HttpClient;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -174,6 +175,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 class WeatherTools {
@@ -181,7 +183,9 @@ class WeatherTools {
     private static final Logger log = LoggerFactory.getLogger(WeatherTools.class);
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
         new ParameterizedTypeReference<>() {};
-    private final RestClient restClient = RestClient.create();
+    private final RestClient restClient = RestClient.builder()
+        .requestFactory(new JdkClientHttpRequestFactory(HttpClient.newHttpClient()))
+        .build();
 
     @Tool(description = """
         Get weather forecast for a city on a specific date.
@@ -343,7 +347,6 @@ EOF
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/InvocationController.java
 package com.example.agent;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -352,7 +355,6 @@ import reactor.core.publisher.Flux;
 
 @RestController
 @CrossOrigin(origins = "*")
-@ConditionalOnProperty(name = "app.controller.enabled", havingValue = "true", matchIfMissing = true)
 public class InvocationController {
     private final ChatService chatService;
 

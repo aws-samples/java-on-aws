@@ -35,7 +35,7 @@ sed -i '0,/<dependencies>/{/<dependencies>/a\
         <dependency>\
             <groupId>org.springaicommunity</groupId>\
             <artifactId>spring-ai-bedrock-agentcore-starter</artifactId>\
-            <version>1.0.0-RC3</version>\
+            <version>1.0.0-RC5</version>\
         </dependency>
 }' ~/environment/aiagent/pom.xml
 log_success "AgentCore dependencies added"
@@ -53,12 +53,10 @@ import java.util.Base64;
 import org.springaicommunity.agentcore.context.AgentCoreHeaders;
 import org.springaicommunity.agentcore.annotation.AgentCoreInvocation;
 import org.springaicommunity.agentcore.context.AgentCoreContext;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 @Service
-@ConditionalOnProperty(name = "app.controller.enabled", havingValue = "false", matchIfMissing = false)
 public class InvocationService {
     private final ChatService chatService;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -105,7 +103,6 @@ COPY --from=builder app.jar app.jar
 
 USER 1000:1000
 EXPOSE 8080
-ENV APP_CONTROLLER_ENABLED=false
 
 ENTRYPOINT ["java", "-jar", "/app.jar"]
 EOF
