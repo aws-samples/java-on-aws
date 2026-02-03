@@ -297,6 +297,7 @@ async function processStreamingResponse(response, loadingId = null) {
     let lastUpdateTime = Date.now();
     let pauseIndicator = null;
     let isSSE = null;
+    let eventDataLines = [];  // Track data lines within current event
 
     const pauseCheckInterval = setInterval(() => {
         const timeSinceUpdate = Date.now() - lastUpdateTime;
@@ -333,8 +334,13 @@ async function processStreamingResponse(response, loadingId = null) {
 
                 for (const line of lines) {
                     if (line.startsWith('data:')) {
-                        const content = line.substring(5);
-                        fullResponse += (content === '' || content === '\r') ? '\n' : content;
+                        eventDataLines.push(line.substring(5));
+                    } else if (line === '' || line === '\r') {
+                        // Blank line = end of event, join data lines with \n per SSE spec
+                        if (eventDataLines.length > 0) {
+                            fullResponse += eventDataLines.join('\n');
+                            eventDataLines = [];
+                        }
                     }
                 }
             } else {
@@ -355,9 +361,9 @@ async function processStreamingResponse(response, loadingId = null) {
             }
         }
 
-        // Flush remaining SSE buffer
-        if (isSSE && buffer && buffer.startsWith('data:')) {
-            fullResponse += buffer.substring(5);
+        // Flush remaining SSE data
+        if (eventDataLines.length > 0) {
+            fullResponse += eventDataLines.join('\n');
         }
     } finally {
         clearInterval(pauseCheckInterval);
