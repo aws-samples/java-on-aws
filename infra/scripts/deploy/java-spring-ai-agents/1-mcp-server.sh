@@ -29,6 +29,8 @@ rsync -aq ~/java-on-aws/apps/unicorn-store-spring/ ~/environment/mcpserver \
   --exclude target --exclude src/test
 
 cd ~/environment/mcpserver
+git config --global user.email "workshop-user@example.com"
+git config --global user.name "workshop-user"
 git init -b main
 echo "target" >> .gitignore
 echo "*.jar" >> .gitignore
