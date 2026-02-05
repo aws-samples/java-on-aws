@@ -49,6 +49,8 @@
 				"lambda:*",
 				"logs:*",
 				"rds:*",
+				"rds-data:*",
+				"dbqms:*",
 				"s3:*",
 				"s3vectors:*",
 				"secretsmanager:*",
