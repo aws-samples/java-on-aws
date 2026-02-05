@@ -155,6 +155,10 @@ install_utilities() {
     download_and_verify "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_${ARCH_YQ}.tar.gz" "yq_linux_${ARCH_YQ}.tar.gz" "yq ${YQ_VERSION}"
     tar xzf yq_linux_${ARCH_YQ}.tar.gz && sudo mv yq_linux_${ARCH_YQ} /usr/bin/yq
     rm yq_linux_${ARCH_YQ}.tar.gz
+
+    log_info "Installing direnv..."
+    install_with_version "direnv" "sudo dnf install -y -q direnv" "direnv version"
+    echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
 }
 
 install_kiro_cli() {
