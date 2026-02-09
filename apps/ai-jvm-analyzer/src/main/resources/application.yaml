@@ -38,9 +38,10 @@ analyzer:
 
 # === Server Configuration ===
 server:
-  error:
-    include-message: always
   shutdown: graceful
+
+spring.web.error:
+  include-message: always
 
 # === Actuator Configuration ===
 management:
