@@ -157,7 +157,7 @@ install_utilities() {
     rm yq_linux_${ARCH_YQ}.tar.gz
 
     log_info "Installing direnv..."
-    install_with_version "direnv" "sudo dnf install -y -q direnv" "direnv version"
+    install_with_version "direnv" "curl -sfL https://direnv.net/install.sh | bash" "direnv version"
     echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
 }
 
