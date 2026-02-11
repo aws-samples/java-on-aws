@@ -71,6 +71,7 @@ public class WorkshopStack extends Stack {
             .vpc(vpc.getVpc())
             .gitBranch(gitBranch)
             .templateType(templateType)
+            .ideArch(isAiAgents ? Ide.IdeArch.ARM64 : Ide.IdeArch.X86_64_AMD)
             .build();
         Ide ide = new Ide(this, "Ide", ideProps);
 

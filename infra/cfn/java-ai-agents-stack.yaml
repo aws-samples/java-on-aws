@@ -92,8 +92,8 @@ Outputs:
               - IdePasswordResource07883F17
               - password
 Parameters:
-  SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter:
-    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
+  SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter:
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
 Resources:
   BedrockLoggingRole71F633EF:
@@ -378,7 +378,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1769949962117"
+      ContentHash: "1770831745080"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -938,9 +938,9 @@ Resources:
           - IdeInstanceProfile61B92038
           - Arn
       ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
       InstanceName: ide
-      InstanceTypes: m6a.xlarge,m7a.xlarge
+      InstanceTypes: m7g.xlarge,m6g.xlarge
       SecurityGroupIds:
         Fn::Join:
           - ""
@@ -980,7 +980,7 @@ Resources:
               - |-
                 "
                 export TEMPLATE_TYPE="java-ai-agents"
-                export ARCH="x86_64"
+                export ARCH="aarch64"
                 export IDE_TYPE="code-editor"
                 export WAIT_CONDITION_HANDLE_URL="
               - Ref: IdeWaitConditionHandleE8345861
@@ -1649,6 +1649,8 @@ Resources:
               - cloudwatch:*
               - codewhisperer:*
               - cognito-idp:*
+              - dbqms:*
+              - dynamodb:*
               - ec2:*
               - ecr:*
               - ecs:*
@@ -1658,6 +1660,7 @@ Resources:
               - lambda:*
               - logs:*
               - q:*
+              - rds-data:*
               - rds:*
               - s3:*
               - s3vectors:*
@@ -1720,6 +1723,7 @@ Resources:
             Effect: Allow
             Resource:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/aiagent*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/backoffice*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/mcp*
             Sid: AiAgentPassRole
           - Action: ec2:RunInstances
@@ -2046,7 +2050,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260201134602"
+            - "-20260211184225"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

@@ -40,6 +40,8 @@
 				"cloudtrail:*",
 				"cloudwatch:*",
 				"codewhisperer:*",
+				"dbqms:*",
+				"dynamodb:*",
 				"ec2:*",
 				"ecr:*",
 				"ecs:*",
@@ -50,7 +52,6 @@
 				"logs:*",
 				"rds:*",
 				"rds-data:*",
-				"dbqms:*",
 				"s3:*",
 				"s3vectors:*",
 				"secretsmanager:*",
@@ -130,7 +131,8 @@
 			],
 			"Resource": [
 				"arn:aws:iam::{{.AccountId}}:role/aiagent*",
-				"arn:aws:iam::{{.AccountId}}:role/mcp*"
+				"arn:aws:iam::{{.AccountId}}:role/mcp*",
+				"arn:aws:iam::{{.AccountId}}:role/backoffice*"
 			],
 			"Condition": {
 				"StringEquals": {
