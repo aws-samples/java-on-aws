@@ -60,9 +60,9 @@ function createStreamingMessage() {
     messageDiv.innerHTML = `
         ${getBotAvatarHtml()}
         <div class="message-bubble-ai rounded-lg p-3 max-w-4xl ai-response">
-            <button class="copy-button" data-copy-text="" onclick="copyMessageContent(this)">📋 Copy</button>
+            <button class="copy-button" data-copy-text="" onclick="copyMessageContent(this)" title="Copy">📋</button>
             <div class="streaming-content"></div>
-            <div class="message-timestamp">${formatTimestamp()}</div>
+            <!-- <div class="message-timestamp">${formatTimestamp()}</div> -->
         </div>
     `;
     messageContainer.appendChild(messageDiv);
@@ -94,9 +94,9 @@ function addMessage(content, sender, options = {}) {
         messageDiv.innerHTML = `
             <div class="ml-auto flex">
                 <div class="message-bubble-user rounded-lg p-3 max-w-3xl">
-                    <button class="copy-button" data-copy-text="${escapeHtml(content)}" onclick="copyMessageContent(this)">📋 Copy</button>
+                    <button class="copy-button" data-copy-text="${escapeHtml(content)}" onclick="copyMessageContent(this)" title="Copy">📋</button>
                     <p>${escapeHtml(content)}</p>
-                    <div class="message-timestamp">${timestamp}</div>
+                    <!-- <div class="message-timestamp">${timestamp}</div> -->
                 </div>
                 ${getUserAvatarHtml()}
             </div>
@@ -111,10 +111,10 @@ function addMessage(content, sender, options = {}) {
         messageDiv.innerHTML = `
             ${getBotAvatarHtml()}
             <div class="message-bubble-ai rounded-lg p-3 max-w-4xl ai-response ${isError ? 'error-message' : ''}">
-                <button class="copy-button" data-copy-text="${escapeHtml(content)}" onclick="copyMessageContent(this)">📋 Copy</button>
+                <button class="copy-button" data-copy-text="${escapeHtml(content)}" onclick="copyMessageContent(this)" title="Copy">📋</button>
                 ${marked.parse(content)}
                 ${retryButton}
-                <div class="message-timestamp">${timestamp}</div>
+                <!-- <div class="message-timestamp">${timestamp}</div> -->
             </div>
         `;
     }
@@ -193,7 +193,7 @@ function fallbackCopy(text, button) {
 
 function showCopySuccess(button) {
     const originalText = button.innerHTML;
-    button.innerHTML = '✓ Copied';
+    button.innerHTML = '✓';
     button.classList.add('copied');
     setTimeout(() => {
         button.innerHTML = originalText;
