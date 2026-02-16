@@ -288,13 +288,38 @@ for TARGET_NAME in backoffice holidays; do
     TARGET_ID=$(aws bedrock-agentcore-control list-gateway-targets \
         --gateway-identifier "${GATEWAY_ID}" --region ${AWS_REGION} --no-cli-pager \
         --query "items[?name=='${TARGET_NAME}'].targetId | [0]" --output text)
+
+    if [ -z "${TARGET_ID}" ] || [ "${TARGET_ID}" = "None" ]; then
+        echo "Warning: ${TARGET_NAME} target not found, skipping"
+        continue
+    fi
+
     echo -n "Waiting for ${TARGET_NAME}"
-    while [ "$(aws bedrock-agentcore-control get-gateway-target \
-        --gateway-identifier "${GATEWAY_ID}" --target-id "${TARGET_ID}" \
-        --region ${AWS_REGION} --no-cli-pager \
-        --query 'status' --output text)" != "READY" ]; do
-        echo -n "."; sleep 5
-    done && echo " READY"
+    RETRY_COUNT=0
+    MAX_RETRIES=60
+    while true; do
+        STATUS=$(aws bedrock-agentcore-control get-gateway-target \
+            --gateway-identifier "${GATEWAY_ID}" --target-id "${TARGET_ID}" \
+            --region ${AWS_REGION} --no-cli-pager \
+            --query 'status' --output text 2>/dev/null || echo "ERROR")
+
+        if [ "${STATUS}" = "READY" ]; then
+            echo " READY"
+            break
+        elif [ "${STATUS}" = "FAILED" ] || [ "${STATUS}" = "ERROR" ]; then
+            echo " ${STATUS}"
+            echo "Error: ${TARGET_NAME} target failed. Check the MCP runtime logs."
+            break
+        fi
+
+        echo -n "."
+        sleep 5
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        if [ ${RETRY_COUNT} -ge ${MAX_RETRIES} ]; then
+            echo " TIMEOUT (status: ${STATUS})"
+            break
+        fi
+    done
 done
 
 # Clean up backup files
