@@ -145,14 +145,31 @@ sleep 10
 echo ""
 echo "5. Create the Gateway target"
 
-# Check if target already exists
+# Check if target already exists and its status
 EXISTING_TARGET=$(aws bedrock-agentcore-control list-gateway-targets \
     --gateway-identifier "${GATEWAY_ID}" --region ${AWS_REGION} --no-cli-pager \
     --query "items[?name=='currency'].targetId | [0]" --output text 2>/dev/null || echo "None")
 
 if [ "${EXISTING_TARGET}" != "None" ] && [ -n "${EXISTING_TARGET}" ]; then
-    echo "Currency target already exists"
-else
+    # Check if target is FAILED
+    TARGET_STATUS=$(aws bedrock-agentcore-control get-gateway-target \
+        --gateway-identifier "${GATEWAY_ID}" --target-id "${EXISTING_TARGET}" \
+        --region ${AWS_REGION} --no-cli-pager \
+        --query 'status' --output text 2>/dev/null || echo "UNKNOWN")
+
+    if [ "${TARGET_STATUS}" = "FAILED" ]; then
+        echo "Currency target is FAILED, deleting and recreating..."
+        aws bedrock-agentcore-control delete-gateway-target \
+            --gateway-identifier "${GATEWAY_ID}" --target-id "${EXISTING_TARGET}" \
+            --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1 || true
+        sleep 10
+        EXISTING_TARGET="None"
+    else
+        echo "Currency target already exists (status: ${TARGET_STATUS})"
+    fi
+fi
+
+if [ "${EXISTING_TARGET}" = "None" ] || [ -z "${EXISTING_TARGET}" ]; then
     echo "Creating currency target"
 
     LAMBDA_TOOLS='[

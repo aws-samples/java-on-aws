@@ -177,7 +177,7 @@ echo "5. Create the AgentCore Runtime"
 # Check if runtime already exists
 EXISTING_RUNTIME_ID=$(aws bedrock-agentcore-control list-agent-runtimes \
     --region ${AWS_REGION} --no-cli-pager \
-    --query "agentRuntimeSummaries[?agentRuntimeName=='aiagent'].agentRuntimeId | [0]" --output text 2>/dev/null || echo "None")
+    --query "agentRuntimes[?agentRuntimeName=='aiagent'].agentRuntimeId | [0]" --output text 2>/dev/null || echo "None")
 
 if [ "${EXISTING_RUNTIME_ID}" != "None" ] && [ -n "${EXISTING_RUNTIME_ID}" ]; then
     echo "AgentCore Runtime already exists: ${EXISTING_RUNTIME_ID}"

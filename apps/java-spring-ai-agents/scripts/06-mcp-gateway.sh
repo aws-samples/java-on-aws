@@ -187,14 +187,31 @@ else
         --query "credentialProviders[?name=='mcp-backoffice-oauth'].credentialProviderArn | [0]" --output text)
 fi
 
-# Check if backoffice target exists
+# Check if backoffice target exists and its status
 EXISTING_BACKOFFICE_TARGET=$(aws bedrock-agentcore-control list-gateway-targets \
     --gateway-identifier "${GATEWAY_ID}" --region ${AWS_REGION} --no-cli-pager \
     --query "items[?name=='backoffice'].targetId | [0]" --output text 2>/dev/null || echo "None")
 
 if [ "${EXISTING_BACKOFFICE_TARGET}" != "None" ] && [ -n "${EXISTING_BACKOFFICE_TARGET}" ]; then
-    echo "Backoffice target already exists"
-else
+    # Check if target is FAILED
+    TARGET_STATUS=$(aws bedrock-agentcore-control get-gateway-target \
+        --gateway-identifier "${GATEWAY_ID}" --target-id "${EXISTING_BACKOFFICE_TARGET}" \
+        --region ${AWS_REGION} --no-cli-pager \
+        --query 'status' --output text 2>/dev/null || echo "UNKNOWN")
+
+    if [ "${TARGET_STATUS}" = "FAILED" ]; then
+        echo "Backoffice target is FAILED, deleting and recreating..."
+        aws bedrock-agentcore-control delete-gateway-target \
+            --gateway-identifier "${GATEWAY_ID}" --target-id "${EXISTING_BACKOFFICE_TARGET}" \
+            --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1 || true
+        sleep 10
+        EXISTING_BACKOFFICE_TARGET="None"
+    else
+        echo "Backoffice target already exists (status: ${TARGET_STATUS})"
+    fi
+fi
+
+if [ "${EXISTING_BACKOFFICE_TARGET}" = "None" ] || [ -z "${EXISTING_BACKOFFICE_TARGET}" ]; then
     echo "Creating backoffice target"
 
     RUNTIME_ARN="arn:aws:bedrock-agentcore:${AWS_REGION}:${ACCOUNT_ID}:runtime/${MCP_RUNTIME_ID}"
@@ -240,14 +257,31 @@ else
         --query "credentialProviders[?name=='mcp-holidays-apikey-provider'].credentialProviderArn | [0]" --output text)
 fi
 
-# Check if holidays target exists
+# Check if holidays target exists and its status
 EXISTING_HOLIDAYS_TARGET=$(aws bedrock-agentcore-control list-gateway-targets \
     --gateway-identifier "${GATEWAY_ID}" --region ${AWS_REGION} --no-cli-pager \
     --query "items[?name=='holidays'].targetId | [0]" --output text 2>/dev/null || echo "None")
 
 if [ "${EXISTING_HOLIDAYS_TARGET}" != "None" ] && [ -n "${EXISTING_HOLIDAYS_TARGET}" ]; then
-    echo "Holidays target already exists"
-else
+    # Check if target is FAILED
+    TARGET_STATUS=$(aws bedrock-agentcore-control get-gateway-target \
+        --gateway-identifier "${GATEWAY_ID}" --target-id "${EXISTING_HOLIDAYS_TARGET}" \
+        --region ${AWS_REGION} --no-cli-pager \
+        --query 'status' --output text 2>/dev/null || echo "UNKNOWN")
+
+    if [ "${TARGET_STATUS}" = "FAILED" ]; then
+        echo "Holidays target is FAILED, deleting and recreating..."
+        aws bedrock-agentcore-control delete-gateway-target \
+            --gateway-identifier "${GATEWAY_ID}" --target-id "${EXISTING_HOLIDAYS_TARGET}" \
+            --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1 || true
+        sleep 10
+        EXISTING_HOLIDAYS_TARGET="None"
+    else
+        echo "Holidays target already exists (status: ${TARGET_STATUS})"
+    fi
+fi
+
+if [ "${EXISTING_HOLIDAYS_TARGET}" = "None" ] || [ -z "${EXISTING_HOLIDAYS_TARGET}" ]; then
     echo "Creating holidays target"
 
     OPENAPI_SPEC=$(curl -s "https://date.nager.at/openapi/v3.json" | jq -c '
