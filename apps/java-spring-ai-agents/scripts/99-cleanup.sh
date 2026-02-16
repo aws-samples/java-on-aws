@@ -14,7 +14,7 @@ source ~/environment/.envrc 2>/dev/null || true
 
 # Get account ID and region
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --no-cli-pager)
-AWS_REGION=$(aws configure get region)
+AWS_REGION=$(aws configure get region --no-cli-pager)
 
 echo ""
 echo "Account: ${ACCOUNT_ID}"
@@ -129,7 +129,7 @@ fi
 
 if [ -n "${UI_BUCKET}" ]; then
     echo -n "  UI S3 bucket... "
-    if aws s3api head-bucket --bucket "${UI_BUCKET}" 2>/dev/null; then
+    if aws s3api head-bucket --bucket "${UI_BUCKET}" --no-cli-pager 2>/dev/null; then
         aws s3 rm "s3://${UI_BUCKET}" --recursive --no-cli-pager >/dev/null 2>&1 || true
         aws s3api delete-bucket --bucket "${UI_BUCKET}" --no-cli-pager >/dev/null 2>&1 && echo "deleted" || echo "failed"
     else
@@ -188,16 +188,24 @@ echo ""
 echo "## Deleting Gateway"
 
 if [ -n "${GATEWAY_ID}" ]; then
-    # Delete remaining targets
+    # Delete remaining targets and wait for each
     for TARGET_NAME in backoffice holidays; do
         TARGET_ID=$(aws bedrock-agentcore-control list-gateway-targets \
             --gateway-identifier "${GATEWAY_ID}" --region ${AWS_REGION} --no-cli-pager \
             --query "items[?name=='${TARGET_NAME}'].targetId | [0]" --output text 2>/dev/null || echo "None")
 
         if [ "${TARGET_ID}" != "None" ] && [ -n "${TARGET_ID}" ]; then
-            delete_resource "${TARGET_NAME} gateway target" \
-                "aws bedrock-agentcore-control get-gateway-target --gateway-identifier ${GATEWAY_ID} --target-id ${TARGET_ID} --region ${AWS_REGION} --no-cli-pager" \
-                "aws bedrock-agentcore-control delete-gateway-target --gateway-identifier ${GATEWAY_ID} --target-id ${TARGET_ID} --region ${AWS_REGION} --no-cli-pager"
+            echo -n "  ${TARGET_NAME} gateway target... "
+            aws bedrock-agentcore-control delete-gateway-target \
+                --gateway-identifier "${GATEWAY_ID}" --target-id "${TARGET_ID}" \
+                --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1 || true
+            echo "deleting"
+            echo -n "    waiting"
+            while aws bedrock-agentcore-control get-gateway-target \
+                --gateway-identifier "${GATEWAY_ID}" --target-id "${TARGET_ID}" \
+                --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1; do
+                echo -n "."; sleep 5
+            done && echo " done"
         fi
     done
 
@@ -339,7 +347,7 @@ DATA_BUCKET="aiagent-kb-data-${ACCOUNT_ID}"
 VECTOR_BUCKET="aiagent-kb-vectors-${ACCOUNT_ID}"
 
 echo -n "  KB data bucket... "
-if aws s3api head-bucket --bucket "${DATA_BUCKET}" 2>/dev/null; then
+if aws s3api head-bucket --bucket "${DATA_BUCKET}" --no-cli-pager 2>/dev/null; then
     aws s3 rm "s3://${DATA_BUCKET}" --recursive --no-cli-pager >/dev/null 2>&1 || true
     aws s3api delete-bucket --bucket "${DATA_BUCKET}" --no-cli-pager >/dev/null 2>&1 && echo "deleted" || echo "failed"
 else
