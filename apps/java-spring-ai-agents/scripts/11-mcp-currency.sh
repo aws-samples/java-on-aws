@@ -29,10 +29,21 @@ echo "Region: ${AWS_REGION}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-## Creating the IAM role
+## Copying currency to environment
 
 echo ""
 echo "## Deploying the currency converter Lambda"
+
+if [ -d ~/environment/currency ]; then
+    echo "currency already exists in ~/environment"
+else
+    echo "Copying currency to ~/environment..."
+    cp -r "${SCRIPT_DIR}/../currency" ~/environment/currency
+fi
+
+## Creating the IAM role
+
+echo ""
 echo "1. Create the IAM role"
 
 # Check if role exists
@@ -68,7 +79,7 @@ fi
 echo ""
 echo "2. Build the Lambda package"
 
-cd "${SCRIPT_DIR}/../currency"
+cd ~/environment/currency
 mvn clean package -DskipTests -ntp
 
 ## Deploying the Lambda function
@@ -80,7 +91,7 @@ echo "3. Deploy the Lambda function"
 FUNCTION_EXISTS=$(aws lambda get-function --function-name "mcp-currency" \
     --region ${AWS_REGION} --no-cli-pager 2>/dev/null || echo "")
 
-JAR_FILE=$(ls "${SCRIPT_DIR}/../currency/target"/*.jar | head -1)
+JAR_FILE=$(ls ~/environment/currency/target/*.jar | head -1)
 
 if [ -n "${FUNCTION_EXISTS}" ]; then
     echo "Lambda function already exists, updating code..."
