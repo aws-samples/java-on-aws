@@ -159,6 +159,9 @@ install_utilities() {
     log_info "Installing direnv..."
     install_with_version "direnv" "curl -sfL https://direnv.net/install.sh | bash" "direnv version"
     echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
+    echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
+    mkdir -p ~/.config/direnv
+    echo -e '[whitelist]\nprefix = [ "/home/ec2-user/environment" ]' > ~/.config/direnv/direnv.toml
 }
 
 install_kiro_cli() {
