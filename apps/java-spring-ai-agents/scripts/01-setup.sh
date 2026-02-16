@@ -58,6 +58,9 @@ else
     echo "Adding ExpenseTools.java..."
     cp "${SCRIPT_DIR}/../backoffice/tools/ExpenseTools.java" \
         ~/environment/backoffice/src/main/java/com/example/backoffice/expense/ExpenseTools.java
+
+    echo "Updating pom.xml with tools dependencies..."
+    cp "${SCRIPT_DIR}/../backoffice/tools/pom.xml" ~/environment/backoffice/pom.xml
 fi
 
 # Add basic variables if not present
