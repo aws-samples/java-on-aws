@@ -80,6 +80,7 @@ if [ -d ~/.bashrc.d ]; then
     [ -f "$rc" ] && . "$rc"
   done
 fi
+eval "$(direnv hook zsh)"
 EOF
 
 log_info "Copying .p10k.zsh..."
