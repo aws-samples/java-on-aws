@@ -61,6 +61,10 @@ else
 
     echo "Updating pom.xml with tools dependencies..."
     cp "${SCRIPT_DIR}/../backoffice/tools/pom.xml" ~/environment/backoffice/pom.xml
+
+    echo "Updating application.properties with MCP server config..."
+    cp "${SCRIPT_DIR}/../backoffice/tools/application.properties" \
+        ~/environment/backoffice/src/main/resources/application.properties
 fi
 
 # Add basic variables if not present
