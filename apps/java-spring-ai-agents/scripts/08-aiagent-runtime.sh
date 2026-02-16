@@ -179,14 +179,8 @@ EXISTING_RUNTIME_ID=$(aws bedrock-agentcore-control list-agent-runtimes \
     --region ${AWS_REGION} --no-cli-pager \
     --query "agentRuntimes[?agentRuntimeName=='aiagent'].agentRuntimeId | [0]" --output text 2>/dev/null || echo "None")
 
-if [ "${EXISTING_RUNTIME_ID}" != "None" ] && [ -n "${EXISTING_RUNTIME_ID}" ]; then
-    echo "AgentCore Runtime already exists: ${EXISTING_RUNTIME_ID}"
-    AIAGENT_RUNTIME_ID="${EXISTING_RUNTIME_ID}"
-else
-    echo "Creating AgentCore Runtime: aiagent"
-
-    # Build environment variables JSON
-    cat > /tmp/aiagent-env.json << EOF
+# Build environment variables JSON
+cat > /tmp/aiagent-env.json << EOF
 {
   "AGENTCORE_MEMORY_MEMORY_ID": "${AGENTCORE_MEMORY_MEMORY_ID}",
   "AGENTCORE_MEMORY_LONG_TERM_SEMANTIC_STRATEGY_ID": "${AGENTCORE_MEMORY_LONG_TERM_SEMANTIC_STRATEGY_ID}",
@@ -195,6 +189,31 @@ else
   "SPRING_AI_MCP_CLIENT_STREAMABLEHTTP_CONNECTIONS_GATEWAY_URL": "${GATEWAY_URL}"
 }
 EOF
+
+if [ "${EXISTING_RUNTIME_ID}" != "None" ] && [ -n "${EXISTING_RUNTIME_ID}" ]; then
+    echo "AgentCore Runtime already exists: ${EXISTING_RUNTIME_ID}"
+    echo "Updating runtime with latest configuration..."
+    AIAGENT_RUNTIME_ID="${EXISTING_RUNTIME_ID}"
+
+    aws bedrock-agentcore-control update-agent-runtime \
+        --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
+        --role-arn "arn:aws:iam::${ACCOUNT_ID}:role/aiagent-runtime-role" \
+        --agent-runtime-artifact "{\"containerConfiguration\":{\"containerUri\":\"${ECR_URI}:latest\"}}" \
+        --network-configuration "{\"networkMode\":\"VPC\",\"networkModeConfig\":{\"subnets\":[\"${SUBNET_ID}\"],\"securityGroups\":[\"${SG_ID}\"]}}" \
+        --authorizer-configuration "{\"customJWTAuthorizer\":{\"discoveryUrl\":\"${AIAGENT_DISCOVERY_URL}\",\"allowedClients\":[\"${AIAGENT_CLIENT_ID}\"]}}" \
+        --request-header-configuration '{"requestHeaderAllowlist":["Authorization"]}' \
+        --environment-variables file:///tmp/aiagent-env.json \
+        --region ${AWS_REGION} \
+        --no-cli-pager
+
+    echo -n "Waiting for runtime"
+    while [ "$(aws bedrock-agentcore-control get-agent-runtime \
+        --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --region ${AWS_REGION} \
+        --no-cli-pager --query 'status' --output text)" != "READY" ]; do
+        echo -n "."; sleep 5
+    done && echo " READY"
+else
+    echo "Creating AgentCore Runtime: aiagent"
 
     AIAGENT_RUNTIME_ID=$(aws bedrock-agentcore-control create-agent-runtime \
         --agent-runtime-name "aiagent" \
@@ -208,8 +227,6 @@ EOF
         --no-cli-pager \
         --query 'agentRuntimeId' --output text)
 
-    rm -f /tmp/aiagent-env.json
-
     echo -n "Waiting for runtime"
     while [ "$(aws bedrock-agentcore-control get-agent-runtime \
         --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --region ${AWS_REGION} \
@@ -217,6 +234,8 @@ EOF
         echo -n "."; sleep 5
     done && echo " READY"
 fi
+
+rm -f /tmp/aiagent-env.json
 
 # Save runtime ID to environment
 if ! grep -q "AIAGENT_RUNTIME_ID=${AIAGENT_RUNTIME_ID}" ~/environment/.envrc 2>/dev/null; then

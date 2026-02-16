@@ -173,7 +173,27 @@ EXISTING_RUNTIME_ID=$(aws bedrock-agentcore-control list-agent-runtimes \
 
 if [ "${EXISTING_RUNTIME_ID}" != "None" ] && [ -n "${EXISTING_RUNTIME_ID}" ]; then
     echo "AgentCore Runtime already exists: ${EXISTING_RUNTIME_ID}"
+    echo "Updating runtime with latest configuration..."
     MCP_RUNTIME_ID="${EXISTING_RUNTIME_ID}"
+
+    ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/backoffice-role"
+
+    aws bedrock-agentcore-control update-agent-runtime \
+        --agent-runtime-id "${MCP_RUNTIME_ID}" \
+        --role-arn "${ROLE_ARN}" \
+        --agent-runtime-artifact "{\"containerConfiguration\":{\"containerUri\":\"${ECR_URI}:latest\"}}" \
+        --protocol-configuration '{"serverProtocol":"MCP"}' \
+        --network-configuration "{\"networkMode\":\"VPC\",\"networkModeConfig\":{\"subnets\":[\"${SUBNET_ID}\"],\"securityGroups\":[\"${SG_ID}\"]}}" \
+        --authorizer-configuration "{\"customJWTAuthorizer\":{\"discoveryUrl\":\"${GATEWAY_DISCOVERY_URL}\",\"allowedClients\":[\"${GATEWAY_CLIENT_ID}\"]}}" \
+        --region ${AWS_REGION} \
+        --no-cli-pager
+
+    echo -n "Waiting for runtime"
+    while [ "$(aws bedrock-agentcore-control get-agent-runtime \
+        --agent-runtime-id "${MCP_RUNTIME_ID}" --region ${AWS_REGION} \
+        --no-cli-pager --query 'status' --output text)" != "READY" ]; do
+        echo -n "."; sleep 5
+    done && echo " READY"
 else
     echo "Creating AgentCore Runtime: backoffice"
 
