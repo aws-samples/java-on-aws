@@ -347,9 +347,9 @@ DATA_BUCKET="aiagent-kb-data-${ACCOUNT_ID}"
 VECTOR_BUCKET="aiagent-kb-vectors-${ACCOUNT_ID}"
 
 echo -n "  KB data bucket... "
-if aws s3api head-bucket --bucket "${DATA_BUCKET}" --no-cli-pager 2>/dev/null; then
+if aws s3api head-bucket --bucket "${DATA_BUCKET}" --no-cli-pager >/dev/null 2>&1; then
     aws s3 rm "s3://${DATA_BUCKET}" --recursive --no-cli-pager >/dev/null 2>&1 || true
-    aws s3api delete-bucket --bucket "${DATA_BUCKET}" --no-cli-pager >/dev/null 2>&1 && echo "deleted" || echo "failed"
+    aws s3api delete-bucket --bucket "${DATA_BUCKET}" --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1 && echo "deleted" || echo "failed"
 else
     echo "not found"
 fi
