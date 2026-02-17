@@ -42,7 +42,7 @@ fi
 
 # Check if vector bucket exists
 VECTOR_BUCKET_EXISTS=$(aws s3vectors list-vector-buckets --no-cli-pager \
-    --query "vectorBuckets[?name=='${VECTOR_BUCKET}'].name | [0]" --output text 2>/dev/null || echo "")
+    --query "vectorBuckets[?vectorBucketName=='${VECTOR_BUCKET}'].vectorBucketName | [0]" --output text 2>/dev/null || echo "")
 
 if [ -n "${VECTOR_BUCKET_EXISTS}" ] && [ "${VECTOR_BUCKET_EXISTS}" != "None" ]; then
     echo "Vector bucket already exists: ${VECTOR_BUCKET}"

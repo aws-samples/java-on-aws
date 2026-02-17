@@ -365,7 +365,7 @@ if [ -n "${INDEX_EXISTS}" ]; then
 fi
 
 VECTOR_BUCKET_EXISTS=$(aws s3vectors list-vector-buckets --no-cli-pager \
-    --query "vectorBuckets[?name=='${VECTOR_BUCKET}'].name" --output text 2>/dev/null || echo "")
+    --query "vectorBuckets[?vectorBucketName=='${VECTOR_BUCKET}'].vectorBucketName" --output text 2>/dev/null || echo "")
 
 if [ -n "${VECTOR_BUCKET_EXISTS}" ]; then
     delete_resource "KB vector bucket" \
