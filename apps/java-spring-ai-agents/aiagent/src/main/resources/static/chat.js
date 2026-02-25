@@ -317,7 +317,8 @@ async function sendMessage(message, config, auth) {
 
     const headers = {
         'Content-Type': 'application/json',
-        'Accept': 'text/plain, text/event-stream'
+        'Accept': 'text/plain, text/event-stream',
+        'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': getSessionId()
     };
 
     if (config.authType === 'cognito' || config.mode === 'aws') {

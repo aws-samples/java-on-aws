@@ -1,7 +1,22 @@
 // Authentication management
 const AUTH_KEY = 'agentcore_auth';
+const SESSION_KEY = 'agentcore_session_id';
 
 let currentAuth = null;
+
+// Session ID management
+function getSessionId() {
+    let sessionId = sessionStorage.getItem(SESSION_KEY);
+    if (!sessionId) {
+        sessionId = crypto.randomUUID();
+        sessionStorage.setItem(SESSION_KEY, sessionId);
+    }
+    return sessionId;
+}
+
+function clearSessionId() {
+    sessionStorage.removeItem(SESSION_KEY);
+}
 
 function saveAuth(auth) {
     localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
@@ -19,13 +34,13 @@ function loadAuth() {
 
 function clearAuth() {
     localStorage.removeItem(AUTH_KEY);
+    clearSessionId();
     currentAuth = null;
 }
 
 function isAuthenticated() {
     const auth = loadAuth();
-    if (!auth || !auth.expiresAt) return false;
-    if (auth.authType !== 'simple' && !auth.accessToken) return false;
+    if (!auth || !auth.expiresAt || !auth.accessToken) return false;
     return !isSessionExpired(auth);
 }
 
@@ -34,25 +49,7 @@ function isSessionExpired(auth) {
 }
 
 async function authenticateUser(username, password, config) {
-    if (config.authType === 'cognito') {
-        return authenticateCognito(username, password, config);
-    }
-    return authenticateSimple(username, password);
-}
-
-async function authenticateSimple(username, password) {
-    if (!username || username.trim() === '') {
-        throw new Error('Username is required');
-    }
-
-    const auth = {
-        username: username,
-        expiresAt: Date.now() + (24 * 60 * 60 * 1000),
-        authType: 'simple'
-    };
-
-    saveAuth(auth);
-    return auth;
+    return authenticateCognito(username, password, config);
 }
 
 async function authenticateCognito(username, password, config) {
