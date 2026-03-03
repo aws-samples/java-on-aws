@@ -149,13 +149,13 @@ if ! grep -q "GATEWAY_URL=" ~/environment/.envrc 2>/dev/null; then
 fi
 
 # Write MCP client config to application.properties
-grep -q "spring.ai.mcp.client.streamablehttp.connections.gateway.url" ~/environment/aiagent/src/main/resources/application.properties 2>/dev/null || \
+grep -q "spring.ai.mcp.client.streamable-http.connections.gateway.url" ~/environment/aiagent/src/main/resources/application.properties 2>/dev/null || \
 cat >> ~/environment/aiagent/src/main/resources/application.properties << PROPS
 
 # MCP Client
 spring.ai.mcp.client.toolcallback.enabled=true
 spring.ai.mcp.client.initialized=false
-spring.ai.mcp.client.streamablehttp.connections.gateway.url=${GATEWAY_URL}
+spring.ai.mcp.client.streamable-http.connections.gateway.url=${GATEWAY_URL}
 PROPS
 
 ## Adding the backoffice target
