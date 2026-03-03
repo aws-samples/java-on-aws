@@ -141,16 +141,17 @@ done
 
 echo "Test users: admin, alice, bob"
 
-## Save issuer URI for Spring Security
+## Write security config to application.properties
 
 echo ""
-echo "4. Save issuer URI for Spring Security"
+echo "4. Write security config to application.properties"
 
-SPRING_ISSUER_URI="https://cognito-idp.${AWS_REGION}.amazonaws.com/${AIAGENT_USER_POOL_ID}"
-if ! grep -q "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=" ~/environment/.envrc 2>/dev/null; then
-    sed -i.bak '/SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=/d' ~/environment/.envrc 2>/dev/null || true
-    echo "export SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=${SPRING_ISSUER_URI}" >> ~/environment/.envrc
-fi
+grep -q "spring.security.oauth2.resourceserver.jwt.issuer-uri" ~/environment/aiagent/src/main/resources/application.properties 2>/dev/null || \
+cat >> ~/environment/aiagent/src/main/resources/application.properties << PROPS
+
+# Security
+spring.security.oauth2.resourceserver.jwt.issuer-uri=https://cognito-idp.${AWS_REGION}.amazonaws.com/${AIAGENT_USER_POOL_ID}
+PROPS
 
 # Clean up backup files
 rm -f ~/environment/.envrc.bak
@@ -164,5 +165,8 @@ echo "Environment variables saved to ~/environment/.envrc:"
 echo "  AIAGENT_USER_POOL_ID=${AIAGENT_USER_POOL_ID}"
 echo "  AIAGENT_CLIENT_ID=${AIAGENT_CLIENT_ID}"
 echo "  AIAGENT_DISCOVERY_URL=${AIAGENT_DISCOVERY_URL}"
+echo ""
+echo "Application properties written to application.properties:"
+echo "  spring.security.oauth2.resourceserver.jwt.issuer-uri=https://cognito-idp.${AWS_REGION}.amazonaws.com/${AIAGENT_USER_POOL_ID}"
 echo ""
 echo "Test users created: admin, alice, bob (password: \${IDE_PASSWORD})"

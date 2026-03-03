@@ -20,11 +20,6 @@ if [ -z "${AIAGENT_USER_POOL_ID}" ] || [ -z "${AIAGENT_CLIENT_ID}" ] || [ -z "${
     exit 1
 fi
 
-if [ -z "${AGENTCORE_MEMORY_MEMORY_ID}" ]; then
-    echo "Error: Missing Memory variables. Run 02-memory.sh first."
-    exit 1
-fi
-
 # Get account ID and region
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --no-cli-pager)
 AWS_REGION=$(aws configure get region)
@@ -179,17 +174,6 @@ EXISTING_RUNTIME_ID=$(aws bedrock-agentcore-control list-agent-runtimes \
     --region ${AWS_REGION} --no-cli-pager \
     --query "agentRuntimes[?agentRuntimeName=='aiagent'].agentRuntimeId | [0]" --output text 2>/dev/null || echo "None")
 
-# Build environment variables JSON
-cat > /tmp/aiagent-env.json << EOF
-{
-  "AGENTCORE_MEMORY_MEMORY_ID": "${AGENTCORE_MEMORY_MEMORY_ID}",
-  "AGENTCORE_MEMORY_LONG_TERM_SEMANTIC_STRATEGY_ID": "${AGENTCORE_MEMORY_LONG_TERM_SEMANTIC_STRATEGY_ID}",
-  "AGENTCORE_MEMORY_LONG_TERM_USER_PREFERENCE_STRATEGY_ID": "${AGENTCORE_MEMORY_LONG_TERM_USER_PREFERENCE_STRATEGY_ID}",
-  "SPRING_AI_VECTORSTORE_BEDROCK_KNOWLEDGE_BASE_KNOWLEDGE_BASE_ID": "${SPRING_AI_VECTORSTORE_BEDROCK_KNOWLEDGE_BASE_KNOWLEDGE_BASE_ID}",
-  "SPRING_AI_MCP_CLIENT_STREAMABLEHTTP_CONNECTIONS_GATEWAY_URL": "${GATEWAY_URL}"
-}
-EOF
-
 if [ "${EXISTING_RUNTIME_ID}" != "None" ] && [ -n "${EXISTING_RUNTIME_ID}" ]; then
     echo "AgentCore Runtime already exists: ${EXISTING_RUNTIME_ID}"
     echo "Updating runtime with latest configuration..."
@@ -201,8 +185,7 @@ if [ "${EXISTING_RUNTIME_ID}" != "None" ] && [ -n "${EXISTING_RUNTIME_ID}" ]; th
         --agent-runtime-artifact "{\"containerConfiguration\":{\"containerUri\":\"${ECR_URI}:latest\"}}" \
         --network-configuration "{\"networkMode\":\"VPC\",\"networkModeConfig\":{\"subnets\":[\"${SUBNET_ID}\"],\"securityGroups\":[\"${SG_ID}\"]}}" \
         --authorizer-configuration "{\"customJWTAuthorizer\":{\"discoveryUrl\":\"${AIAGENT_DISCOVERY_URL}\",\"allowedClients\":[\"${AIAGENT_CLIENT_ID}\"]}}" \
-        --request-header-configuration '{"requestHeaderAllowlist":["Authorization"]}' \
-        --environment-variables file:///tmp/aiagent-env.json \
+        --request-header-configuration '{"requestHeaderAllowlist":["Authorization","X-Amzn-Bedrock-AgentCore-Runtime-Session-Id"]}' \
         --region ${AWS_REGION} \
         --no-cli-pager
 
@@ -221,8 +204,7 @@ else
         --agent-runtime-artifact "{\"containerConfiguration\":{\"containerUri\":\"${ECR_URI}:latest\"}}" \
         --network-configuration "{\"networkMode\":\"VPC\",\"networkModeConfig\":{\"subnets\":[\"${SUBNET_ID}\"],\"securityGroups\":[\"${SG_ID}\"]}}" \
         --authorizer-configuration "{\"customJWTAuthorizer\":{\"discoveryUrl\":\"${AIAGENT_DISCOVERY_URL}\",\"allowedClients\":[\"${AIAGENT_CLIENT_ID}\"]}}" \
-        --request-header-configuration '{"requestHeaderAllowlist":["Authorization"]}' \
-        --environment-variables file:///tmp/aiagent-env.json \
+        --request-header-configuration '{"requestHeaderAllowlist":["Authorization","X-Amzn-Bedrock-AgentCore-Runtime-Session-Id"]}' \
         --region ${AWS_REGION} \
         --no-cli-pager \
         --query 'agentRuntimeId' --output text)
@@ -234,8 +216,6 @@ else
         echo -n "."; sleep 5
     done && echo " READY"
 fi
-
-rm -f /tmp/aiagent-env.json
 
 # Save runtime ID to environment
 if ! grep -q "AIAGENT_RUNTIME_ID=${AIAGENT_RUNTIME_ID}" ~/environment/.envrc 2>/dev/null; then

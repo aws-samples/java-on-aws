@@ -51,6 +51,15 @@ if [ -z "${AGENTCORE_MEMORY_MEMORY_ID}" ]; then
     done && echo " ACTIVE"
 fi
 
+# Write memory config to application.properties
+grep -q "agentcore.memory.memory-id" ~/environment/aiagent/src/main/resources/application.properties 2>/dev/null || \
+cat >> ~/environment/aiagent/src/main/resources/application.properties << PROPS
+
+# AgentCore Memory
+agentcore.memory.memory-id=${AGENTCORE_MEMORY_MEMORY_ID}
+agentcore.memory.long-term.auto-discovery=true
+PROPS
+
 ## Adding LTM strategies
 
 # Check if strategies already exist
@@ -79,32 +88,6 @@ else
     done && echo " ACTIVE"
 fi
 
-## Getting strategy IDs
-
-echo ""
-echo "3. Get strategy IDs and save to environment file"
-
-SEMANTIC_ID=$(aws bedrock-agentcore-control get-memory --memory-id "${AGENTCORE_MEMORY_MEMORY_ID}" \
-    --no-cli-pager --query "memory.strategies[?name=='SemanticFacts'].strategyId | [0]" --output text)
-PREFS_ID=$(aws bedrock-agentcore-control get-memory --memory-id "${AGENTCORE_MEMORY_MEMORY_ID}" \
-    --no-cli-pager --query "memory.strategies[?name=='UserPreferences'].strategyId | [0]" --output text)
-
-# Update .envrc only if values changed
-if ! grep -q "AGENTCORE_MEMORY_LONG_TERM_SEMANTIC_STRATEGY_ID=${SEMANTIC_ID}" ~/environment/.envrc 2>/dev/null; then
-    # Remove old entries if they exist
-    sed -i.bak '/AGENTCORE_MEMORY_LONG_TERM_SEMANTIC_STRATEGY_ID/d' ~/environment/.envrc 2>/dev/null || true
-    echo "export AGENTCORE_MEMORY_LONG_TERM_SEMANTIC_STRATEGY_ID=${SEMANTIC_ID}" >> ~/environment/.envrc
-fi
-
-if ! grep -q "AGENTCORE_MEMORY_LONG_TERM_USER_PREFERENCE_STRATEGY_ID=${PREFS_ID}" ~/environment/.envrc 2>/dev/null; then
-    # Remove old entries if they exist
-    sed -i.bak '/AGENTCORE_MEMORY_LONG_TERM_USER_PREFERENCE_STRATEGY_ID/d' ~/environment/.envrc 2>/dev/null || true
-    echo "export AGENTCORE_MEMORY_LONG_TERM_USER_PREFERENCE_STRATEGY_ID=${PREFS_ID}" >> ~/environment/.envrc
-fi
-
-# Clean up backup files
-rm -f ~/environment/.envrc.bak
-
 echo ""
 echo "=============================================="
 echo "Memory setup complete!"
@@ -112,5 +95,7 @@ echo "=============================================="
 echo ""
 echo "Environment variables saved to ~/environment/.envrc:"
 echo "  AGENTCORE_MEMORY_MEMORY_ID=${AGENTCORE_MEMORY_MEMORY_ID}"
-echo "  AGENTCORE_MEMORY_LONG_TERM_SEMANTIC_STRATEGY_ID=${SEMANTIC_ID}"
-echo "  AGENTCORE_MEMORY_LONG_TERM_USER_PREFERENCE_STRATEGY_ID=${PREFS_ID}"
+echo ""
+echo "Application properties written to application.properties:"
+echo "  agentcore.memory.memory-id=${AGENTCORE_MEMORY_MEMORY_ID}"
+echo "  agentcore.memory.long-term.auto-discovery=true"

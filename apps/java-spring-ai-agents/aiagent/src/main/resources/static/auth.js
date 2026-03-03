@@ -40,7 +40,8 @@ function clearAuth() {
 
 function isAuthenticated() {
     const auth = loadAuth();
-    if (!auth || !auth.expiresAt || !auth.accessToken) return false;
+    if (!auth || !auth.expiresAt) return false;
+    if (auth.authType !== 'simple' && !auth.accessToken) return false;
     return !isSessionExpired(auth);
 }
 
@@ -49,7 +50,28 @@ function isSessionExpired(auth) {
 }
 
 async function authenticateUser(username, password, config) {
-    return authenticateCognito(username, password, config);
+    if (config.authType === 'cognito') {
+        return authenticateCognito(username, password, config);
+    }
+    return authenticateSimple(username, password);
+}
+
+async function authenticateSimple(username, password) {
+    if (!username || username.trim() === '') {
+        throw new Error('Username is required');
+    }
+
+    const auth = {
+        username: username,
+        expiresAt: Date.now() + (24 * 60 * 60 * 1000),
+        authType: 'simple'
+    };
+
+    // Use username as session ID for simple auth
+    sessionStorage.setItem(SESSION_KEY, username);
+
+    saveAuth(auth);
+    return auth;
 }
 
 async function authenticateCognito(username, password, config) {

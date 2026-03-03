@@ -144,11 +144,13 @@ else
     done && echo " ACTIVE"
 fi
 
-# Save KB ID to environment
-if ! grep -q "SPRING_AI_VECTORSTORE_BEDROCK_KNOWLEDGE_BASE_KNOWLEDGE_BASE_ID=${KB_ID}" ~/environment/.envrc 2>/dev/null; then
-    sed -i.bak '/SPRING_AI_VECTORSTORE_BEDROCK_KNOWLEDGE_BASE_KNOWLEDGE_BASE_ID/d' ~/environment/.envrc 2>/dev/null || true
-    echo "export SPRING_AI_VECTORSTORE_BEDROCK_KNOWLEDGE_BASE_KNOWLEDGE_BASE_ID=${KB_ID}" >> ~/environment/.envrc
-fi
+# Write KB config to application.properties
+grep -q "spring.ai.vectorstore.bedrock-knowledge-base.knowledge-base-id" ~/environment/aiagent/src/main/resources/application.properties 2>/dev/null || \
+cat >> ~/environment/aiagent/src/main/resources/application.properties << PROPS
+
+# Knowledge Base
+spring.ai.vectorstore.bedrock-knowledge-base.knowledge-base-id=${KB_ID}
+PROPS
 
 ## Creating data source and ingesting documents
 
@@ -205,5 +207,5 @@ echo "=============================================="
 echo "Knowledge Base setup complete!"
 echo "=============================================="
 echo ""
-echo "Environment variable saved to ~/environment/.envrc:"
-echo "  SPRING_AI_VECTORSTORE_BEDROCK_KNOWLEDGE_BASE_KNOWLEDGE_BASE_ID=${KB_ID}"
+echo "Application properties written to application.properties:"
+echo "  spring.ai.vectorstore.bedrock-knowledge-base.knowledge-base-id=${KB_ID}"
