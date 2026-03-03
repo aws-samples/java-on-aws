@@ -5,13 +5,6 @@ echo "=============================================="
 echo "01-setup.sh - Environment Setup"
 echo "=============================================="
 
-# Get account ID and region
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --no-cli-pager)
-AWS_REGION=$(aws configure get region)
-
-echo "Account: ${ACCOUNT_ID}"
-echo "Region: ${AWS_REGION}"
-
 ## Creating the environment directory
 
 echo ""
@@ -67,18 +60,17 @@ else
         ~/environment/backoffice/src/main/resources/application.properties
 fi
 
-# Add basic variables to .envrc if not already in the environment
+# Verify required environment variables
 if [ -z "${AWS_REGION}" ]; then
-    AWS_REGION=$(aws configure get region)
+    echo "Error: AWS_REGION is not set"
+    exit 1
 fi
 if [ -z "${ACCOUNT_ID}" ]; then
     ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --no-cli-pager)
 fi
 
-grep -q "AWS_REGION=" ~/environment/.envrc 2>/dev/null || \
-    echo "export AWS_REGION=${AWS_REGION}" >> ~/environment/.envrc
-grep -q "ACCOUNT_ID=" ~/environment/.envrc 2>/dev/null || \
-    echo "export ACCOUNT_ID=${ACCOUNT_ID}" >> ~/environment/.envrc
+echo "Account: ${ACCOUNT_ID}"
+echo "Region: ${AWS_REGION}"
 
 ## Setting up direnv
 
