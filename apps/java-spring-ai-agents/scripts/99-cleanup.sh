@@ -402,7 +402,7 @@ fi
 echo ""
 echo "## Deleting DynamoDB tables"
 
-for TABLE in backoffice-trips backoffice-expenses; do
+for TABLE in backoffice-trip backoffice-expense; do
     delete_resource "${TABLE}" \
         "aws dynamodb describe-table --table-name ${TABLE} --region ${AWS_REGION} --no-cli-pager" \
         "aws dynamodb delete-table --table-name ${TABLE} --region ${AWS_REGION} --no-cli-pager"

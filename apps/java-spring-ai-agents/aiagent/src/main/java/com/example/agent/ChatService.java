@@ -26,7 +26,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 import reactor.core.publisher.Flux;
-import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
 import java.util.Base64;
@@ -47,8 +46,6 @@ public class ChatService {
 
     private final ChatClient documentClient;
     private final String documentModel;
-
-    private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     private final ArtifactStore<GeneratedFile> browserArtifactStore;
     private final ArtifactStore<GeneratedFile> codeInterpreterArtifactStore;

@@ -60,6 +60,49 @@ else
         ~/environment/backoffice/src/main/resources/application.properties
 fi
 
+# Create DynamoDB tables for backoffice
+if aws dynamodb describe-table --table-name "backoffice-trip" --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1; then
+    echo "DynamoDB table backoffice-trip already exists"
+else
+    echo "Creating DynamoDB table: backoffice-trip"
+    aws dynamodb create-table \
+        --table-name "backoffice-trip" \
+        --attribute-definitions \
+            AttributeName=pk,AttributeType=S \
+            AttributeName=sk,AttributeType=S \
+            AttributeName=tripReference,AttributeType=S \
+        --key-schema AttributeName=pk,KeyType=HASH AttributeName=sk,KeyType=RANGE \
+        --global-secondary-indexes \
+            "IndexName=tripReference-index,KeySchema=[{AttributeName=tripReference,KeyType=HASH}],Projection={ProjectionType=ALL}" \
+        --billing-mode PAY_PER_REQUEST \
+        --region ${AWS_REGION} \
+        --no-cli-pager
+    aws dynamodb wait table-exists --table-name "backoffice-trip" --region ${AWS_REGION}
+    echo "Table created: backoffice-trip"
+fi
+
+if aws dynamodb describe-table --table-name "backoffice-expense" --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1; then
+    echo "DynamoDB table backoffice-expense already exists"
+else
+    echo "Creating DynamoDB table: backoffice-expense"
+    aws dynamodb create-table \
+        --table-name "backoffice-expense" \
+        --attribute-definitions \
+            AttributeName=pk,AttributeType=S \
+            AttributeName=sk,AttributeType=S \
+            AttributeName=expenseReference,AttributeType=S \
+            AttributeName=tripReference,AttributeType=S \
+        --key-schema AttributeName=pk,KeyType=HASH AttributeName=sk,KeyType=RANGE \
+        --global-secondary-indexes \
+            "IndexName=expenseReference-index,KeySchema=[{AttributeName=expenseReference,KeyType=HASH}],Projection={ProjectionType=ALL}" \
+            "IndexName=tripReference-index,KeySchema=[{AttributeName=tripReference,KeyType=HASH}],Projection={ProjectionType=ALL}" \
+        --billing-mode PAY_PER_REQUEST \
+        --region ${AWS_REGION} \
+        --no-cli-pager
+    aws dynamodb wait table-exists --table-name "backoffice-expense" --region ${AWS_REGION}
+    echo "Table created: backoffice-expense"
+fi
+
 # Verify required environment variables
 if [ -z "${AWS_REGION}" ]; then
     echo "Error: AWS_REGION is not set"
