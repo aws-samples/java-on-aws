@@ -54,11 +54,13 @@
         <dependency>
             <groupId>org.springaicommunity</groupId>
             <artifactId>spring-ai-agentcore-code-interpreter</artifactId>
+            <version>1.0.0-RC8</version>
         </dependency>
 		<!-- AgentCore Browser -->
         <dependency>
             <groupId>org.springaicommunity</groupId>
             <artifactId>spring-ai-agentcore-browser</artifactId>
+            <version>1.0.0-RC8</version>
         </dependency>
 		<!-- Bedrock Runtime SDK for web grounding -->
         <dependency>
@@ -78,11 +80,13 @@
         <dependency>
             <groupId>org.springaicommunity</groupId>
             <artifactId>spring-ai-agentcore-memory</artifactId>
+            <version>1.0.0-RC8</version>
         </dependency>
 	    <!-- AgentCore dependencies -->
         <dependency>
             <groupId>org.springaicommunity</groupId>
             <artifactId>spring-ai-agentcore-runtime-starter</artifactId>
+            <version>1.0.0-RC8</version>
         </dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
