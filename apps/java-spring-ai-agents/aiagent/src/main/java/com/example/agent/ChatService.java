@@ -1,43 +1,36 @@
 package com.example.agent;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.agentcore.annotation.AgentCoreInvocation;
+import org.springaicommunity.agentcore.artifacts.ArtifactStore;
+import org.springaicommunity.agentcore.artifacts.GeneratedFile;
+import org.springaicommunity.agentcore.artifacts.SessionConstants;
+import org.springaicommunity.agentcore.browser.BrowserArtifacts;
 import org.springaicommunity.agentcore.context.AgentCoreContext;
-import org.springaicommunity.agentcore.context.AgentCoreHeaders;
-import org.springaicommunity.agentcore.browser.BrowserScreenshot;
-import org.springaicommunity.agentcore.browser.BrowserScreenshotStore;
-import org.springaicommunity.agentcore.browser.BrowserTools;
-import org.springaicommunity.agentcore.codeinterpreter.CodeInterpreterFileStore;
-import org.springaicommunity.agentcore.codeinterpreter.CodeInterpreterTools;
-import org.springaicommunity.agentcore.codeinterpreter.GeneratedFile;
-import org.springframework.ai.tool.ToolCallbackProvider;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
+import org.springaicommunity.agentcore.memory.longterm.AgentCoreMemory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
-import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.ChatMemoryRepository;
-import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
-import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
+import org.springframework.stereotype.Service;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
+import reactor.core.publisher.Flux;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
 record ChatRequest(String prompt, String fileBase64, String fileName) {
     public boolean hasFile() {
@@ -57,43 +50,32 @@ public class ChatService {
 
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
-    private final BrowserScreenshotStore screenshotStore;
-    private final CodeInterpreterFileStore fileStore;
+    private final ArtifactStore<GeneratedFile> browserArtifactStore;
+    private final ArtifactStore<GeneratedFile> codeInterpreterArtifactStore;
 
     private static final String SYSTEM_PROMPT = """
         You are a helpful AI agent for travel and expense management.
         Be friendly, helpful, and concise in your responses.
         """;
 
-    public ChatService(@Autowired(required = false) ChatMemoryRepository memoryRepository,
-        @Autowired(required = false) List<Advisor> ltmAdvisors,
-        @Autowired(required = false) VectorStore kbVectorStore,
-        @Autowired(required = false) WebGroundingTools webGroundingTools,
-        ContextAdvisor contextAdvisor,
-        @Autowired(required = false) @Qualifier("browserToolCallbackProvider") ToolCallbackProvider browserTools,
-        @Autowired(required = false) BrowserScreenshotStore browserScreenshotStore,
-        @Autowired(required = false) @Qualifier("codeInterpreterToolCallbackProvider") ToolCallbackProvider codeInterpreterTools,
-        @Autowired(required = false) CodeInterpreterFileStore codeInterpreterFileStore,
-        @Autowired(required = false) @Qualifier("mcpToolCallbacks") ToolCallbackProvider mcpTools,
-        ChatModel chatModel,
-        @Value("${app.ai.document.model:global.anthropic.claude-opus-4-5-20251101-v1:0}") String documentModel,
-        ChatClient.Builder chatClientBuilder) {
+    public ChatService(AgentCoreMemory agentCoreMemory,
+                       VectorStore kbVectorStore,
+                       WebGroundingTools webGroundingTools,
+                       ContextAdvisor contextAdvisor,
+                       @Qualifier("browserToolCallbackProvider") ToolCallbackProvider browserTools,
+                       @Qualifier("codeInterpreterToolCallbackProvider") ToolCallbackProvider codeInterpreterTools,
+                       @Qualifier("browserArtifactStore") ArtifactStore<GeneratedFile> browserArtifactStore,
+                       @Qualifier("codeInterpreterArtifactStore") ArtifactStore<GeneratedFile> codeInterpreterArtifactStore,
+                       @Qualifier("mcpToolCallbacks") ToolCallbackProvider mcpTools,
+                       ChatModel chatModel,
+                       @Value("${app.ai.document.model:global.anthropic.claude-opus-4-5-20251101-v1:0}") String documentModel,
+                       ChatClient.Builder chatClientBuilder) {
 
         List<Advisor> advisors = new ArrayList<>();
 
-        // Short-Term Memory (STM)
-        if (memoryRepository != null) {
-            ChatMemory chatMemory = MessageWindowChatMemory.builder()
-                .chatMemoryRepository(memoryRepository)
-                .build();
-            advisors.add(MessageChatMemoryAdvisor.builder(chatMemory).build());
-            logger.info("Memory enabled");
-        }
-
-        // Long-Term Memory (LTM)
-        if (ltmAdvisors != null && !ltmAdvisors.isEmpty()) {
-            advisors.addAll(ltmAdvisors);
-            logger.info("Advisors enabled: {} advisors", ltmAdvisors.size());
+        if (advisors.size() > 0) {
+            advisors.addAll(agentCoreMemory.advisors);
+            logger.info("Advisors enabled: {} advisors", agentCoreMemory.advisors);
         }
 
         // Knowledge Base (RAG)
@@ -113,19 +95,15 @@ public class ChatService {
 			logger.info("Web Grounding enabled");
         }
 
-        // Browser
-        this.screenshotStore = browserScreenshotStore;
-
         // Tool Callback Providers
+        this.browserArtifactStore = browserArtifactStore;
         List<ToolCallbackProvider> toolCallbackProviders = new ArrayList<>();
         if (browserTools != null) {
             toolCallbackProviders.add(browserTools);
             logger.info("Browser enabled");
         }
 
-        // Code Interpreter
-        this.fileStore = codeInterpreterFileStore;
-
+        this.codeInterpreterArtifactStore = codeInterpreterArtifactStore;
         if (codeInterpreterTools != null) {
             toolCallbackProviders.add(codeInterpreterTools);
             logger.info("Code Interpreter enabled");
@@ -169,38 +147,29 @@ public class ChatService {
             .stream().content()
             .concatWith(Flux.defer(() -> appendGeneratedFiles(sessionId)))
             .concatWith(Flux.defer(() -> appendScreenshots(sessionId)))
-            .contextWrite(ctx -> ctx.put(CodeInterpreterTools.SESSION_ID_CONTEXT_KEY, sessionId))
-            .contextWrite(ctx -> ctx.put(BrowserTools.SESSION_ID_CONTEXT_KEY, sessionId));
+            .contextWrite(ctx -> ctx.put(SessionConstants.SESSION_ID_KEY, sessionId));
     }
 
     private String getSessionId(AgentCoreContext context) {
-        String authHeader = context.getHeader(AgentCoreHeaders.AUTHORIZATION);
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String jwt = authHeader.replace("Bearer ", "");
-            String payload = new String(Base64.getUrlDecoder().decode(jwt.split("\\.")[1]));
-            JsonNode claims = jsonMapper.readTree(payload);
-            String sub = claims.get("sub").asString().replace("-", "").substring(0, 25);
-            return sub + ":" + claims.get("auth_time").asString();
-        }
-        return (authHeader != null && !authHeader.isBlank()) ? authHeader : "default-user";
+        return ConversationIdResolver.resolve(context);
     }
 
     private Flux<String> appendScreenshots(String sessionId) {
-        if (screenshotStore == null) {
+        if (browserArtifactStore == null) {
             return Flux.empty();
         }
-        List<BrowserScreenshot> screenshots = screenshotStore.retrieve(sessionId);
+        List<GeneratedFile> screenshots = browserArtifactStore.retrieve(sessionId);
         if (screenshots == null || screenshots.isEmpty()) {
             return Flux.empty();
         }
         return Flux.just(formatScreenshotsAsMarkdown(screenshots));
     }
 
-    private String formatScreenshotsAsMarkdown(List<BrowserScreenshot> screenshots) {
+    private String formatScreenshotsAsMarkdown(List<GeneratedFile> screenshots) {
         StringBuilder sb = new StringBuilder();
-        for (BrowserScreenshot screenshot : screenshots) {
+        for (GeneratedFile screenshot : screenshots) {
             sb.append("\n\n![Screenshot of ")
-                .append(screenshot.url())
+                .append(BrowserArtifacts.url(screenshot))
                 .append("](")
                 .append(screenshot.toDataUrl())
                 .append(")");
@@ -209,10 +178,10 @@ public class ChatService {
     }
 
     private Flux<String> appendGeneratedFiles(String sessionId) {
-        if (fileStore == null) {
+        if (codeInterpreterArtifactStore == null) {
             return Flux.empty();
         }
-        List<GeneratedFile> files = fileStore.retrieve(sessionId);
+        List<GeneratedFile> files = codeInterpreterArtifactStore.retrieve(sessionId);
         if (files == null || files.isEmpty()) {
             return Flux.empty();
         }
