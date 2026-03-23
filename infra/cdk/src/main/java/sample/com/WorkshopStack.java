@@ -57,6 +57,7 @@ public class WorkshopStack extends Stack {
         boolean isEks = "java-on-amazon-eks".equals(templateType);
         boolean isSpringAi = "java-spring-ai-agents".equals(templateType);
         boolean isAiAgents = "java-ai-agents".equals(templateType);
+        boolean isAiAgentsAdvanced = "java-ai-agents-advanced".equals(templateType);
         boolean isFullTemplate = isImmersionDay || isEks || isSpringAi;
         boolean needsDatabase = isFullTemplate;
 
@@ -71,7 +72,7 @@ public class WorkshopStack extends Stack {
             .vpc(vpc.getVpc())
             .gitBranch(gitBranch)
             .templateType(templateType)
-            .ideArch(isAiAgents ? Ide.IdeArch.ARM64 : Ide.IdeArch.X86_64_AMD)
+            .ideArch((isAiAgents || isAiAgentsAdvanced) ? Ide.IdeArch.ARM64 : Ide.IdeArch.X86_64_AMD)
             .build();
         Ide ide = new Ide(this, "Ide", ideProps);
 

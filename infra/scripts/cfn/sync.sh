@@ -14,7 +14,7 @@ cd "$SCRIPT_DIR/../.." || {
     exit 1
 }
 
-WORKSHOPS=("java-on-aws-immersion-day" "java-on-amazon-eks" "java-spring-ai-agents" "java-ai-agents")
+WORKSHOPS=("java-on-aws-immersion-day" "java-on-amazon-eks" "java-spring-ai-agents" "java-ai-agents" "java-ai-agents-advanced")
 
 # Shared IAM policy file used by all workshops
 SHARED_POLICY_FILE="cdk/src/main/resources/iam-policy.json"
@@ -32,8 +32,9 @@ echo "  1) java-on-aws-immersion-day"
 echo "  2) java-on-amazon-eks"
 echo "  3) java-spring-ai-agents"
 echo "  4) java-ai-agents"
+echo "  5) java-ai-agents-advanced"
 echo ""
-read -p "Enter choice [0-4]: " choice
+read -p "Enter choice [0-5]: " choice
 
 # Determine which workshops to sync
 case $choice in
@@ -42,6 +43,7 @@ case $choice in
     2) selected_workshops=("java-on-amazon-eks") ;;
     3) selected_workshops=("java-spring-ai-agents") ;;
     4) selected_workshops=("java-ai-agents") ;;
+    5) selected_workshops=("java-ai-agents-advanced") ;;
     *)
         log_error "Invalid choice: $choice"
         exit 1

@@ -17,16 +17,18 @@ echo "  1) java-on-aws-immersion-day"
 echo "  2) java-on-amazon-eks"
 echo "  3) java-spring-ai-agents"
 echo "  4) java-ai-agents"
+echo "  5) java-ai-agents-advanced"
 echo ""
-read -p "Enter choice [0-4]: " choice
+read -p "Enter choice [0-5]: " choice
 
 # Determine which templates to generate
 case $choice in
-    0) templates=("java-on-aws-immersion-day" "java-on-amazon-eks" "java-spring-ai-agents" "java-ai-agents") ;;
+    0) templates=("java-on-aws-immersion-day" "java-on-amazon-eks" "java-spring-ai-agents" "java-ai-agents" "java-ai-agents-advanced") ;;
     1) templates=("java-on-aws-immersion-day") ;;
     2) templates=("java-on-amazon-eks") ;;
     3) templates=("java-spring-ai-agents") ;;
     4) templates=("java-ai-agents") ;;
+    5) templates=("java-ai-agents-advanced") ;;
     *)
         log_error "Invalid choice: $choice"
         exit 1
