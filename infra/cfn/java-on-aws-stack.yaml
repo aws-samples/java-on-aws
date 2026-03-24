@@ -422,7 +422,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1768809143448"
+      ContentHash: "1774370017491"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -511,7 +511,7 @@ Resources:
         EnvironmentVariables:
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
-            Value: java-on-aws-immersion-day
+            Value: java-on-aws
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: main
@@ -543,6 +543,8 @@ Resources:
                   # Resolution for when creating the first service in the account
                   aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
                   aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
+                  aws iam create-service-linked-role --aws-service-name network.bedrock-agentcore.amazonaws.com 2>/dev/null || true
+                  aws iam create-service-linked-role --aws-service-name runtime-identity.bedrock-agentcore.amazonaws.com 2>/dev/null || true
         Type: NO_SOURCE
       TimeoutInMinutes: 30
       VpcConfig:
@@ -1362,7 +1364,7 @@ Resources:
               - Ref: AWS::Region
               - |-
                 "
-                export TEMPLATE_TYPE="java-on-aws-immersion-day"
+                export TEMPLATE_TYPE="java-on-aws"
                 export ARCH="x86_64"
                 export IDE_TYPE="code-editor"
                 export WAIT_CONDITION_HANDLE_URL="
@@ -2008,14 +2010,15 @@ Resources:
             Condition:
               ForAllValues:StringEquals:
                 aws-marketplace:ProductId:
-                  - prod-jhuafngbly644
+                  - prod-xdkflymybwmvi
                   - prod-mxcfnwvpd6kb4
+                  - prod-jhuafngbly644
                   - prod-4pmewlybdftbs
               "Null":
                 aws-marketplace:ProductId: "false"
             Effect: Allow
             Resource: "*"
-            Sid: MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet
+            Sid: MarketplaceSubscribeClaude
           - Action:
               - acm:*
               - apigateway:*
@@ -2031,6 +2034,8 @@ Resources:
               - cloudwatch:*
               - codewhisperer:*
               - cognito-idp:*
+              - dbqms:*
+              - dynamodb:*
               - ec2:*
               - ecr:*
               - ecs:*
@@ -2040,6 +2045,7 @@ Resources:
               - lambda:*
               - logs:*
               - q:*
+              - rds-data:*
               - rds:*
               - s3:*
               - s3vectors:*
@@ -2069,10 +2075,42 @@ Resources:
             Sid: CreateServiceLinkedRole
           - Action:
               - iam:GetRole
+              - iam:ListAttachedRolePolicies
+              - iam:ListRolePolicies
               - iam:ListRoles
             Effect: Allow
             Resource: "*"
             Sid: GetRole
+          - Action:
+              - iam:AttachRolePolicy
+              - iam:CreateRole
+              - iam:DeleteRole
+              - iam:DeleteRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:UpdateAssumeRolePolicy
+            Condition:
+              StringEquals:
+                iam:PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/workshop-boundary
+            Effect: Allow
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/aiagent*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/backoffice*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/mcp*
+            Sid: AiAgentCreateRoles
+          - Action: iam:PassRole
+            Condition:
+              StringEquals:
+                iam:PassedToService:
+                  - bedrock.amazonaws.com
+                  - bedrock-agentcore.amazonaws.com
+                  - lambda.amazonaws.com
+            Effect: Allow
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/aiagent*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/backoffice*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/mcp*
+            Sid: AiAgentPassRole
           - Action: ec2:RunInstances
             Condition:
               StringLike:
@@ -2116,6 +2154,48 @@ Resources:
     Type: AWS::CloudFormation::WaitCondition
   IdeWaitConditionHandleE8345861:
     Type: AWS::CloudFormation::WaitConditionHandle
+  IdeWorkshopBoundaryDEE72AD4:
+    Properties:
+      Description: ""
+      ManagedPolicyName: workshop-boundary
+      Path: /
+      PolicyDocument:
+        Statement:
+          - Action:
+              - aws-marketplace:Subscribe
+              - aws-marketplace:Unsubscribe
+              - aws-marketplace:ViewSubscriptions
+              - bedrock-agentcore:*
+              - bedrock:*
+              - cloudfront:*
+              - cloudwatch:*
+              - cognito-idp:*
+              - dynamodb:*
+              - ec2:CreateNetworkInterface
+              - ec2:DeleteNetworkInterface
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeSubnets
+              - ec2:DescribeVpcs
+              - ecr:*
+              - lambda:InvokeFunction
+              - logs:*
+              - s3:*
+              - s3vectors:*
+              - secretsmanager:GetSecretValue
+              - xray:*
+            Effect: Allow
+            Resource: "*"
+            Sid: AllowedServicesForRoles
+          - Action:
+              - account:*
+              - iam:*
+              - organizations:*
+            Effect: Deny
+            Resource: "*"
+            Sid: DenyIAM
+        Version: "2012-10-17"
+    Type: AWS::IAM::ManagedPolicy
   ThreadAnalysisLambda3EE9B29D:
     DependsOn:
       - ThreadAnalysisLambdaRoleDefaultPolicyC7AD40BA
@@ -3110,7 +3190,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260119085223"
+            - "-20260324173337"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

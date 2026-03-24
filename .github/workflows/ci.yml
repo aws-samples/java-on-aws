@@ -38,10 +38,10 @@ jobs:
       run: npm install -g aws-cdk
     - name: AWS CDK version
       run: cdk version
-    - name: Build CDK Immersion Day infrastructure
+    - name: Build CDK infrastructure
       run: mvn clean package --no-transfer-progress
       working-directory: ./infrastructure/cdk/
-    - name: CDK Synth Immersion Day infrastructure
+    - name: CDK Synth infrastructure
       run: cdk synth
       working-directory: ./infrastructure/cdk/
     - name: Build unicorn-store-wildfly with Docker

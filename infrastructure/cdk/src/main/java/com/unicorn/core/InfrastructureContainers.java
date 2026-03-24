@@ -14,7 +14,7 @@ import software.constructs.Construct;
 
 import java.util.List;
 
-// Additional infrastructure for Containers modules of Java on AWS Immersion Day
+// Additional infrastructure for Containers modules of Java on AWS
 public class InfrastructureContainers extends Construct {
 
     private final InfrastructureCore infrastructureCore;
