@@ -111,31 +111,83 @@ BUILD_DIR="$LAMBDA_DIR/build"
 DIST_DIR="$LAMBDA_DIR/dist"
 
 rm -rf "$BUILD_DIR" "$DIST_DIR"
-mkdir -p "$BUILD_DIR" "$DIST_DIR"
+mkdir -p "$BUILD_DIR/package" "$DIST_DIR"
 
-python3 -m venv "$BUILD_DIR/venv"
-source "$BUILD_DIR/venv/bin/activate"
-pip install --upgrade pip > /dev/null 2>&1
-
-if [[ -f "$LAMBDA_DIR/requirements.txt" ]]; then
-    pip install -r "$LAMBDA_DIR/requirements.txt" -t "$BUILD_DIR/package" > /dev/null 2>&1
+# Check if Docker is available and running
+if ! command -v docker &> /dev/null; then
+    log_error "Docker is not installed. Cannot build Lambda package."
+    exit 1
 fi
 
-cp -r "$LAMBDA_DIR/src/"* "$BUILD_DIR/package/"
-# Use subshell to avoid changing directory in main script
-(cd "$BUILD_DIR/package" && zip -r "$DIST_DIR/lambda_function.zip" . > /dev/null 2>&1)
+if ! docker info > /dev/null 2>&1; then
+    log_info "Starting Docker daemon..."
+    sudo systemctl start docker
+    sleep 3
 
+    if ! docker info > /dev/null 2>&1; then
+        log_error "Docker failed to start"
+        exit 1
+    fi
+fi
+
+# Use Docker to build Lambda package with correct Python version and architecture
+# This ensures native dependencies like cffi are compiled for Lambda runtime (Python 3.13 x86_64)
+log_info "Installing dependencies with Docker (Python 3.13 x86_64)..."
+if [[ -f "$LAMBDA_DIR/requirements.txt" ]]; then
+    # Pull Lambda image first
+    log_info "Pulling AWS Lambda Python 3.13 image (this may take a minute)..."
+    if ! docker pull public.ecr.aws/lambda/python:3.13 2>&1 | grep -v "^$"; then
+        log_error "Failed to pull Lambda Docker image"
+        exit 1
+    fi
+
+    log_info "Installing Python dependencies..."
+    # Run pip install inside Lambda container (override entrypoint to use bash)
+    if ! docker run --rm \
+        --entrypoint /bin/bash \
+        -v "$LAMBDA_DIR/requirements.txt:/tmp/requirements.txt:ro" \
+        -v "$BUILD_DIR/package:/output" \
+        public.ecr.aws/lambda/python:3.13 \
+        -c "pip install -r /tmp/requirements.txt -t /output --no-cache-dir && chown -R $(id -u):$(id -g) /output" 2>&1; then
+        log_error "Failed to install Lambda dependencies with Docker"
+        exit 1
+    fi
+else
+    log_warning "No requirements.txt found at $LAMBDA_DIR/requirements.txt"
+fi
+
+log_info "Copying Lambda source files..."
+cp -r "$LAMBDA_DIR/src/"* "$BUILD_DIR/package/"
+
+log_info "Creating deployment package..."
+# Use subshell to avoid changing directory in main script
+(cd "$BUILD_DIR/package" && zip -q -r "$DIST_DIR/lambda_function.zip" .)
+
+if [[ ! -f "$DIST_DIR/lambda_function.zip" ]]; then
+    log_error "Failed to create deployment package"
+    exit 1
+fi
+
+ZIP_SIZE=$(du -h "$DIST_DIR/lambda_function.zip" | cut -f1)
+log_info "Deployment package size: $ZIP_SIZE"
+
+log_info "Updating Lambda function code..."
 aws lambda update-function-code \
   --function-name "$LAMBDA_FUNCTION_NAME" \
   --zip-file fileb://"$DIST_DIR/lambda_function.zip" \
   --no-cli-pager > /dev/null 2>&1
 
+if [[ $? -ne 0 ]]; then
+    log_error "Failed to update Lambda function code"
+    exit 1
+fi
+
+log_info "Waiting for Lambda function to update..."
 aws lambda wait function-updated --function-name "$LAMBDA_FUNCTION_NAME"
 
 rm -rf "$BUILD_DIR" "$DIST_DIR"
-deactivate 2>/dev/null || true
 
-log_success "Lambda updated"
+log_success "Lambda function updated successfully"
 
 # Create JVM Metrics dashboard
 log_info "Creating JVM Metrics dashboard..."
