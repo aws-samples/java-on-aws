@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Java-on-AWS-Immersion-Day workshop post-deploy script
+# Java-on-AWS workshop post-deploy script
 # Base development tools are already installed by ide/tools.sh during bootstrap
 # This script sets up workshop-specific infrastructure (EKS, monitoring, analysis)
 
@@ -8,7 +8,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 
-log_info "Starting Java-on-AWS-Immersion-Day workshop post-deploy setup..."
+log_info "Starting Java-on-AWS workshop post-deploy setup..."
 
 # Phase 1: EKS cluster configuration
 log_info "Phase 1: Configuring EKS cluster..."
@@ -59,7 +59,7 @@ else
     log_warning "p10k.zsh not found, skipping prompt customization"
 fi
 
-log_success "Java-on-AWS-Immersion-Day workshop post-deploy setup completed successfully!"
+log_success "Java-on-AWS workshop post-deploy setup completed successfully!"
 
 # Emit for bootstrap summary
-echo "✅ Success: Java-on-AWS-Immersion-Day workshop template"
+echo "✅ Success: Java-on-AWS workshop template"

@@ -97,7 +97,7 @@ public class UnicornStoreStack extends Stack {
         var infrastructureCore = new InfrastructureCore(this, "InfrastructureCore", vpc);
         // var accountId = Stack.of(this).getAccount();
 
-        // Create additional infrastructure for Containers modules of Java on AWS Immersion Day
+        // Create additional infrastructure for Containers modules of Java on AWS
         new InfrastructureContainers(this, "InfrastructureContainers", infrastructureCore);
         new InfrastructureEks(this, "InfrastructureEks", infrastructureCore);
 

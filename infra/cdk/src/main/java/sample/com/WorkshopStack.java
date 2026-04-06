@@ -53,11 +53,12 @@ public class WorkshopStack extends Stack {
         }
 
         // Template type flags
-        boolean isImmersionDay = "java-on-aws-immersion-day".equals(templateType);
+        boolean isJavaOnAws = "java-on-aws".equals(templateType);
         boolean isEks = "java-on-amazon-eks".equals(templateType);
         boolean isSpringAi = "java-spring-ai-agents".equals(templateType);
         boolean isAiAgents = "java-ai-agents".equals(templateType);
-        boolean isFullTemplate = isImmersionDay || isEks || isSpringAi;
+        boolean isAiAgentsAdvanced = "java-ai-agents-advanced".equals(templateType);
+        boolean isFullTemplate = isJavaOnAws || isEks || isSpringAi;
         boolean needsDatabase = isFullTemplate;
 
         // Core infrastructure (always created)
@@ -71,7 +72,7 @@ public class WorkshopStack extends Stack {
             .vpc(vpc.getVpc())
             .gitBranch(gitBranch)
             .templateType(templateType)
-            .ideArch(isAiAgents ? Ide.IdeArch.ARM64 : Ide.IdeArch.X86_64_AMD)
+            .ideArch((isAiAgents || isAiAgentsAdvanced) ? Ide.IdeArch.ARM64 : Ide.IdeArch.X86_64_AMD)
             .build();
         Ide ide = new Ide(this, "Ide", ideProps);
 
@@ -121,7 +122,7 @@ public class WorkshopStack extends Stack {
             ))
             .build();
 
-        // Full template resources (java-on-aws-immersion-day, java-on-amazon-eks, java-spring-ai-agents)
+        // Full template resources (java-on-aws, java-on-amazon-eks, java-spring-ai-agents)
         // or java-ai-agents (database only)
         Database database = null;
         if (needsDatabase) {
@@ -148,8 +149,8 @@ public class WorkshopStack extends Stack {
                 .workshopBucket(workshopBucket.getBucket())
                 .build());
 
-            // java-on-aws-immersion-day & java-on-amazon-eks specific resources
-            if (isImmersionDay || isEks) {
+            // java-on-aws & java-on-amazon-eks specific resources
+            if (isJavaOnAws || isEks) {
                 // ECR repository for unicorn-store-spring (manual ECS Express deployment)
                 Repository.Builder.create(this, "UnicornStoreSpringEcr")
                     .repositoryName("unicorn-store-spring")

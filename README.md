@@ -1,8 +1,8 @@
-# Java on AWS Immersion Day
+# Java on AWS
 
 ![Java on AWS](resources/welcome.png)
 
-This project contains the supporting code for the Java on AWS Immersion Day. You can find the instructions for the hands-on lab [here](https://catalog.workshops.aws/java-on-aws).
+This project contains the supporting code for the Java on AWS. You can find the instructions for the hands-on lab [here](https://catalog.workshops.aws/java-on-aws).
 
 # Overview
 In this workshop you will learn how to build cloud-native Java applications, best practices and performance optimizations techniques. You will also learn how to migrate your existing Java application to container services such as AWS AppRunner, Amazon ECS and Amazon EKS or how to to run them as Serverless AWS Lambda functions.

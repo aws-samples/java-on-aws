@@ -5,13 +5,6 @@ echo "=============================================="
 echo "01-setup.sh - Environment Setup"
 echo "=============================================="
 
-# Get account ID and region
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --no-cli-pager)
-AWS_REGION=$(aws configure get region)
-
-echo "Account: ${ACCOUNT_ID}"
-echo "Region: ${AWS_REGION}"
-
 ## Creating the environment directory
 
 echo ""
@@ -67,14 +60,60 @@ else
         ~/environment/backoffice/src/main/resources/application.properties
 fi
 
-# Add basic variables if not present
-if ! grep -q "AWS_REGION=" ~/environment/.envrc 2>/dev/null; then
-    echo "export AWS_REGION=${AWS_REGION}" >> ~/environment/.envrc
+# Create DynamoDB tables for backoffice
+if aws dynamodb describe-table --table-name "backoffice-trip" --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1; then
+    echo "DynamoDB table backoffice-trip already exists"
+else
+    echo "Creating DynamoDB table: backoffice-trip"
+    aws dynamodb create-table \
+        --table-name "backoffice-trip" \
+        --attribute-definitions \
+            AttributeName=pk,AttributeType=S \
+            AttributeName=sk,AttributeType=S \
+            AttributeName=tripReference,AttributeType=S \
+        --key-schema AttributeName=pk,KeyType=HASH AttributeName=sk,KeyType=RANGE \
+        --global-secondary-indexes \
+            "IndexName=tripReference-index,KeySchema=[{AttributeName=tripReference,KeyType=HASH}],Projection={ProjectionType=ALL}" \
+        --billing-mode PAY_PER_REQUEST \
+        --region ${AWS_REGION} \
+        --no-cli-pager
+    aws dynamodb wait table-exists --table-name "backoffice-trip" --region ${AWS_REGION}
+    echo "Table created: backoffice-trip"
 fi
 
-if ! grep -q "ACCOUNT_ID=" ~/environment/.envrc 2>/dev/null; then
-    echo "export ACCOUNT_ID=${ACCOUNT_ID}" >> ~/environment/.envrc
+if aws dynamodb describe-table --table-name "backoffice-expense" --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1; then
+    echo "DynamoDB table backoffice-expense already exists"
+else
+    echo "Creating DynamoDB table: backoffice-expense"
+    aws dynamodb create-table \
+        --table-name "backoffice-expense" \
+        --attribute-definitions \
+            AttributeName=pk,AttributeType=S \
+            AttributeName=sk,AttributeType=S \
+            AttributeName=expenseReference,AttributeType=S \
+            AttributeName=tripReference,AttributeType=S \
+        --key-schema AttributeName=pk,KeyType=HASH AttributeName=sk,KeyType=RANGE \
+        --global-secondary-indexes \
+            "IndexName=expenseReference-index,KeySchema=[{AttributeName=expenseReference,KeyType=HASH}],Projection={ProjectionType=ALL}" \
+            "IndexName=tripReference-index,KeySchema=[{AttributeName=tripReference,KeyType=HASH}],Projection={ProjectionType=ALL}" \
+        --billing-mode PAY_PER_REQUEST \
+        --region ${AWS_REGION} \
+        --no-cli-pager
+    aws dynamodb wait table-exists --table-name "backoffice-expense" --region ${AWS_REGION}
+    echo "Table created: backoffice-expense"
 fi
+
+# Verify required environment variables
+if [ -z "${AWS_REGION}" ]; then
+    echo "Error: AWS_REGION is not set"
+    exit 1
+fi
+if [ -z "${ACCOUNT_ID}" ]; then
+    ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --no-cli-pager)
+fi
+
+echo "Account: ${ACCOUNT_ID}"
+echo "Region: ${AWS_REGION}"
 
 ## Setting up direnv
 

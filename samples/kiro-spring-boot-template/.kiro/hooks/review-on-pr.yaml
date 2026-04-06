@@ -1,0 +1,5 @@
+name: review-on-pr
+trigger: on_pr_opened
+
+actions:
+  - skill: review-pr

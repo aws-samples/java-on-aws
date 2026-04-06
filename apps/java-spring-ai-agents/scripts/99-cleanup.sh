@@ -317,7 +317,8 @@ fi
 echo ""
 echo "## Deleting Knowledge Base"
 
-KB_ID="${SPRING_AI_VECTORSTORE_BEDROCK_KNOWLEDGE_BASE_KNOWLEDGE_BASE_ID}"
+KB_ID=$(aws bedrock-agent list-knowledge-bases --no-cli-pager \
+    --query "knowledgeBaseSummaries[?name=='aiagent-kb'].knowledgeBaseId | [0]" --output text 2>/dev/null || echo "")
 if [ -n "${KB_ID}" ]; then
     # Delete data sources first
     DS_IDS=$(aws bedrock-agent list-data-sources --knowledge-base-id "${KB_ID}" --no-cli-pager \
@@ -401,7 +402,7 @@ fi
 echo ""
 echo "## Deleting DynamoDB tables"
 
-for TABLE in backoffice-trips backoffice-expenses; do
+for TABLE in backoffice-trip backoffice-expense; do
     delete_resource "${TABLE}" \
         "aws dynamodb describe-table --table-name ${TABLE} --region ${AWS_REGION} --no-cli-pager" \
         "aws dynamodb delete-table --table-name ${TABLE} --region ${AWS_REGION} --no-cli-pager"

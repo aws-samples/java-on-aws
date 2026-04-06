@@ -1,0 +1,12 @@
+name: test-on-service-change
+trigger: on_file_change
+
+conditions:
+  - path: "src/main/java/**/*.java"
+  - any_path_contains:
+      - "/service/"
+      - "/api/"
+      - "/persistence/"
+
+actions:
+  - skill: write-tests

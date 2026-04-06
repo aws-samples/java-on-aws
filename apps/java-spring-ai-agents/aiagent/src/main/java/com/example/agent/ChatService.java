@@ -29,7 +29,6 @@ import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import reactor.core.publisher.Flux;
-import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
 import java.util.Base64;
@@ -49,8 +48,6 @@ public class ChatService {
 
     private final ChatClient documentClient;
     private final String documentModel;
-
-    private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     private final ArtifactStore<GeneratedFile> browserArtifactStore;
     private final ArtifactStore<GeneratedFile> codeInterpreterArtifactStore;
@@ -75,10 +72,9 @@ public class ChatService {
 
         List<Advisor> advisors = new ArrayList<>();
 
-        if (advisors.size() > 0) {
-            advisors.addAll(agentCoreMemory.advisors);
-            logger.info("Advisors enabled: {} advisors", agentCoreMemory.advisors);
-        }
+        // Memory (STM + LTM)
+        advisors.addAll(agentCoreMemory.advisors);
+        logger.info("Memory enabled: {} advisors", agentCoreMemory.advisors.size());
 
         // Knowledge Base (RAG)
         if (kbVectorStore != null) {
@@ -141,10 +137,10 @@ public class ChatService {
                     String userPrompt = (request.prompt() != null && !request.prompt().trim().isEmpty())
                         ? request.prompt() : "Process this document";
                     String combinedPrompt = userPrompt + "\n\nDocument analysis:\n" + documentAnalysis;
-                    return chat(combinedPrompt, getSessionId(context));
+                    return chat(combinedPrompt, getConversationId(context));
                 });
         }
-        return chat(request.prompt(), getSessionId(context));
+        return chat(request.prompt(), getConversationId(context));
     }
 
     private Flux<String> chat(String prompt, String sessionId) {
@@ -156,7 +152,7 @@ public class ChatService {
             .contextWrite(ctx -> ctx.put(SessionConstants.SESSION_ID_KEY, sessionId));
     }
 
-    private String getSessionId(AgentCoreContext context) {
+    private String getConversationId(AgentCoreContext context) {
         return ConversationIdResolver.resolve(context);
     }
 

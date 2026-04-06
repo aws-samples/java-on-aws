@@ -14,7 +14,7 @@ cd "$SCRIPT_DIR/../.." || {
     exit 1
 }
 
-WORKSHOPS=("java-on-aws-immersion-day" "java-on-amazon-eks" "java-spring-ai-agents" "java-ai-agents")
+WORKSHOPS=("java-on-aws" "java-on-amazon-eks" "java-spring-ai-agents" "java-ai-agents" "java-ai-agents-advanced")
 
 # Shared IAM policy file used by all workshops
 SHARED_POLICY_FILE="cdk/src/main/resources/iam-policy.json"
@@ -28,20 +28,22 @@ fi
 echo ""
 echo "Select template to sync:"
 echo "  0) All templates"
-echo "  1) java-on-aws-immersion-day"
+echo "  1) java-on-aws"
 echo "  2) java-on-amazon-eks"
 echo "  3) java-spring-ai-agents"
 echo "  4) java-ai-agents"
+echo "  5) java-ai-agents-advanced"
 echo ""
-read -p "Enter choice [0-4]: " choice
+read -p "Enter choice [0-5]: " choice
 
 # Determine which workshops to sync
 case $choice in
     0) selected_workshops=("${WORKSHOPS[@]}") ;;
-    1) selected_workshops=("java-on-aws-immersion-day") ;;
+    1) selected_workshops=("java-on-aws") ;;
     2) selected_workshops=("java-on-amazon-eks") ;;
     3) selected_workshops=("java-spring-ai-agents") ;;
     4) selected_workshops=("java-ai-agents") ;;
+    5) selected_workshops=("java-ai-agents-advanced") ;;
     *)
         log_error "Invalid choice: $choice"
         exit 1
@@ -52,9 +54,18 @@ log_info "Syncing CloudFormation templates and policies to workshop directories.
 
 synced_count=0
 
+# Map template name to actual folder name (when they differ)
+get_folder_name() {
+    case "$1" in
+        "java-on-aws") echo "java-on-aws-immersion-day" ;;
+        *) echo "$1" ;;
+    esac
+}
+
 for workshop in "${selected_workshops[@]}"; do
-    # Target is sibling to repo root: ../../{workshop}/static
-    target_dir="../../$workshop/static"
+    # Target is sibling to repo root: ../../{folder}/static
+    folder_name=$(get_folder_name "$workshop")
+    target_dir="../../$folder_name/static"
 
     if [[ -d "$target_dir" ]]; then
         # Copy workshop-specific CloudFormation template -> workshop-stack.yaml
@@ -64,7 +75,7 @@ for workshop in "${selected_workshops[@]}"; do
                 log_error "Failed to copy template for $workshop"
                 exit 1
             }
-            log_success "Synced $template_file to $workshop/static/workshop-stack.yaml"
+            log_success "Synced $template_file to $folder_name/static/workshop-stack.yaml"
         else
             log_error "Template file $template_file not found"
             exit 1
@@ -75,11 +86,11 @@ for workshop in "${selected_workshops[@]}"; do
             log_error "Failed to copy policy for $workshop"
             exit 1
         }
-        log_success "Synced $SHARED_POLICY_FILE to $workshop/static/iam-policy.json"
+        log_success "Synced $SHARED_POLICY_FILE to $folder_name/static/iam-policy.json"
 
         ((synced_count++))
     else
-        log_info "Directory $target_dir not found, skipping $workshop"
+        log_info "Directory $target_dir not found, skipping $workshop ($folder_name)"
     fi
 done
 

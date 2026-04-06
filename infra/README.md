@@ -53,7 +53,7 @@ infra/
 │   └── cdk.json                      # CDK configuration
 ├── cfn/                              # Generated CloudFormation templates
 │   ├── base-stack.yaml
-│   ├── java-on-aws-immersion-day-stack.yaml
+│   ├── java-on-aws-stack.yaml
 │   ├── java-on-amazon-eks-stack.yaml
 │   └── java-spring-ai-agents-stack.yaml
 ├── scripts/
@@ -68,7 +68,7 @@ infra/
 │   │   └── shell-p10k.zsh            # Powerlevel10k config
 │   ├── templates/                    # Workshop-specific post-deploy scripts
 │   │   ├── base.sh
-│   │   ├── java-on-aws-immersion-day.sh
+│   │   ├── java-on-aws.sh
 │   │   ├── java-on-amazon-eks.sh
 │   │   └── java-spring-ai-agents.sh
 │   ├── setup/                        # Infrastructure setup scripts
@@ -96,8 +96,8 @@ infra/
 | Template Type | Resources Created |
 |---------------|-------------------|
 | `base` | VPC, IDE |
-| `java-on-aws-immersion-day` | VPC, IDE, CodeBuild, Database, EKS, WorkshopBucket, EcrRegistry, Unicorn, ECR (unicorn-store-spring), ThreadAnalysis, AiJvmAnalyzer |
-| `java-on-amazon-eks` | Same as java-on-aws-immersion-day |
+| `java-on-aws` | VPC, IDE, CodeBuild, Database, EKS, WorkshopBucket, EcrRegistry, Unicorn, ECR (unicorn-store-spring), ThreadAnalysis, AiJvmAnalyzer |
+| `java-on-amazon-eks` | Same as java-on-aws |
 | `java-spring-ai-agents` | VPC, IDE, CodeBuild, Database, EKS, WorkshopBucket, EcrRegistry, Unicorn, 2x EcsExpressService (unicorn-spring-ai-agent, unicorn-store-spring) |
 
 ---
@@ -215,10 +215,10 @@ public WorkshopStack(...) {
     String prefix = "workshop";
     String templateType = getContext("template.type"); // defaults to "base"
 
-    boolean isImmersionDay = "java-on-aws-immersion-day".equals(templateType);
+    boolean isJavaOnAws = "java-on-aws".equals(templateType);
     boolean isEks = "java-on-amazon-eks".equals(templateType);
     boolean isSpringAi = "java-spring-ai-agents".equals(templateType);
-    boolean isFullTemplate = isImmersionDay || isEks || isSpringAi;
+    boolean isFullTemplate = isJavaOnAws || isEks || isSpringAi;
 
     // Always created
     Vpc vpc = new Vpc(this, "Vpc", ...);
@@ -231,8 +231,8 @@ public WorkshopStack(...) {
         Eks eks = new Eks(...);
         Unicorn unicorn = new Unicorn(...);  // EventBus, EKS/ECS roles, DB setup
 
-        // java-on-aws-immersion-day & java-on-amazon-eks only
-        if (isImmersionDay || isEks) {
+        // java-on-aws & java-on-amazon-eks only
+        if (isJavaOnAws || isEks) {
             new Repository("unicorn-store-spring");  // ECR for manual deployment
             new ThreadAnalysis(...);
             new AiJvmAnalyzer(...);

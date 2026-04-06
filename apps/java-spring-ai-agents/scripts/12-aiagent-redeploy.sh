@@ -56,17 +56,6 @@ docker push "${ECR_URI}:latest"
 echo ""
 echo "2. Update the AgentCore Runtime"
 
-# Build environment variables JSON
-cat > /tmp/aiagent-env.json << EOF
-{
-  "AGENTCORE_MEMORY_MEMORY_ID": "${AGENTCORE_MEMORY_MEMORY_ID}",
-  "AGENTCORE_MEMORY_LONG_TERM_SEMANTIC_STRATEGY_ID": "${AGENTCORE_MEMORY_LONG_TERM_SEMANTIC_STRATEGY_ID}",
-  "AGENTCORE_MEMORY_LONG_TERM_USER_PREFERENCE_STRATEGY_ID": "${AGENTCORE_MEMORY_LONG_TERM_USER_PREFERENCE_STRATEGY_ID}",
-  "SPRING_AI_VECTORSTORE_BEDROCK_KNOWLEDGE_BASE_KNOWLEDGE_BASE_ID": "${SPRING_AI_VECTORSTORE_BEDROCK_KNOWLEDGE_BASE_KNOWLEDGE_BASE_ID}",
-  "SPRING_AI_MCP_CLIENT_STREAMABLEHTTP_CONNECTIONS_GATEWAY_URL": "${GATEWAY_URL}"
-}
-EOF
-
 aws bedrock-agentcore-control update-agent-runtime \
     --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
     --role-arn "arn:aws:iam::${ACCOUNT_ID}:role/aiagent-runtime-role" \
@@ -74,11 +63,8 @@ aws bedrock-agentcore-control update-agent-runtime \
     --network-configuration "{\"networkMode\":\"VPC\",\"networkModeConfig\":{\"subnets\":[\"${SUBNET_ID}\"],\"securityGroups\":[\"${SG_ID}\"]}}" \
     --authorizer-configuration "{\"customJWTAuthorizer\":{\"discoveryUrl\":\"${AIAGENT_DISCOVERY_URL}\",\"allowedClients\":[\"${AIAGENT_CLIENT_ID}\"]}}" \
     --request-header-configuration '{"requestHeaderAllowlist":["Authorization"]}' \
-    --environment-variables file:///tmp/aiagent-env.json \
     --region ${AWS_REGION} \
     --no-cli-pager
-
-rm -f /tmp/aiagent-env.json
 
 echo -n "Waiting for runtime"
 while [ "$(aws bedrock-agentcore-control get-agent-runtime \
