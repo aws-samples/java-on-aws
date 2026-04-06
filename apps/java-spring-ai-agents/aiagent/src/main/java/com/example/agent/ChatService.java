@@ -20,11 +20,14 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
@@ -39,7 +42,6 @@ record ChatRequest(String prompt, String fileBase64, String fileName) {
 
 @Service
 public class ChatService {
-
     private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
 
     private final ChatClient chatClient;
@@ -123,6 +125,10 @@ public class ChatService {
 
     @AgentCoreInvocation
     public Flux<String> chat(ChatRequest request, AgentCoreContext context) {
+        String authorization = context.getHeader(HttpHeaders.AUTHORIZATION);
+        RequestContextHolder.currentRequestAttributes()
+                .setAttribute(HttpHeaders.AUTHORIZATION, authorization, RequestAttributes.SCOPE_REQUEST);
+
         if (request.hasFile()) {
             return processDocument(request.prompt(), request.fileBase64(), request.fileName())
                 .collectList()
