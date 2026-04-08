@@ -77,4 +77,13 @@ public class ExpenseService {
                 .items().stream().findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Expense", expenseReference));
     }
+
+    public Expense deleteExpense(String expenseReference) {
+        Expense expense = getExpense(expenseReference);
+        if (expense.getStatus() != Expense.ExpenseStatus.DRAFT) {
+            throw new InvalidOperationException("Only draft expenses can be deleted");
+        }
+        dynamoDbTemplate.delete(expense);
+        return expense;
+    }
 }

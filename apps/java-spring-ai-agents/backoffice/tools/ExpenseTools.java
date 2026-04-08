@@ -61,4 +61,10 @@ public class ExpenseTools {
             @ToolParam(description = "Expense reference (EXP-XXXXXXXX)") String expenseReference) {
         return service.submitExpense(expenseReference);
     }
+
+    @Tool(description = "Delete a draft expense")
+    public Expense deleteExpense(
+            @ToolParam(description = "Expense reference (EXP-XXXXXXXX)") String expenseReference) {
+        return service.deleteExpense(expenseReference);
+    }
 }
