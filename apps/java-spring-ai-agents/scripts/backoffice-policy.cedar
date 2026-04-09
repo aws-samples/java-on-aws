@@ -1,6 +1,14 @@
 // Backoffice MCP Gateway Policy
-// Forbid dangerous operations - everything else allowed by default
+// Cedar is deny-by-default, so we need permit-all first, then forbid specific actions
 
+// Permit all actions on the gateway (required - Cedar denies by default)
+permit(
+  principal,
+  action,
+  resource == AgentCore::Gateway::"${GATEWAY_ARN}"
+);
+
+// Forbid dangerous operations (takes precedence over permit)
 forbid(
   principal,
   action in [
