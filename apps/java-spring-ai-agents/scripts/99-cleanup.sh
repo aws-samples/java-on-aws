@@ -38,28 +38,38 @@ delete_resource() {
     fi
 }
 
-## 1. Delete AI Agent Runtime (08-aiagent-runtime.sh)
+## 1. Delete AI Agent Runtimes
 
 echo ""
-echo "## Deleting AI Agent Runtime"
+echo "## Deleting AI Agent Runtimes"
 
-if [ -n "${AIAGENT_RUNTIME_ID}" ]; then
-    echo -n "  aiagent runtime... "
-    if aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
-        --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1; then
-        aws bedrock-agentcore-control delete-agent-runtime \
-            --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
-            --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1 || true
-        echo "deleting"
-        echo -n "  waiting"
-        while aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
-            --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1; do
-            echo -n "."; sleep 5
-        done && echo " done"
-    else
-        echo "not found"
+for AGENT in AIAGENT AIAGENT_BROWSER AIAGENT_CODEINTERPRETER; do
+    RUNTIME_VAR="${AGENT}_RUNTIME_ID"
+    RUNTIME_ID="${!RUNTIME_VAR}"
+    ECR_NAME=$(echo "${AGENT}" | tr '[:upper:]_' '[:lower:]-')
+
+    if [ -n "${RUNTIME_ID}" ]; then
+        echo -n "  ${ECR_NAME} runtime... "
+        if aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${RUNTIME_ID}" \
+            --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1; then
+            aws bedrock-agentcore-control delete-agent-runtime \
+                --agent-runtime-id "${RUNTIME_ID}" \
+                --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1 || true
+            echo "deleting"
+            echo -n "  waiting"
+            while aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${RUNTIME_ID}" \
+                --region ${AWS_REGION} --no-cli-pager >/dev/null 2>&1; do
+                echo -n "."; sleep 5
+            done && echo " done"
+        else
+            echo "not found"
+        fi
     fi
-fi
+
+    delete_resource "${ECR_NAME} ECR repository" \
+        "aws ecr describe-repositories --repository-names ${ECR_NAME} --region ${AWS_REGION} --no-cli-pager" \
+        "aws ecr delete-repository --repository-name ${ECR_NAME} --region ${AWS_REGION} --force --no-cli-pager"
+done
 
 delete_resource "aiagent-runtime-role policy" \
     "aws iam get-role-policy --role-name aiagent-runtime-role --policy-name AgentCoreExecutionPolicy --no-cli-pager" \
@@ -68,10 +78,6 @@ delete_resource "aiagent-runtime-role policy" \
 delete_resource "aiagent-runtime-role" \
     "aws iam get-role --role-name aiagent-runtime-role --no-cli-pager" \
     "aws iam delete-role --role-name aiagent-runtime-role --no-cli-pager"
-
-delete_resource "aiagent ECR repository" \
-    "aws ecr describe-repositories --repository-names aiagent --region ${AWS_REGION} --no-cli-pager" \
-    "aws ecr delete-repository --repository-name aiagent --region ${AWS_REGION} --force --no-cli-pager"
 
 ## 2. Delete AI Agent UI (09-aiagent-ui.sh)
 
