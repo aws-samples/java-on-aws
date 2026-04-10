@@ -183,9 +183,9 @@ echo ""
 echo "Policies:"
 aws bedrock-agentcore-control list-policies \
     --policy-engine-id "${POLICY_ENGINE_ID}" \
-    --query 'policies[].{Name:name,Status:status}' --output table
+    --query 'policies[].{Name:name,Status:status}' --output table --no-cli-pager
 
 echo ""
 echo "Gateway:"
 aws bedrock-agentcore-control get-gateway --gateway-id "${MCP_GATEWAY_ID}" \
-    --query '{PolicyEngine:policyEngineConfiguration.arn,Mode:policyEngineConfiguration.mode}' --output table
+    --query '{PolicyEngine:policyEngineConfiguration.arn,Mode:policyEngineConfiguration.mode}' --output table --no-cli-pager
