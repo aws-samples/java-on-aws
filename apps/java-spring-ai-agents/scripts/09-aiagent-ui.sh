@@ -155,7 +155,7 @@ echo ""
 echo "3. Generate config and upload files"
 
 # Generate config.json
-UI_DIR="${SCRIPT_DIR}/../aiagent/src/main/resources/static"
+UI_DIR=~/environment/aiagent/src/main/resources/static
 
 cat > "${UI_DIR}/config.json" << EOF
 {
