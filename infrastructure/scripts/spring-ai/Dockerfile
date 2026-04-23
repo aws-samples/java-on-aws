@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/nginx:1.29.1
+FROM public.ecr.aws/docker/library/nginx:1.29.4
 
 # Create a HTML page with timestamp using shell command directly in RUN
 RUN echo '<html><body><h1>Hello World!</h1><p>Build timestamp: '$(date)'</p></body></html>' > /usr/share/nginx/html/index.html
