@@ -341,9 +341,9 @@
                 messageDiv.innerHTML = `
                     <div class="ml-auto flex">
                         <div class="message-bubble-user rounded-lg p-3 max-w-3xl">
-                            <button class="copy-button" data-copy-text="File attached: ${file.name}">📋</button>
-                            <p class="text-light-text dark:text-dev-text mb-2">📎 File attached: ${file.name}</p>
-                            <img src="${imageUrl}" alt="${file.name}" class="max-w-full max-h-64 rounded border border-light-border dark:border-dev-border cursor-pointer hover:opacity-80 transition" onclick="openImageModal('${imageUrl}')" />
+                            <button class="copy-button" data-copy-text="File attached: ${escapeHtml(file.name)}">📋</button>
+                            <p class="text-light-text dark:text-dev-text mb-2">📎 File attached: ${escapeHtml(file.name)}</p>
+                            <img src="${imageUrl}" alt="${escapeHtml(file.name)}" class="max-w-full max-h-64 rounded border border-light-border dark:border-dev-border cursor-pointer hover:opacity-80 transition" onclick="openImageModal('${imageUrl}')" />
                         </div>
                         <div class="w-10 h-10 rounded-full bg-dev-secondary bg-opacity-20 flex items-center justify-center ml-3">
                             <span class="text-lg">👤</span>
