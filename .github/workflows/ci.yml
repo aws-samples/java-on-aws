@@ -13,6 +13,9 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 jobs:
   build-java25:
     runs-on: ubuntu-latest
