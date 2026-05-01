@@ -62,6 +62,17 @@ Extends the Spring AI workshop with Amazon Bedrock AgentCore — an agentic plat
 - Execute code safely with AgentCore Code Interpreter
 - Convert APIs into MCP-compatible tools with AgentCore Gateway
 
+## Spring AI AgentCore Starter
+
+**[github.com/spring-ai-community/spring-ai-agentcore](https://github.com/spring-ai-community/spring-ai-agentcore)**
+
+An AWS-initiated, community-maintained set of Spring Boot starters that integrate Amazon Bedrock AgentCore services with Spring AI. Each module provides auto-configuration — add the dependency and configure properties, and the corresponding beans are ready to use.
+
+- `spring-ai-agentcore-runtime-starter` — serverless deployment to AgentCore Runtime
+- `spring-ai-agentcore-memory` — conversation memory with short-term and long-term advisors
+- `spring-ai-agentcore-browser` — browser automation tools as a `ToolCallbackProvider`
+- `spring-ai-agentcore-code-interpreter` — sandboxed code execution tools as a `ToolCallbackProvider`
+
 ## Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
