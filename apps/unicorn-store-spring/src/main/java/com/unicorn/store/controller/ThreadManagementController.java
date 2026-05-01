@@ -46,7 +46,7 @@ public class ThreadManagementController {
             threadGeneratorService.startThreads(count);
             return new Success("Successfully started " + count + " threads");
         } catch (IllegalStateException e) {
-            return new Failure(e.getMessage());
+            return new Failure("Unable to start threads. Threads may already be running.");
         }
     }
 
@@ -55,7 +55,7 @@ public class ThreadManagementController {
             threadGeneratorService.stopThreads();
             return new Success("Successfully stopped all threads");
         } catch (IllegalStateException e) {
-            return new Failure(e.getMessage());
+            return new Failure("Unable to stop threads. No active threads found.");
         }
     }
 
