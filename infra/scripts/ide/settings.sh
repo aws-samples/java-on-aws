@@ -52,7 +52,7 @@ install_ide_extensions() {
             echo "Installing extension: $extension"
             if command -v retry_optional >/dev/null 2>&1; then
                 retry_optional "Extension $extension" \
-                    "sudo -u $user $binary_cmd --install-extension $extension --force"
+                    "sudo -u $user $binary_cmd --install-extension $extension --force" || true
             else
                 if sudo -u $user $binary_cmd --install-extension $extension --force 2>/dev/null; then
                     echo "✅ Success: Extension $extension"
