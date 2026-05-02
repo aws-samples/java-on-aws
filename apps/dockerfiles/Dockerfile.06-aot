@@ -7,7 +7,7 @@ RUN mvn clean package -DskipTests -ntp \
     -Dspring-boot.aot.enabled=true && \
     mv target/store-spring-1.0.0-exec.jar app.jar
 
-FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023 AS trainer
+FROM public.ecr.aws/docker/library/amazoncorretto:26-al2023 AS trainer
 
 COPY --from=builder app.jar app.jar
 
@@ -55,7 +55,7 @@ RUN set -e; \
     ${OPTS} ${MAIN_CLASS} || true && \
     test -s /opt/app/app.aot
 
-FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
+FROM public.ecr.aws/docker/library/amazoncorretto:26-al2023
 
 RUN yum install -y shadow-utils && \
     groupadd --system spring -g 1000 && \
