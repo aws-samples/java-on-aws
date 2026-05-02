@@ -1,4 +1,4 @@
-FROM azul/zulu-openjdk:25-jdk-crac-latest AS builder
+FROM azul/zulu-openjdk:26-jdk-crac-latest AS builder
 
 RUN apt-get -qq update && apt-get -qq install -y curl maven
 
@@ -22,7 +22,7 @@ RUN java -Dspring.context.checkpoint=onRefresh \
     -XX:CRaCCheckpointTo=/opt/crac-files \
     -jar /store-spring.jar & PID=$! && wait ${PID} || true
 
-FROM azul/zulu-openjdk:25-jdk-crac-latest
+FROM azul/zulu-openjdk:26-jdk-crac-latest
 
 RUN apt-get -qq update && apt-get -qq install -y adduser \
     && addgroup --system --gid 1000 spring \
