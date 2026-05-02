@@ -25,7 +25,7 @@ RUN export JAVA_TOOL_OPTIONS="-Djdk.lang.Process.launchMechanism=vfork" && \
     --no-header-files --no-man-pages --output custom-jre \
     --add-modules $(cat jre-deps.info)
 
-FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
+FROM public.ecr.aws/docker/library/amazoncorretto:26-al2023
 
 RUN yum install -y shadow-utils
 

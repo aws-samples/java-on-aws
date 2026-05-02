@@ -15,7 +15,7 @@ COPY src ./src/
 ENV MAVEN_OPTS='-Xmx8g'
 RUN bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && mvn -DskipTests -ntp clean package -Pnative"
 
-FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
+FROM public.ecr.aws/docker/library/amazoncorretto:26-al2023
 
 RUN yum install -y shadow-utils
 
