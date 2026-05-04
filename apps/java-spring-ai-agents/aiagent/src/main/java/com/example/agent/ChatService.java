@@ -207,7 +207,7 @@ public class ChatService {
         String userPrompt = (prompt != null && !prompt.trim().isEmpty()) ? prompt : "Analyze this document";
 
         return documentClient.prompt()
-            .options(ToolCallingChatOptions.builder().model(documentModel).build())
+            .options(ToolCallingChatOptions.builder().model(documentModel))
             .user(userSpec -> {
                 userSpec.text(userPrompt);
                 userSpec.media(mimeType, resource);
