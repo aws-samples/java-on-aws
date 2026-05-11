@@ -209,6 +209,11 @@ log_success "RBAC applied"
 # =============================================================================
 
 log_info "Provisioning internal NLB for ECS reachability..."
+# Apply sequentially: AWS Load Balancer Controller shares one NLB across two
+# Services via `aws-load-balancer-name` only if the second Service sees the
+# NLB already exists. A single concurrent `kubectl apply` makes both reconcile
+# loops race — both try to CreateLoadBalancer and the second hits
+# DuplicateLoadBalancerName and gets stuck.
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Service
@@ -229,7 +234,26 @@ spec:
       port: 4040
       targetPort: 4040
       protocol: TCP
----
+EOF
+
+log_info "Waiting for pyroscope-nlb to provision the shared NLB..."
+NLB_DNS=""
+for i in {1..60}; do
+    NLB_DNS=$(kubectl get svc pyroscope-nlb -n "${NAMESPACE}" \
+        -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+    if [[ -n "${NLB_DNS}" ]]; then
+        break
+    fi
+    sleep 10
+done
+
+if [[ -z "${NLB_DNS}" ]]; then
+    log_error "NLB DNS was not assigned within 10 minutes"
+    exit 1
+fi
+
+log_info "Attaching perf-analyzer listener to the same NLB..."
+kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Service
 metadata:
@@ -251,21 +275,14 @@ spec:
       protocol: TCP
 EOF
 
-log_info "Waiting for NLB DNS to be assigned..."
-NLB_DNS=""
-for i in {1..60}; do
-    NLB_DNS=$(kubectl get svc pyroscope-nlb -n "${NAMESPACE}" \
+for i in {1..30}; do
+    ANALYZER_NLB_DNS=$(kubectl get svc perf-analyzer-nlb -n "${NAMESPACE}" \
         -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-    if [[ -n "${NLB_DNS}" ]]; then
+    if [[ -n "${ANALYZER_NLB_DNS}" ]]; then
         break
     fi
-    sleep 10
+    sleep 5
 done
-
-if [[ -z "${NLB_DNS}" ]]; then
-    log_error "NLB DNS was not assigned within 10 minutes"
-    exit 1
-fi
 
 aws ssm put-parameter \
     --name "perf-platform-internal-nlb" \
