@@ -42,7 +42,6 @@ kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1 || {
 }
 
 helm repo add grafana https://grafana.github.io/helm-charts >/dev/null 2>&1 || true
-helm repo add kyverno https://kyverno.github.io/kyverno >/dev/null 2>&1 || true
 helm repo update >/dev/null
 
 # =============================================================================
@@ -141,58 +140,6 @@ fi
 
 kill ${PF_PID} 2>/dev/null || true
 trap 'rm -rf "${WORK}"' EXIT
-
-# =============================================================================
-# Kyverno + JFR injection policy
-# =============================================================================
-
-if ! kubectl get namespace kyverno >/dev/null 2>&1; then
-    log_info "Installing Kyverno..."
-    helm upgrade --install kyverno kyverno/kyverno \
-        --namespace kyverno --create-namespace \
-        --wait --timeout 10m
-    log_success "Kyverno installed"
-else
-    log_info "Kyverno already present, skipping install"
-fi
-
-log_info "Applying JFR injection ClusterPolicy..."
-kubectl apply -f - <<'EOF'
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
-metadata:
-  name: perf-inject-jfr
-  annotations:
-    policies.kyverno.io/title: "perf-platform JFR ring injection"
-    policies.kyverno.io/category: "Performance"
-    policies.kyverno.io/subject: "Pod"
-    policies.kyverno.io/description: |
-      Injects JAVA_TOOL_OPTIONS with the always-on JFR flag into pods that
-      opt in via perf-profile/service label. The perf-collector DaemonSet
-      later dumps this ring via jcmd JFR.dump.
-spec:
-  background: false
-  rules:
-    - name: inject-jfr-env
-      match:
-        any:
-          - resources:
-              kinds:
-                - Pod
-              selector:
-                matchLabels:
-                  perf-profile/service: "?*"
-      mutate:
-        foreach:
-          - list: "request.object.spec.containers"
-            patchesJson6902: |-
-              - path: "/spec/containers/{{elementIndex}}/env/-"
-                op: add
-                value:
-                  name: JAVA_TOOL_OPTIONS
-                  value: "-XX:StartFlightRecording=name=perf,settings=default,maxage=10m,maxsize=50m,disk=false"
-EOF
-log_success "ClusterPolicy perf-inject-jfr applied"
 
 # =============================================================================
 # RBAC for perf-analyzer and perf-collector
@@ -393,15 +340,6 @@ if [[ -z "${GRAFANA_LB}" ]]; then
 fi
 GRAFANA_URL="http://${GRAFANA_LB}"
 
-for i in {1..20}; do
-    STATUS=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/health" \
-        | jq -r .database 2>/dev/null || true)
-    if [[ "${STATUS}" == "ok" ]]; then
-        break
-    fi
-    sleep 5
-done
-
 # Install Profiles Drilldown plugin (idempotent).
 log_info "Installing Grafana Profiles Drilldown plugin..."
 helm upgrade --install grafana grafana/grafana \
@@ -410,6 +348,19 @@ helm upgrade --install grafana grafana/grafana \
     --set "plugins={grafana-pyroscope-app}" \
     --wait --timeout 5m
 log_success "Profiles Drilldown plugin installed"
+
+# Wait for Grafana API to be ready after the helm upgrade restarts the pod.
+log_info "Waiting for Grafana API to be ready..."
+for i in {1..40}; do
+    STATUS=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/health" \
+        | jq -r .database 2>/dev/null || true)
+    if [[ "${STATUS}" == "ok" ]]; then
+        log_info "Grafana API ready"
+        break
+    fi
+    [[ $i -eq 40 ]] && { log_error "Grafana API not ready after 200s"; exit 1; }
+    sleep 5
+done
 
 # Pyroscope datasource.
 log_info "Provisioning Grafana Pyroscope datasource..."
@@ -567,9 +518,8 @@ log_info "  Internal NLB DNS:   ${NLB_DNS}  (SSM: perf-platform-internal-nlb)"
 log_info "  Analyzer webhook:   ${ANALYZER_WEBHOOK_URL}"
 log_info "  Grafana alert rule: ${ALERT_RULE_TITLE}"
 log_info "  Grafana contact pt: ${CONTACT_POINT_NAME}"
-log_info "  Kyverno policy:     perf-inject-jfr"
 log_info "  Profiles Drilldown: installed in Grafana"
 log_info ""
 log_info "Next: participants deploy perf-analyzer (module S1) and perf-collector (module S2)."
 
-echo "✅ Success: Perf Platform (Pyroscope + recording rules + Kyverno + NLB + Grafana wiring)"
+echo "✅ Success: Perf Platform (Pyroscope + recording rules + NLB + Grafana wiring)"

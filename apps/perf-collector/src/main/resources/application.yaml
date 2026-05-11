@@ -21,8 +21,11 @@ perf:
     node-name: ${NODE_NAME:}
     # Platform selector (set per deployment: eks | ecs_fargate).
     platform: ${PERF_COLLECTOR_PLATFORM:eks}
-    async-profiler-lib: /opt/perf-collector/async-profiler/libasyncProfiler.so
-    jattach-binary: /opt/perf-collector/bin/jattach
+    async-profiler-lib: /opt/perf-collector/${perf.collector.arch}/async-profiler/libasyncProfiler.so
+    jattach-binary: /opt/perf-collector/${perf.collector.arch}/bin/jattach
+    asprof-binary: /opt/perf-collector/${perf.collector.arch}/bin/asprof
+    jfrconv-binary: /opt/perf-collector/${perf.collector.arch}/bin/jfrconv
+    host-lib-path: /var/perf-collector/libasyncProfiler.so
 
 server:
   port: 8080
