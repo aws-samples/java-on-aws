@@ -69,6 +69,9 @@ pyroscope:
     limits:
       cpu: 1
       memory: 2Gi
+  # structuredConfig uses Pyroscope 2.x top-level keys only.
+  # 1.x fields `auth_enabled` and `recording_rules` were removed in 2.x
+  # and cause CrashLoopBackOff if included.
   structuredConfig:
     storage:
       backend: filesystem
@@ -76,22 +79,16 @@ pyroscope:
         dir: /data/blocks
     limits:
       retention_period: 168h
-    # Recording rules: turn profile series into Prometheus-scrapable metrics.
-    # Pyroscope aggregates per rule and exposes on /metrics.
-    recording_rules:
-      enabled: true
-    # Anonymous tenant for workshop deployment.
-    auth_enabled: false
 EOF
 
 helm upgrade --install pyroscope grafana/pyroscope \
     --namespace "${NAMESPACE}" \
     --values "${WORK}/pyroscope-values.yaml" \
-    --wait --timeout 5m
+    --wait --timeout 10m
 
 kubectl wait --for=condition=ready pod \
     -l app.kubernetes.io/name=pyroscope \
-    -n "${NAMESPACE}" --timeout=300s
+    -n "${NAMESPACE}" --timeout=600s
 
 log_success "Pyroscope installed"
 
