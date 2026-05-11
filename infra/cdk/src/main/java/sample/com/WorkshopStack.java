@@ -174,6 +174,12 @@ public class WorkshopStack extends Stack {
                     AiJvmAnalyzer.AiJvmAnalyzerProps.builder()
                         .workshopBucket(workshopBucket.getBucket())
                         .build());
+
+                // Perf Platform (Pod Identity / Task roles for perf-analyzer + perf-collector)
+                new PerfPlatform(this, "PerfPlatform",
+                    PerfPlatform.PerfPlatformProps.builder()
+                        .workshopBucket(workshopBucket.getBucket())
+                        .build());
             }
 
             // java-spring-ai-agents specific resources
