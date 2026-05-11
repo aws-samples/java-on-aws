@@ -18,7 +18,10 @@ public record CollectorProperties(
     String nodeName,
     Platform platform,
     String asyncProfilerLib,
-    String jattachBinary
+    String jattachBinary,
+    String asprofBinary,
+    String jfrconvBinary,
+    String hostLibPath
 ) {
 
     public enum Platform { EKS, ECS_FARGATE }

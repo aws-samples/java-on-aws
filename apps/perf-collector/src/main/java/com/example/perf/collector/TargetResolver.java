@@ -334,7 +334,7 @@ public interface TargetResolver {
 
         @Scheduled(
             initialDelayString = "5000",
-            fixedDelayString = "#{@collectorProperties.discoveryIntervalSeconds * 1000}"
+            fixedDelayString = "${perf.collector.discovery-interval-seconds:30}000"
         )
         public void discover() {
             try {
