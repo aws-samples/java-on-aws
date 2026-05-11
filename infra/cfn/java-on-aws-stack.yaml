@@ -422,7 +422,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1774370017491"
+      ContentHash: "1778416824589"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -514,7 +514,7 @@ Resources:
             Value: java-on-aws
           - Name: GIT_BRANCH
             Type: PLAINTEXT
-            Value: main
+            Value: perf-analyzer
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1359,7 +1359,7 @@ Resources:
                 # This keeps UserData under size limits while allowing unlimited bootstrap size
 
                 # Configuration from CDK
-                export GIT_BRANCH="main"
+                export GIT_BRANCH="perf-analyzer"
                 export AWS_REGION="
               - Ref: AWS::Region
               - |-
@@ -2014,6 +2014,7 @@ Resources:
                   - prod-mxcfnwvpd6kb4
                   - prod-jhuafngbly644
                   - prod-4pmewlybdftbs
+                  - prod-ffvjxvh4ltq64
               "Null":
                 aws-marketplace:ProductId: "false"
             Effect: Allow
@@ -2063,6 +2064,8 @@ Resources:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/ai-jvm-analyzer*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/aiagent*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/mcpserver*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/perf-analyzer*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/perf-collector*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/workshop*
@@ -2196,6 +2199,125 @@ Resources:
             Sid: DenyIAM
         Version: "2012-10-17"
     Type: AWS::IAM::ManagedPolicy
+  PerfPlatformAnalyzerEksPodRoleA97B019B:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+              - sts:TagSession
+            Effect: Allow
+            Principal:
+              Service: pods.eks.amazonaws.com
+        Version: "2012-10-17"
+      Description: Role for perf-analyzer EKS pod to access Bedrock, S3 and ECS
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonBedrockLimitedAccess
+      RoleName: perf-analyzer-eks-pod-role
+    Type: AWS::IAM::Role
+  PerfPlatformAnalyzerEksPodRoleDefaultPolicy4542BF86:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: s3:ListBucket
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - WorkshopBucketFD5BC43F
+                - Arn
+          - Action:
+              - s3:GetObject
+              - s3:HeadObject
+              - s3:PutObject
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - Fn::GetAtt:
+                      - WorkshopBucketFD5BC43F
+                      - Arn
+                  - /perf-platform/*
+          - Action:
+              - ecs:DescribeContainerInstances
+              - ecs:DescribeTasks
+              - ecs:ListTasks
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: PerfPlatformAnalyzerEksPodRoleDefaultPolicy4542BF86
+      Roles:
+        - Ref: PerfPlatformAnalyzerEksPodRoleA97B019B
+    Type: AWS::IAM::Policy
+  PerfPlatformCollectorEcsTaskRoleA67C7D99:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: "2012-10-17"
+      Description: Role for perf-collector ECS Fargate sidecar to upload profiling artifacts to S3
+      RoleName: perf-collector-ecs-task-role
+    Type: AWS::IAM::Role
+  PerfPlatformCollectorEcsTaskRoleDefaultPolicy698DCB5D:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:HeadObject
+              - s3:PutObject
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - Fn::GetAtt:
+                      - WorkshopBucketFD5BC43F
+                      - Arn
+                  - /perf-platform/profiling/*
+        Version: "2012-10-17"
+      PolicyName: PerfPlatformCollectorEcsTaskRoleDefaultPolicy698DCB5D
+      Roles:
+        - Ref: PerfPlatformCollectorEcsTaskRoleA67C7D99
+    Type: AWS::IAM::Policy
+  PerfPlatformCollectorEksPodRole3090D9EA:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+              - sts:TagSession
+            Effect: Allow
+            Principal:
+              Service: pods.eks.amazonaws.com
+        Version: "2012-10-17"
+      Description: Role for perf-collector EKS DaemonSet pod to upload profiling artifacts to S3
+      RoleName: perf-collector-eks-pod-role
+    Type: AWS::IAM::Role
+  PerfPlatformCollectorEksPodRoleDefaultPolicy102C5ADB:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:HeadObject
+              - s3:PutObject
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - Fn::GetAtt:
+                      - WorkshopBucketFD5BC43F
+                      - Arn
+                  - /perf-platform/profiling/*
+        Version: "2012-10-17"
+      PolicyName: PerfPlatformCollectorEksPodRoleDefaultPolicy102C5ADB
+      Roles:
+        - Ref: PerfPlatformCollectorEksPodRole3090D9EA
+    Type: AWS::IAM::Policy
   ThreadAnalysisLambda3EE9B29D:
     DependsOn:
       - ThreadAnalysisLambdaRoleDefaultPolicyC7AD40BA
@@ -3190,7 +3312,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260324173337"
+            - "-20260510144024"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

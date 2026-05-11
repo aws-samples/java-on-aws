@@ -17,7 +17,8 @@
 						"prod-xdkflymybwmvi",
 						"prod-mxcfnwvpd6kb4",
 						"prod-jhuafngbly644",
-						"prod-4pmewlybdftbs"
+						"prod-4pmewlybdftbs",
+						"prod-ffvjxvh4ltq64"
 					]
 				}
 			}
@@ -73,6 +74,8 @@
 				"arn:aws:iam::{{.AccountId}}:role/unicorn*",
 				"arn:aws:iam::{{.AccountId}}:role/service-role/unicorn*",
 				"arn:aws:iam::{{.AccountId}}:role/ai-jvm-analyzer*",
+				"arn:aws:iam::{{.AccountId}}:role/perf-analyzer*",
+				"arn:aws:iam::{{.AccountId}}:role/perf-collector*",
 				"arn:aws:iam::{{.AccountId}}:role/workshop*",
 				"arn:aws:iam::{{.AccountId}}:role/aiagent*",
 				"arn:aws:iam::{{.AccountId}}:role/mcpserver*"
