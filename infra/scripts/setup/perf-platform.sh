@@ -208,12 +208,11 @@ log_success "RBAC applied"
 # Internal NLB (two annotated LoadBalancer Services sharing one NLB)
 # =============================================================================
 
-log_info "Provisioning internal NLB for ECS reachability..."
-# Apply sequentially: AWS Load Balancer Controller shares one NLB across two
-# Services via `aws-load-balancer-name` only if the second Service sees the
-# NLB already exists. A single concurrent `kubectl apply` makes both reconcile
-# loops race — both try to CreateLoadBalancer and the second hits
-# DuplicateLoadBalancerName and gets stuck.
+log_info "Provisioning internal NLB for ECS Fargate reachability..."
+# Single NLB fronts Pyroscope. ECS Fargate collectors use it to reach
+# Pyroscope from outside the cluster. The analyzer is never called from
+# outside the cluster — developers invoke it via `kubectl run` + cluster
+# DNS, Grafana's webhook uses cluster DNS too, so it needs no NLB.
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Service
@@ -236,7 +235,7 @@ spec:
       protocol: TCP
 EOF
 
-log_info "Waiting for pyroscope-nlb to provision the shared NLB..."
+log_info "Waiting for pyroscope-nlb to provision..."
 NLB_DNS=""
 for i in {1..60}; do
     NLB_DNS=$(kubectl get svc pyroscope-nlb -n "${NAMESPACE}" \
@@ -251,38 +250,6 @@ if [[ -z "${NLB_DNS}" ]]; then
     log_error "NLB DNS was not assigned within 10 minutes"
     exit 1
 fi
-
-log_info "Attaching perf-analyzer listener to the same NLB..."
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: Service
-metadata:
-  name: perf-analyzer-nlb
-  namespace: ${NAMESPACE}
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: external
-    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
-    service.beta.kubernetes.io/aws-load-balancer-scheme: internal
-    service.beta.kubernetes.io/aws-load-balancer-name: perf-platform-internal
-spec:
-  type: LoadBalancer
-  selector:
-    app: perf-analyzer
-  ports:
-    - name: analyzer
-      port: 8080
-      targetPort: 8080
-      protocol: TCP
-EOF
-
-for i in {1..30}; do
-    ANALYZER_NLB_DNS=$(kubectl get svc perf-analyzer-nlb -n "${NAMESPACE}" \
-        -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-    if [[ -n "${ANALYZER_NLB_DNS}" ]]; then
-        break
-    fi
-    sleep 5
-done
 
 aws ssm put-parameter \
     --name "perf-platform-internal-nlb" \
