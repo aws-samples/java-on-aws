@@ -30,41 +30,32 @@ public class AiService {
 
     private static final String SYSTEM_PROMPT = """
         You are a Java performance engineer. You receive:
-          - per-frame Pyroscope diffs between the current service version
-            and the prior one (when two versions are present), shown in two
-            views: CPU profile and wall-clock profile. The diffs rank frames
-            by total-time share (frame plus its descendants), so an
-            application caller that walks into a new hotspot or a new
-            contended primitive will appear directly in the diff even when
-            the actual time is burned in a JVM intrinsic, glibc lock primitive
-            or other low-level frame underneath it. CPU diff surfaces new
-            on-CPU work; wall diff surfaces new contention or I/O waits.
-          - pre-aggregated Pyroscope top-functions tables for the current
-            version, again in CPU and wall views.
+          - pre-aggregated Pyroscope top-functions tables for the target
+            service in two views: CPU profile (process_cpu) and wall-clock
+            profile (wall). CPU shows what is actually computing on a core;
+            wall shows where every sampled thread spends time, regardless of
+            state. CPU is the right lens for finding new computation; wall
+            is the right lens for finding contention, blocked I/O, and
+            downstream waits.
           - a JFR summary covering GC pauses, JIT compilation, deoptimization,
             monitor contention, safepoints and JVM configuration.
           - a thread dump.
         All were captured around the time an alert fired or a developer
         triggered an on-demand analysis.
 
-        When diffs are present, treat the frames with the largest positive
-        deltas as the primary suspects — they are what changed. Pay particular
-        attention to *application* (project package) frames in the diff: they
-        identify the caller in the user's code and are usually the right
-        anchor for a finding even when an underlying low-level frame
-        (HashMap.merge, futex, arraycopy, JIT helper) shows a similar delta —
-        those are typically the *mechanism*, not the cause. Cross-check the
-        CPU and wall diffs: a real regression usually shows clearly in at
-        least one and weakly in the other (CPU-heavy regression: big in CPU,
-        small in wall; contention regression: big in wall, small in CPU).
-        Frames that are large in absolute terms but small in any diff are
-        long-standing workload characteristics and are usually not the cause
-        of a regression, though they may still be worth flagging separately.
-        Analyze the data and report what you find.
+        Cross-check across signals: a method that appears hot in the wall
+        profile and shows blocked or waiting threads in the dump is the
+        same observation in two lenses. A method that appears hot in CPU
+        but quiet in wall is real on-CPU work, not waiting. Pay particular
+        attention to *application* (project package) frames — they identify
+        the caller in the user's code and are usually the right anchor for
+        a finding even when the actual time is burned in a low-level frame
+        underneath (HashMap, futex, JIT helper, glibc lock primitive); the
+        low-level frame is the mechanism, the application frame is the
+        cause. Analyze the data and report what you find.
         """;
 
     private final ChatClient chatClient;
-    private final PyroscopeTool pyroscopeTool;
     private final String githubToken;
 
     public AiService(
@@ -72,7 +63,6 @@ public class AiService {
         PyroscopeTool pyroscopeTool,
         @Value("${GITHUB_TOKEN:}") String githubToken
     ) {
-        this.pyroscopeTool = pyroscopeTool;
         this.githubToken = githubToken;
         this.chatClient = chatClientBuilder
             .defaultSystem(SYSTEM_PROMPT)
@@ -113,63 +103,16 @@ public class AiService {
         sb.append("- platform: **").append(r.platform().name().toLowerCase().replace('_', '-')).append("**\n");
         sb.append("- target: **").append(r.target()).append("**\n");
         sb.append("- trigger: ").append(r.source()).append("\n");
-        if (ctx.currentVersion() != null) {
-            sb.append("- current version: ").append(ctx.currentVersion()).append("\n");
-        }
-        if (ctx.baselineVersion() != null) {
-            sb.append("- prior version (baseline for diff): ").append(ctx.baselineVersion()).append("\n");
-        }
         if (r.reason() != null && !r.reason().isBlank()) {
             sb.append("- reason: ").append(r.reason()).append("\n");
         }
         sb.append("- analysisId: ").append(ctx.analysisId()).append("\n\n");
 
-        // Diffs are the most decision-useful pieces when they exist — they
-        // tell the model what is *new* in the current version. Wall and CPU
-        // diffs answer different questions: wall surfaces new contention or
-        // I/O waits; CPU surfaces new actual computation. Present both first
-        // (when available) so regression findings lead the report.
-        boolean diffWallPresent = ctx.pyroscopeDiffWallMarkdown() != null
-            && !ctx.pyroscopeDiffWallMarkdown().isBlank();
-        boolean diffCpuPresent = ctx.pyroscopeDiffCpuMarkdown() != null
-            && !ctx.pyroscopeDiffCpuMarkdown().isBlank();
-
-        if (diffWallPresent || diffCpuPresent) {
-            sb.append("## Pyroscope version diffs (pre-fetched)\n\n")
-                .append("Two views of what changed between baseline and current. Both diffs rank by ")
-                .append("**total-time share** (frame plus descendants), so application callers that walk ")
-                .append("into a new hotspot or contended primitive show up directly. ")
-                .append("**CPU diff** is what to read first for new computation — frames with positive ")
-                .append("Δ pp on the CPU diff are new on-CPU work. **Wall diff** is what to read first ")
-                .append("for new contention or I/O waits — frames with positive Δ pp on the wall diff are ")
-                .append("new waiting time. A regression often shows up sharply in one and weakly in the ")
-                .append("other; cross-check both. When an application frame and a low-level frame both ")
-                .append("rise together, the application frame is the cause and the low-level frame is the ")
-                .append("mechanism.\n\n");
-
-            sb.append("### CPU diff (process_cpu)\n\n");
-            sb.append(diffCpuPresent
-                ? ctx.pyroscopeDiffCpuMarkdown()
-                : "_CPU diff unavailable._");
-            sb.append("\n\n");
-
-            sb.append("### Wall diff (wall)\n\n");
-            sb.append(diffWallPresent
-                ? ctx.pyroscopeDiffWallMarkdown()
-                : "_Wall diff unavailable._");
-            sb.append("\n\n");
-        } else if (ctx.currentVersion() != null) {
-            sb.append("## Pyroscope version diffs (pre-fetched)\n\n")
-                .append("_No prior version is visible in Pyroscope for this service; diffs are not available. ")
-                .append("Rely on the top-functions snapshots and JFR/thread-dump signals below._\n\n");
-        }
-
         // Top-functions snapshots in both lenses. Same window, two lenses on
-        // the same workload state. Useful both as supporting context for the
-        // diff above and as the primary signal when no diff is available.
+        // the same workload state.
         sb.append("## Pyroscope top functions (pre-fetched)\n\n")
-            .append("Two lenses on the same window for the current version. Use **CPU** to find what is ")
-            .append("computing right now; use **wall** to find what is waiting right now.\n\n");
+            .append("Two lenses on the same window. Use **CPU** to find what is computing right now; ")
+            .append("use **wall** to find what is waiting on locks, I/O, or downstream calls right now.\n\n");
 
         sb.append("### CPU (process_cpu)\n\n")
             .append(ctx.pyroscopeCpuTopFunctionsMarkdown() == null
@@ -203,12 +146,10 @@ public class AiService {
 
             ## Findings
             Correlate the Pyroscope ranked functions (CPU and wall) with JFR
-            events and thread states. When diffs are available, lead with what
-            changed; cross-check CPU vs wall diffs to distinguish a new
-            CPU-heavy code path from a new contention or I/O bottleneck. Flag
-            resource pressure, configuration issues, or patterns that suggest
-            a problem. Cite specific methods,
-            thread names, and numbers.
+            events and thread states. Distinguish on-CPU work (CPU view) from
+            blocking waits and contention (wall view). Flag resource pressure,
+            configuration issues, or patterns that suggest a problem. Cite
+            specific methods, thread names, and numbers.
 
             ## Recommendations
             Prioritized — most impactful first. Only include actionable items
