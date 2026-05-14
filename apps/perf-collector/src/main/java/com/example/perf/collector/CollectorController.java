@@ -22,13 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
  * 404 if the target isn't on this collector's node/task or isn't opted in.
  */
 @RestController
-public class DumpController {
+public class CollectorController {
 
-    private static final Logger logger = LoggerFactory.getLogger(DumpController.class);
+    private static final Logger logger = LoggerFactory.getLogger(CollectorController.class);
 
-    private final DumpService dumpService;
+    private final CollectorService dumpService;
 
-    public DumpController(DumpService dumpService) {
+    public CollectorController(CollectorService dumpService) {
         this.dumpService = dumpService;
     }
 

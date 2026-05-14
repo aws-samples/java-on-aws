@@ -341,9 +341,9 @@ public interface TargetResolver {
         private static final Logger log = LoggerFactory.getLogger(Discovery.class);
 
         private final TargetResolver resolver;
-        private final AsyncProfilerAttach profiler;
+        private final Profiler profiler;
 
-        public Discovery(TargetResolver resolver, AsyncProfilerAttach profiler) {
+        public Discovery(TargetResolver resolver, Profiler profiler) {
             this.resolver = resolver;
             this.profiler = profiler;
         }

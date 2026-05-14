@@ -10,7 +10,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
-import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -70,9 +69,9 @@ import java.util.stream.Stream;
  * threadPrint(pid) is unchanged — still uses {@code jattach jcmd Thread.print}.
  */
 @Component
-public class AsyncProfilerAttach {
+public class Profiler {
 
-    private static final Logger logger = LoggerFactory.getLogger(AsyncProfilerAttach.class);
+    private static final Logger logger = LoggerFactory.getLogger(Profiler.class);
 
     /** How often async-profiler rotates its output JFR file. */
     private static final Duration LOOP_INTERVAL = Duration.ofSeconds(15);
@@ -100,7 +99,7 @@ public class AsyncProfilerAttach {
         .connectTimeout(Duration.ofSeconds(5))
         .build();
 
-    public AsyncProfilerAttach(CollectorProperties props) {
+    public Profiler(CollectorProperties props) {
         this.props = props;
         installLibToHost();
         pushExecutor.scheduleAtFixedRate(this::pushAll,
