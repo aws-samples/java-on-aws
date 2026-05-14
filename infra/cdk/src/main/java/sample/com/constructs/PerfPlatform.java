@@ -8,10 +8,11 @@ import java.util.List;
 
 /**
  * PerfPlatform construct for the agentic performance platform (perf-analyzer module).
- * Creates three IAM roles used by the platform components on Amazon EKS:
- *  - perf-analyzer-eks-pod-role   (perf-analyzer Spring Boot service)
- *  - perf-collector-eks-pod-role  (perf-collector DaemonSet)
- *  - pyroscope-eks-pod-role       (Pyroscope server, for S3-backed storage)
+ * Creates four IAM roles used by the platform components on Amazon EKS:
+ *  - perf-analyzer-eks-pod-role     (perf-analyzer Spring Boot service)
+ *  - perf-collector-eks-pod-role    (perf-collector DaemonSet)
+ *  - pyroscope-eks-pod-role         (Pyroscope server, for S3-backed storage)
+ *  - grafana-cloudwatch-pod-role    (Grafana, to read ALB metrics from CloudWatch)
  *
  * On Amazon ECS Fargate the collector sidecar runs inside the target task and
  * reuses that task's existing role — we add S3-write for profiling artifacts to
@@ -28,6 +29,7 @@ public class PerfPlatform extends Construct {
     private final Role perfAnalyzerEksPodRole;
     private final Role perfCollectorEksPodRole;
     private final Role pyroscopeEksPodRole;
+    private final Role grafanaCloudwatchPodRole;
 
     public static class PerfPlatformProps {
         private Bucket workshopBucket;
@@ -57,6 +59,7 @@ public class PerfPlatform extends Construct {
         this.perfAnalyzerEksPodRole = createAnalyzerEksPodRole(props);
         this.perfCollectorEksPodRole = createCollectorEksPodRole(props);
         this.pyroscopeEksPodRole = createPyroscopeEksPodRole(props);
+        this.grafanaCloudwatchPodRole = createGrafanaCloudwatchPodRole();
         grantProfilingWriteToUnicornEcsTaskRole(props);
     }
 
@@ -127,6 +130,44 @@ public class PerfPlatform extends Construct {
         addTagSession(role);
         addPyroscopeS3Access(role, props, "pyroscope");
 
+        return role;
+    }
+
+    /**
+     * Grafana CloudWatch pod role.
+     * Trusts pods.eks.amazonaws.com (Pod Identity).
+     * Grants the Grafana ServiceAccount in the monitoring namespace read-only
+     * access to CloudWatch metrics so the perf-platform alert rule and the
+     * Latency Metrics dashboard can query ALB TargetResponseTime, RequestCount,
+     * and HTTPCode_Target_5XX_Count for whichever ALB(s) participants deploy
+     * during the workshop.
+     */
+    private Role createGrafanaCloudwatchPodRole() {
+        ServicePrincipal podsPrincipal = ServicePrincipal.Builder.create("pods.eks.amazonaws.com").build();
+
+        Role role = Role.Builder.create(this, "GrafanaCloudwatchPodRole")
+            .roleName("grafana-cloudwatch-pod-role")
+            .assumedBy(podsPrincipal)
+            .description("Role for Grafana to read CloudWatch metrics for the perf-platform Latency Metrics dashboard and ServiceLatency alert")
+            .build();
+
+        addTagSession(role);
+        // Standard CloudWatch read-only set used by Grafana's CloudWatch datasource.
+        role.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of(
+                "cloudwatch:GetMetricData",
+                "cloudwatch:GetMetricStatistics",
+                "cloudwatch:ListMetrics",
+                "cloudwatch:DescribeAlarmsForMetric",
+                "cloudwatch:DescribeAlarmHistory",
+                "cloudwatch:DescribeAlarms",
+                "tag:GetResources",
+                "ec2:DescribeRegions",
+                "ec2:DescribeTags"
+            ))
+            .resources(List.of("*"))
+            .build());
         return role;
     }
 
@@ -268,5 +309,9 @@ public class PerfPlatform extends Construct {
 
     public Role getPyroscopeEksPodRole() {
         return pyroscopeEksPodRole;
+    }
+
+    public Role getGrafanaCloudwatchPodRole() {
+        return grafanaCloudwatchPodRole;
     }
 }
