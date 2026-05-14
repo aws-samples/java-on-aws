@@ -25,25 +25,25 @@ import java.util.concurrent.Executors;
  * s3Uri so the analyzer's HeadObject poll returns 200 instead of hanging.
  */
 @Service
-public class DumpService {
+public class CollectorService {
 
     public enum Result { ACCEPTED, NOT_MY_TARGET, NOT_OPTED_IN, BAD_REQUEST }
 
-    private static final Logger logger = LoggerFactory.getLogger(DumpService.class);
+    private static final Logger logger = LoggerFactory.getLogger(CollectorService.class);
 
     private final TargetResolver resolver;
-    private final AsyncProfilerAttach profiler;
+    private final Profiler profiler;
     private final S3Client s3;
 
     private final ExecutorService workers = Executors.newVirtualThreadPerTaskExecutor();
 
-    public DumpService(TargetResolver resolver, AsyncProfilerAttach profiler, S3Client s3) {
+    public CollectorService(TargetResolver resolver, Profiler profiler, S3Client s3) {
         this.resolver = resolver;
         this.profiler = profiler;
         this.s3 = s3;
     }
 
-    public Result submit(DumpController.DumpRequest req) {
+    public Result submit(CollectorController.DumpRequest req) {
         if (req.target() == null || req.target().id() == null || req.target().id().isBlank()) {
             return Result.BAD_REQUEST;
         }
@@ -59,7 +59,7 @@ public class DumpService {
         return Result.ACCEPTED;
     }
 
-    private void run(DumpController.DumpRequest req, long pid) {
+    private void run(CollectorController.DumpRequest req, long pid) {
         var s3Uri = URI.create(req.s3Uri());
         try {
             switch (req.kind()) {

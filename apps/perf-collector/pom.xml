@@ -21,7 +21,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <aws-sdk.version>2.44.4</aws-sdk.version>
         <kubernetes-client.version>26.0.0</kubernetes-client.version>
-        <!-- Native runtime assets bundled into the image. -->
+        <!-- Native runtime assets bundled into the image. linux/amd64 only -
+             multi-arch is out of scope for the workshop. -->
         <async-profiler.version>4.4</async-profiler.version>
         <jattach.version>2.2</jattach.version>
         <jib-staging.dir>${project.build.directory}/jib-staging</jib-staging.dir>
@@ -87,57 +88,34 @@
     <build>
         <plugins>
             <!--
-                 Download async-profiler + jattach for both architectures at build
-                 time. Output goes to ${jib-staging.dir}/opt/perf-collector/... so
-                 Jib's extraDirectories picks it up with no pre-step from participants.
+                 Download async-profiler + jattach (linux-x64) at build time.
+                 Output goes to ${jib-staging.dir}/opt/perf-collector/... so
+                 Jib's extraDirectories picks it up with no pre-step from
+                 participants.
             -->
             <plugin>
                 <groupId>com.googlecode.maven-download-plugin</groupId>
                 <artifactId>download-maven-plugin</artifactId>
                 <version>1.9.0</version>
                 <executions>
-                    <!-- async-profiler amd64 -->
                     <execution>
-                        <id>fetch-async-profiler-amd64</id>
+                        <id>fetch-async-profiler</id>
                         <phase>generate-resources</phase>
                         <goals><goal>wget</goal></goals>
                         <configuration>
                             <url>https://github.com/async-profiler/async-profiler/releases/download/v${async-profiler.version}/async-profiler-${async-profiler.version}-linux-x64.tar.gz</url>
                             <unpack>true</unpack>
-                            <outputDirectory>${project.build.directory}/async-profiler-amd64</outputDirectory>
+                            <outputDirectory>${project.build.directory}/async-profiler</outputDirectory>
                         </configuration>
                     </execution>
-                    <!-- async-profiler arm64 -->
                     <execution>
-                        <id>fetch-async-profiler-arm64</id>
-                        <phase>generate-resources</phase>
-                        <goals><goal>wget</goal></goals>
-                        <configuration>
-                            <url>https://github.com/async-profiler/async-profiler/releases/download/v${async-profiler.version}/async-profiler-${async-profiler.version}-linux-arm64.tar.gz</url>
-                            <unpack>true</unpack>
-                            <outputDirectory>${project.build.directory}/async-profiler-arm64</outputDirectory>
-                        </configuration>
-                    </execution>
-                    <!-- jattach amd64 -->
-                    <execution>
-                        <id>fetch-jattach-amd64</id>
+                        <id>fetch-jattach</id>
                         <phase>generate-resources</phase>
                         <goals><goal>wget</goal></goals>
                         <configuration>
                             <url>https://github.com/jattach/jattach/releases/download/v${jattach.version}/jattach-linux-x64.tgz</url>
                             <unpack>true</unpack>
-                            <outputDirectory>${project.build.directory}/jattach-amd64</outputDirectory>
-                        </configuration>
-                    </execution>
-                    <!-- jattach arm64 -->
-                    <execution>
-                        <id>fetch-jattach-arm64</id>
-                        <phase>generate-resources</phase>
-                        <goals><goal>wget</goal></goals>
-                        <configuration>
-                            <url>https://github.com/jattach/jattach/releases/download/v${jattach.version}/jattach-linux-arm64.tgz</url>
-                            <unpack>true</unpack>
-                            <outputDirectory>${project.build.directory}/jattach-arm64</outputDirectory>
+                            <outputDirectory>${project.build.directory}/jattach</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
@@ -146,21 +124,21 @@
             <!--
                  Stage the fetched binaries into the Jib extraDirectories layout.
                  Image path /opt/perf-collector/ expects:
-                   bin/jattach                      (selected per Jib platform)
+                   bin/{jattach,asprof,jfrconv}
                    async-profiler/libasyncProfiler.so
             -->
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>stage-jib-amd64</id>
+                        <id>stage-jib-lib</id>
                         <phase>process-resources</phase>
                         <goals><goal>copy-resources</goal></goals>
                         <configuration>
-                            <outputDirectory>${jib-staging.dir}/amd64/opt/perf-collector/async-profiler</outputDirectory>
+                            <outputDirectory>${jib-staging.dir}/opt/perf-collector/async-profiler</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${project.build.directory}/async-profiler-amd64/async-profiler-${async-profiler.version}-linux-x64/lib</directory>
+                                    <directory>${project.build.directory}/async-profiler/async-profiler-${async-profiler.version}-linux-x64/lib</directory>
                                     <includes>
                                         <include>libasyncProfiler.so</include>
                                     </includes>
@@ -169,59 +147,20 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>stage-jib-amd64-bin</id>
+                        <id>stage-jib-bin</id>
                         <phase>process-resources</phase>
                         <goals><goal>copy-resources</goal></goals>
                         <configuration>
-                            <outputDirectory>${jib-staging.dir}/amd64/opt/perf-collector/bin</outputDirectory>
+                            <outputDirectory>${jib-staging.dir}/opt/perf-collector/bin</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${project.build.directory}/jattach-amd64</directory>
+                                    <directory>${project.build.directory}/jattach</directory>
                                     <includes>
                                         <include>jattach</include>
                                     </includes>
                                 </resource>
                                 <resource>
-                                    <directory>${project.build.directory}/async-profiler-amd64/async-profiler-${async-profiler.version}-linux-x64/bin</directory>
-                                    <includes>
-                                        <include>asprof</include>
-                                        <include>jfrconv</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>stage-jib-arm64</id>
-                        <phase>process-resources</phase>
-                        <goals><goal>copy-resources</goal></goals>
-                        <configuration>
-                            <outputDirectory>${jib-staging.dir}/arm64/opt/perf-collector/async-profiler</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.build.directory}/async-profiler-arm64/async-profiler-${async-profiler.version}-linux-arm64/lib</directory>
-                                    <includes>
-                                        <include>libasyncProfiler.so</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>stage-jib-arm64-bin</id>
-                        <phase>process-resources</phase>
-                        <goals><goal>copy-resources</goal></goals>
-                        <configuration>
-                            <outputDirectory>${jib-staging.dir}/arm64/opt/perf-collector/bin</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.build.directory}/jattach-arm64</directory>
-                                    <includes>
-                                        <include>jattach</include>
-                                    </includes>
-                                </resource>
-                                <resource>
-                                    <directory>${project.build.directory}/async-profiler-arm64/async-profiler-${async-profiler.version}-linux-arm64/bin</directory>
+                                    <directory>${project.build.directory}/async-profiler/async-profiler-${async-profiler.version}-linux-x64/bin</directory>
                                     <includes>
                                         <include>asprof</include>
                                         <include>jfrconv</include>
@@ -245,10 +184,6 @@
                                 <architecture>amd64</architecture>
                                 <os>linux</os>
                             </platform>
-                            <platform>
-                                <architecture>arm64</architecture>
-                                <os>linux</os>
-                            </platform>
                         </platforms>
                     </from>
                     <container>
@@ -258,47 +193,22 @@
                     </container>
                     <extraDirectories>
                         <paths>
-                            <!--
-                                 Ship both arch trees. Layout:
-                                   /opt/perf-collector/amd64/async-profiler/libasyncProfiler.so
-                                   /opt/perf-collector/amd64/bin/jattach
-                                   /opt/perf-collector/arm64/async-profiler/libasyncProfiler.so
-                                   /opt/perf-collector/arm64/bin/jattach
-                                 Collector picks the right tree at runtime (see
-                                 CollectorProperties defaults + Application.java).
-                            -->
                             <path>
-                                <from>${jib-staging.dir}/amd64/opt/perf-collector</from>
-                                <into>/opt/perf-collector/amd64</into>
-                            </path>
-                            <path>
-                                <from>${jib-staging.dir}/arm64/opt/perf-collector</from>
-                                <into>/opt/perf-collector/arm64</into>
+                                <from>${jib-staging.dir}/opt/perf-collector</from>
+                                <into>/opt/perf-collector</into>
                             </path>
                         </paths>
                         <permissions>
                             <permission>
-                                <file>/opt/perf-collector/amd64/bin/jattach</file>
+                                <file>/opt/perf-collector/bin/jattach</file>
                                 <mode>755</mode>
                             </permission>
                             <permission>
-                                <file>/opt/perf-collector/amd64/bin/asprof</file>
+                                <file>/opt/perf-collector/bin/asprof</file>
                                 <mode>755</mode>
                             </permission>
                             <permission>
-                                <file>/opt/perf-collector/amd64/bin/jfrconv</file>
-                                <mode>755</mode>
-                            </permission>
-                            <permission>
-                                <file>/opt/perf-collector/arm64/bin/jattach</file>
-                                <mode>755</mode>
-                            </permission>
-                            <permission>
-                                <file>/opt/perf-collector/arm64/bin/asprof</file>
-                                <mode>755</mode>
-                            </permission>
-                            <permission>
-                                <file>/opt/perf-collector/arm64/bin/jfrconv</file>
+                                <file>/opt/perf-collector/bin/jfrconv</file>
                                 <mode>755</mode>
                             </permission>
                         </permissions>
