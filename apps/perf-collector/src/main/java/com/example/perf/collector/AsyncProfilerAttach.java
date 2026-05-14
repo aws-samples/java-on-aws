@@ -17,49 +17,68 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 /**
- * Attaches async-profiler to discovered JVMs and drives the push-to-Pyroscope
- * loop for continuous profiling.
+ * Attaches async-profiler to discovered JVMs and ships the resulting JFR
+ * recordings to Pyroscope.
  *
- * Why we push from the collector instead of letting async-profiler push itself:
- *   async-profiler 4.x repurposed {@code server=<url>} to start a *local HTTP
- *   management server* on the target JVM. It no longer pushes profiles to a
- *   remote endpoint. The collector picks up this responsibility: every 15 seconds
- *   it dumps collapsed stacks via jattach and POSTs them to Pyroscope {@code /ingest}.
+ * Why JFR (and not collapsed stacks):
+ *   async-profiler can sample CPU and wall-clock events simultaneously, but
+ *   collapsed-stack output only carries one event per dump. JFR binary output
+ *   carries both events with typed metadata inside the file, and Pyroscope's
+ *   {@code /ingest?format=jfr} endpoint auto-extracts the {@code process_cpu}
+ *   and {@code wall} profile types from a single JFR push. One attach,
+ *   one writer, one push per cycle — two profile types in Pyroscope.
+ *
+ * Why the collector pushes instead of async-profiler pushing itself:
+ *   async-profiler 4.x repurposed {@code server=&lt;url&gt;} to start a *local
+ *   HTTP management server* on the target JVM. It no longer pushes profiles to
+ *   a remote endpoint. async-profiler does, however, rotate JFR output files
+ *   on a schedule via {@code --loop}, and each rotated file is properly
+ *   finalized (metadata chunk included) and acceptable by Pyroscope. The
+ *   collector watches for rotated files in the target container's {@code /tmp}
+ *   via {@code /proc/&lt;pid&gt;/root/tmp/} and POSTs each completed file.
  *
  * Flow per discovered JVM:
- *   1. attachIfNeeded(jvm) — copy libasyncProfiler.so into the target's /tmp
- *      (through /proc/&lt;pid&gt;/root/tmp, requires privileged on EKS),
- *      then start continuous wall-clock profiling via asprof.
- *   2. startJfr(pid) — also start a rolling in-memory JFR recording for on-demand
- *      deep dumps.
- *   3. Push loop — every 15 seconds, jattach dump,collapsed,wall → read file
- *      from target rootfs → HTTP POST to Pyroscope.
+ *   1. attachIfNeeded(jvm) — copy libasyncProfiler.so into the target's /tmp,
+ *      then start CPU+wall profiling writing to {@code /tmp/perf-&lt;pid&gt;-%t.jfr}
+ *      with {@code --loop 15s} so async-profiler rotates the file every 15 s.
+ *   2. Push loop — every few seconds, scan the target's /tmp for completed
+ *      (non-newest) rotated files, POST each one to Pyroscope as a JFR
+ *      binary, then delete.
  *
- * On-demand: jfrDump(pid, jobId) and threadPrint(pid) are invoked by DumpService
- * when the analyzer asks for deep data via POST /dump.
+ * On-demand: jfrDump(pid, jobId) asks async-profiler for a snapshot of the
+ * *same running session* (using {@code asprof dump -o jfr -f ...}), which
+ * produces a proper JFR file without interrupting continuous profiling.
+ * threadPrint(pid) is unchanged — still uses {@code jattach jcmd Thread.print}.
  */
 @Component
 public class AsyncProfilerAttach {
 
     private static final Logger logger = LoggerFactory.getLogger(AsyncProfilerAttach.class);
 
-    /**
-     * Always-on JFR command applied at attach time. Same shape as what
-     * {@code -XX:StartFlightRecording} would produce at JVM launch.
-     */
-    private static final String JFR_START_ARGS =
-        "JFR.start name=perf settings=default maxage=10m maxsize=50m disk=false";
+    /** How often async-profiler rotates its output JFR file. */
+    private static final Duration LOOP_INTERVAL = Duration.ofSeconds(15);
 
-    /** Cadence of the collapsed-stacks push to Pyroscope. */
-    private static final Duration PUSH_INTERVAL = Duration.ofSeconds(15);
+    /** How often the push thread looks for new completed JFR files. */
+    private static final Duration SCAN_INTERVAL = Duration.ofSeconds(5);
+
+    /** Prefix of rotated JFR files written by async-profiler's --loop. */
+    private static String rotatedFilePrefix(long pid) {
+        return "perf-" + pid + "-";
+    }
+
+    /** Suffix of rotated files (matches the %t expansion of --loop). */
+    private static final String ROTATED_FILE_SUFFIX = ".jfr";
 
     private final CollectorProperties props;
     private final Map<Long, TargetJvm> trackedJvms = new ConcurrentHashMap<>();
@@ -77,7 +96,7 @@ public class AsyncProfilerAttach {
         this.props = props;
         installLibToHost();
         pushExecutor.scheduleAtFixedRate(this::pushAll,
-            PUSH_INTERVAL.toMillis(), PUSH_INTERVAL.toMillis(), TimeUnit.MILLISECONDS);
+            SCAN_INTERVAL.toMillis(), SCAN_INTERVAL.toMillis(), TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -99,15 +118,14 @@ public class AsyncProfilerAttach {
         }
     }
 
-    /** Attach async-profiler + JFR to a newly-discovered JVM (once per PID). */
+    /** Attach async-profiler (CPU+wall, rotating JFR) to a newly-discovered JVM. */
     public void attachIfNeeded(TargetJvm jvm) {
         if (trackedJvms.containsKey(jvm.pid())) return;
         try {
             copyLibIntoTargetTmp(jvm.pid());
             startAsprof(jvm.pid());
-            startJfr(jvm.pid());
             trackedJvms.put(jvm.pid(), jvm);
-            logger.info("Attached async-profiler + JFR to pid {} service={} version={} target={}",
+            logger.info("Attached async-profiler (cpu+wall, JFR/15s) to pid {} service={} version={} target={}",
                 jvm.pid(), jvm.serviceName(), jvm.version(), jvm.idLabel());
         } catch (Exception e) {
             logger.warn("Failed attaching to pid {}: {}", jvm.pid(), e.getMessage());
@@ -125,116 +143,174 @@ public class AsyncProfilerAttach {
     }
 
     /**
-     * Start continuous wall-clock sampling. The library path is
-     * the target JVM's /tmp (not the collector's) because the agent
-     * runs inside the target JVM's mount namespace.
+     * Start CPU+wall sampling writing JFR with file rotation.
+     *
+     * async-profiler requirements we're relying on:
+     *   - {@code -e cpu --wall 10ms} samples both events simultaneously (async-profiler's
+     *     native multi-event mode). This is not allowed for collapsed output, only JFR.
+     *   - {@code -o jfr -f /tmp/perf-&lt;pid&gt;-%t.jfr --loop 15s} rotates the output
+     *     file every 15 seconds. Each rotation finalizes the previous file with a
+     *     proper metadata chunk — critical for Pyroscope's JFR parser.
+     *   - A stray previous-collector session gets cleared via {@code asprof stop}
+     *     first so {@code start} doesn't fail with "Profiler already started".
+     *
+     * JFR is also kept as a ring for on-demand dumps — but we do NOT start a
+     * separate {@code jcmd JFR.start} recording. async-profiler's own JFR
+     * session is the single source of truth and handles both continuous push
+     * and on-demand snapshots.
      */
     private void startAsprof(long pid) throws IOException, InterruptedException {
+        try {
+            run(props.asprofBinary(),
+                "stop",
+                "--libpath", "/tmp/libasyncProfiler.so",
+                Long.toString(pid));
+        } catch (IOException e) {
+            // No previous session — normal case.
+            logger.debug("asprof stop (pre-start) returned: {}", e.getMessage());
+        }
+        var outFilePattern = "/tmp/" + rotatedFilePrefix(pid) + "%t" + ROTATED_FILE_SUFFIX;
         run(props.asprofBinary(),
-            "start", "-e", "wall", "-i", "10ms",
+            "start",
+            "-e", "cpu",
+            "--wall", "10ms",
+            "-i", "10ms",
+            "-o", "jfr",
+            "-f", outFilePattern,
+            "--loop", LOOP_INTERVAL.toSeconds() + "s",
             "--libpath", "/tmp/libasyncProfiler.so",
             Long.toString(pid));
     }
 
-    /**
-     * Start a rolling in-memory JFR recording. Idempotent — if a recording
-     * named {@code perf} already exists (e.g. collector restarted while the
-     * JVM kept running), JFR returns an "already in use" error that we treat
-     * as a no-op.
-     */
-    public void startJfr(long pid) throws IOException, InterruptedException {
-        try {
-            runJattach(pid, List.of(
-                props.jattachBinary(), Long.toString(pid),
-                "jcmd", JFR_START_ARGS));
-            logger.info("Started JFR recording 'perf' on pid {}", pid);
-        } catch (IOException e) {
-            var msg = e.getMessage() == null ? "" : e.getMessage();
-            if (msg.contains("already in use") || msg.contains("already started")
-                || msg.contains("Name 'perf'")) {
-                logger.info("JFR recording 'perf' already running on pid {} — skipping", pid);
-                return;
-            }
-            throw e;
-        }
-    }
-
-    /** Periodic dump-and-push loop. */
+    /** Scan every tracked JVM's target-tmp for completed JFR files and push each one. */
     private void pushAll() {
         for (var entry : trackedJvms.entrySet()) {
             var pid = entry.getKey();
             var jvm = entry.getValue();
+            if (!Files.exists(Path.of("/proc", Long.toString(pid)))) {
+                detach(pid);
+                continue;
+            }
             try {
-                pushJfr(pid, jvm);
+                pushRotatedFiles(pid, jvm);
             } catch (Exception e) {
                 logger.warn("Push failed for pid {} ({}): {}",
                     pid, jvm.serviceName(), e.getMessage());
-                // If the process is gone, stop tracking it.
-                if (!Files.exists(Path.of("/proc", Long.toString(pid)))) {
-                    detach(pid);
-                }
             }
         }
     }
 
-    private void pushJfr(long pid, TargetJvm jvm) throws IOException, InterruptedException {
-        var fileInTarget = "/tmp/perf-dump-" + pid + ".collapsed";
-        runJattach(pid, List.of(
-            props.jattachBinary(), Long.toString(pid),
-            "load", "/tmp/libasyncProfiler.so", "true",
-            "dump,collapsed,wall,file=" + fileInTarget));
+    /**
+     * Find rotated JFR files in the target JVM's /tmp, skip the newest (still
+     * being written by async-profiler), POST each finalized file to Pyroscope,
+     * then delete it.
+     */
+    private void pushRotatedFiles(long pid, TargetJvm jvm) throws IOException, InterruptedException {
+        var targetTmp = Path.of("/proc", Long.toString(pid), "root", "tmp");
+        if (!Files.isDirectory(targetTmp)) return;
 
-        var src = Path.of("/proc", Long.toString(pid), "root", "tmp",
-            "perf-dump-" + pid + ".collapsed");
-        if (!Files.exists(src) || Files.size(src) == 0) {
-            logger.debug("No collapsed stacks yet for pid {}", pid);
+        var prefix = rotatedFilePrefix(pid);
+        List<Path> rotated;
+        try (Stream<Path> entries = Files.list(targetTmp)) {
+            rotated = entries
+                .filter(p -> {
+                    var name = p.getFileName().toString();
+                    return name.startsWith(prefix) && name.endsWith(ROTATED_FILE_SUFFIX);
+                })
+                .sorted(Comparator.comparing(p -> p.getFileName().toString()))
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        }
+        if (rotated.size() < 2) {
+            // Only the in-flight file exists; nothing to push yet.
             return;
         }
-        var bytes = Files.readAllBytes(src);
-        Files.deleteIfExists(src);
+        // The last entry (alphabetically == chronologically for %t timestamps) is
+        // the file currently being written. Leave it alone.
+        var completed = rotated.subList(0, rotated.size() - 1);
+        for (var file : completed) {
+            try {
+                pushFile(file, pid, jvm);
+            } catch (Exception e) {
+                logger.warn("Push of {} failed: {}", file, e.getMessage());
+            } finally {
+                try { Files.deleteIfExists(file); } catch (Exception _) {}
+            }
+        }
+    }
 
-        // Pyroscope /ingest: format=collapsed + spyName=javaspy is the canonical
-        // format used by Pyroscope agent clients. Labels are attached as URL-encoded
-        // "k=v,k=v" in the `labels` query param.
-        var labels = "version=" + urlEnc(nz(jvm.version()))
-            + ",pod=" + urlEnc(nz(jvm.idLabel()))
-            + ",platform=" + urlEnc(jvm.platform().name().toLowerCase().replace('_', '-'));
-        var url = "%s/ingest?name=%s&format=collapsed&spyName=javaspy&sampleRate=100&labels=%s"
+    private void pushFile(Path file, long pid, TargetJvm jvm) throws IOException, InterruptedException {
+        long size;
+        try { size = Files.size(file); }
+        catch (IOException e) { return; }
+        if (size <= 0) return;
+
+        var bytes = Files.readAllBytes(file);
+
+        // Pyroscope /ingest: format=jfr + spyName=javaspy is the canonical
+        // format for async-profiler's JFR output. Labels live inside curly
+        // braces immediately after the application name in the `name` query
+        // param: name=my-service-eks{version=1,pod=abc,...}.
+        // Service name is suffixed with the platform (-eks or -ecs) so each
+        // runtime gets its own entry in Grafana Profiles Drilldown. The
+        // underlying workload (what the user set with perf-profile/service) is
+        // published as a `workload` label for cross-platform pivoting.
+        var platformTag = jvm.platform().name().toLowerCase().replace('_', '-');
+        var platformSuffix = jvm.platform() == CollectorProperties.Platform.ECS_FARGATE
+            ? "ecs"
+            : "eks";
+        var pyroscopeServiceName = jvm.serviceName() + "-" + platformSuffix;
+        var nameWithLabels = pyroscopeServiceName + "{"
+            + "version=" + nz(jvm.version())
+            + ",pod=" + nz(jvm.idLabel())
+            + ",platform=" + platformTag
+            + ",workload=" + jvm.serviceName()
+            + "}";
+        var url = "%s/ingest?name=%s&format=jfr&spyName=javaspy"
             .formatted(
                 props.pyroscopeUrl().replaceAll("/$", ""),
-                urlEnc(jvm.serviceName()),
-                labels);
+                urlEnc(nameWithLabels));
 
         var req = HttpRequest.newBuilder(URI.create(url))
-            .timeout(Duration.ofSeconds(10))
-            .header("Content-Type", "text/plain")
+            .timeout(Duration.ofSeconds(30))
+            .header("Content-Type", "application/octet-stream")
             .POST(BodyPublishers.ofByteArray(bytes))
             .build();
         var resp = http.send(req, BodyHandlers.ofString());
         if (resp.statusCode() >= 200 && resp.statusCode() < 300) {
-            logger.info("Pushed {} bytes for pid {} service={}", bytes.length, pid, jvm.serviceName());
+            logger.info("Pushed {} bytes for pid {} service={} file={}",
+                bytes.length, pid, pyroscopeServiceName, file.getFileName());
         } else {
             throw new IOException("Pyroscope /ingest returned "
                 + resp.statusCode() + ": " + resp.body());
         }
     }
 
-    /** Stop tracking a PID. async-profiler/JFR die with the JVM. */
+    /** Stop tracking a PID. async-profiler dies with the JVM. */
     private void detach(long pid) {
         trackedJvms.remove(pid);
         logger.info("Stopped tracking pid {}", pid);
     }
 
-    /** Dump the current in-memory JFR ring to a file in the target JVM's /tmp. */
+    /**
+     * On-demand: ask async-profiler to dump the live session to a new JFR file.
+     * The running session is not disturbed — dump only flushes current state.
+     * Pyroscope's parser requires proper metadata, which async-profiler's dump
+     * produces inside its own rotating file, so we dump to a dedicated path
+     * and immediately return it.
+     */
     public Path jfrDump(long pid, String jobId) throws IOException, InterruptedException {
-        var fileName = "perf-" + jobId + ".jfr";
-        runJattach(pid, List.of(
-            props.jattachBinary(), Long.toString(pid),
-            "jcmd", "JFR.dump name=perf filename=/tmp/" + fileName));
-        return Path.of("/proc", Long.toString(pid), "root", "tmp", fileName);
+        var fileInTarget = "/tmp/perf-ondemand-" + jobId + ".jfr";
+        run(props.asprofBinary(),
+            "dump",
+            "-o", "jfr",
+            "-f", fileInTarget,
+            "--libpath", "/tmp/libasyncProfiler.so",
+            Long.toString(pid));
+        return Path.of("/proc", Long.toString(pid), "root", "tmp",
+            "perf-ondemand-" + jobId + ".jfr");
     }
 
-    /** jcmd Thread.print -e; jattach writes stack output to stdout. */
+    /** jcmd Thread.print -e; jattach writes stack output to stdout. Unchanged. */
     public String threadPrint(long pid) throws IOException, InterruptedException {
         var proc = new ProcessBuilder(
             props.jattachBinary(), Long.toString(pid), "jcmd", "Thread.print -e")
@@ -253,23 +329,7 @@ public class AsyncProfilerAttach {
         return out;
     }
 
-    private void runJattach(long pid, List<String> command)
-            throws IOException, InterruptedException {
-        var proc = new ProcessBuilder(command).redirectErrorStream(true).start();
-        var stdout = new String(proc.getInputStream().readAllBytes());
-        var ok = proc.waitFor(30, TimeUnit.SECONDS);
-        if (!ok) {
-            proc.destroyForcibly();
-            throw new IOException("jattach timed out for pid " + pid + ": " + command);
-        }
-        if (proc.exitValue() != 0) {
-            throw new IOException("jattach exit=%d pid=%d cmd=%s output=%s"
-                .formatted(proc.exitValue(), pid, command, stdout));
-        }
-        logger.debug("jattach pid={} cmd={} ok ({} bytes)", pid, command, stdout.length());
-    }
-
-    /** Run a generic external command (used for asprof). */
+    /** Run a generic external command (asprof etc.). */
     private void run(String... command) throws IOException, InterruptedException {
         var proc = new ProcessBuilder(command).redirectErrorStream(true).start();
         var stdout = new String(proc.getInputStream().readAllBytes(), StandardCharsets.UTF_8);

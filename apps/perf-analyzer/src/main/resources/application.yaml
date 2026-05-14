@@ -18,7 +18,7 @@ spring:
         chat:
           options:
             # Overridable via SPRING_AI_BEDROCK_CONVERSE_CHAT_OPTIONS_MODEL.
-            model: global.anthropic.claude-sonnet-4-6-20260128-v1:0
+            model: global.anthropic.claude-sonnet-4-6
             max-tokens: 10000
 
 perf:

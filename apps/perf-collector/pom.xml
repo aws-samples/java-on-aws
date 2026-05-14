@@ -58,6 +58,12 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
         </dependency>
+        <!-- ECS client for DescribeTasks with tag inclusion. Fargate task metadata
+             endpoint does not expose task tags, so we call the ECS API directly. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>ecs</artifactId>
+        </dependency>
 
         <!-- Kubernetes client on EKS only; skipped at runtime on ECS via @ConditionalOnProperty -->
         <dependency>

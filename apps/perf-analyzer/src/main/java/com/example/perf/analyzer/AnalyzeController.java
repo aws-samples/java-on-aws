@@ -30,8 +30,11 @@ public class AnalyzeController {
 
     private final AnalysisService analysisService;
 
-    public AnalyzeController(AnalysisService analysisService) {
+    private final io.kubernetes.client.openapi.apis.CoreV1Api k8s;
+
+    public AnalyzeController(AnalysisService analysisService, io.kubernetes.client.openapi.apis.CoreV1Api k8s) {
         this.analysisService = analysisService;
+        this.k8s = k8s;
     }
 
     @PostMapping("/api/v1/analyze")
@@ -78,29 +81,85 @@ public class AnalyzeController {
         }
     }
 
-    private static AnalysisService.AnalysisRequest toRequest(Map<String, String> labels) {
+    /**
+     * Derive the analysis request from Grafana alert labels. The exporter emits
+     * {@code perf_profile_cpu_ratio{service_name="unicorn-store-spring-eks",version="v2"}} —
+     * we strip the {@code -eks}/{@code -ecs} suffix to recover the workload name and
+     * derive the platform from the suffix, then resolve a current pod/task by the
+     * {@code perf-profile/service} label or tag.
+     */
+    private AnalysisService.AnalysisRequest toRequest(Map<String, String> labels) {
         if (labels == null) return null;
-        var service = labels.getOrDefault("service_name", labels.get("service"));
-        var platformLabel = labels.get("platform");
-        if (service == null || service.isBlank() || platformLabel == null || platformLabel.isBlank()) {
-            return null;
-        }
+        var serviceLabel = labels.getOrDefault("service_name", labels.get("service"));
+        if (serviceLabel == null || serviceLabel.isBlank()) return null;
+
         AnalysisService.Platform platform;
-        try {
-            platform = AnalysisService.Platform.valueOf(platformLabel.toUpperCase().replace('-', '_'));
-        } catch (IllegalArgumentException _) {
-            return null;
+        String workload;
+        if (serviceLabel.endsWith("-eks")) {
+            platform = AnalysisService.Platform.EKS;
+            workload = serviceLabel.substring(0, serviceLabel.length() - "-eks".length());
+        } else if (serviceLabel.endsWith("-ecs")) {
+            platform = AnalysisService.Platform.ECS_FARGATE;
+            workload = serviceLabel.substring(0, serviceLabel.length() - "-ecs".length());
+        } else {
+            // Unsuffixed — honour explicit platform label if present.
+            var platformLabel = labels.get("platform");
+            if (platformLabel == null || platformLabel.isBlank()) return null;
+            try {
+                platform = AnalysisService.Platform.valueOf(
+                    platformLabel.toUpperCase().replace('-', '_'));
+            } catch (IllegalArgumentException _) {
+                return null;
+            }
+            workload = serviceLabel;
         }
-        var pod = labels.get("pod");
-        var task = labels.get("task");
-        if ((platform == AnalysisService.Platform.EKS && (pod == null || pod.isBlank()))
-            || (platform == AnalysisService.Platform.ECS_FARGATE && (task == null || task.isBlank()))) {
-            return null;
+
+        String pod = null;
+        String task = null;
+        if (platform == AnalysisService.Platform.EKS) {
+            pod = findPodForWorkload(workload);
+            if (pod == null) {
+                logger.warn("No pod found for workload={} with perf-profile/service label", workload);
+                return null;
+            }
+        } else {
+            // ECS target resolution via tags isn't wired here yet — fall back to
+            // whatever the alert labels supply (set manually in curl-based tests).
+            task = labels.get("task");
+            if (task == null || task.isBlank()) {
+                logger.warn("No task in labels for workload={} on ECS", workload);
+                return null;
+            }
         }
+
         var reason = "Grafana alert: " + labels.getOrDefault("alertname", "PerfProfileRegression");
         return new AnalysisService.AnalysisRequest(
-            service, platform, pod, task, reason,
+            workload, platform, pod, task, reason,
             AnalysisService.TriggerSource.GRAFANA_WEBHOOK);
+    }
+
+    /**
+     * List all pods cluster-wide with the {@code perf-profile/service=<workload>}
+     * label, return the name of the first Running one. Analyzer only needs any
+     * single pod — the collector's view is one-pod-per-node anyway.
+     */
+    private String findPodForWorkload(String workload) {
+        try {
+            var resp = k8s.listPodForAllNamespaces()
+                .labelSelector("perf-profile/service=" + workload)
+                .execute();
+            if (resp.getItems() == null) return null;
+            for (var p : resp.getItems()) {
+                var status = p.getStatus();
+                if (status != null && "Running".equals(status.getPhase())) {
+                    return p.getMetadata().getName();
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            logger.warn("findPodForWorkload({}) failed: {}", workload, e.getMessage());
+            return null;
+        }
     }
 
     // === DTOs ===

@@ -46,7 +46,7 @@ public class AnalysisService {
     private static final DateTimeFormatter TS =
         DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC);
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final int COLLECTOR_PORT = 8080;
+    private static final int COLLECTOR_PORT = 8090;
 
     private final CoreV1Api k8s;
     private final EcsClient ecs;
@@ -54,6 +54,7 @@ public class AnalysisService {
     private final JfrParser jfrParser;
     private final AiService ai;
     private final PyroscopeTool pyroscope;
+    private final PyroscopeVersionService versions;
     private final String collectorNamespace;
     private final String collectorPodLabel;
 
@@ -67,6 +68,7 @@ public class AnalysisService {
         JfrParser jfrParser,
         AiService ai,
         PyroscopeTool pyroscope,
+        PyroscopeVersionService versions,
         @Value("${perf.analyzer.collector.namespace:monitoring}") String collectorNamespace,
         @Value("${perf.analyzer.collector.pod-label:app=perf-collector}") String collectorPodLabel
     ) {
@@ -76,6 +78,7 @@ public class AnalysisService {
         this.jfrParser = jfrParser;
         this.ai = ai;
         this.pyroscope = pyroscope;
+        this.versions = versions;
         this.collectorNamespace = collectorNamespace;
         this.collectorPodLabel = collectorPodLabel;
     }
@@ -127,31 +130,79 @@ public class AnalysisService {
         var jfrDumpUri = s3.profilingDumpUri(request, analysisId, "jfr");
         var threadDumpUri = s3.profilingDumpUri(request, analysisId, "json");
 
+        // Pre-resolve the version pair so the diff lane and the prompt both
+        // know the exact labels we're comparing. Same 5-minute window as the
+        // exporter — if the exporter is firing an alert for this service,
+        // we want the analyzer looking at the same window it alerted on.
+        var pyroService = pyroscopeServiceName(request);
+        var versionPair = versions.selectCurrentAndBaseline(pyroService, 300L);
+
+        var windowStart = Instant.now().minus(Duration.ofMinutes(5));
+        var windowEnd = Instant.now();
+
         var jfrLane = CompletableFuture.supplyAsync(
             () -> captureJfr(request, analysisId, collectorUrl, jfrDumpUri), laneExecutor);
         var threadLane = CompletableFuture.supplyAsync(
             () -> captureThreadDump(request, analysisId, collectorUrl, threadDumpUri), laneExecutor);
-        var pyroLane = CompletableFuture.supplyAsync(
-            () -> pyroscope.topFunctions(
-                request.service(),
-                Instant.now().minus(Duration.ofMinutes(5)).toString(),
-                Instant.now().toString(),
-                20),
+
+        // Top-functions lanes — one per profile type. Wall surfaces "where is
+        // time being spent including waits"; CPU surfaces "where is the CPU
+        // actually doing work". Both views go to the model so it can decide
+        // which lens applies to the question at hand.
+        var pyroWallLane = CompletableFuture.supplyAsync(
+            () -> pyroscope.topFunctions(pyroService, "wall",
+                windowStart.toString(), windowEnd.toString(), 20),
             laneExecutor);
+        var pyroCpuLane = CompletableFuture.supplyAsync(
+            () -> pyroscope.topFunctions(pyroService, "cpu",
+                windowStart.toString(), windowEnd.toString(), 20),
+            laneExecutor);
+
+        // Diff lanes — conditional on a baseline existing. We run BOTH
+        // profile-type diffs because a regression can show up differently
+        // in each lens: a new contention point shows in wall, a new hot
+        // computation shows in CPU. CompletableFuture.completedFuture(null)
+        // for the skipped case keeps the prompt-builder branch simple.
+        CompletableFuture<String> diffWallLane = versionPair.hasBaseline()
+            ? CompletableFuture.supplyAsync(
+                () -> pyroscope.diff(pyroService, "wall",
+                    versionPair.baseline(), versionPair.current(),
+                    windowStart.toString(), windowEnd.toString(), 20),
+                laneExecutor)
+            : CompletableFuture.completedFuture(null);
+        CompletableFuture<String> diffCpuLane = versionPair.hasBaseline()
+            ? CompletableFuture.supplyAsync(
+                () -> pyroscope.diff(pyroService, "cpu",
+                    versionPair.baseline(), versionPair.current(),
+                    windowStart.toString(), windowEnd.toString(), 20),
+                laneExecutor)
+            : CompletableFuture.completedFuture(null);
 
         String jfrMarkdown = null;
         String threadDumpText = null;
-        String pyroscopeMarkdown = null;
+        String pyroscopeWallMarkdown = null;
+        String pyroscopeCpuMarkdown = null;
+        String pyroscopeDiffWallMarkdown = null;
+        String pyroscopeDiffCpuMarkdown = null;
 
         try { jfrMarkdown = jfrLane.get(3, TimeUnit.MINUTES); }
         catch (Exception e) { logger.warn("JFR lane failed: {}", e.getMessage()); }
         try { threadDumpText = threadLane.get(60, TimeUnit.SECONDS); }
         catch (Exception e) { logger.warn("Thread dump lane failed: {}", e.getMessage()); }
-        try { pyroscopeMarkdown = pyroLane.get(30, TimeUnit.SECONDS); }
-        catch (Exception e) { logger.warn("Pyroscope lane failed: {}", e.getMessage()); }
+        try { pyroscopeWallMarkdown = pyroWallLane.get(30, TimeUnit.SECONDS); }
+        catch (Exception e) { logger.warn("Pyroscope wall lane failed: {}", e.getMessage()); }
+        try { pyroscopeCpuMarkdown = pyroCpuLane.get(30, TimeUnit.SECONDS); }
+        catch (Exception e) { logger.warn("Pyroscope cpu lane failed: {}", e.getMessage()); }
+        try { pyroscopeDiffWallMarkdown = diffWallLane.get(30, TimeUnit.SECONDS); }
+        catch (Exception e) { logger.warn("Pyroscope wall-diff lane failed: {}", e.getMessage()); }
+        try { pyroscopeDiffCpuMarkdown = diffCpuLane.get(30, TimeUnit.SECONDS); }
+        catch (Exception e) { logger.warn("Pyroscope cpu-diff lane failed: {}", e.getMessage()); }
 
         var ctx = new AnalysisContext(
-            request, analysisId, jfrMarkdown, threadDumpText, pyroscopeMarkdown,
+            request, analysisId, jfrMarkdown, threadDumpText,
+            pyroscopeWallMarkdown, pyroscopeCpuMarkdown,
+            pyroscopeDiffWallMarkdown, pyroscopeDiffCpuMarkdown,
+            versionPair.current(), versionPair.baseline(),
             metadata.githubRepo(), metadata.githubPath());
 
         String analysisMd;
@@ -160,7 +211,7 @@ public class AnalysisService {
         } catch (Exception e) {
             writePartialFailure(request, analysisId, prefix,
                 "Bedrock analysis failed: " + e.getMessage(),
-                jfrMarkdown, threadDumpText, pyroscopeMarkdown);
+                jfrMarkdown, threadDumpText, pyroscopeWallMarkdown);
             return;
         }
 
@@ -354,9 +405,29 @@ public class AnalysisService {
         return Long.toHexString(Double.doubleToLongBits(Math.random())).substring(0, 6);
     }
 
+    /**
+     * Pyroscope service name derived from the request platform. The collector
+     * publishes samples as {@code <workload>-eks} / {@code <workload>-ecs} so
+     * the two runtimes have separate entries in Profiles Drilldown. Analyzer
+     * queries must use the same suffix or Pyroscope returns no data.
+     */
+    private static String pyroscopeServiceName(AnalysisRequest request) {
+        var suffix = request.platform() == Platform.ECS_FARGATE ? "ecs" : "eks";
+        return request.service() + "-" + suffix;
+    }
+
     // === Domain types ===
 
-    public enum Platform { EKS, ECS_FARGATE }
+    public enum Platform {
+        EKS, ECS_FARGATE;
+
+        /** Case-insensitive deserialization: accepts "eks"/"EKS" and "ecs-fargate"/"ECS_FARGATE". */
+        @com.fasterxml.jackson.annotation.JsonCreator
+        public static Platform fromJson(String value) {
+            if (value == null) return null;
+            return Platform.valueOf(value.trim().toUpperCase().replace('-', '_'));
+        }
+    }
 
     public enum TriggerSource { ON_DEMAND, GRAFANA_WEBHOOK }
 
@@ -378,7 +449,12 @@ public class AnalysisService {
         String analysisId,
         String jfrSummaryMarkdown,
         String threadDumpText,
-        String pyroscopeTopFunctionsMarkdown,
+        String pyroscopeWallTopFunctionsMarkdown,   // wall-clock top-N
+        String pyroscopeCpuTopFunctionsMarkdown,    // on-CPU top-N
+        String pyroscopeDiffWallMarkdown,           // null if only one version visible
+        String pyroscopeDiffCpuMarkdown,            // null if only one version visible
+        String currentVersion,           // null if no version labels present
+        String baselineVersion,          // null if only one version visible
         String githubRepo,     // e.g. "aws-samples/java-on-aws", null if not configured
         String githubPath      // e.g. "apps/unicorn-store-spring"
     ) {}

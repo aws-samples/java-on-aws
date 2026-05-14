@@ -143,7 +143,7 @@ public class WorkshopStack extends Stack {
                 .build());
 
             // Unicorn construct: EventBus, Roles, DB Setup (uses unicorn* naming for workshop content compatibility)
-            new Unicorn(this, "Unicorn", Unicorn.UnicornProps.builder()
+            Unicorn unicorn = new Unicorn(this, "Unicorn", Unicorn.UnicornProps.builder()
                 .vpc(vpc.getVpc())
                 .database(database)
                 .workshopBucket(workshopBucket.getBucket())
@@ -179,6 +179,7 @@ public class WorkshopStack extends Stack {
                 new PerfPlatform(this, "PerfPlatform",
                     PerfPlatform.PerfPlatformProps.builder()
                         .workshopBucket(workshopBucket.getBucket())
+                        .unicornEcsTaskRole(unicorn.getEcsTaskRole())
                         .build());
             }
 

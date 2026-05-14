@@ -44,12 +44,55 @@ kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1 || {
 helm repo add grafana https://grafana.github.io/helm-charts >/dev/null 2>&1 || true
 helm repo update >/dev/null
 
+CLUSTER_NAME="${PREFIX}-eks"
+WORKSHOP_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name \
+    --query 'Parameter.Value' --output text --no-cli-pager)
+if [[ -z "${WORKSHOP_BUCKET}" || "${WORKSHOP_BUCKET}" == "None" ]]; then
+    log_error "SSM parameter workshop-bucket-name is not set. Aborting."
+    exit 1
+fi
+
 # =============================================================================
-# Pyroscope (with native recording-rules -> Prometheus-scrapable metrics)
+# Pyroscope Pod Identity — bind the Pyroscope ServiceAccount to the CDK-managed
+# pyroscope-eks-pod-role BEFORE installing Pyroscope, so the very first pod
+# boot has S3 creds available.
+# =============================================================================
+
+log_info "Binding Pyroscope ServiceAccount to pyroscope-eks-pod-role..."
+# Create the ServiceAccount up front so the pod identity webhook has something
+# to bind to. Helm will adopt it on install because names/namespaces match.
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pyroscope
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/name: pyroscope
+EOF
+
+if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
+        --query "associations[?serviceAccount=='pyroscope' && namespace=='${NAMESPACE}']" \
+        --output text --no-cli-pager | grep -q .; then
+    aws eks create-pod-identity-association \
+        --cluster-name "${CLUSTER_NAME}" \
+        --namespace "${NAMESPACE}" \
+        --service-account pyroscope \
+        --role-arn "$(aws iam get-role --role-name pyroscope-eks-pod-role \
+            --query 'Role.Arn' --output text --no-cli-pager)" \
+        --no-cli-pager
+    log_success "Pyroscope pod identity association created"
+    sleep 10
+else
+    log_info "Pyroscope pod identity association already exists"
+fi
+
+# =============================================================================
+# Pyroscope (S3-backed single-binary, blocks under s3://<bucket>/pyroscope/)
 # =============================================================================
 
 log_info "Installing Pyroscope..."
-cat > "${WORK}/pyroscope-values.yaml" <<'EOF'
+cat > "${WORK}/pyroscope-values.yaml" <<EOF
 pyroscope:
   service:
     type: ClusterIP
@@ -59,9 +102,9 @@ pyroscope:
       prometheus.io/scrape: "true"
       prometheus.io/port: "4040"
       prometheus.io/path: /metrics
+  # PVC not needed — Pyroscope v2 writes blocks directly to S3.
   persistence:
-    enabled: true
-    size: 10Gi
+    enabled: false
   resources:
     requests:
       cpu: 200m
@@ -70,13 +113,19 @@ pyroscope:
       cpu: 1
       memory: 2Gi
   # structuredConfig uses Pyroscope 2.x top-level keys only.
-  # 1.x fields `auth_enabled` and `recording_rules` were removed in 2.x
+  # 1.x fields \`auth_enabled\` and \`recording_rules\` were removed in 2.x
   # and cause CrashLoopBackOff if included.
   structuredConfig:
     storage:
-      backend: filesystem
-      filesystem:
-        dir: /data/blocks
+      backend: s3
+      # Isolate Pyroscope blocks inside the shared workshop bucket.
+      prefix: pyroscope
+      s3:
+        bucket_name: ${WORKSHOP_BUCKET}
+        region: ${AWS_REGION}
+        endpoint: s3.${AWS_REGION}.amazonaws.com
+        # AWS SDK default credential chain — picks up EKS Pod Identity creds.
+        native_aws_auth_enabled: true
     limits:
       retention_period: 168h
 EOF
@@ -91,52 +140,6 @@ kubectl wait --for=condition=ready pod \
     -n "${NAMESPACE}" --timeout=600s
 
 log_success "Pyroscope installed"
-
-# =============================================================================
-# Pyroscope recording rule -> emits profile_cpu_self_seconds metric
-# =============================================================================
-
-log_info "Registering Pyroscope recording rule (profile_cpu_self_seconds)..."
-
-# Pyroscope exposes a Connect/gRPC-Gateway JSON API for recording rules via
-# settings.v1.RecordingRulesService. The call below upserts a rule that
-# aggregates CPU self-time per service/version/pod into a Prometheus metric.
-PYROSCOPE_SVC="http://pyroscope.${NAMESPACE}.svc.cluster.local:4040"
-
-# Port-forward so the call runs from the IDE host.
-pkill -f "port-forward.*pyroscope.*24040" >/dev/null 2>&1 || true
-kubectl port-forward -n "${NAMESPACE}" svc/pyroscope 24040:4040 >/dev/null 2>&1 &
-PF_PID=$!
-trap 'kill ${PF_PID} 2>/dev/null || true; rm -rf "${WORK}"' EXIT
-sleep 3
-
-RULE_BODY=$(cat <<'EOF'
-{
-  "rule": {
-    "metricName": "profile_cpu_self_seconds",
-    "matchers": ["{__profile_type__=\"process_cpu:cpu:nanoseconds:cpu:nanoseconds\"}"],
-    "groupBy": ["service_name", "version", "pod"],
-    "externalLabels": []
-  }
-}
-EOF
-)
-
-curl -s -X POST -H "Content-Type: application/json" \
-    -d "${RULE_BODY}" \
-    "http://localhost:24040/settings.v1.RecordingRulesService/UpsertRecordingRule" \
-    -o "${WORK}/rule-response.json" || true
-
-if grep -q '"metricName"' "${WORK}/rule-response.json" 2>/dev/null; then
-    log_success "Recording rule registered"
-else
-    log_warning "Recording rule registration response:"
-    cat "${WORK}/rule-response.json" 2>/dev/null || true
-    log_warning "Continuing; rule may already exist."
-fi
-
-kill ${PF_PID} 2>/dev/null || true
-trap 'rm -rf "${WORK}"' EXIT
 
 # =============================================================================
 # RBAC for perf-analyzer and perf-collector
@@ -259,50 +262,6 @@ aws ssm put-parameter \
 log_success "Internal NLB DNS stored in SSM: ${NLB_DNS}"
 
 # =============================================================================
-# Prometheus recording rule (ratio on Pyroscope-emitted metric)
-# =============================================================================
-
-log_info "Applying Prometheus recording rule..."
-
-# Append the recording rule to Prometheus's serverFiles via helm upgrade --reuse-values.
-# prometheus-community/prometheus then rewrites its own ConfigMap and the
-# built-in configmap-reload sidecar reloads Prometheus runtime config.
-cat > "${WORK}/perf-platform-rules.yaml" <<'RULES'
-# profile_cpu_self_seconds is emitted by Pyroscope from the recording
-# rule registered earlier. Compare each new version vs the prior baseline.
-groups:
-  - name: perf-platform
-    interval: 30s
-    rules:
-      - record: perf:profile_cpu_ratio_5m
-        expr: |
-          (
-            sum by (service_name) (
-              rate(profile_cpu_self_seconds{version!=""}[5m])
-            )
-            /
-            (
-              avg by (service_name) (
-                avg_over_time(
-                  sum by (service_name) (
-                    rate(profile_cpu_self_seconds{version!=""}[5m] offset 1h)
-                  )[1h:5m]
-                )
-              )
-              > 0
-            )
-          )
-RULES
-
-helm upgrade prometheus prometheus-community/prometheus \
-    --namespace "${NAMESPACE}" \
-    --reuse-values \
-    --set-file "serverFiles.perf-platform\\.rules\\.yaml=${WORK}/perf-platform-rules.yaml" \
-    --wait --timeout 5m
-
-log_success "Prometheus recording rule applied"
-
-# =============================================================================
 # Grafana Pyroscope datasource + Profiles Drilldown plugin
 # =============================================================================
 
@@ -415,7 +374,7 @@ ALERT_BODY="{
       \"relativeTimeRange\": {\"from\": 300, \"to\": 0},
       \"datasourceUid\": \"promds\",
       \"model\": {
-        \"expr\": \"perf:profile_cpu_ratio_5m > 1.3\",
+        \"expr\": \"perf_profile_cpu_ratio > 1.3\",
         \"instant\": true,
         \"refId\": \"A\"
       }
@@ -494,13 +453,13 @@ fi
 
 log_info ""
 log_info "Agentic performance platform ready."
-log_info "  Pyroscope:          http://pyroscope.${NAMESPACE}.svc.cluster.local:4040"
+log_info "  Pyroscope:          http://pyroscope.${NAMESPACE}.svc.cluster.local:4040  (S3-backed, prefix s3://${WORKSHOP_BUCKET}/pyroscope/)"
 log_info "  Internal NLB DNS:   ${NLB_DNS}  (SSM: perf-platform-internal-nlb)"
 log_info "  Analyzer webhook:   ${ANALYZER_WEBHOOK_URL}"
-log_info "  Grafana alert rule: ${ALERT_RULE_TITLE}"
+log_info "  Grafana alert rule: ${ALERT_RULE_TITLE}  (expr: perf_profile_cpu_ratio > 1.3)"
 log_info "  Grafana contact pt: ${CONTACT_POINT_NAME}"
 log_info "  Profiles Drilldown: installed in Grafana"
 log_info ""
 log_info "Next: participants deploy perf-analyzer (module S1) and perf-collector (module S2)."
 
-echo "✅ Success: Perf Platform (Pyroscope + recording rules + NLB + Grafana wiring)"
+echo "✅ Success: Perf Platform (Pyroscope S3 + NLB + Grafana wiring)"
