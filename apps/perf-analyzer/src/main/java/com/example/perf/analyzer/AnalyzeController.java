@@ -82,11 +82,14 @@ public class AnalyzeController {
     }
 
     /**
-     * Derive the analysis request from Grafana alert labels. The exporter emits
-     * {@code perf_profile_cpu_ratio{service_name="unicorn-store-spring-eks",version="v2"}} —
-     * we strip the {@code -eks}/{@code -ecs} suffix to recover the workload name and
-     * derive the platform from the suffix, then resolve a current pod/task by the
-     * {@code perf-profile/service} label or tag.
+     * Derive the analysis request from Grafana alert labels. Whatever the
+     * alert source, we expect either:
+     *   - a {@code service_name} label that matches what the collector
+     *     publishes (e.g. {@code unicorn-store-spring-eks}), with the
+     *     {@code -eks}/{@code -ecs} suffix telling us the platform; or
+     *   - a {@code service} label plus an explicit {@code platform} label.
+     * For EKS we resolve a current pod by the {@code perf-profile/service}
+     * label; for ECS the alert must carry an explicit {@code task} label.
      */
     private AnalysisService.AnalysisRequest toRequest(Map<String, String> labels) {
         if (labels == null) return null;
@@ -123,8 +126,6 @@ public class AnalyzeController {
                 return null;
             }
         } else {
-            // ECS target resolution via tags isn't wired here yet — fall back to
-            // whatever the alert labels supply (set manually in curl-based tests).
             task = labels.get("task");
             if (task == null || task.isBlank()) {
                 logger.warn("No task in labels for workload={} on ECS", workload);
@@ -132,7 +133,7 @@ public class AnalyzeController {
             }
         }
 
-        var reason = "Grafana alert: " + labels.getOrDefault("alertname", "PerfProfileRegression");
+        var reason = "Grafana alert: " + labels.getOrDefault("alertname", "unknown");
         return new AnalysisService.AnalysisRequest(
             workload, platform, pod, task, reason,
             AnalysisService.TriggerSource.GRAFANA_WEBHOOK);

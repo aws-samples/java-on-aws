@@ -31,13 +31,21 @@ import java.util.stream.Stream;
  * Attaches async-profiler to discovered JVMs and ships the resulting JFR
  * recordings to Pyroscope.
  *
+ * Why CPU + wall together:
+ *   The two profile types answer different questions. CPU shows what is
+ *   actually computing on a core (wrong tool for blocking I/O — a thread
+ *   stuck in {@code Future.get} is off-CPU and disappears). Wall shows where
+ *   every sampled thread spends time regardless of state (right tool for
+ *   blocking I/O, locks, downstream calls). async-profiler's dual-mode
+ *   {@code -e cpu --wall 10ms} samples both events from a single attach,
+ *   and Pyroscope's JFR ingester splits the resulting file into the
+ *   {@code process_cpu} and {@code wall} profile types automatically.
+ *   One attach, one writer, one push per cycle, two lenses.
+ *
  * Why JFR (and not collapsed stacks):
- *   async-profiler can sample CPU and wall-clock events simultaneously, but
- *   collapsed-stack output only carries one event per dump. JFR binary output
- *   carries both events with typed metadata inside the file, and Pyroscope's
- *   {@code /ingest?format=jfr} endpoint auto-extracts the {@code process_cpu}
- *   and {@code wall} profile types from a single JFR push. One attach,
- *   one writer, one push per cycle — two profile types in Pyroscope.
+ *   Collapsed-stack output only carries one event per dump. JFR carries
+ *   both events with typed metadata in a single file and is what
+ *   Pyroscope's {@code /ingest?format=jfr} endpoint expects.
  *
  * Why the collector pushes instead of async-profiler pushing itself:
  *   async-profiler 4.x repurposed {@code server=&lt;url&gt;} to start a *local
@@ -146,18 +154,18 @@ public class AsyncProfilerAttach {
      * Start CPU+wall sampling writing JFR with file rotation.
      *
      * async-profiler requirements we're relying on:
-     *   - {@code -e cpu --wall 10ms} samples both events simultaneously (async-profiler's
-     *     native multi-event mode). This is not allowed for collapsed output, only JFR.
+     *   - {@code -e cpu --wall 10ms} samples both events simultaneously
+     *     (async-profiler's native multi-event mode). This is not allowed
+     *     for collapsed output, only JFR.
      *   - {@code -o jfr -f /tmp/perf-&lt;pid&gt;-%t.jfr --loop 15s} rotates the output
      *     file every 15 seconds. Each rotation finalizes the previous file with a
      *     proper metadata chunk — critical for Pyroscope's JFR parser.
      *   - A stray previous-collector session gets cleared via {@code asprof stop}
      *     first so {@code start} doesn't fail with "Profiler already started".
      *
-     * JFR is also kept as a ring for on-demand dumps — but we do NOT start a
-     * separate {@code jcmd JFR.start} recording. async-profiler's own JFR
-     * session is the single source of truth and handles both continuous push
-     * and on-demand snapshots.
+     * The same async-profiler session also serves on-demand JFR dumps via
+     * {@link #jfrDump(long, String)} — no separate {@code jcmd JFR.start} is
+     * needed.
      */
     private void startAsprof(long pid) throws IOException, InterruptedException {
         try {

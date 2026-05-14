@@ -28,9 +28,13 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Virtual-thread orchestrator. Each submitted analysis runs on its own
- * virtual thread, launching three parallel sub-lanes for JFR, thread dump,
- * and Pyroscope top functions. Results are stitched together, handed to
- * AiService, and the Markdown report lands in S3 alongside the raw artifacts.
+ * virtual thread, launching four parallel sub-lanes:
+ *   - Pyroscope CPU top functions (current 5-minute window)
+ *   - Pyroscope wall top functions (current 5-minute window)
+ *   - JFR snapshot via the collector
+ *   - Thread dump via the collector
+ * Results are stitched together, handed to AiService, and the Markdown
+ * report lands in S3 alongside the raw artifacts.
  *
  * Collector locating (pod -> node -> DaemonSet pod IP on EKS; task ARN ->
  * ENI IP on ECS) lives here too. It's a single-responsibility concern —
@@ -47,6 +51,7 @@ public class AnalysisService {
         DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final int COLLECTOR_PORT = 8090;
+    private static final Duration WINDOW = Duration.ofMinutes(5);
 
     private final CoreV1Api k8s;
     private final EcsClient ecs;
@@ -54,7 +59,6 @@ public class AnalysisService {
     private final JfrParser jfrParser;
     private final AiService ai;
     private final PyroscopeTool pyroscope;
-    private final PyroscopeVersionService versions;
     private final String collectorNamespace;
     private final String collectorPodLabel;
 
@@ -68,7 +72,6 @@ public class AnalysisService {
         JfrParser jfrParser,
         AiService ai,
         PyroscopeTool pyroscope,
-        PyroscopeVersionService versions,
         @Value("${perf.analyzer.collector.namespace:monitoring}") String collectorNamespace,
         @Value("${perf.analyzer.collector.pod-label:app=perf-collector}") String collectorPodLabel
     ) {
@@ -78,7 +81,6 @@ public class AnalysisService {
         this.jfrParser = jfrParser;
         this.ai = ai;
         this.pyroscope = pyroscope;
-        this.versions = versions;
         this.collectorNamespace = collectorNamespace;
         this.collectorPodLabel = collectorPodLabel;
     }
@@ -130,25 +132,17 @@ public class AnalysisService {
         var jfrDumpUri = s3.profilingDumpUri(request, analysisId, "jfr");
         var threadDumpUri = s3.profilingDumpUri(request, analysisId, "json");
 
-        // Pre-resolve the version pair so the diff lane and the prompt both
-        // know the exact labels we're comparing. Same 5-minute window as the
-        // exporter — if the exporter is firing an alert for this service,
-        // we want the analyzer looking at the same window it alerted on.
         var pyroService = pyroscopeServiceName(request);
-        var versionPair = versions.selectCurrentAndBaseline(pyroService, 300L);
-
-        var windowStart = Instant.now().minus(Duration.ofMinutes(5));
         var windowEnd = Instant.now();
+        var windowStart = windowEnd.minus(WINDOW);
 
+        // Four parallel lanes. Pyroscope lanes pre-fetch ranked top-N tables
+        // for both profile types so the prompt has them ready; collector
+        // lanes capture JFR + thread dump for the same workload.
         var jfrLane = CompletableFuture.supplyAsync(
             () -> captureJfr(request, analysisId, collectorUrl, jfrDumpUri), laneExecutor);
         var threadLane = CompletableFuture.supplyAsync(
             () -> captureThreadDump(request, analysisId, collectorUrl, threadDumpUri), laneExecutor);
-
-        // Top-functions lanes — one per profile type. Wall surfaces "where is
-        // time being spent including waits"; CPU surfaces "where is the CPU
-        // actually doing work". Both views go to the model so it can decide
-        // which lens applies to the question at hand.
         var pyroWallLane = CompletableFuture.supplyAsync(
             () -> pyroscope.topFunctions(pyroService, "wall",
                 windowStart.toString(), windowEnd.toString(), 20),
@@ -158,32 +152,10 @@ public class AnalysisService {
                 windowStart.toString(), windowEnd.toString(), 20),
             laneExecutor);
 
-        // Diff lanes — conditional on a baseline existing. We run BOTH
-        // profile-type diffs because a regression can show up differently
-        // in each lens: a new contention point shows in wall, a new hot
-        // computation shows in CPU. CompletableFuture.completedFuture(null)
-        // for the skipped case keeps the prompt-builder branch simple.
-        CompletableFuture<String> diffWallLane = versionPair.hasBaseline()
-            ? CompletableFuture.supplyAsync(
-                () -> pyroscope.diff(pyroService, "wall",
-                    versionPair.baseline(), versionPair.current(),
-                    windowStart.toString(), windowEnd.toString(), 20),
-                laneExecutor)
-            : CompletableFuture.completedFuture(null);
-        CompletableFuture<String> diffCpuLane = versionPair.hasBaseline()
-            ? CompletableFuture.supplyAsync(
-                () -> pyroscope.diff(pyroService, "cpu",
-                    versionPair.baseline(), versionPair.current(),
-                    windowStart.toString(), windowEnd.toString(), 20),
-                laneExecutor)
-            : CompletableFuture.completedFuture(null);
-
         String jfrMarkdown = null;
         String threadDumpText = null;
         String pyroscopeWallMarkdown = null;
         String pyroscopeCpuMarkdown = null;
-        String pyroscopeDiffWallMarkdown = null;
-        String pyroscopeDiffCpuMarkdown = null;
 
         try { jfrMarkdown = jfrLane.get(3, TimeUnit.MINUTES); }
         catch (Exception e) { logger.warn("JFR lane failed: {}", e.getMessage()); }
@@ -193,16 +165,10 @@ public class AnalysisService {
         catch (Exception e) { logger.warn("Pyroscope wall lane failed: {}", e.getMessage()); }
         try { pyroscopeCpuMarkdown = pyroCpuLane.get(30, TimeUnit.SECONDS); }
         catch (Exception e) { logger.warn("Pyroscope cpu lane failed: {}", e.getMessage()); }
-        try { pyroscopeDiffWallMarkdown = diffWallLane.get(30, TimeUnit.SECONDS); }
-        catch (Exception e) { logger.warn("Pyroscope wall-diff lane failed: {}", e.getMessage()); }
-        try { pyroscopeDiffCpuMarkdown = diffCpuLane.get(30, TimeUnit.SECONDS); }
-        catch (Exception e) { logger.warn("Pyroscope cpu-diff lane failed: {}", e.getMessage()); }
 
         var ctx = new AnalysisContext(
             request, analysisId, jfrMarkdown, threadDumpText,
             pyroscopeWallMarkdown, pyroscopeCpuMarkdown,
-            pyroscopeDiffWallMarkdown, pyroscopeDiffCpuMarkdown,
-            versionPair.current(), versionPair.baseline(),
             metadata.githubRepo(), metadata.githubPath());
 
         String analysisMd;
@@ -449,13 +415,9 @@ public class AnalysisService {
         String analysisId,
         String jfrSummaryMarkdown,
         String threadDumpText,
-        String pyroscopeWallTopFunctionsMarkdown,   // wall-clock top-N
-        String pyroscopeCpuTopFunctionsMarkdown,    // on-CPU top-N
-        String pyroscopeDiffWallMarkdown,           // null if only one version visible
-        String pyroscopeDiffCpuMarkdown,            // null if only one version visible
-        String currentVersion,           // null if no version labels present
-        String baselineVersion,          // null if only one version visible
-        String githubRepo,     // e.g. "aws-samples/java-on-aws", null if not configured
-        String githubPath      // e.g. "apps/unicorn-store-spring"
+        String pyroscopeWallTopFunctionsMarkdown,
+        String pyroscopeCpuTopFunctionsMarkdown,
+        String githubRepo,
+        String githubPath
     ) {}
 }
