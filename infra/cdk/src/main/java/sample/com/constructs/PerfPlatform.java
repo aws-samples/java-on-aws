@@ -8,12 +8,17 @@ import java.util.List;
 
 /**
  * PerfPlatform construct for the agentic performance platform (perf-analyzer module).
- * Creates three IAM roles used by the platform components:
- *  - perf-analyzer-eks-pod-role   (perf-analyzer Spring Boot service on EKS)
- *  - perf-collector-eks-pod-role  (perf-collector DaemonSet on EKS)
- *  - perf-collector-ecs-task-role (perf-collector sidecar on ECS Fargate)
+ * Creates three IAM roles used by the platform components on Amazon EKS:
+ *  - perf-analyzer-eks-pod-role   (perf-analyzer Spring Boot service)
+ *  - perf-collector-eks-pod-role  (perf-collector DaemonSet)
+ *  - pyroscope-eks-pod-role       (Pyroscope server, for S3-backed storage)
  *
- * Uses app-specific role names (no prefix) for workshop content compatibility.
+ * On Amazon ECS Fargate the collector sidecar runs inside the target task and
+ * reuses that task's existing role — we add S3-write for profiling artifacts to
+ * the workload's own role rather than maintaining a separate task role. This
+ * preserves whatever permissions the app container already has (for example
+ * CloudWatch / X-Ray writes), and lets the workshop content avoid running any
+ * iam:PutRolePolicy commands at runtime.
  *
  * Note: ECR repositories (perf-analyzer, perf-collector) are created automatically
  * via ECR Repository Creation Template when images are first pushed.
@@ -22,10 +27,11 @@ public class PerfPlatform extends Construct {
 
     private final Role perfAnalyzerEksPodRole;
     private final Role perfCollectorEksPodRole;
-    private final Role perfCollectorEcsTaskRole;
+    private final Role pyroscopeEksPodRole;
 
     public static class PerfPlatformProps {
         private Bucket workshopBucket;
+        private IRole unicornEcsTaskRole;
 
         public static PerfPlatformProps.Builder builder() { return new Builder(); }
 
@@ -33,10 +39,12 @@ public class PerfPlatform extends Construct {
             private PerfPlatformProps props = new PerfPlatformProps();
 
             public Builder workshopBucket(Bucket workshopBucket) { props.workshopBucket = workshopBucket; return this; }
+            public Builder unicornEcsTaskRole(IRole unicornEcsTaskRole) { props.unicornEcsTaskRole = unicornEcsTaskRole; return this; }
             public PerfPlatformProps build() { return props; }
         }
 
         public Bucket getWorkshopBucket() { return workshopBucket; }
+        public IRole getUnicornEcsTaskRole() { return unicornEcsTaskRole; }
     }
 
     public PerfPlatform(final Construct scope, final String id) {
@@ -48,7 +56,8 @@ public class PerfPlatform extends Construct {
 
         this.perfAnalyzerEksPodRole = createAnalyzerEksPodRole(props);
         this.perfCollectorEksPodRole = createCollectorEksPodRole(props);
-        this.perfCollectorEcsTaskRole = createCollectorEcsTaskRole(props);
+        this.pyroscopeEksPodRole = createPyroscopeEksPodRole(props);
+        grantProfilingWriteToUnicornEcsTaskRole(props);
     }
 
     /**
@@ -97,22 +106,58 @@ public class PerfPlatform extends Construct {
     }
 
     /**
-     * perf-collector ECS Fargate task role.
-     * Trusts ecs-tasks.amazonaws.com.
-     * Writes profiling dumps to workshop-bucket under perf-platform/profiling/*.
+     * Pyroscope EKS pod role.
+     * Trusts pods.eks.amazonaws.com (Pod Identity).
+     * Grants Pyroscope read/write access to the workshop bucket under the
+     * dedicated "pyroscope/" prefix where Pyroscope stores its block data,
+     * cluster seed file, and compaction artifacts when running in S3-backed
+     * single-binary mode. The prefix is separate from the perf-platform/
+     * prefix so Pyroscope's lifecycle and the analyzer's artifact lifecycle
+     * stay independent.
      */
-    private Role createCollectorEcsTaskRole(PerfPlatformProps props) {
-        ServicePrincipal tasksPrincipal = ServicePrincipal.Builder.create("ecs-tasks.amazonaws.com").build();
+    private Role createPyroscopeEksPodRole(PerfPlatformProps props) {
+        ServicePrincipal podsPrincipal = ServicePrincipal.Builder.create("pods.eks.amazonaws.com").build();
 
-        Role role = Role.Builder.create(this, "CollectorEcsTaskRole")
-            .roleName("perf-collector-ecs-task-role")
-            .assumedBy(tasksPrincipal)
-            .description("Role for perf-collector ECS Fargate sidecar to upload profiling artifacts to S3")
+        Role role = Role.Builder.create(this, "PyroscopeEksPodRole")
+            .roleName("pyroscope-eks-pod-role")
+            .assumedBy(podsPrincipal)
+            .description("Role for Pyroscope server pod to read/write blocks in S3 under pyroscope/*")
             .build();
 
-        addWorkshopBucketWrite(role, props, "perf-platform/profiling/*");
+        addTagSession(role);
+        addPyroscopeS3Access(role, props, "pyroscope");
 
         return role;
+    }
+
+    /**
+     * Grant the Unicorn ECS task role permissions the perf-collector sidecar needs.
+     * Attaches to the existing task role so the sidecar runs under the task's role
+     * and the workshop content needs no runtime IAM changes.
+     *
+     * Permissions added:
+     *  - s3:PutObject/HeadObject on workshop-bucket perf-platform/profiling/*
+     *  - ecs:DescribeTasks on all tasks (Fargate task-metadata endpoint does not
+     *    expose task tags; the sidecar must call the ECS API to read them).
+     */
+    private void grantProfilingWriteToUnicornEcsTaskRole(PerfPlatformProps props) {
+        if (props.getUnicornEcsTaskRole() == null || props.getWorkshopBucket() == null) {
+            return;
+        }
+        String bucketArn = props.getWorkshopBucket().getBucketArn();
+        props.getUnicornEcsTaskRole().addToPrincipalPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of(
+                "s3:PutObject",
+                "s3:HeadObject"
+            ))
+            .resources(List.of(bucketArn + "/perf-platform/profiling/*"))
+            .build());
+        props.getUnicornEcsTaskRole().addToPrincipalPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("ecs:DescribeTasks"))
+            .resources(List.of("*"))
+            .build());
     }
 
     private void addTagSession(Role role) {
@@ -164,6 +209,42 @@ public class PerfPlatform extends Construct {
             .build());
     }
 
+    /**
+     * Pyroscope needs more than simple write: in S3-backed single-binary mode it
+     * lists the prefix to discover blocks, reads blocks during queries, writes
+     * new blocks, uses multipart uploads for large blocks, and deletes blocks
+     * during compaction and retention enforcement.
+     */
+    private void addPyroscopeS3Access(Role role, PerfPlatformProps props, String prefix) {
+        if (props.getWorkshopBucket() == null) {
+            return;
+        }
+        String bucketArn = props.getWorkshopBucket().getBucketArn();
+        // Bucket-level list, scoped to the prefix.
+        role.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("s3:ListBucket", "s3:GetBucketLocation"))
+            .resources(List.of(bucketArn))
+            .conditions(java.util.Map.of(
+                "StringLike", java.util.Map.of(
+                    "s3:prefix", List.of(prefix + "/*", prefix)
+                )
+            ))
+            .build());
+        // Object-level read/write/delete under the prefix.
+        role.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of(
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:AbortMultipartUpload",
+                "s3:ListMultipartUploadParts"
+            ))
+            .resources(List.of(bucketArn + "/" + prefix + "/*"))
+            .build());
+    }
+
     private void addEcsDescribeTasks(Role role) {
         role.addToPolicy(PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
@@ -185,7 +266,7 @@ public class PerfPlatform extends Construct {
         return perfCollectorEksPodRole;
     }
 
-    public Role getPerfCollectorEcsTaskRole() {
-        return perfCollectorEcsTaskRole;
+    public Role getPyroscopeEksPodRole() {
+        return pyroscopeEksPodRole;
     }
 }

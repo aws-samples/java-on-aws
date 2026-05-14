@@ -165,10 +165,14 @@ public interface TargetResolver {
         private static final ObjectMapper MAPPER = new ObjectMapper();
 
         private final Proc proc;
+        private final software.amazon.awssdk.services.ecs.EcsClient ecs;
         private final RestClient rest = RestClient.builder().build();
         private final Map<String, TargetJvm> byTaskId = new ConcurrentHashMap<>();
 
-        public Ecs(Proc proc) { this.proc = proc; }
+        public Ecs(Proc proc, software.amazon.awssdk.services.ecs.EcsClient ecs) {
+            this.proc = proc;
+            this.ecs = ecs;
+        }
 
         @Override
         public List<TargetJvm> resolve() {
@@ -180,7 +184,9 @@ public interface TargetResolver {
             try {
                 var taskJson = rest.get().uri(metaUri + "/task").retrieve().body(String.class);
                 var node = MAPPER.readTree(taskJson);
-                var tags = readTaskTags(node);
+                var taskArn = node.path("TaskARN").asText("");
+                var cluster = node.path("Cluster").asText("");
+                var tags = fetchTaskTags(cluster, taskArn);
                 var serviceName = tags.getOrDefault("perf-profile:service",
                     tags.get("perf-profile/service"));
                 if (serviceName == null || serviceName.isBlank()) {
@@ -188,7 +194,7 @@ public interface TargetResolver {
                     byTaskId.clear();
                     return List.of();
                 }
-                var taskId = extractTaskId(node.path("TaskARN").asText(""));
+                var taskId = extractTaskId(taskArn);
                 var version = extractAppImageTag(node.path("Containers"));
 
                 var javaPids = proc.javaPids();
@@ -234,17 +240,27 @@ public interface TargetResolver {
             return null;
         }
 
-        private Map<String, String> readTaskTags(JsonNode node) {
-            var tags = new java.util.HashMap<String, String>();
-            var arr = node.path("TaskTags");
-            if (arr.isArray()) {
-                for (var t : arr) {
-                    var k = t.path("Key").asText(null);
-                    var v = t.path("Value").asText(null);
-                    if (k != null && v != null) tags.put(k, v);
-                }
+        private Map<String, String> fetchTaskTags(String cluster, String taskArn) {
+            if (cluster == null || cluster.isBlank() || taskArn == null || taskArn.isBlank()) {
+                return Map.of();
             }
-            return tags;
+            try {
+                var resp = ecs.describeTasks(
+                    software.amazon.awssdk.services.ecs.model.DescribeTasksRequest.builder()
+                        .cluster(cluster)
+                        .tasks(taskArn)
+                        .include(software.amazon.awssdk.services.ecs.model.TaskField.TAGS)
+                        .build());
+                if (resp.tasks().isEmpty()) return Map.of();
+                var tags = new java.util.HashMap<String, String>();
+                for (var t : resp.tasks().getFirst().tags()) {
+                    if (t.key() != null && t.value() != null) tags.put(t.key(), t.value());
+                }
+                return tags;
+            } catch (Exception e) {
+                logger.warn("ECS DescribeTasks failed for tags of {}: {}", taskArn, e.getMessage());
+                return Map.of();
+            }
         }
 
         private static String extractTaskId(String taskArn) {

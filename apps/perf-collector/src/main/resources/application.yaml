@@ -28,7 +28,7 @@ perf:
     host-lib-path: /var/perf-collector/libasyncProfiler.so
 
 server:
-  port: 8080
+  port: 8090
   shutdown: graceful
 
 spring.web.error:

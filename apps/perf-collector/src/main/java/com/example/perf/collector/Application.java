@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.ecs.EcsClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
@@ -41,6 +42,15 @@ public class Application {
     @Bean
     S3Client s3Client(@Value("${AWS_REGION:us-east-1}") String region) {
         return S3Client.builder().region(Region.of(region)).build();
+    }
+
+    /** ECS client — only on Fargate. The Fargate task-metadata endpoint does
+     *  not include task tags, so the resolver reads them via ecs:DescribeTasks. */
+    @Bean
+    @ConditionalOnProperty(prefix = "perf.collector", name = "platform",
+        havingValue = "ecs_fargate")
+    EcsClient ecsClient(@Value("${AWS_REGION:us-east-1}") String region) {
+        return EcsClient.builder().region(Region.of(region)).build();
     }
 
     /** Kubernetes client — only on EKS. The ECS Fargate resolver uses no K8s API. */
