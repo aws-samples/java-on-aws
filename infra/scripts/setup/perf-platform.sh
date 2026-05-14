@@ -24,7 +24,6 @@ PREFIX="${PREFIX:-workshop}"
 NAMESPACE="monitoring"
 GRAFANA_USER="admin"
 
-ALERT_RULE_TITLE="PerfProfileRegression"
 CONTACT_POINT_NAME="perf-analyzer-webhook"
 ANALYZER_WEBHOOK_URL="http://perf-analyzer.${NAMESPACE}.svc.cluster.local:8080/api/v1/grafana-webhook"
 
@@ -322,6 +321,270 @@ kubectl label configmap perf-platform-pyroscope-datasource \
     -n "${NAMESPACE}" grafana_datasource=1 --overwrite
 log_success "Grafana Pyroscope datasource provisioned"
 
+# =============================================================================
+# Grafana CloudWatch — pod identity for read-only metrics access, plus a
+# CloudWatch datasource and a "Latency Metrics" dashboard. Used by the Ch 4
+# alert rule (created in the workshop module) to fire on ALB p99
+# TargetResponseTime > 1s.
+# =============================================================================
+
+log_info "Binding Grafana ServiceAccount to grafana-cloudwatch-pod-role..."
+if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
+        --query "associations[?serviceAccount=='grafana' && namespace=='${NAMESPACE}']" \
+        --output text --no-cli-pager | grep -q .; then
+    aws eks create-pod-identity-association \
+        --cluster-name "${CLUSTER_NAME}" \
+        --namespace "${NAMESPACE}" \
+        --service-account grafana \
+        --role-arn "$(aws iam get-role --role-name grafana-cloudwatch-pod-role \
+            --query 'Role.Arn' --output text --no-cli-pager)" \
+        --no-cli-pager
+    log_success "Grafana CloudWatch pod identity association created"
+    # Restart Grafana so the credentials get attached to a fresh pod.
+    kubectl rollout restart deployment/grafana -n "${NAMESPACE}"
+    kubectl rollout status deployment/grafana -n "${NAMESPACE}" --timeout=180s
+    # Re-wait for the API since the pod restarted.
+    log_info "Waiting for Grafana API after pod restart..."
+    for i in {1..40}; do
+        STATUS=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/health" \
+            | jq -r .database 2>/dev/null || true)
+        if [[ "${STATUS}" == "ok" ]]; then break; fi
+        [[ $i -eq 40 ]] && { log_error "Grafana API not ready after 200s"; exit 1; }
+        sleep 5
+    done
+else
+    log_info "Grafana CloudWatch pod identity association already exists"
+fi
+
+log_info "Provisioning Grafana CloudWatch datasource..."
+cat > "${WORK}/cloudwatch-datasource.yaml" <<EOF
+apiVersion: 1
+datasources:
+  - uid: cloudwatch
+    name: CloudWatch
+    type: cloudwatch
+    access: proxy
+    isDefault: false
+    editable: true
+    jsonData:
+      authType: default
+      defaultRegion: ${AWS_REGION}
+EOF
+kubectl create configmap perf-platform-cloudwatch-datasource \
+    --from-file="${WORK}/cloudwatch-datasource.yaml" -n "${NAMESPACE}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+kubectl label configmap perf-platform-cloudwatch-datasource \
+    -n "${NAMESPACE}" grafana_datasource=1 --overwrite
+log_success "Grafana CloudWatch datasource provisioned"
+
+# =============================================================================
+# Latency Metrics dashboard — two rows, five panels:
+#   Row 1 — Latency: ALB p99 TargetResponseTime time series + p99 stat
+#   Row 2 — Throughput and errors: RequestCount + 5xx counts (target + ELB)
+# Lives in the "Workshop Dashboards" folder alongside other workshop dashboards.
+# Picks up any ALB(s) the participant deploys later — no pre-baked LB names.
+# =============================================================================
+
+log_info "Provisioning Latency Metrics dashboard..."
+WORKSHOP_FOLDER_UID=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
+    "${GRAFANA_URL}/api/folders" \
+    | jq -r '.[] | select(.title == "Workshop Dashboards") | .uid' 2>/dev/null || echo "")
+if [[ -z "${WORKSHOP_FOLDER_UID}" ]]; then
+    log_error "Workshop Dashboards folder not found in Grafana. Run monitoring.sh first."
+    exit 1
+fi
+cat > "${WORK}/latency-metrics-dashboard.json" <<'DASHBOARD_EOF'
+{
+  "title": "Latency Metrics",
+  "uid": "perf-platform-latency",
+  "tags": ["http", "latency", "metrics", "workshop"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-15m", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "row",
+      "id": 100,
+      "title": "Latency",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "id": 1,
+      "title": "ALB p99 TargetResponseTime",
+      "datasource": { "type": "cloudwatch", "uid": "cloudwatch" },
+      "gridPos": { "x": 0, "y": 1, "w": 18, "h": 9 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "custom": { "thresholdsStyle": { "mode": "line+area" } }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "cloudwatch", "uid": "cloudwatch" },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 1,
+          "region": "default",
+          "namespace": "AWS/ApplicationELB",
+          "expression": "SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName=\"TargetResponseTime\"', 'p99', 60)",
+          "statistic": "p99",
+          "period": "60",
+          "dimensions": {},
+          "matchExact": true
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 2,
+      "title": "Current p99",
+      "datasource": { "type": "cloudwatch", "uid": "cloudwatch" },
+      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 9 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "cloudwatch", "uid": "cloudwatch" },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 1,
+          "region": "default",
+          "namespace": "AWS/ApplicationELB",
+          "expression": "SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName=\"TargetResponseTime\"', 'p99', 60)",
+          "statistic": "p99",
+          "period": "60",
+          "dimensions": {},
+          "matchExact": true
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 200,
+      "title": "Throughput and errors",
+      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "id": 3,
+      "title": "Request rate",
+      "datasource": { "type": "cloudwatch", "uid": "cloudwatch" },
+      "gridPos": { "x": 0, "y": 11, "w": 12, "h": 9 },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "cloudwatch", "uid": "cloudwatch" },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 1,
+          "region": "default",
+          "namespace": "AWS/ApplicationELB",
+          "expression": "SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName=\"RequestCount\"', 'Sum', 60)",
+          "statistic": "Sum",
+          "period": "60",
+          "dimensions": {},
+          "matchExact": true
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 4,
+      "title": "5xx errors per minute",
+      "datasource": { "type": "cloudwatch", "uid": "cloudwatch" },
+      "gridPos": { "x": 12, "y": 11, "w": 12, "h": 9 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "cloudwatch", "uid": "cloudwatch" },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 1,
+          "region": "default",
+          "namespace": "AWS/ApplicationELB",
+          "expression": "SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName=\"HTTPCode_Target_5XX_Count\"', 'Sum', 60)",
+          "statistic": "Sum",
+          "period": "60",
+          "dimensions": {},
+          "matchExact": true
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "cloudwatch", "uid": "cloudwatch" },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 1,
+          "region": "default",
+          "namespace": "AWS/ApplicationELB",
+          "expression": "SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName=\"HTTPCode_ELB_5XX_Count\"', 'Sum', 60)",
+          "statistic": "Sum",
+          "period": "60",
+          "dimensions": {},
+          "matchExact": true
+        }
+      ]
+    }
+  ]
+}
+DASHBOARD_EOF
+jq -c "{dashboard: ., folderUid: \"${WORKSHOP_FOLDER_UID}\", overwrite: true}" \
+    "${WORK}/latency-metrics-dashboard.json" > "${WORK}/latency-dashboard-payload.json"
+DASHBOARD_RESPONSE=$(curl -s -X POST -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
+    -H "Content-Type: application/json" \
+    --data "@${WORK}/latency-dashboard-payload.json" \
+    "${GRAFANA_URL}/api/dashboards/db")
+if echo "${DASHBOARD_RESPONSE}" | jq -e '.uid' >/dev/null 2>&1; then
+    log_success "Latency Metrics dashboard provisioned"
+else
+    log_error "Dashboard creation failed: ${DASHBOARD_RESPONSE}"
+    exit 1
+fi
+
 # Contact point.
 EXISTING=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
     "${GRAFANA_URL}/api/v1/provisioning/contact-points" \
@@ -351,66 +614,20 @@ else
     exit 1
 fi
 
-# Alert rule.
-log_info "Creating Grafana alert rule ${ALERT_RULE_TITLE}..."
+# Alert rule creation is deferred to the workshop module (Ch 4). It depends on
+# the participant-deployed ALB ARN(s), which only exist after the unicorn-store-spring
+# workload is rolled out. perf-platform.sh provisions the *infrastructure* the
+# alert rule will reference (CloudWatch datasource, IAM role, contact point,
+# notification policy, dashboard); the rule itself is created in the chapter
+# with the discovered ALB plugged into the dimension.
+log_info "Removing any stale ServiceLatency alert rule from a previous run..."
 EXISTING_ALERT=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
     "${GRAFANA_URL}/api/v1/provisioning/alert-rules" \
-    | jq -r ".[] | select(.title == \"${ALERT_RULE_TITLE}\") | .uid" 2>/dev/null || true)
+    | jq -r '.[] | select(.title == "ServiceLatency") | .uid' 2>/dev/null || true)
 if [[ -n "${EXISTING_ALERT}" ]]; then
     curl -s -X DELETE -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
         "${GRAFANA_URL}/api/v1/provisioning/alert-rules/${EXISTING_ALERT}" >/dev/null
-fi
-
-FOLDER_UID=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
-    "${GRAFANA_URL}/api/folders" \
-    | jq -r '.[] | select(.title == "Workshop Dashboards") | .uid' 2>/dev/null || echo "")
-
-ALERT_BODY="{
-  \"title\": \"${ALERT_RULE_TITLE}\",
-  \"condition\": \"A\",
-  \"data\": [
-    {
-      \"refId\": \"A\",
-      \"relativeTimeRange\": {\"from\": 300, \"to\": 0},
-      \"datasourceUid\": \"promds\",
-      \"model\": {
-        \"expr\": \"perf_profile_cpu_ratio > 1.3\",
-        \"instant\": true,
-        \"refId\": \"A\"
-      }
-    }
-  ],
-  \"intervalSeconds\": 30,
-  \"noDataState\": \"OK\",
-  \"execErrState\": \"OK\",
-  \"for\": \"2m\",
-  \"ruleGroup\": \"perf-platform\",
-  \"annotations\": {
-    \"summary\": \"Profile CPU self-time regression detected\",
-    \"description\": \"Service {{ \$labels.service_name }} CPU self-time ratio {{ \$value | printf \\\"%.2f\\\" }}x baseline\"
-  },
-  \"labels\": {
-    \"severity\": \"warning\",
-    \"alertname\": \"${ALERT_RULE_TITLE}\",
-    \"analysis_type\": \"profiling\"
-  }"
-
-if [[ -n "${FOLDER_UID}" ]]; then
-    ALERT_BODY="${ALERT_BODY}, \"folderUID\": \"${FOLDER_UID}\"}"
-else
-    ALERT_BODY="${ALERT_BODY}}"
-fi
-
-ALERT_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
-    -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
-    -d "${ALERT_BODY}" \
-    "${GRAFANA_URL}/api/v1/provisioning/alert-rules")
-
-if echo "${ALERT_RESPONSE}" | jq -e '.uid' >/dev/null 2>&1; then
-    log_success "Alert rule ${ALERT_RULE_TITLE} created"
-else
-    log_error "Alert rule creation failed: ${ALERT_RESPONSE}"
-    exit 1
+    log_info "  Removed previous ServiceLatency rule"
 fi
 
 # Notification policy.
@@ -456,10 +673,12 @@ log_info "Agentic performance platform ready."
 log_info "  Pyroscope:          http://pyroscope.${NAMESPACE}.svc.cluster.local:4040  (S3-backed, prefix s3://${WORKSHOP_BUCKET}/pyroscope/)"
 log_info "  Internal NLB DNS:   ${NLB_DNS}  (SSM: perf-platform-internal-nlb)"
 log_info "  Analyzer webhook:   ${ANALYZER_WEBHOOK_URL}"
-log_info "  Grafana alert rule: ${ALERT_RULE_TITLE}  (expr: perf_profile_cpu_ratio > 1.3)"
+log_info "  Grafana datasource: CloudWatch (read-only via grafana-cloudwatch-pod-role)"
+log_info "  Grafana dashboard:  Workshop Dashboards / Latency Metrics"
 log_info "  Grafana contact pt: ${CONTACT_POINT_NAME}"
 log_info "  Profiles Drilldown: installed in Grafana"
 log_info ""
-log_info "Next: participants deploy perf-analyzer (module S1) and perf-collector (module S2)."
+log_info "Next: participants deploy perf-analyzer (module S1) and perf-collector (module S2),"
+log_info "      then create the ServiceLatency alert rule pointed at their ALB (module S4)."
 
-echo "✅ Success: Perf Platform (Pyroscope S3 + NLB + Grafana wiring)"
+echo "✅ Success: Perf Platform (Pyroscope S3 + NLB + CloudWatch + Grafana wiring)"
