@@ -24,7 +24,7 @@ public record CollectorProperties(
     String hostLibPath
 ) {
 
-    public enum Platform { EKS, ECS_FARGATE }
+    public enum Platform { EKS, ECS }
 
     public enum DumpKind {
         JFR("jfr"),

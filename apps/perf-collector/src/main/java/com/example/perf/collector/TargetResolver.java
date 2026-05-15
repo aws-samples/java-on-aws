@@ -155,10 +155,10 @@ public interface TargetResolver {
         }
     }
 
-    /** ECS Fargate sidecar implementation. Reads task metadata endpoint. */
+    /** ECS sidecar implementation. Reads task metadata endpoint. */
     @Component
     @ConditionalOnProperty(prefix = "perf.collector", name = "platform",
-        havingValue = "ecs_fargate")
+        havingValue = "ecs")
     final class Ecs implements TargetResolver {
 
         private static final Logger logger = LoggerFactory.getLogger(Ecs.class);
@@ -201,7 +201,7 @@ public interface TargetResolver {
                 if (javaPids.isEmpty()) return List.of();
 
                 var pid = javaPids.getFirst();  // one sibling Java container per task
-                var t = new TargetJvm(pid, serviceName, version, taskId, Platform.ECS_FARGATE);
+                var t = new TargetJvm(pid, serviceName, version, taskId, Platform.ECS);
                 byTaskId.clear();
                 byTaskId.put(taskId, t);
                 logger.info("ECS discovery: taskId={} service={} version={} pid={}",

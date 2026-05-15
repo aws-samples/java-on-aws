@@ -24,7 +24,7 @@ import java.io.IOException;
  * node, attaches async-profiler for continuous Pyroscope push, serves /dump
  * on demand for JFR and Thread.print.
  *
- * On Amazon ECS Fargate: sidecar, pidMode=task, SYS_PTRACE. Sees sibling
+ * On Amazon ECS: sidecar, pidMode=task, SYS_PTRACE. Sees sibling
  * Java container's JVM via /proc; same mechanics.
  *
  * AWS and Kubernetes client beans live here so the rest of the package stays
@@ -44,16 +44,17 @@ public class Application {
         return S3Client.builder().region(Region.of(region)).build();
     }
 
-    /** ECS client — only on Fargate. The Fargate task-metadata endpoint does
-     *  not include task tags, so the resolver reads them via ecs:DescribeTasks. */
+    /** ECS client — only when the collector runs as an ECS sidecar. The task
+     *  metadata endpoint does not include task tags, so the resolver reads
+     *  them via ecs:DescribeTasks. */
     @Bean
     @ConditionalOnProperty(prefix = "perf.collector", name = "platform",
-        havingValue = "ecs_fargate")
+        havingValue = "ecs")
     EcsClient ecsClient(@Value("${AWS_REGION:us-east-1}") String region) {
         return EcsClient.builder().region(Region.of(region)).build();
     }
 
-    /** Kubernetes client — only on EKS. The ECS Fargate resolver uses no K8s API. */
+    /** Kubernetes client — only on EKS. The ECS resolver uses no K8s API. */
     @Bean
     @ConditionalOnProperty(prefix = "perf.collector", name = "platform",
         havingValue = "eks", matchIfMissing = true)

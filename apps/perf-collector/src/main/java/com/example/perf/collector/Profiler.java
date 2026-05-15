@@ -262,7 +262,7 @@ public class Profiler {
         // underlying workload (what the user set with perf-profile/service) is
         // published as a `workload` label for cross-platform pivoting.
         var platformTag = jvm.platform().name().toLowerCase().replace('_', '-');
-        var platformSuffix = jvm.platform() == CollectorProperties.Platform.ECS_FARGATE
+        var platformSuffix = jvm.platform() == CollectorProperties.Platform.ECS
             ? "ecs"
             : "eks";
         var pyroscopeServiceName = jvm.serviceName() + "-" + platformSuffix;

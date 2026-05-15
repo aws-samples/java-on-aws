@@ -13,7 +13,7 @@
     <artifactId>perf-collector</artifactId>
     <version>1.0.0</version>
     <name>perf-collector</name>
-    <description>Agentic Performance Platform collector (DaemonSet on EKS, sidecar on ECS Fargate)</description>
+    <description>Agentic Performance Platform collector (DaemonSet on EKS, sidecar on ECS)</description>
 
     <properties>
         <java.version>25</java.version>
@@ -59,7 +59,7 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
         </dependency>
-        <!-- ECS client for DescribeTasks with tag inclusion. Fargate task metadata
+        <!-- ECS client for DescribeTasks with tag inclusion. The task metadata
              endpoint does not expose task tags, so we call the ECS API directly. -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>

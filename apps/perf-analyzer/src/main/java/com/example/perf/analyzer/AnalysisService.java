@@ -214,7 +214,7 @@ public class AnalysisService {
     private LocatedCollector locateCollector(AnalysisRequest request) {
         return switch (request.platform()) {
             case EKS -> locateCollectorEks(request);
-            case ECS_FARGATE -> locateCollectorEcs(request);
+            case ECS -> locateCollectorEcs(request);
         };
     }
 
@@ -378,16 +378,16 @@ public class AnalysisService {
      * queries must use the same suffix or Pyroscope returns no data.
      */
     private static String pyroscopeServiceName(AnalysisRequest request) {
-        var suffix = request.platform() == Platform.ECS_FARGATE ? "ecs" : "eks";
+        var suffix = request.platform() == Platform.ECS ? "ecs" : "eks";
         return request.service() + "-" + suffix;
     }
 
     // === Domain types ===
 
     public enum Platform {
-        EKS, ECS_FARGATE;
+        EKS, ECS;
 
-        /** Case-insensitive deserialization: accepts "eks"/"EKS" and "ecs-fargate"/"ECS_FARGATE". */
+        /** Case-insensitive deserialization: accepts "eks"/"EKS" and "ecs"/"ECS". */
         @com.fasterxml.jackson.annotation.JsonCreator
         public static Platform fromJson(String value) {
             if (value == null) return null;
@@ -407,7 +407,7 @@ public class AnalysisService {
     public record AnalysisRequest(
         String service, Platform platform, String pod, String task, String reason, TriggerSource source
     ) {
-        public String target() { return platform == Platform.ECS_FARGATE ? task : pod; }
+        public String target() { return platform == Platform.ECS ? task : pod; }
     }
 
     public record AnalysisContext(

@@ -1,6 +1,6 @@
 # perf-collector
 
-Runs alongside target JVMs on Amazon EKS (DaemonSet) and Amazon ECS Fargate
+Runs alongside target JVMs on Amazon EKS (DaemonSet) and Amazon ECS
 (sidecar). Discovers JVMs whose owning workload is opted in with the
 `perf-profile/service` label (EKS) or tag (ECS). Attaches async-profiler
 for continuous Pyroscope push. Serves `POST /dump` to capture on-demand
@@ -58,7 +58,7 @@ Multi-arch (`linux/amd64` + `linux/arm64`), Amazon Corretto 25 JRE base.
 | `AWS_REGION` | yes | AWS Region for the S3 SDK client. |
 | `AWS_S3_BUCKET` | yes | Workshop bucket (SSM `workshop-bucket-name`). |
 | `PYROSCOPE_URL` | yes | `http://pyroscope.monitoring:4040` on EKS; internal NLB DNS on ECS. |
-| `PERF_COLLECTOR_PLATFORM` | yes | `eks` or `ecs_fargate`. Drives which `TargetResolver` bean wakes up. |
+| `PERF_COLLECTOR_PLATFORM` | yes | `eks` or `ecs`. Drives which `TargetResolver` bean wakes up. |
 | `NODE_NAME` | EKS only | From Downward API (`spec.nodeName`). Limits discovery to pods on own node. |
 
 ## Label / tag contract
@@ -66,7 +66,7 @@ Multi-arch (`linux/amd64` + `linux/arm64`), Amazon Corretto 25 JRE base.
 | Platform | Opt-in marker | Service name source | Version source |
 |----------|---------------|---------------------|----------------|
 | EKS | pod label `perf-profile/service=<name>` | label value | `app.kubernetes.io/version` or container image tag |
-| ECS Fargate | task tag `perf-profile:service=<name>` | tag value | app container image tag |
+| ECS | task tag `perf-profile:service=<name>` | tag value | app container image tag |
 
 Missing marker → workload is ignored entirely. No profiler attach, no
 Pyroscope samples, no footprint.
@@ -78,6 +78,6 @@ manifests, Pod Identity binding, and capability requirements.
 Key invariants:
 
 - EKS DaemonSet: `hostPID: true` + `SYS_PTRACE` capability.
-- ECS Fargate task: `pidMode: task` + sidecar `linuxParameters.capabilities.add: ["SYS_PTRACE"]`.
+- ECS task: `pidMode: task` + sidecar `linuxParameters.capabilities.add: ["SYS_PTRACE"]`.
 - IAM: `perf-collector-eks-pod-role` (EKS) or `perf-collector-ecs-task-role`
   (ECS), both provisioned by the `PerfPlatform.java` CDK construct.
