@@ -253,12 +253,12 @@ if [[ -z "${NLB_DNS}" ]]; then
     exit 1
 fi
 
-aws ssm put-parameter \
-    --name "perf-platform-internal-nlb" \
-    --value "${NLB_DNS}" \
-    --type String --overwrite --no-cli-pager >/dev/null
-
-log_success "Internal NLB DNS stored in SSM: ${NLB_DNS}"
+# NLB DNS is owned by the Service object. Consumers (the workshop content's
+# ECS Fargate sidecar setup, anything else that needs Pyroscope from outside
+# the cluster) look it up at the time of need:
+#   kubectl get svc pyroscope-nlb -n monitoring \
+#     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+log_success "Internal NLB ready: ${NLB_DNS}"
 
 # =============================================================================
 # Grafana Pyroscope datasource + Profiles Drilldown plugin
@@ -328,7 +328,7 @@ log_success "Grafana Pyroscope datasource provisioned"
 # TargetResponseTime > 1s.
 # =============================================================================
 
-log_info "Binding Grafana ServiceAccount to grafana-cloudwatch-pod-role..."
+log_info "Binding Grafana ServiceAccount to grafana-eks-pod-role..."
 if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
         --query "associations[?serviceAccount=='grafana' && namespace=='${NAMESPACE}']" \
         --output text --no-cli-pager | grep -q .; then
@@ -336,7 +336,7 @@ if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
         --cluster-name "${CLUSTER_NAME}" \
         --namespace "${NAMESPACE}" \
         --service-account grafana \
-        --role-arn "$(aws iam get-role --role-name grafana-cloudwatch-pod-role \
+        --role-arn "$(aws iam get-role --role-name grafana-eks-pod-role \
             --query 'Role.Arn' --output text --no-cli-pager)" \
         --no-cli-pager
     log_success "Grafana CloudWatch pod identity association created"
@@ -630,28 +630,33 @@ if [[ -n "${EXISTING_ALERT}" ]]; then
     log_info "  Removed previous ServiceLatency rule"
 fi
 
-# Notification policy.
-log_info "Configuring notification policy..."
-POLICY_BODY=$(cat <<EOF
-{
-  "receiver": "grafana-default-email",
-  "group_by": ["alertname"],
-  "group_wait": "30s",
-  "group_interval": "5m",
-  "repeat_interval": "1h",
-  "routes": [
-    {
-      "receiver": "${CONTACT_POINT_NAME}",
-      "matchers": ["analysis_type=profiling"],
-      "group_by": ["alertname", "service_name"],
-      "group_wait": "10s",
-      "group_interval": "30s",
-      "repeat_interval": "2m"
-    }
-  ]
-}
-EOF
-)
+# Notification policy — upsert this module's route only, keyed by receiver
+# name. analysis.sh owns its own routes (thread-dump-lambda-webhook,
+# ai-jvm-analyzer-webhook); this script owns ${CONTACT_POINT_NAME}. Whoever
+# runs last does not clobber the other modules' routes.
+log_info "Upserting notification policy route for ${CONTACT_POINT_NAME}..."
+EXISTING_POLICY=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
+    "${GRAFANA_URL}/api/v1/provisioning/policies")
+
+NEW_ROUTE='{
+  "receiver": "'"${CONTACT_POINT_NAME}"'",
+  "matchers": ["analysis_type=profiling"],
+  "group_by": ["alertname", "service_name"],
+  "group_wait": "10s",
+  "group_interval": "30s",
+  "repeat_interval": "2m"
+}'
+
+POLICY_BODY=$(echo "${EXISTING_POLICY}" | jq \
+    --argjson new "${NEW_ROUTE}" \
+    --arg cp "${CONTACT_POINT_NAME}" '
+      .receiver        = (.receiver        // "grafana-default-email")
+    | .group_by        = (.group_by        // ["alertname"])
+    | .group_wait      = (.group_wait      // "30s")
+    | .group_interval  = (.group_interval  // "5m")
+    | .repeat_interval = (.repeat_interval // "1h")
+    | .routes          = ((.routes // []) | map(select(.receiver != $cp))) + [$new]
+')
 
 POLICY_RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" \
     -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
@@ -659,9 +664,9 @@ POLICY_RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" \
     "${GRAFANA_URL}/api/v1/provisioning/policies")
 
 if echo "${POLICY_RESPONSE}" | grep -q "policies updated"; then
-    log_success "Notification policy updated"
+    log_success "Notification policy route for ${CONTACT_POINT_NAME} upserted"
 else
-    log_warning "Notification policy response: ${POLICY_RESPONSE}"
+    log_warning "Notification policy update response: ${POLICY_RESPONSE}"
 fi
 
 # =============================================================================
@@ -671,9 +676,9 @@ fi
 log_info ""
 log_info "Agentic performance platform ready."
 log_info "  Pyroscope:          http://pyroscope.${NAMESPACE}.svc.cluster.local:4040  (S3-backed, prefix s3://${WORKSHOP_BUCKET}/pyroscope/)"
-log_info "  Internal NLB DNS:   ${NLB_DNS}  (SSM: perf-platform-internal-nlb)"
+log_info "  Internal NLB DNS:   ${NLB_DNS}  (kubectl get svc pyroscope-nlb -n monitoring)"
 log_info "  Analyzer webhook:   ${ANALYZER_WEBHOOK_URL}"
-log_info "  Grafana datasource: CloudWatch (read-only via grafana-cloudwatch-pod-role)"
+log_info "  Grafana datasource: CloudWatch (read-only via grafana-eks-pod-role)"
 log_info "  Grafana dashboard:  Workshop Dashboards / Latency Metrics"
 log_info "  Grafana contact pt: ${CONTACT_POINT_NAME}"
 log_info "  Profiles Drilldown: installed in Grafana"

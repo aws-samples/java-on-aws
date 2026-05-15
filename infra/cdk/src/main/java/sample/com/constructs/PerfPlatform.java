@@ -12,7 +12,7 @@ import java.util.List;
  *  - perf-analyzer-eks-pod-role     (perf-analyzer Spring Boot service)
  *  - perf-collector-eks-pod-role    (perf-collector DaemonSet)
  *  - pyroscope-eks-pod-role         (Pyroscope server, for S3-backed storage)
- *  - grafana-cloudwatch-pod-role    (Grafana, to read ALB metrics from CloudWatch)
+ *  - grafana-eks-pod-role           (Grafana, to read ALB metrics from CloudWatch)
  *
  * On Amazon ECS Fargate the collector sidecar runs inside the target task and
  * reuses that task's existing role — we add S3-write for profiling artifacts to
@@ -29,7 +29,7 @@ public class PerfPlatform extends Construct {
     private final Role perfAnalyzerEksPodRole;
     private final Role perfCollectorEksPodRole;
     private final Role pyroscopeEksPodRole;
-    private final Role grafanaCloudwatchPodRole;
+    private final Role grafanaEksPodRole;
 
     public static class PerfPlatformProps {
         private Bucket workshopBucket;
@@ -59,7 +59,7 @@ public class PerfPlatform extends Construct {
         this.perfAnalyzerEksPodRole = createAnalyzerEksPodRole(props);
         this.perfCollectorEksPodRole = createCollectorEksPodRole(props);
         this.pyroscopeEksPodRole = createPyroscopeEksPodRole(props);
-        this.grafanaCloudwatchPodRole = createGrafanaCloudwatchPodRole();
+        this.grafanaEksPodRole = createGrafanaEksPodRole();
         grantProfilingWriteToUnicornEcsTaskRole(props);
     }
 
@@ -142,11 +142,11 @@ public class PerfPlatform extends Construct {
      * and HTTPCode_Target_5XX_Count for whichever ALB(s) participants deploy
      * during the workshop.
      */
-    private Role createGrafanaCloudwatchPodRole() {
+    private Role createGrafanaEksPodRole() {
         ServicePrincipal podsPrincipal = ServicePrincipal.Builder.create("pods.eks.amazonaws.com").build();
 
-        Role role = Role.Builder.create(this, "GrafanaCloudwatchPodRole")
-            .roleName("grafana-cloudwatch-pod-role")
+        Role role = Role.Builder.create(this, "GrafanaEksPodRole")
+            .roleName("grafana-eks-pod-role")
             .assumedBy(podsPrincipal)
             .description("Role for Grafana to read CloudWatch metrics for the perf-platform Latency Metrics dashboard and ServiceLatency alert")
             .build();
@@ -311,7 +311,7 @@ public class PerfPlatform extends Construct {
         return pyroscopeEksPodRole;
     }
 
-    public Role getGrafanaCloudwatchPodRole() {
-        return grafanaCloudwatchPodRole;
+    public Role getGrafanaEksPodRole() {
+        return grafanaEksPodRole;
     }
 }
