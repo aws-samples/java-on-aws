@@ -347,21 +347,26 @@ if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
             --query 'Role.Arn' --output text --no-cli-pager)" \
         --no-cli-pager
     log_success "Grafana CloudWatch pod identity association created"
-    # Restart Grafana so the credentials get attached to a fresh pod.
-    kubectl rollout restart deployment/grafana -n "${NAMESPACE}"
-    kubectl rollout status deployment/grafana -n "${NAMESPACE}" --timeout=180s
-    # Re-wait for the API since the pod restarted.
-    log_info "Waiting for Grafana API after pod restart..."
-    for i in {1..40}; do
-        STATUS=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/health" \
-            | jq -r .database 2>/dev/null || true)
-        if [[ "${STATUS}" == "ok" ]]; then break; fi
-        [[ $i -eq 40 ]] && { log_error "Grafana API not ready after 200s"; exit 1; }
-        sleep 5
-    done
 else
     log_info "Grafana CloudWatch pod identity association already exists"
 fi
+
+# Restart Grafana every time the script runs to guarantee the running pod
+# has the Pod Identity credentials. The mutating webhook injects
+# AWS_CONTAINER_CREDENTIALS_FULL_URI at pod-create time, so we always
+# recreate the pod after this point. Idempotent — already-credentialled
+# Grafana just gets a fresh pod with the same env.
+log_info "Restarting Grafana to pick up Pod Identity credentials..."
+kubectl rollout restart deployment/grafana -n "${NAMESPACE}"
+kubectl rollout status deployment/grafana -n "${NAMESPACE}" --timeout=180s
+log_info "Waiting for Grafana API after pod restart..."
+for i in {1..40}; do
+    STATUS=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/health" \
+        | jq -r .database 2>/dev/null || true)
+    if [[ "${STATUS}" == "ok" ]]; then break; fi
+    [[ $i -eq 40 ]] && { log_error "Grafana API not ready after 200s"; exit 1; }
+    sleep 5
+done
 
 log_info "Provisioning Grafana CloudWatch datasource..."
 cat > "${WORK}/cloudwatch-datasource.yaml" <<EOF
@@ -647,7 +652,7 @@ EXISTING_POLICY=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
 
 NEW_ROUTE='{
   "receiver": "'"${CONTACT_POINT_NAME}"'",
-  "matchers": ["analysis_type=profiling"],
+  "matchers": ["analysis_type=perf-platform"],
   "group_by": ["alertname", "service_name"],
   "group_wait": "10s",
   "group_interval": "30s",
