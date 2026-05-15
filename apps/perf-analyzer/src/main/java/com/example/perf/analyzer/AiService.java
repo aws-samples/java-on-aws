@@ -3,19 +3,16 @@ package com.example.perf.analyzer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
  * Spring AI + Amazon Bedrock Converse. Builds one {@link ChatClient}
- * configured with the system prompt and the always-registered
- * {@link PyroscopeTool}, then per-analysis layers in a fresh
- * {@link GitHubSourceCodeTool} when the target workload advertises a
- * GitHub repo via pod annotation or task tag.
+ * configured with the system prompt and the two tools the model calls:
+ * {@link PyroscopeTool} and {@link GitHubSourceCodeTool}.
  *
- * Per-analysis tool registration lets the analyzer serve many workloads
- * whose sources live in different repositories without any environment
- * configuration on the analyzer side.
+ * Both tools are singletons. Per-analysis context (workload service name,
+ * time window, repo coordinates) is communicated to the model through the
+ * user prompt — the model passes those values back when it calls a tool.
  */
 @Service
 public class AiService {
@@ -50,42 +47,31 @@ public class AiService {
         """;
 
     private final ChatClient chatClient;
-    private final String githubToken;
 
     public AiService(
         ChatClient.Builder chatClientBuilder,
         PyroscopeTool pyroscopeTool,
-        @Value("${GITHUB_TOKEN:}") String githubToken
+        GitHubSourceCodeTool githubSourceCodeTool
     ) {
-        this.githubToken = githubToken;
         this.chatClient = chatClientBuilder
             .defaultSystem(SYSTEM_PROMPT)
-            .defaultTools(pyroscopeTool)
+            .defaultTools(pyroscopeTool, githubSourceCodeTool)
             .build();
     }
 
     /** Runs the analysis and returns the Markdown report content. */
     public String analyze(AnalysisService.AnalysisContext ctx) {
-        var sourceCodeTool = buildSourceCodeTool(ctx);
-        var prompt = buildPrompt(ctx, sourceCodeTool != null);
+        var hasRepo = ctx.githubRepo() != null && !ctx.githubRepo().isBlank();
+        var prompt = buildPrompt(ctx, hasRepo);
 
-        logger.info("Sending analysis request to Amazon Bedrock: analysisId={} service={} sourceTool={}",
-            ctx.analysisId(), ctx.request().service(), sourceCodeTool != null);
+        logger.info("Sending analysis request to Amazon Bedrock: analysisId={} service={} repo={}",
+            ctx.analysisId(), ctx.request().service(), hasRepo ? ctx.githubRepo() : "(none)");
 
-        var spec = chatClient.prompt().user(prompt);
-        if (sourceCodeTool != null) {
-            spec = spec.tools(sourceCodeTool);
-        }
-        var response = spec.call().content();
+        var response = chatClient.prompt().user(prompt).call().content();
 
         logger.info("Received analysis response from Amazon Bedrock: analysisId={} length={}",
             ctx.analysisId(), response == null ? 0 : response.length());
         return response == null ? "# Analysis\n\n_Model returned no content._\n" : response;
-    }
-
-    private GitHubSourceCodeTool buildSourceCodeTool(AnalysisService.AnalysisContext ctx) {
-        if (ctx.githubRepo() == null || ctx.githubRepo().isBlank()) return null;
-        return new GitHubSourceCodeTool(ctx.githubRepo(), ctx.githubPath(), githubToken);
     }
 
     String buildPrompt(AnalysisService.AnalysisContext ctx, boolean sourceCodeAvailable) {
@@ -152,26 +138,35 @@ public class AiService {
             Be concise.
             """);
 
-        if (sourceCodeAvailable) {
-            sb.append("""
-
-                ---
-
-                You have a source code tool. Use it to look up the actual
-                source of methods that appear in Pyroscope top functions,
-                JFR events, or the thread dump. In your findings and
-                recommendations, reference specific file paths, class names
-                and line numbers. Provide concrete code fixes — show the
-                current problematic code and the recommended replacement.
-                """);
-        }
-
         sb.append("""
 
-            You also have a Pyroscope query tool you can invoke to request
+            ---
+
+            You have a Pyroscope query tool you can invoke to request
             additional time windows or narrower label selectors if you need
             to confirm a hypothesis before writing the report.
             """);
+
+        if (sourceCodeAvailable) {
+            sb.append("""
+
+                You also have a GitHub source-code tool. Use it to look up
+                the actual source of methods that appear in Pyroscope top
+                functions, JFR events, or the thread dump. The target
+                workload's source lives at:
+
+                """);
+            sb.append("- repo: `").append(ctx.githubRepo()).append("`\n");
+            var path = ctx.githubPath() == null ? "" : ctx.githubPath();
+            sb.append("- pathPrefix: `").append(path).append("`\n\n");
+            sb.append("""
+                Pass those values along with the file path on every call.
+                In your findings and recommendations, reference specific
+                file paths, class names and line numbers. Provide concrete
+                code fixes — show the current problematic code and the
+                recommended replacement.
+                """);
+        }
 
         return sb.toString();
     }
