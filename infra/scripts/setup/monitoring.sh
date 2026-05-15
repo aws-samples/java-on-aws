@@ -195,6 +195,27 @@ for i in {1..20}; do
   sleep 5
 done
 
+# Shared "Workshop Dashboards" Grafana folder. All analysis modules
+# (analysis.sh, perf-platform.sh) drop their dashboards and alert rules
+# here. Created once, here, so each downstream script can simply look
+# up the UID by title — no SSM, no env file.
+log_info "Creating shared Grafana folder 'Workshop Dashboards'..."
+FOLDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
+  -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+  -d '{"title": "Workshop Dashboards"}' \
+  "$GRAFANA_URL/api/folders")
+FOLDER_UID=$(echo "$FOLDER_RESPONSE" | jq -r '.uid // empty')
+if [[ -z "$FOLDER_UID" ]]; then
+  # Already exists (409). Look it up by title.
+  FOLDER_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/folders" \
+    | jq -r '.[] | select(.title == "Workshop Dashboards") | .uid')
+fi
+if [[ -z "$FOLDER_UID" ]]; then
+  log_error "Failed to create or look up 'Workshop Dashboards' folder"
+  exit 1
+fi
+log_success "Workshop Dashboards folder ready: $FOLDER_UID"
+
 log_success "Monitoring stack deployed"
 log_info "Grafana: http://$GRAFANA_LB"
 log_info "Username: $GRAFANA_USER"

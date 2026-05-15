@@ -422,7 +422,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1778416824589"
+      ContentHash: "1778821434343"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2063,9 +2063,11 @@ Resources:
             Resource:
               - !Sub arn:aws:iam::${AWS::AccountId}:role/ai-jvm-analyzer*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/aiagent*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/grafana*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/mcpserver*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/perf-analyzer*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/perf-collector*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/pyroscope*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
               - !Sub arn:aws:iam::${AWS::AccountId}:role/workshop*
@@ -2252,38 +2254,6 @@ Resources:
       Roles:
         - Ref: PerfPlatformAnalyzerEksPodRoleA97B019B
     Type: AWS::IAM::Policy
-  PerfPlatformCollectorEcsTaskRoleA67C7D99:
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-        Version: "2012-10-17"
-      Description: Role for perf-collector ECS Fargate sidecar to upload profiling artifacts to S3
-      RoleName: perf-collector-ecs-task-role
-    Type: AWS::IAM::Role
-  PerfPlatformCollectorEcsTaskRoleDefaultPolicy698DCB5D:
-    Properties:
-      PolicyDocument:
-        Statement:
-          - Action:
-              - s3:HeadObject
-              - s3:PutObject
-            Effect: Allow
-            Resource:
-              Fn::Join:
-                - ""
-                - - Fn::GetAtt:
-                      - WorkshopBucketFD5BC43F
-                      - Arn
-                  - /perf-platform/profiling/*
-        Version: "2012-10-17"
-      PolicyName: PerfPlatformCollectorEcsTaskRoleDefaultPolicy698DCB5D
-      Roles:
-        - Ref: PerfPlatformCollectorEcsTaskRoleA67C7D99
-    Type: AWS::IAM::Policy
   PerfPlatformCollectorEksPodRole3090D9EA:
     Properties:
       AssumeRolePolicyDocument:
@@ -2317,6 +2287,91 @@ Resources:
       PolicyName: PerfPlatformCollectorEksPodRoleDefaultPolicy102C5ADB
       Roles:
         - Ref: PerfPlatformCollectorEksPodRole3090D9EA
+    Type: AWS::IAM::Policy
+  PerfPlatformGrafanaEksPodRole8BAC861C:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+              - sts:TagSession
+            Effect: Allow
+            Principal:
+              Service: pods.eks.amazonaws.com
+        Version: "2012-10-17"
+      Description: Role for Grafana to read CloudWatch metrics for the perf-platform Latency Metrics dashboard and ServiceLatency alert
+      RoleName: grafana-eks-pod-role
+    Type: AWS::IAM::Role
+  PerfPlatformGrafanaEksPodRoleDefaultPolicyBFFD5487:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - cloudwatch:DescribeAlarmHistory
+              - cloudwatch:DescribeAlarms
+              - cloudwatch:DescribeAlarmsForMetric
+              - cloudwatch:GetMetricData
+              - cloudwatch:GetMetricStatistics
+              - cloudwatch:ListMetrics
+              - ec2:DescribeRegions
+              - ec2:DescribeTags
+              - tag:GetResources
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: PerfPlatformGrafanaEksPodRoleDefaultPolicyBFFD5487
+      Roles:
+        - Ref: PerfPlatformGrafanaEksPodRole8BAC861C
+    Type: AWS::IAM::Policy
+  PerfPlatformPyroscopeEksPodRole01200CAC:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+              - sts:TagSession
+            Effect: Allow
+            Principal:
+              Service: pods.eks.amazonaws.com
+        Version: "2012-10-17"
+      Description: Role for Pyroscope server pod to read/write blocks in S3 under pyroscope/*
+      RoleName: pyroscope-eks-pod-role
+    Type: AWS::IAM::Role
+  PerfPlatformPyroscopeEksPodRoleDefaultPolicy133E4C48:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:GetBucketLocation
+              - s3:ListBucket
+            Condition:
+              StringLike:
+                s3:prefix:
+                  - pyroscope/*
+                  - pyroscope
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - WorkshopBucketFD5BC43F
+                - Arn
+          - Action:
+              - s3:AbortMultipartUpload
+              - s3:DeleteObject
+              - s3:GetObject
+              - s3:ListMultipartUploadParts
+              - s3:PutObject
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - Fn::GetAtt:
+                      - WorkshopBucketFD5BC43F
+                      - Arn
+                  - /pyroscope/*
+        Version: "2012-10-17"
+      PolicyName: PerfPlatformPyroscopeEksPodRoleDefaultPolicy133E4C48
+      Roles:
+        - Ref: PerfPlatformPyroscopeEksPodRole01200CAC
     Type: AWS::IAM::Policy
   ThreadAnalysisLambda3EE9B29D:
     DependsOn:
@@ -2972,6 +3027,20 @@ Resources:
               Fn::GetAtt:
                 - UnicornUnicornEventBusB728845C
                 - Arn
+          - Action:
+              - s3:HeadObject
+              - s3:PutObject
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - Fn::GetAtt:
+                      - WorkshopBucketFD5BC43F
+                      - Arn
+                  - /perf-platform/profiling/*
+          - Action: ecs:DescribeTasks
+            Effect: Allow
+            Resource: "*"
         Version: "2012-10-17"
       PolicyName: UnicornUnicornStoreEcsTaskRoleDefaultPolicy477138EA
       Roles:
@@ -3312,7 +3381,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260510144024"
+            - "-20260515070354"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
