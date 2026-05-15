@@ -54,12 +54,15 @@ fi
 # =============================================================================
 # Pyroscope Pod Identity — bind the Pyroscope ServiceAccount to the CDK-managed
 # pyroscope-eks-pod-role BEFORE installing Pyroscope, so the very first pod
-# boot has S3 creds available.
+# boot has S3 creds available. Pyroscope writes blocks to S3 from boot, so
+# it cannot follow the Grafana pattern (install first, attach identity, restart)
+# — it would fail health checks before the restart.
 # =============================================================================
 
 log_info "Binding Pyroscope ServiceAccount to pyroscope-eks-pod-role..."
-# Create the ServiceAccount up front so the pod identity webhook has something
-# to bind to. Helm will adopt it on install because names/namespaces match.
+# Pre-create the ServiceAccount with Helm 3 adoption metadata so the
+# subsequent `helm install pyroscope` adopts it instead of erroring on
+# "invalid ownership metadata; missing key app.kubernetes.io/managed-by".
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: ServiceAccount
@@ -68,6 +71,10 @@ metadata:
   namespace: ${NAMESPACE}
   labels:
     app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: pyroscope
+    meta.helm.sh/release-namespace: ${NAMESPACE}
 EOF
 
 if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
