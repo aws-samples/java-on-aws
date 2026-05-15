@@ -76,8 +76,8 @@ public class AnalyzeController {
         if (r.platform() == AnalysisService.Platform.EKS && !hasPod) {
             throw new IllegalArgumentException("pod is required for platform=eks");
         }
-        if (r.platform() == AnalysisService.Platform.ECS_FARGATE && !hasTask) {
-            throw new IllegalArgumentException("task is required for platform=ecs-fargate");
+        if (r.platform() == AnalysisService.Platform.ECS && !hasTask) {
+            throw new IllegalArgumentException("task is required for platform=ecs");
         }
     }
 
@@ -102,7 +102,7 @@ public class AnalyzeController {
             platform = AnalysisService.Platform.EKS;
             workload = serviceLabel.substring(0, serviceLabel.length() - "-eks".length());
         } else if (serviceLabel.endsWith("-ecs")) {
-            platform = AnalysisService.Platform.ECS_FARGATE;
+            platform = AnalysisService.Platform.ECS;
             workload = serviceLabel.substring(0, serviceLabel.length() - "-ecs".length());
         } else {
             // Unsuffixed — honour explicit platform label if present.

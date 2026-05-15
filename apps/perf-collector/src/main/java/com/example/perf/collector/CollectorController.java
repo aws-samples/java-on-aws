@@ -64,7 +64,7 @@ public class CollectorController {
         }
 
         public String id() {
-            return platform == Platform.ECS_FARGATE ? task : pod;
+            return platform == Platform.ECS ? task : pod;
         }
 
         private static Platform parsePlatform(String s) {

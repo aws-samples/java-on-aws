@@ -19,7 +19,7 @@ perf:
     discovery-interval-seconds: 30
     # Node identity (EKS DaemonSet): kubelet downward API.
     node-name: ${NODE_NAME:}
-    # Platform selector (set per deployment: eks | ecs_fargate).
+    # Platform selector (set per deployment: eks | ecs).
     platform: ${PERF_COLLECTOR_PLATFORM:eks}
     async-profiler-lib: /opt/perf-collector/async-profiler/libasyncProfiler.so
     jattach-binary: /opt/perf-collector/bin/jattach
