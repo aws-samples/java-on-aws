@@ -63,9 +63,10 @@ import java.util.stream.Stream;
  *      (non-newest) rotated files, POST each one to Pyroscope as a JFR
  *      binary, then delete.
  *
- * On-demand: jfrDump(pid, jobId) asks async-profiler for a snapshot of the
- * *same running session* (using {@code asprof dump -o jfr -f ...}), which
- * produces a proper JFR file without interrupting continuous profiling.
+ * On-demand: jfrDump(pid, jobId) flushes the JVM-native JFR ring (started
+ * at attach-time with {@code JFR.start name=perf maxage=10m}) to a file via
+ * {@code jattach jcmd JFR.dump}. Carries the last 10 minutes of typed JVM
+ * events (GC, JIT, monitor contention, safepoints, deopts).
  * threadPrint(pid) is unchanged — still uses {@code jattach jcmd Thread.print}.
  */
 @Component
@@ -131,11 +132,31 @@ public class Profiler {
         try {
             copyLibIntoTargetTmp(jvm.pid());
             startAsprof(jvm.pid());
+            startJvmJfr(jvm.pid());
             trackedJvms.put(jvm.pid(), jvm);
-            logger.info("Attached async-profiler (cpu+wall, JFR/15s) to pid {} service={} version={} target={}",
+            logger.info("Attached async-profiler (cpu+wall, JFR/15s) + JVM-native JFR (maxage=10m) to pid {} service={} version={} target={}",
                 jvm.pid(), jvm.serviceName(), jvm.version(), jvm.idLabel());
         } catch (Exception e) {
             logger.warn("Failed attaching to pid {}: {}", jvm.pid(), e.getMessage());
+        }
+    }
+
+    /**
+     * Start a JVM-native JFR recording with a 10-minute in-memory ring.
+     * On-demand {@link #jfrDump(long, String)} flushes the ring on request.
+     * Independent of async-profiler — the JVM's own JFR subsystem captures
+     * the typed events (GC, JIT, monitor contention, safepoints, deopts)
+     * the analyzer's JfrParser consumes.
+     *
+     * Idempotent in practice: if the {@code name=perf} recording is already
+     * running (collector restart against a long-lived JVM), the JVM returns
+     * an error and we log-and-continue.
+     */
+    private void startJvmJfr(long pid) {
+        try {
+            jattachJcmd(pid, "JFR.start name=perf maxage=10m");
+        } catch (Exception e) {
+            logger.info("JFR.start (already running?) pid={}: {}", pid, e.getMessage());
         }
     }
 
@@ -161,10 +182,6 @@ public class Profiler {
      *     proper metadata chunk — critical for Pyroscope's JFR parser.
      *   - A stray previous-collector session gets cleared via {@code asprof stop}
      *     first so {@code start} doesn't fail with "Profiler already started".
-     *
-     * The same async-profiler session also serves on-demand JFR dumps via
-     * {@link #jfrDump(long, String)} — no separate {@code jcmd JFR.start} is
-     * needed.
      */
     private void startAsprof(long pid) throws IOException, InterruptedException {
         try {
@@ -299,39 +316,42 @@ public class Profiler {
     }
 
     /**
-     * On-demand: ask async-profiler to dump the live session to a new JFR file.
-     * The running session is not disturbed — dump only flushes current state.
-     * Pyroscope's parser requires proper metadata, which async-profiler's dump
-     * produces inside its own rotating file, so we dump to a dedicated path
-     * and immediately return it.
+     * On-demand: flush the JVM's continuous JFR ring (started by
+     * {@link #startJvmJfr(long)} at attach-time) to a file in the target
+     * container's /tmp. Carries the last 10 minutes of typed JVM events.
+     * Independent of the async-profiler session that streams to Pyroscope.
      */
     public Path jfrDump(long pid, String jobId) throws IOException, InterruptedException {
         var fileInTarget = "/tmp/perf-ondemand-" + jobId + ".jfr";
-        run(props.asprofBinary(),
-            "dump",
-            "-o", "jfr",
-            "-f", fileInTarget,
-            "--libpath", "/tmp/libasyncProfiler.so",
-            Long.toString(pid));
+        jattachJcmd(pid, "JFR.dump name=perf filename=" + fileInTarget);
         return Path.of("/proc", Long.toString(pid), "root", "tmp",
             "perf-ondemand-" + jobId + ".jfr");
     }
 
     /** jcmd Thread.print -e; jattach writes stack output to stdout. Unchanged. */
     public String threadPrint(long pid) throws IOException, InterruptedException {
+        return jattachJcmd(pid, "Thread.print -e");
+    }
+
+    /**
+     * Run a {@code jcmd} command on the target JVM through {@code jattach}
+     * and return its stdout. Errors propagate as IOException with the
+     * jcmd output included.
+     */
+    private String jattachJcmd(long pid, String jcmdCommand) throws IOException, InterruptedException {
         var proc = new ProcessBuilder(
-            props.jattachBinary(), Long.toString(pid), "jcmd", "Thread.print -e")
+            props.jattachBinary(), Long.toString(pid), "jcmd", jcmdCommand)
             .redirectErrorStream(true)
             .start();
         var out = new String(proc.getInputStream().readAllBytes());
         boolean ok = proc.waitFor(30, TimeUnit.SECONDS);
         if (!ok) {
             proc.destroyForcibly();
-            throw new IOException("jattach Thread.print timed out for pid " + pid);
+            throw new IOException("jattach jcmd '" + jcmdCommand + "' timed out for pid " + pid);
         }
         if (proc.exitValue() != 0) {
             throw new IOException(
-                "jattach Thread.print exit=%d output=%s".formatted(proc.exitValue(), out));
+                "jattach jcmd '%s' exit=%d output=%s".formatted(jcmdCommand, proc.exitValue(), out));
         }
         return out;
     }
