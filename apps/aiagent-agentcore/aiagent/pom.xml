@@ -96,7 +96,7 @@
 		<dependency>
 			<groupId>org.springaicommunity</groupId>
 			<artifactId>mcp-client-security</artifactId>
-			<version>0.1.1</version>
+			<version>0.1.9</version>
 		</dependency>
 		<!-- OAuth2 Client - required for MCP client OAuth -->
 		<dependency>
