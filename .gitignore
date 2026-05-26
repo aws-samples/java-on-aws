@@ -43,4 +43,7 @@ build/
 infrastructure/cdk/output*
 dependency-reduced-pom.xml
 
+# jqwik writes a serialized failing-example DB next to the project root on each run
+.jqwik-database
+
 .env

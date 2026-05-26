@@ -24,21 +24,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app:
-          - apps/ai-jvm-analyzer
-          - apps/aiagent
-          - apps/aiagent-agentcore/aiagent
-          - apps/aiagent-agentcore/backoffice/trip
-          - apps/aiagent-agentcore/currency
-          - apps/java-spring-ai-agents/aiagent
-          - apps/java-spring-ai-agents/currency
-          - apps/unicorn-spring-ai-agent
-          - apps/unicorn-store-spring
+        include:
+          - app: apps/ai-jvm-analyzer
+          - app: apps/aiagent
+          - app: apps/aiagent-agentcore/aiagent
+          - app: apps/aiagent-agentcore/backoffice/trip
+          - app: apps/aiagent-agentcore/currency
+          # Tests in this app need a live Bedrock + AgentCore runtime.
+          - app: apps/java-spring-ai-agents/aiagent
+            skipTests: true
+          - app: apps/java-spring-ai-agents/currency
+          # Tests need a Postgres + Bedrock environment.
+          - app: apps/unicorn-spring-ai-agent
+            skipTests: true
+          - app: apps/unicorn-store-spring
     name: Build ${{ matrix.app }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Set up JDK 25
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'corretto'
         java-version: 25
@@ -46,7 +50,7 @@ jobs:
     - name: Java version
       run: java --version
     - name: Build ${{ matrix.app }} with Maven
-      run: mvn -B clean package --file pom.xml --no-transfer-progress
+      run: mvn -B clean package --file pom.xml --no-transfer-progress ${{ matrix.skipTests && '-DskipTests' || '' }}
       working-directory: ./${{ matrix.app }}/
 
   # Temporary: backoffice is assembled from multiple sources by
@@ -59,9 +63,9 @@ jobs:
       AWS_REGION: 'us-east-1'
       SRC: apps/java-spring-ai-agents/backoffice
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Set up JDK 25
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'corretto'
         java-version: 25
@@ -87,22 +91,32 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sample:
-          - samples/quality-assurance/ai-agent
-          - samples/quality-assurance/weather
-          - samples/security/apikey/ai-agent
-          - samples/security/apikey/weather
-          - samples/security/oauth/ai-agent
-          - samples/security/oauth/authorization-server
-          - samples/security/oauth/weather
-          - samples/spring-ai-agent
-          - samples/spring-ai-simple-chat-client
-          - samples/spring-cloud-function-demo
+        include:
+          # Tests need Docker/Bedrock/Ollama runtime.
+          - sample: samples/quality-assurance/ai-agent
+            skipTests: true
+          # Tests need a live MCP server runtime.
+          - sample: samples/quality-assurance/weather
+            skipTests: true
+          - sample: samples/security/apikey/ai-agent
+          - sample: samples/security/apikey/weather
+          - sample: samples/security/oauth/ai-agent
+          - sample: samples/security/oauth/authorization-server
+          # Tests need a running OAuth authorization server.
+          - sample: samples/security/oauth/weather
+            skipTests: true
+          # Tests need Postgres + Docker testcontainers.
+          - sample: samples/spring-ai-agent
+            skipTests: true
+          - sample: samples/spring-ai-simple-chat-client
+          # Tests need a Spring Cloud Function HTTP runtime.
+          - sample: samples/spring-cloud-function-demo
+            skipTests: true
     name: Build ${{ matrix.sample }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Set up JDK 25
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'corretto'
         java-version: 25
@@ -110,7 +124,7 @@ jobs:
     - name: Java version
       run: java --version
     - name: Build ${{ matrix.sample }} with Maven
-      run: mvn -B clean package --file pom.xml --no-transfer-progress
+      run: mvn -B clean package --file pom.xml --no-transfer-progress ${{ matrix.skipTests && '-DskipTests' || '' }}
       working-directory: ./${{ matrix.sample }}/
 
   build-infra:
@@ -118,9 +132,9 @@ jobs:
     env:
       AWS_REGION: 'us-east-1'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Set up JDK 25
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'corretto'
         java-version: 25
@@ -142,9 +156,9 @@ jobs:
       run:
         working-directory: ./infra/scripts/setup/thread-dump-lambda/
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.12'
         cache: 'pip'

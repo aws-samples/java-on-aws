@@ -16,7 +16,7 @@
 
 	<properties>
 		<java.version>25</java.version>
-		<spring-cloud-aws.version>4.0.0-RC1</spring-cloud-aws.version>
+		<spring-cloud-aws.version>4.0.2</spring-cloud-aws.version>
 	</properties>
 
 	<dependencyManagement>

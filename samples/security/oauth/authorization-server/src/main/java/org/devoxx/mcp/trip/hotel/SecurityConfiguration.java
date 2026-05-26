@@ -18,7 +18,8 @@ import java.util.List;
 
 import static org.springaicommunity.mcp.security.authorizationserver.config.McpAuthorizationServerConfigurer.mcpAuthorizationServer;
 import static org.springframework.security.config.Customizer.withDefaults;
-import static org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer.authorizationServer;
+
+import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 
 @Configuration
 @EnableWebSecurity
@@ -27,7 +28,7 @@ class SecurityConfiguration {
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		return http.authorizeHttpRequests(authz -> authz.anyRequest().authenticated())
-			.with(authorizationServer(), authServer -> authServer.oidc(withDefaults()))
+			.with(new OAuth2AuthorizationServerConfigurer(), authServer -> authServer.oidc(withDefaults()))
 			.with(mcpAuthorizationServer(), withDefaults())
 			.formLogin(withDefaults())
 			.cors(cors -> cors.configurationSource(req -> configurationSource()))

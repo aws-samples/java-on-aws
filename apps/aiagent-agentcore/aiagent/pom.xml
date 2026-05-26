@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.0.1</version>
+		<version>4.0.6</version>
 		<relativePath/>
 	</parent>
 	<groupId>com.example</groupId>
@@ -16,7 +16,7 @@
 
 	<properties>
 		<java.version>25</java.version>
-		<spring-ai.version>2.0.0-M2</spring-ai.version>
+		<spring-ai.version>2.0.0-M7</spring-ai.version>
 	</properties>
 
 	<dependencies>
@@ -78,7 +78,7 @@
 		<dependency>
 			<groupId>com.microsoft.playwright</groupId>
 			<artifactId>playwright</artifactId>
-			<version>1.49.0</version>
+			<version>1.60.0</version>
 		</dependency>
 
 		<!-- Caffeine cache for Code Interpreter file store -->
@@ -96,7 +96,7 @@
 		<dependency>
 			<groupId>org.springaicommunity</groupId>
 			<artifactId>mcp-client-security</artifactId>
-			<version>0.1.9</version>
+			<version>0.1.11</version>
 		</dependency>
 		<!-- OAuth2 Client - required for MCP client OAuth -->
 		<dependency>
@@ -145,7 +145,7 @@
 			<plugin>
 				<groupId>io.spring.javaformat</groupId>
 				<artifactId>spring-javaformat-maven-plugin</artifactId>
-				<version>0.0.43</version>
+				<version>0.0.47</version>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

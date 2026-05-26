@@ -16,7 +16,7 @@ class McpConfiguration {
     McpSyncHttpClientRequestCustomizer requestCustomizer(OAuth2AuthorizedClientManager oAuth2AuthorizedClientManager,
                                                          ClientRegistrationRepository clientRegistrationRepository) {
         var registrationId = findUniqueClientRegistration(clientRegistrationRepository);
-        return new OAuth2AuthorizationCodeSyncHttpRequestCustomizer(oAuth2AuthorizedClientManager, registrationId);
+        return new OAuth2AuthorizationCodeSyncHttpRequestCustomizer(oAuth2AuthorizedClientManager, clientRegistrationRepository, registrationId);
     }
 
     @Bean
