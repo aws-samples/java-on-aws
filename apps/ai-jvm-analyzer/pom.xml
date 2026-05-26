@@ -67,7 +67,7 @@
         <dependency>
             <groupId>tools.profiler</groupId>
             <artifactId>jfr-converter</artifactId>
-            <version>4.3</version>
+            <version>4.4</version>
         </dependency>
     </dependencies>
 
