@@ -14,7 +14,7 @@ updates:
       awssdk:
         patterns:
           - "software.amazon.awssdk:*"
-    open-pull-requests-limit: 20
+    open-pull-requests-limit: 15
   - package-ecosystem: docker
     directories:
       - "**/*"
