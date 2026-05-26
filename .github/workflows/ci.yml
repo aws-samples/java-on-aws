@@ -17,7 +17,103 @@ permissions:
   contents: read
 
 jobs:
-  build-java25:
+  build-apps:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: 'us-east-1'
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - apps/ai-jvm-analyzer
+          - apps/aiagent
+          - apps/aiagent-agentcore/aiagent
+          - apps/aiagent-agentcore/backoffice/trip
+          - apps/aiagent-agentcore/currency
+          - apps/java-spring-ai-agents/aiagent
+          - apps/java-spring-ai-agents/currency
+          - apps/unicorn-spring-ai-agent
+          - apps/unicorn-store-spring
+    name: Build ${{ matrix.app }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 25
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'corretto'
+        java-version: 25
+        cache: maven
+    - name: Java version
+      run: java --version
+    - name: Build ${{ matrix.app }} with Maven
+      run: mvn -B clean package --file pom.xml --no-transfer-progress
+      working-directory: ./${{ matrix.app }}/
+
+  # Temporary: backoffice is assembled from multiple sources by
+  # apps/java-spring-ai-agents/scripts/01-setup.sh. This job mirrors the
+  # file-combining steps of that script (skipping AWS/direnv setup) so we
+  # can verify the assembled project compiles.
+  build-backoffice:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: 'us-east-1'
+      SRC: apps/java-spring-ai-agents/backoffice
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 25
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'corretto'
+        java-version: 25
+        cache: maven
+    - name: Assemble backoffice (mirror of 01-setup.sh)
+      run: |
+        set -euxo pipefail
+        DEST="${RUNNER_TEMP}/backoffice"
+        cp -r "${SRC}/trip" "${DEST}"
+        cp -r "${SRC}/expense" "${DEST}/src/main/java/com/example/backoffice/expense"
+        cp "${SRC}/tools/TripTools.java" "${DEST}/src/main/java/com/example/backoffice/trip/TripTools.java"
+        cp "${SRC}/tools/ExpenseTools.java" "${DEST}/src/main/java/com/example/backoffice/expense/ExpenseTools.java"
+        cp "${SRC}/tools/pom.xml" "${DEST}/pom.xml"
+        cp "${SRC}/tools/application.properties" "${DEST}/src/main/resources/application.properties"
+    - name: Build assembled backoffice with Maven
+      run: mvn -B clean package --file pom.xml --no-transfer-progress
+      working-directory: ${{ runner.temp }}/backoffice
+
+  build-samples:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: 'us-east-1'
+    strategy:
+      fail-fast: false
+      matrix:
+        sample:
+          - samples/quality-assurance/ai-agent
+          - samples/quality-assurance/weather
+          - samples/security/apikey/ai-agent
+          - samples/security/apikey/weather
+          - samples/security/oauth/ai-agent
+          - samples/security/oauth/authorization-server
+          - samples/security/oauth/weather
+          - samples/spring-ai-agent
+          - samples/spring-ai-simple-chat-client
+          - samples/spring-cloud-function-demo
+    name: Build ${{ matrix.sample }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 25
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'corretto'
+        java-version: 25
+        cache: maven
+    - name: Java version
+      run: java --version
+    - name: Build ${{ matrix.sample }} with Maven
+      run: mvn -B clean package --file pom.xml --no-transfer-progress
+      working-directory: ./${{ matrix.sample }}/
+
+  build-infra:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: 'us-east-1'
@@ -29,14 +125,6 @@ jobs:
         distribution: 'corretto'
         java-version: 25
         cache: maven
-    - name: Java version
-      run: java --version
-    - name: Build unicorn-store-spring with Maven
-      run: mvn -B clean package --file pom.xml --no-transfer-progress
-      working-directory: ./apps/unicorn-store-spring/
-    - name: Build ai-jvm-analyzer with Maven
-      run: mvn -B clean package --file pom.xml --no-transfer-progress
-      working-directory: ./apps/ai-jvm-analyzer/
     - name: Install AWS CDK
       run: npm install -g aws-cdk
     - name: AWS CDK version
@@ -47,6 +135,26 @@ jobs:
     - name: CDK Synth infra
       run: cdk synth
       working-directory: ./infra/cdk/
+
+  build-thread-dump-lambda:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./infra/scripts/setup/thread-dump-lambda/
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+        cache-dependency-path: infra/scripts/setup/thread-dump-lambda/requirements.txt
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Syntax check sources
+      run: python -m compileall -q src
 
 #    - name: Submit Dependency Snapshot
 #      uses: advanced-security/maven-dependency-submission-action@v4

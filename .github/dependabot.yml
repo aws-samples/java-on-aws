@@ -20,3 +20,11 @@ updates:
       - "**/*"
     schedule:
       interval: "monthly"
+  - package-ecosystem: pip
+    directory: "/infra/scripts/setup/thread-dump-lambda"
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: "monthly"
