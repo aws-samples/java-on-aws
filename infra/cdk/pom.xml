@@ -79,25 +79,25 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>ec2</artifactId>
-            <version>2.29.15</version>
+            <version>2.44.12</version>
         </dependency>
 
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>secretsmanager</artifactId>
-            <version>2.29.15</version>
+            <version>2.44.12</version>
         </dependency>
 
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>ssm</artifactId>
-            <version>2.29.15</version>
+            <version>2.44.12</version>
         </dependency>
 
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>rds</artifactId>
-            <version>2.29.15</version>
+            <version>2.44.12</version>
         </dependency>
 
         <!-- Jackson for JSON processing -->
