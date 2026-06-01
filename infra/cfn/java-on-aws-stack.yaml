@@ -422,7 +422,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1778821434343"
+      ContentHash: "1780311401249"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -509,12 +509,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: main
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-on-aws
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: perf-analyzer
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1359,7 +1359,7 @@ Resources:
                 # This keeps UserData under size limits while allowing unlimited bootstrap size
 
                 # Configuration from CDK
-                export GIT_BRANCH="perf-analyzer"
+                export GIT_BRANCH="main"
                 export AWS_REGION="
               - Ref: AWS::Region
               - |-
@@ -3381,7 +3381,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260515070354"
+            - "-20260601125641"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
