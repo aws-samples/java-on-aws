@@ -63,29 +63,19 @@ for i in {1..20}; do
   sleep 5
 done
 
-# Create shared folder
-log_info "Creating shared folder '$FOLDER_NAME'..."
-FOLDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
-  -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
-  -d "{\"title\": \"$FOLDER_NAME\"}" \
-  "$GRAFANA_URL/api/folders")
-
-FOLDER_UID=$(echo "$FOLDER_RESPONSE" | jq -r '.uid // empty')
-FOLDER_ID=$(echo "$FOLDER_RESPONSE" | jq -r '.id // empty')
-if [[ -z "$FOLDER_UID" ]]; then
-  EXISTING_FOLDER=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/folders" | jq -r ".[] | select(.title == \"$FOLDER_NAME\")")
-  if [[ -n "$EXISTING_FOLDER" ]]; then
-    FOLDER_UID=$(echo "$EXISTING_FOLDER" | jq -r '.uid')
-    FOLDER_ID=$(echo "$EXISTING_FOLDER" | jq -r '.id')
-    log_info "Using existing folder: $FOLDER_UID"
-  else
-    FOLDER_UID=""
-    FOLDER_ID=0
-    log_warning "Using General folder"
-  fi
-else
-  log_success "Folder created: $FOLDER_UID"
+# Look up the shared "Workshop Dashboards" folder created by monitoring.sh.
+# Both this script and perf-platform.sh consume it — monitoring.sh owns
+# the create, downstream scripts only read.
+log_info "Looking up shared folder '$FOLDER_NAME'..."
+SHARED_FOLDER=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/folders" \
+  | jq -r ".[] | select(.title == \"$FOLDER_NAME\")")
+if [[ -z "$SHARED_FOLDER" ]]; then
+  log_error "Shared folder '$FOLDER_NAME' not found. Run monitoring.sh first."
+  exit 1
 fi
+FOLDER_UID=$(echo "$SHARED_FOLDER" | jq -r '.uid')
+FOLDER_ID=$(echo "$SHARED_FOLDER" | jq -r '.id')
+log_info "Using folder: $FOLDER_UID"
 
 # Get Lambda Function URL for thread dump Lambda
 FUNCTION_URL=$(aws lambda get-function-url-config --function-name "$LAMBDA_FUNCTION_NAME" --query "FunctionUrl" --output text 2>/dev/null || echo "")
@@ -620,38 +610,57 @@ fi
 
 
 # =============================================================================
-# SHARED NOTIFICATION POLICY
+# NOTIFICATION POLICY ROUTES (this script's two routes only)
+# =============================================================================
+#
+# The notification policy is shared across all analysis modules. Each module's
+# setup script owns its own routes (keyed by receiver name) and upserts them
+# idempotently into the existing policy. This script owns:
+#   - thread-dump-lambda-webhook
+#   - ai-jvm-analyzer-webhook
+# perf-platform.sh owns its own (perf-analyzer-webhook). Whoever runs last
+# does not clobber the other modules' routes any more.
 # =============================================================================
 
 log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-log_info "Configuring unified notification policy..."
+log_info "Upserting notification policy routes for thread + profiling..."
 log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Configure notification policy with nested routes for both contact points
-POLICY_PAYLOAD="{
-  \"receiver\": \"grafana-default-email\",
-  \"group_by\": [\"alertname\"],
-  \"group_wait\": \"30s\",
-  \"group_interval\": \"5m\",
-  \"repeat_interval\": \"1h\",
-  \"routes\": [
-    {
-      \"receiver\": \"$THREAD_CONTACT_POINT\",
-      \"matchers\": [\"analysis_type=thread\"],
-      \"group_wait\": \"30s\",
-      \"group_interval\": \"5m\",
-      \"repeat_interval\": \"1h\"
-    },
-    {
-      \"receiver\": \"$PROFILING_CONTACT_POINT\",
-      \"matchers\": [\"analysis_type=profiling\"],
-      \"group_by\": [\"alertname\", \"pod\"],
-      \"group_wait\": \"10s\",
-      \"group_interval\": \"30s\",
-      \"repeat_interval\": \"2m\"
-    }
-  ]
-}"
+# Read the current policy, drop any route whose receiver is one we own, append
+# our own routes, PUT the merged result.
+EXISTING_POLICY=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+  "$GRAFANA_URL/api/v1/provisioning/policies")
+
+NEW_ROUTES='[
+  {
+    "receiver": "'"$THREAD_CONTACT_POINT"'",
+    "matchers": ["analysis_type=thread"],
+    "group_wait": "30s",
+    "group_interval": "5m",
+    "repeat_interval": "1h"
+  },
+  {
+    "receiver": "'"$PROFILING_CONTACT_POINT"'",
+    "matchers": ["analysis_type=profiling"],
+    "group_by": ["alertname", "pod"],
+    "group_wait": "10s",
+    "group_interval": "30s",
+    "repeat_interval": "2m"
+  }
+]'
+
+POLICY_PAYLOAD=$(echo "$EXISTING_POLICY" | jq \
+  --argjson new "$NEW_ROUTES" \
+  --arg t "$THREAD_CONTACT_POINT" \
+  --arg p "$PROFILING_CONTACT_POINT" '
+    # Default the policy fields if the existing payload was empty.
+    .receiver        = (.receiver        // "grafana-default-email")
+  | .group_by        = (.group_by        // ["alertname"])
+  | .group_wait      = (.group_wait      // "30s")
+  | .group_interval  = (.group_interval  // "5m")
+  | .repeat_interval = (.repeat_interval // "1h")
+  | .routes          = ((.routes // []) | map(select(.receiver != $t and .receiver != $p))) + $new
+')
 
 POLICY_RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" \
   -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
@@ -659,9 +668,9 @@ POLICY_RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" \
   "$GRAFANA_URL/api/v1/provisioning/policies")
 
 if echo "$POLICY_RESPONSE" | grep -q "policies updated"; then
-  log_success "Unified notification policy configured"
+  log_success "Thread + profiling routes upserted into the notification policy"
 else
-  log_error "Notification policy configuration failed:"
+  log_error "Notification policy update failed:"
   echo "$POLICY_RESPONSE"
 fi
 

@@ -1,0 +1,57 @@
+# =============================================================================
+# perf-collector — Spring Boot 4 / Java 25
+# =============================================================================
+
+spring:
+  application:
+    name: perf-collector
+  threads:
+    virtual:
+      enabled: true
+  jmx:
+    enabled: false
+
+# perf-collector specific config.
+perf:
+  collector:
+    pyroscope-url: ${PYROSCOPE_URL:http://pyroscope.monitoring:4040}
+    s3-bucket: ${AWS_S3_BUCKET:}
+    discovery-interval-seconds: 30
+    # Node identity (EKS DaemonSet): kubelet downward API.
+    node-name: ${NODE_NAME:}
+    # Platform selector (set per deployment: eks | ecs).
+    platform: ${PERF_COLLECTOR_PLATFORM:eks}
+    async-profiler-lib: /opt/perf-collector/async-profiler/libasyncProfiler.so
+    jattach-binary: /opt/perf-collector/bin/jattach
+    asprof-binary: /opt/perf-collector/bin/asprof
+    jfrconv-binary: /opt/perf-collector/bin/jfrconv
+    host-lib-path: /var/perf-collector/libasyncProfiler.so
+
+server:
+  port: 8090
+  shutdown: graceful
+
+spring.web.error:
+  include-message: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState
+    prometheus:
+      access: unrestricted
+  metrics:
+    enable:
+      all: true
+    tags:
+      application: perf-collector

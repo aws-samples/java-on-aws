@@ -37,8 +37,17 @@ else
     exit 1
 fi
 
-# Phase 4: Unicorn Store Spring (build and push to ECR)
-log_info "Phase 4: Building and pushing Unicorn Store Spring..."
+# Phase 4: Agentic performance platform (Pyroscope + analyzer + collector wiring)
+log_info "Phase 4: Setting up agentic performance platform..."
+if bash "$SCRIPT_DIR/../setup/perf-platform.sh"; then
+    log_success "Agentic performance platform setup completed"
+else
+    log_error "Agentic performance platform setup failed"
+    exit 1
+fi
+
+# Phase 5: Unicorn Store Spring (build and push to ECR)
+log_info "Phase 5: Building and pushing Unicorn Store Spring..."
 if bash "$SCRIPT_DIR/../setup/unicorn-store-spring.sh"; then
     log_success "Unicorn Store Spring setup completed"
 else
@@ -46,8 +55,8 @@ else
     exit 1
 fi
 
-# Phase 5: Simplify p10k prompt (remove vcs, kubecontext, aws)
-log_info "Phase 5: Simplifying p10k prompt..."
+# Phase 6: Simplify p10k prompt (remove vcs, kubecontext, aws)
+log_info "Phase 6: Simplifying p10k prompt..."
 P10K_FILE="$HOME/.p10k.zsh"
 if [[ -f "$P10K_FILE" ]]; then
     # Remove vcs from left prompt

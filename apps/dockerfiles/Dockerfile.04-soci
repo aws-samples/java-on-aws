@@ -1,21 +1,25 @@
 FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
 
+WORKDIR /app
+
 COPY ./pom.xml ./pom.xml
 COPY src ./src/
 
 RUN mvn clean package -DskipTests -ntp && \
     mv target/store-spring-1.0.0-exec.jar store-spring.jar && \
-    java -Djarmode=layertools -jar store-spring.jar extract
+    java -Djarmode=tools -jar store-spring.jar extract --layers --launcher
 
 FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
 
 RUN yum install -y shadow-utils
 
+WORKDIR /app
+
 # Layers ordered by change frequency for optimal caching
-COPY --from=builder dependencies/ ./
-COPY --from=builder spring-boot-loader/ ./
-COPY --from=builder snapshot-dependencies/ ./
-COPY --from=builder application/ ./
+COPY --from=builder /app/store-spring/dependencies/ ./
+COPY --from=builder /app/store-spring/spring-boot-loader/ ./
+COPY --from=builder /app/store-spring/snapshot-dependencies/ ./
+COPY --from=builder /app/store-spring/application/ ./
 
 RUN groupadd --system spring -g 1000
 RUN adduser spring -u 1000 -g 1000
