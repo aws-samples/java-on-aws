@@ -19,7 +19,7 @@
         <java.version>25</java.version>
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spring-ai.version>2.0.0-M5</spring-ai.version>
+        <spring-ai.version>2.0.0-M6</spring-ai.version>
         <aws-sdk.version>2.44.4</aws-sdk.version>
         <kubernetes-client.version>26.0.0</kubernetes-client.version>
     </properties>
