@@ -1,12 +1,12 @@
 output "cluster_name" {
-  value = module.eks.cluster_id
+  value = aws_eks_cluster.this.name
 }
 
 output "kubeconfig_certificate_authority_data" {
-  value = module.eks.cluster_certificate_authority_data
+  value     = aws_eks_cluster.this.certificate_authority[0].data
   sensitive = true
 }
 
 output "kubeconfig_endpoint" {
-  value = module.eks.cluster_endpoint
+  value = aws_eks_cluster.this.endpoint
 }

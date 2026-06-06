@@ -20,12 +20,22 @@ Remote state (S3) bootstrap
  - You can create an S3 bucket + DynamoDB table to store remote state and enable locking using the `backend-bootstrap` helper in this folder.
 
 Steps:
-1. Create backend resources:
+1. Create backend resources from the `backend-bootstrap` folder:
+
+From repository root:
 
 ```bash
 cd infra/eks-terraform/backend-bootstrap
 terraform init
-terraform apply -var="aws_region=us-east-1"
+terraform apply -var="aws_region=us-east-1" -var="create_dynamodb=false"
+```
+
+If you are already inside `infra/eks-terraform`:
+
+```bash
+cd backend-bootstrap
+terraform init
+terraform apply -var="aws_region=us-east-1" -var="create_dynamodb=false"
 ```
 
 2. Note the outputs `bucket` and `dynamodb_table`.
