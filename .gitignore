@@ -35,6 +35,17 @@ build/
 ### VS Code ###
 .vscode/
 
+### Terraform ###
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+*.tfplan
+crash.log
+.terraformrc
+terraform.rc
+
 ### Kiro ###
 .kiro/debug/
 
