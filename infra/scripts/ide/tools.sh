@@ -139,15 +139,15 @@ install_container_tools() {
     sudo tar -C /usr/local/bin -xf soci-snapshotter-$SOCI_VERSION-linux-${ARCH_K8S}.tar.gz soci soci-snapshotter-grpc
     rm soci-snapshotter-$SOCI_VERSION-linux-${ARCH_K8S}.tar.gz
 
-    sudo tee /etc/docker/daemon.json >/dev/null << EOF
-{
-  "experimental": true,
-  "features": {
-    "containerd-snapshotter": true
-  }
-}
-EOF
-    sudo systemctl restart docker
+#     sudo tee /etc/docker/daemon.json >/dev/null << EOF
+# {
+#   "experimental": true,
+#   "features": {
+#     "containerd-snapshotter": true
+#   }
+# }
+# EOF
+#     sudo systemctl restart docker
 }
 
 install_utilities() {
