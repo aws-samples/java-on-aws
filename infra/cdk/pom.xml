@@ -12,9 +12,9 @@
         <maven.compiler.source>25</maven.compiler.source>
         <maven.compiler.target>25</maven.compiler.target>
         <cdk.version>2.235.0</cdk.version>
-        <constructs.version>10.4.2</constructs.version>
+        <constructs.version>10.6.0</constructs.version>
         <cdknag.version>2.38.2</cdknag.version>
-        <junit.version>5.11.3</junit.version>
+        <junit.version>6.1.0</junit.version>
     </properties>
 
     <build>
