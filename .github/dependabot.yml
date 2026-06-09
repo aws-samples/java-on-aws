@@ -24,6 +24,15 @@ updates:
     directory: "/infra/scripts/setup/thread-dump-lambda"
     schedule:
       interval: "monthly"
+    groups:
+      # awscli and boto3 share botocore/s3transfer; they must bump together
+      # or pip resolution fails. Group them into a single PR.
+      aws-python:
+        patterns:
+          - "awscli"
+          - "boto3"
+          - "botocore"
+          - "s3transfer"
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
