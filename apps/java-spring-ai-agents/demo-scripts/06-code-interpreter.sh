@@ -162,12 +162,19 @@ public class ChatService {
         if (files == null || files.isEmpty()) {
             return Flux.empty();
         }
-        return Flux.just(formatFilesAsMarkdown(files));
+        String markdown = formatFilesAsMarkdown(files);
+        if (markdown.isEmpty()) {
+            return Flux.empty();
+        }
+        return Flux.just(markdown);
     }
 
     private String formatFilesAsMarkdown(List<GeneratedFile> files) {
         StringBuilder sb = new StringBuilder();
         for (GeneratedFile file : files) {
+            if (file.name().equals("package.json") || file.name().equals("package-lock.json")) {
+                continue;
+            }
             if (file.isImage()) {
                 sb.append("\n\n![").append(file.name()).append("](")
                     .append(file.toDataUrl()).append(")");
