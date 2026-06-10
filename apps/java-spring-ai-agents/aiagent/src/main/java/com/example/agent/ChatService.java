@@ -115,7 +115,7 @@ public class ChatService {
         this.chatClient = chatClientBuilder.defaultSystem(SYSTEM_PROMPT)
             .defaultAdvisors(advisors.toArray(new Advisor[0]))
             .defaultTools(localTools.toArray())
-            .defaultToolCallbacks(toolCallbackProviders.toArray(new ToolCallbackProvider[0]))
+            .defaultTools(toolCallbackProviders.toArray())
             .build();
     }
 

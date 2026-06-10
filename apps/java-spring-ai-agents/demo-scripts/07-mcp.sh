@@ -127,8 +127,8 @@ if ! grep -q "mcpToolCallbacks" "$CHATSERVICE"; then
         sed -i '/this.chatClient = chatClientBuilder/i \
 \        // Tool Callback Providers\n        List<ToolCallbackProvider> toolCallbackProviders = new ArrayList<>();\n\n        // MCP Tools\n        if (mcpTools != null) {\n            toolCallbackProviders.add(mcpTools);\n            logger.info("MCP tools enabled");\n        }\n' "$CHATSERVICE"
 
-        # Add .defaultToolCallbacks() to builder
-        sed -i 's/\.build();/.defaultToolCallbacks(toolCallbackProviders.toArray(new ToolCallbackProvider[0]))\n            .build();/' "$CHATSERVICE"
+        # Add second .defaultTools() call to builder for the tool callback providers
+        sed -i 's/\.build();/.defaultTools(toolCallbackProviders.toArray())\n            .build();/' "$CHATSERVICE"
     fi
 fi
 

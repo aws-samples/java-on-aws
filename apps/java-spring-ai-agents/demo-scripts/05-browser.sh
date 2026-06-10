@@ -93,17 +93,15 @@ public class ChatService {
         logger.info("Memory enabled: {} advisors", agentCoreMemory.advisors.size());
 
         // Knowledge Base (RAG)
-        if (kbVectorStore != null) {
-            advisors.add(QuestionAnswerAdvisor.builder(kbVectorStore)
-                .promptTemplate(PromptTemplate.builder().template("""
-                    {query}
+        advisors.add(QuestionAnswerAdvisor.builder(kbVectorStore)
+            .promptTemplate(PromptTemplate.builder().template("""
+                {query}
 
-                    The following documents may be relevant as reference material:
-                    {question_answer_context}
-                    """).build())
-                .build());
-            logger.info("KB RAG enabled");
-        }
+                The following documents may be relevant as reference material:
+                {question_answer_context}
+                """).build())
+            .build());
+        logger.info("KB RAG enabled");
 
         // ContextAdvisor
         advisors.add(contextAdvisor);
@@ -111,26 +109,22 @@ public class ChatService {
 
         // Tools
         List<Object> localTools = new ArrayList<>();
-        if (webGroundingTools != null) {
-            localTools.add(webGroundingTools);
-            logger.info("Web Grounding enabled");
-        }
+        localTools.add(webGroundingTools);
+        logger.info("Web Grounding enabled");
 
         // Browser
         this.browserArtifactStore = browserArtifactStore;
 
         // Tool Callback Providers
         List<ToolCallbackProvider> toolCallbackProviders = new ArrayList<>();
-        if (browserTools != null) {
-            toolCallbackProviders.add(browserTools);
-            logger.info("Browser enabled");
-        }
+        toolCallbackProviders.add(browserTools);
+        logger.info("Browser enabled");
 
         this.chatClient = chatClientBuilder
             .defaultSystem(SYSTEM_PROMPT)
             .defaultAdvisors(advisors.toArray(new Advisor[0]))
             .defaultTools(localTools.toArray())
-            .defaultToolCallbacks(toolCallbackProviders.toArray(new ToolCallbackProvider[0]))
+            .defaultTools(toolCallbackProviders.toArray())
             .build();
     }
 
@@ -152,9 +146,6 @@ public class ChatService {
     }
 
     private Flux<String> appendScreenshots(String sessionId) {
-        if (browserArtifactStore == null) {
-            return Flux.empty();
-        }
         List<GeneratedFile> screenshots = browserArtifactStore.retrieve(sessionId);
         if (screenshots == null || screenshots.isEmpty()) {
             return Flux.empty();

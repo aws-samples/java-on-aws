@@ -34,14 +34,14 @@ class ContextAdvisorTest {
         List<Message> messages = result.prompt().getInstructions();
         List<String> texts = messages.stream().map(Message::getText).toList();
 
-        // Original system message is preserved.
-        assertThat(texts).anyMatch(t -> t.equals("system prompt"));
-        // Timestamp message is added.
-        assertThat(texts).anyMatch(t -> t.startsWith("[Current date and time:"));
-        // User id is extracted from the conversation id (before the colon) and the original text retained.
-        assertThat(texts).anyMatch(t -> t.startsWith("[UserId: user-123]") && t.contains("hello world"));
-        // The bare original user message was replaced (not left as plain "hello world").
-        assertThat(texts).doesNotContain("hello world");
+        // Order is preserved and no extra messages are added (augmented in place).
+        assertThat(messages).hasSize(2);
+        assertThat(texts.get(0)).isEqualTo("system prompt");
+        // The user message is augmented in place with timestamp + userId + original text.
+        assertThat(texts.get(1))
+                .startsWith("[Current date and time:")
+                .contains("[UserId: user-123]")
+                .contains("hello world");
     }
 
     @Test
@@ -52,7 +52,7 @@ class ContextAdvisorTest {
         ChatClientRequest result = advisor.before(request, null);
 
         List<String> texts = result.prompt().getInstructions().stream().map(Message::getText).toList();
-        assertThat(texts).anyMatch(t -> t.startsWith("[UserId: unknown]") && t.contains("hi"));
+        assertThat(texts).anyMatch(t -> t.contains("[UserId: unknown]") && t.contains("hi"));
     }
 
     @Test

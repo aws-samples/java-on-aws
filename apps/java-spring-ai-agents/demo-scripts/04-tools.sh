@@ -57,9 +57,9 @@ class ContextAdvisor implements BaseAdvisor {
         List<Message> messages = new ArrayList<>(original.getInstructions());
         UserMessage userMsg = original.getUserMessage();
         if (userMsg != null) {
-            messages.remove(userMsg);
-            messages.add(new UserMessage("[Current date and time: " + timestamp + "]"));
-            messages.add(new UserMessage("[UserId: " + userId + "]\n" + userMsg.getText()));
+            int idx = messages.lastIndexOf(userMsg);
+            messages.set(idx, new UserMessage(
+                "[Current date and time: " + timestamp + "] [UserId: " + userId + "]\n" + userMsg.getText()));
         }
 
         Prompt augmented = new Prompt(messages, original.getOptions());
