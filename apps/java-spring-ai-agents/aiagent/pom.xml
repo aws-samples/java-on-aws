@@ -74,6 +74,11 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-vector-store-advisor</artifactId>
         </dependency>
+        <!-- Bean Validation implementation (Hibernate Validator) for @Validated config properties -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
 	    <!-- AgentCore Memory dependencies -->
         <dependency>
             <groupId>org.springaicommunity</groupId>

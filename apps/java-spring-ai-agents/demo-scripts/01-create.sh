@@ -69,9 +69,9 @@ logging.level.com.example.agent=DEBUG
 logging.pattern.console=%msg%n
 # Amazon Bedrock Configuration
 spring.ai.bedrock.aws.timeout=120s
-spring.ai.bedrock.converse.chat.options.max-tokens=4096
-spring.ai.bedrock.converse.chat.options.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.options.temperature=0.7
+spring.ai.bedrock.converse.chat.max-tokens=4096
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
+spring.ai.bedrock.converse.chat.temperature=0.7
 EOF
 
 # --- Write ChatService.java ---
