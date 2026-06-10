@@ -12,14 +12,14 @@ cd ~/environment/aiagent
 if ! grep -q "software.amazon.awssdk" pom.xml; then
     sed -i '/<artifactId>spring-ai-agentcore-bom<\/artifactId>/,/<\/dependency>/{
         /<\/dependency>/a \
-\t\t\t<dependency>\n\t\t\t\t<groupId>software.amazon.awssdk</groupId>\n\t\t\t\t<artifactId>bom</artifactId>\n\t\t\t\t<version>2.41.24</version>\n\t\t\t\t<type>pom</type>\n\t\t\t\t<scope>import</scope>\n\t\t\t</dependency>
+\t\t\t<dependency>\n\t\t\t\t<groupId>software.amazon.awssdk</groupId>\n\t\t\t\t<artifactId>bom</artifactId>\n\t\t\t\t<version>2.46.7</version>\n\t\t\t\t<type>pom</type>\n\t\t\t\t<scope>import</scope>\n\t\t\t</dependency>
     }' pom.xml
 fi
 
 # --- Add bedrockruntime dependency ---
 
 if ! grep -q "bedrockruntime" pom.xml; then
-    sed -i '/<artifactId>spring-ai-advisors-vector-store<\/artifactId>/,/<\/dependency>/{
+    sed -i '/<artifactId>spring-ai-vector-store-advisor<\/artifactId>/,/<\/dependency>/{
         /<\/dependency>/a \
 \t\t<!-- Bedrock Runtime SDK for web grounding -->\n\t\t<dependency>\n\t\t\t<groupId>software.amazon.awssdk</groupId>\n\t\t\t<artifactId>bedrockruntime</artifactId>\n\t\t</dependency>
     }' pom.xml

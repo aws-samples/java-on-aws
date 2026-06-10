@@ -21,7 +21,7 @@ fi
 if ! grep -q "spring-ai-starter-vector-store-bedrock-knowledgebase" pom.xml; then
     sed -i '/<artifactId>spring-ai-agentcore-memory<\/artifactId>/,/<\/dependency>/{
         /<\/dependency>/a \
-\t\t<!-- Knowledge Base (RAG) -->\n\t\t<dependency>\n\t\t\t<groupId>org.springframework.ai</groupId>\n\t\t\t<artifactId>spring-ai-starter-vector-store-bedrock-knowledgebase</artifactId>\n\t\t</dependency>\n\t\t<dependency>\n\t\t\t<groupId>org.springframework.ai</groupId>\n\t\t\t<artifactId>spring-ai-advisors-vector-store</artifactId>\n\t\t</dependency>
+\t\t<!-- Knowledge Base (RAG) -->\n\t\t<dependency>\n\t\t\t<groupId>org.springframework.ai</groupId>\n\t\t\t<artifactId>spring-ai-starter-vector-store-bedrock-knowledgebase</artifactId>\n\t\t</dependency>\n\t\t<dependency>\n\t\t\t<groupId>org.springframework.ai</groupId>\n\t\t\t<artifactId>spring-ai-vector-store-advisor</artifactId>\n\t\t</dependency>
     }' pom.xml
 fi
 

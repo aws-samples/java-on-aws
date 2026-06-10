@@ -65,7 +65,7 @@ public class ChatService {
                        @Qualifier("codeInterpreterArtifactStore") ArtifactStore<GeneratedFile> codeInterpreterArtifactStore,
                        @Qualifier("mcpToolCallbacks") ToolCallbackProvider mcpTools,
                        ChatModel chatModel,
-                       @Value("${app.ai.document.model:global.anthropic.claude-opus-4-5-20251101-v1:0}") String documentModel,
+                       @Value("${app.ai.document.model:global.anthropic.claude-opus-4-6-v1}") String documentModel,
                        ChatClient.Builder chatClientBuilder) {
 
         List<Advisor> advisors = new ArrayList<>();
@@ -75,41 +75,31 @@ public class ChatService {
         logger.info("Memory enabled: {} advisors", agentCoreMemory.advisors.size());
 
         // Knowledge Base (RAG)
-        if (kbVectorStore != null) {
-            advisors.add(QuestionAnswerAdvisor.builder(kbVectorStore).build());
-            logger.info("KB RAG enabled");
-        }
+        advisors.add(QuestionAnswerAdvisor.builder(kbVectorStore).build());
+        logger.info("KB RAG enabled");
 
         // ContextAdvisor
         advisors.add(contextAdvisor);
-		logger.info("Context Advisor enabled");
+        logger.info("Context Advisor enabled");
 
         // Tools
         List<Object> localTools = new ArrayList<>();
-        if (webGroundingTools != null) {
-            localTools.add(webGroundingTools);
-			logger.info("Web Grounding enabled");
-        }
+        localTools.add(webGroundingTools);
+        logger.info("Web Grounding enabled");
 
         // Tool Callback Providers
         this.browserArtifactStore = browserArtifactStore;
         List<ToolCallbackProvider> toolCallbackProviders = new ArrayList<>();
-        if (browserTools != null) {
-            toolCallbackProviders.add(browserTools);
-            logger.info("Browser enabled");
-        }
+        toolCallbackProviders.add(browserTools);
+        logger.info("Browser enabled");
 
         this.codeInterpreterArtifactStore = codeInterpreterArtifactStore;
-        if (codeInterpreterTools != null) {
-            toolCallbackProviders.add(codeInterpreterTools);
-            logger.info("Code Interpreter enabled");
-        }
+        toolCallbackProviders.add(codeInterpreterTools);
+        logger.info("Code Interpreter enabled");
 
         // MCP Tools
-        if (mcpTools != null) {
-            toolCallbackProviders.add(mcpTools);
-            logger.info("MCP tools enabled");
-        }
+        toolCallbackProviders.add(mcpTools);
+        logger.info("MCP tools enabled");
 
         this.documentModel = documentModel;
         this.documentClient = ChatClient.builder(chatModel).build();
@@ -151,9 +141,6 @@ public class ChatService {
     }
 
     private Flux<String> appendScreenshots(String sessionId) {
-        if (browserArtifactStore == null) {
-            return Flux.empty();
-        }
         List<GeneratedFile> screenshots = browserArtifactStore.retrieve(sessionId);
         if (screenshots == null || screenshots.isEmpty()) {
             return Flux.empty();
@@ -165,7 +152,7 @@ public class ChatService {
         StringBuilder sb = new StringBuilder();
         for (GeneratedFile screenshot : screenshots) {
             sb.append("\n\n![Screenshot of ")
-                .append(BrowserArtifacts.url(screenshot))
+                .append(BrowserArtifacts.url(screenshot).orElse("unknown"))
                 .append("](")
                 .append(screenshot.toDataUrl())
                 .append(")");
@@ -174,9 +161,6 @@ public class ChatService {
     }
 
     private Flux<String> appendGeneratedFiles(String sessionId) {
-        if (codeInterpreterArtifactStore == null) {
-            return Flux.empty();
-        }
         List<GeneratedFile> files = codeInterpreterArtifactStore.retrieve(sessionId);
         if (files == null || files.isEmpty()) {
             return Flux.empty();

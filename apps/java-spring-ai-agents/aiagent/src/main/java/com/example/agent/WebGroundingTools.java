@@ -53,7 +53,7 @@ public class WebGroundingTools {
 		}
 	}
 
-	private String extractResponse(ConverseResponse response) {
+	static String extractResponse(ConverseResponse response) {
 		var result = new StringBuilder();
 		var citations = new StringBuilder();
 

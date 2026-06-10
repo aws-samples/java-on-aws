@@ -70,7 +70,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock Configuration
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.options.max-tokens=4096
-spring.ai.bedrock.converse.chat.options.model=global.anthropic.claude-sonnet-4-5-20250929-v1:0
+spring.ai.bedrock.converse.chat.options.model=global.anthropic.claude-sonnet-4-6
 spring.ai.bedrock.converse.chat.options.temperature=0.7
 EOF
 
