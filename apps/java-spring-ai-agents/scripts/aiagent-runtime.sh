@@ -201,6 +201,7 @@ if [ "${EXISTING_RUNTIME_ID}" != "None" ] && [ -n "${EXISTING_RUNTIME_ID}" ]; th
         --agent-runtime-artifact "{\"containerConfiguration\":{\"containerUri\":\"${ECR_URI}:latest\"}}" \
         --network-configuration "{\"networkMode\":\"VPC\",\"networkModeConfig\":{\"subnets\":[\"${SUBNET_ID}\"],\"securityGroups\":[\"${SG_ID}\"]}}" \
         ${AUTH_ARGS} \
+        --environment-variables PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
         --region ${AWS_REGION} \
         --no-cli-pager
 
@@ -219,6 +220,7 @@ else
         --agent-runtime-artifact "{\"containerConfiguration\":{\"containerUri\":\"${ECR_URI}:latest\"}}" \
         --network-configuration "{\"networkMode\":\"VPC\",\"networkModeConfig\":{\"subnets\":[\"${SUBNET_ID}\"],\"securityGroups\":[\"${SG_ID}\"]}}" \
         ${AUTH_ARGS} \
+        --environment-variables PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
         --region ${AWS_REGION} \
         --no-cli-pager \
         --query 'agentRuntimeId' --output text)

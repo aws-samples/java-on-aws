@@ -186,6 +186,7 @@ if [ "${EXISTING_RUNTIME_ID}" != "None" ] && [ -n "${EXISTING_RUNTIME_ID}" ]; th
         --network-configuration "{\"networkMode\":\"VPC\",\"networkModeConfig\":{\"subnets\":[\"${SUBNET_ID}\"],\"securityGroups\":[\"${SG_ID}\"]}}" \
         --authorizer-configuration "{\"customJWTAuthorizer\":{\"discoveryUrl\":\"${AIAGENT_DISCOVERY_URL}\",\"allowedClients\":[\"${AIAGENT_CLIENT_ID}\"]}}" \
         --request-header-configuration '{"requestHeaderAllowlist":["Authorization"]}' \
+        --environment-variables PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
         --region ${AWS_REGION} \
         --no-cli-pager
 
@@ -205,6 +206,7 @@ else
         --network-configuration "{\"networkMode\":\"VPC\",\"networkModeConfig\":{\"subnets\":[\"${SUBNET_ID}\"],\"securityGroups\":[\"${SG_ID}\"]}}" \
         --authorizer-configuration "{\"customJWTAuthorizer\":{\"discoveryUrl\":\"${AIAGENT_DISCOVERY_URL}\",\"allowedClients\":[\"${AIAGENT_CLIENT_ID}\"]}}" \
         --request-header-configuration '{"requestHeaderAllowlist":["Authorization"]}' \
+        --environment-variables PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
         --region ${AWS_REGION} \
         --no-cli-pager \
         --query 'agentRuntimeId' --output text)
