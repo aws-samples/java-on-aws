@@ -21,7 +21,7 @@ fi
 if ! grep -q "spring-ai-starter-vector-store-bedrock-knowledgebase" pom.xml; then
     sed -i '/<artifactId>spring-ai-agentcore-memory<\/artifactId>/,/<\/dependency>/{
         /<\/dependency>/a \
-\t\t<!-- Knowledge Base (RAG) -->\n\t\t<dependency>\n\t\t\t<groupId>org.springframework.ai</groupId>\n\t\t\t<artifactId>spring-ai-starter-vector-store-bedrock-knowledgebase</artifactId>\n\t\t</dependency>\n\t\t<dependency>\n\t\t\t<groupId>org.springframework.ai</groupId>\n\t\t\t<artifactId>spring-ai-vector-store-advisor</artifactId>\n\t\t</dependency>
+\t\t<!-- Knowledge Base (RAG) -->\n\t\t<dependency>\n\t\t\t<groupId>org.springframework.ai</groupId>\n\t\t\t<artifactId>spring-ai-starter-vector-store-bedrock-knowledgebase</artifactId>\n\t\t</dependency>\n\t\t<dependency>\n\t\t\t<groupId>org.springframework.ai</groupId>\n\t\t\t<artifactId>spring-ai-vector-store-advisor</artifactId>\n\t\t</dependency>\n\t\t<!-- Bean Validation (Hibernate Validator) - required by the Knowledge Base configuration properties -->\n\t\t<dependency>\n\t\t\t<groupId>org.springframework.boot</groupId>\n\t\t\t<artifactId>spring-boot-starter-validation</artifactId>\n\t\t</dependency>
     }' pom.xml
 fi
 
@@ -83,17 +83,15 @@ public class ChatService {
         logger.info("Memory enabled: {} advisors", agentCoreMemory.advisors.size());
 
         // Knowledge Base (RAG)
-        if (kbVectorStore != null) {
-            advisors.add(QuestionAnswerAdvisor.builder(kbVectorStore)
-                .promptTemplate(PromptTemplate.builder().template("""
-                    {query}
+        advisors.add(QuestionAnswerAdvisor.builder(kbVectorStore)
+            .promptTemplate(PromptTemplate.builder().template("""
+                {query}
 
-                    The following documents may be relevant as reference material:
-                    {question_answer_context}
-                    """).build())
-                .build());
-            logger.info("KB RAG enabled");
-        }
+                The following documents may be relevant as reference material:
+                {question_answer_context}
+                """).build())
+            .build());
+        logger.info("KB RAG enabled");
 
         this.chatClient = chatClientBuilder
             .defaultSystem(SYSTEM_PROMPT)

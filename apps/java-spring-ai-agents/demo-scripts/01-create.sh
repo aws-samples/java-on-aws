@@ -16,7 +16,7 @@ else
       -d language=java \
       -d packaging=jar \
       -d javaVersion=25 \
-      -d bootVersion=4.0.2 \
+      -d bootVersion=4.0.6 \
       -d baseDir=aiagent \
       -d groupId=com.example \
       -d artifactId=agent \

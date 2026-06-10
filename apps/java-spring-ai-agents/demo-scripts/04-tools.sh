@@ -222,17 +222,15 @@ public class ChatService {
         logger.info("Memory enabled: {} advisors", agentCoreMemory.advisors.size());
 
         // Knowledge Base (RAG)
-        if (kbVectorStore != null) {
-            advisors.add(QuestionAnswerAdvisor.builder(kbVectorStore)
-                .promptTemplate(PromptTemplate.builder().template("""
-                    {query}
+        advisors.add(QuestionAnswerAdvisor.builder(kbVectorStore)
+            .promptTemplate(PromptTemplate.builder().template("""
+                {query}
 
-                    The following documents may be relevant as reference material:
-                    {question_answer_context}
-                    """).build())
-                .build());
-            logger.info("KB RAG enabled");
-        }
+                The following documents may be relevant as reference material:
+                {question_answer_context}
+                """).build())
+            .build());
+        logger.info("KB RAG enabled");
 
         // ContextAdvisor
         advisors.add(contextAdvisor);
@@ -240,10 +238,8 @@ public class ChatService {
 
         // Tools
         List<Object> localTools = new ArrayList<>();
-        if (webGroundingTools != null) {
-            localTools.add(webGroundingTools);
-            logger.info("Web Grounding enabled");
-        }
+        localTools.add(webGroundingTools);
+        logger.info("Web Grounding enabled");
 
         this.chatClient = chatClientBuilder
             .defaultSystem(SYSTEM_PROMPT)

@@ -14,6 +14,7 @@ import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -75,7 +76,14 @@ public class ChatService {
         logger.info("Memory enabled: {} advisors", agentCoreMemory.advisors.size());
 
         // Knowledge Base (RAG)
-        advisors.add(QuestionAnswerAdvisor.builder(kbVectorStore).build());
+        advisors.add(QuestionAnswerAdvisor.builder(kbVectorStore)
+            .promptTemplate(PromptTemplate.builder().template("""
+                {query}
+
+                The following documents may be relevant as reference material:
+                {question_answer_context}
+                """).build())
+            .build());
         logger.info("KB RAG enabled");
 
         // ContextAdvisor
