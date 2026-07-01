@@ -28,7 +28,7 @@
 	</scm>
 	<properties>
 		<java.version>25</java.version>
-		<spring-ai.version>1.1.7</spring-ai.version>
+		<spring-ai.version>1.1.8</spring-ai.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
