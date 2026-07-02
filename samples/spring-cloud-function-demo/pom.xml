@@ -15,7 +15,7 @@
         <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <spring-cloud-function.version>4.2.2</spring-cloud-function.version>
+        <spring-cloud-function.version>5.0.3</spring-cloud-function.version>
     </properties>
 
     <dependencies>
