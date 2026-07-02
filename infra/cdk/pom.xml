@@ -13,7 +13,7 @@
         <maven.compiler.target>25</maven.compiler.target>
         <cdk.version>2.235.0</cdk.version>
         <constructs.version>10.6.0</constructs.version>
-        <cdknag.version>2.38.2</cdknag.version>
+        <cdknag.version>3.0.1</cdknag.version>
         <junit.version>6.1.1</junit.version>
     </properties>
 
