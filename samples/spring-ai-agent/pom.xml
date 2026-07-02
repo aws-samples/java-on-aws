@@ -28,7 +28,7 @@
     </scm>
     <properties>
         <java.version>25</java.version>
-        <spring-ai.version>1.1.7</spring-ai.version>
+        <spring-ai.version>1.1.8</spring-ai.version>
         <postgresql.version>42.7.11</postgresql.version>
         <jib-maven-plugin.version>3.4.5</jib-maven-plugin.version>
         <testcontainers.version>1.21.4</testcontainers.version>
