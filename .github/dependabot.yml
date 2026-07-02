@@ -2,6 +2,10 @@
 # package ecosystems to update and where the package manifests are located.
 # Please see the documentation for all configuration options:
 # https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+#
+# Grouping strategy: related dependencies that are released and upgraded
+# together are bundled into a single PR to cut review noise. Anything that
+# does not match a group still gets its own PR (Dependabot's default).
 
 version: 2
 updates:
@@ -10,16 +14,50 @@ updates:
       - "**/*"
     schedule:
       interval: "monthly"
+    open-pull-requests-limit: 15
     groups:
+      # AWS SDK for Java artifacts are versioned in lockstep.
       awssdk:
         patterns:
           - "software.amazon.awssdk:*"
-    open-pull-requests-limit: 15
+      # Spring Boot, Spring Framework, Spring AI and the Spring-adjacent
+      # ecosystem move together on coordinated release trains. Bundling them
+      # keeps a Boot/Spring AI upgrade to a single reviewable PR per module.
+      spring:
+        patterns:
+          - "org.springframework:*"
+          - "org.springframework.*:*"
+          - "org.springaicommunity:*"
+          - "io.awspring.cloud:*"
+      # Build-time Maven plugins.
+      maven-plugins:
+        patterns:
+          - "org.apache.maven.plugins:*"
+          - "org.graalvm.buildtools:*"
+          - "io.spring.javaformat:*"
+          - "com.googlecode.maven-download-plugin:*"
+      # Test tooling.
+      testing:
+        patterns:
+          - "org.testcontainers:*"
+          - "*testcontainers*"
+          - "com.microsoft.playwright:*"
+      # Kubernetes Java client artifacts release together.
+      kubernetes:
+        patterns:
+          - "io.kubernetes:*"
   - package-ecosystem: docker
     directories:
       - "**/*"
     schedule:
       interval: "monthly"
+    groups:
+      docker-images:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: pip
     directory: "/infra/scripts/setup/thread-dump-lambda"
     schedule:
@@ -37,3 +75,7 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

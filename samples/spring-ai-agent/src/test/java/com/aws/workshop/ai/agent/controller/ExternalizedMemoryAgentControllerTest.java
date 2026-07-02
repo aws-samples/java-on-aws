@@ -85,7 +85,7 @@ class ExternalizedMemoryAgentControllerTest {
         // Given
         String modelName = "test-model";
 
-        when(chatClientBuilder.defaultOptions(any(ChatOptions.class))).thenReturn(chatClientBuilder);
+        when(chatClientBuilder.defaultOptions(any(ChatOptions.Builder.class))).thenReturn(chatClientBuilder);
         when(chatClientBuilder.build()).thenReturn(chatClient);
 
         // When & Then
@@ -94,7 +94,7 @@ class ExternalizedMemoryAgentControllerTest {
                 .andExpect(status().isOk());
 
         verify(chatClientBuilder).defaultOptions(argThat(options ->
-                options.getModel() != null && options.getModel().equals(modelName)));
+                options.build().getModel() != null && options.build().getModel().equals(modelName)));
         verify(chatClientBuilder).build();
     }
 }

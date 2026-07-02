@@ -1,7 +1,7 @@
 package com.aws.workshop.ai.agent.controller;
 
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
@@ -14,7 +14,7 @@ import reactor.core.publisher.Flux;
 public class MemoryAgentController {
     private ChatClient chatClient;
     private final ChatClient.Builder chatClientBuilder;
-    private final PromptChatMemoryAdvisor promptChatMemoryAdvisor;
+    private final MessageChatMemoryAdvisor promptChatMemoryAdvisor;
 
     public MemoryAgentController(ChatClient chatClient, ChatClient.Builder chatClientBuilder) {
         this.chatClient = chatClient;
@@ -23,7 +23,7 @@ public class MemoryAgentController {
                 MessageWindowChatMemory.builder()
                         .chatMemoryRepository(new InMemoryChatMemoryRepository())
                         .build();
-        this.promptChatMemoryAdvisor = PromptChatMemoryAdvisor.builder(memory).build();
+        this.promptChatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).build();
     }
 
     @PostMapping("/chat")
@@ -50,9 +50,7 @@ public class MemoryAgentController {
 
     @PostMapping("/model")
     public void updateModel(@RequestParam String model) {
-        var chatOptions = ChatOptions.builder()
-                .model(model).build();
         chatClient = chatClientBuilder
-                .defaultOptions(chatOptions).build();
+                .defaultOptions(ChatOptions.builder().model(model)).build();
     }
 }
