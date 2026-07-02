@@ -107,7 +107,7 @@
             <!-- Pinned to 2.21.4: 2.22.0 is affected by GHSA-5jmj-h7xm-6q6v
                  (case-insensitive deserialization bypasses per-property
                  @JsonIgnoreProperties) with no patched 2.22.x release yet. -->
-            <version>2.21.4</version>
+            <version>2.22.0</version>
         </dependency>
 
         <!-- JSON library for policy parsing -->
