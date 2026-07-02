@@ -19,7 +19,7 @@
         <java.version>25</java.version>
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <aws-sdk.version>2.46.6</aws-sdk.version>
+        <aws-sdk.version>2.46.20</aws-sdk.version>
         <kubernetes-client.version>27.0.0</kubernetes-client.version>
         <!-- Native runtime assets bundled into the image. linux/amd64 only -
              multi-arch is out of scope for the workshop. -->
