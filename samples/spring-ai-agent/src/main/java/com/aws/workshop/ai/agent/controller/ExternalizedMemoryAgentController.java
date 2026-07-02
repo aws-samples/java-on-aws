@@ -2,7 +2,7 @@ package com.aws.workshop.ai.agent.controller;
 
 import com.aws.workshop.ai.agent.memory.ExternalChatMemoryRepository;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.prompt.ChatOptions;
@@ -14,7 +14,7 @@ import reactor.core.publisher.Flux;
 public class ExternalizedMemoryAgentController {
     private ChatClient chatClient;
     private final ChatClient.Builder chatClientBuilder;
-    private final PromptChatMemoryAdvisor promptChatMemoryAdvisor;
+    private final MessageChatMemoryAdvisor promptChatMemoryAdvisor;
 
     public ExternalizedMemoryAgentController(ChatClient chatClient, ChatClient.Builder chatClientBuilder, ExternalChatMemoryRepository externalChatMemoryRepository) {
         this.chatClient = chatClient;
@@ -22,7 +22,7 @@ public class ExternalizedMemoryAgentController {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .chatMemoryRepository(externalChatMemoryRepository)
                 .build();
-        this.promptChatMemoryAdvisor = PromptChatMemoryAdvisor.builder(chatMemory).build();
+        this.promptChatMemoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory).build();
     }
 
     @PostMapping("/chat")
@@ -49,9 +49,7 @@ public class ExternalizedMemoryAgentController {
 
     @PostMapping("/model")
     public void updateModel(@RequestParam String model) {
-        var chatOptions = ChatOptions.builder()
-                .model(model).build();
         chatClient = chatClientBuilder
-                .defaultOptions(chatOptions).build();
+                .defaultOptions(ChatOptions.builder().model(model)).build();
     }
 }

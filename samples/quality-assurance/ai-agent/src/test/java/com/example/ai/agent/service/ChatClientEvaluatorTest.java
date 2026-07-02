@@ -54,7 +54,7 @@ public class ChatClientEvaluatorTest {
         OllamaApi ollamaApi = OllamaApi.builder().baseUrl(endpoint).build();
         evaluationModel = OllamaChatModel.builder()
                 .ollamaApi(ollamaApi)
-                .defaultOptions(OllamaChatOptions.builder()
+                .options(OllamaChatOptions.builder()
                         .model(EVALUATION_MODEL_ID)
                         .build())
                 .modelManagementOptions(ModelManagementOptions.builder()
