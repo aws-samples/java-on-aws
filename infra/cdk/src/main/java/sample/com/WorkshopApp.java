@@ -37,9 +37,24 @@ public class WorkshopApp {
             new NagPackSuppression.Builder().id("AwsSolutions-APIG6").reason("API Gateway access logging not needed for workshop").build(),
             new NagPackSuppression.Builder().id("AwsSolutions-COG4").reason("Workshop environment does not require Cognito User Pool authorization").build(),
 
-            // IAM
-            new NagPackSuppression.Builder().id("AwsSolutions-IAM4").reason("AWS Managed policies are acceptable for workshop").build(),
-            new NagPackSuppression.Builder().id("AwsSolutions-IAM5").reason("Wildcard permissions acceptable for workshop parallel resource creation").build(),
+            // IAM - IAM4/IAM5 require appliesTo evidence to suppress
+            new NagPackSuppression.Builder().id("AwsSolutions-IAM4")
+                .appliesTo(List.of(
+                    "Policy::arn:<AWS::Partition>:iam::aws:policy/AdministratorAccess",
+                    "Policy::arn:<AWS::Partition>:iam::aws:policy/PowerUserAccess",
+                    "Policy::arn:<AWS::Partition>:iam::aws:policy/ReadOnlyAccess",
+                    "Policy::arn:<AWS::Partition>:iam::aws:policy/AmazonSSMManagedInstanceCore",
+                    "Policy::arn:<AWS::Partition>:iam::aws:policy/CloudWatchAgentServerPolicy",
+                    "Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"))
+                .reason("AWS managed policies are acceptable for workshop").build(),
+            new NagPackSuppression.Builder().id("AwsSolutions-IAM5")
+                .appliesTo(List.of(
+                    "Resource::*",
+                    "Resource::arn:<AWS::Partition>:ec2:<AWS::Region>:<AWS::AccountId>:network-interface/*",
+                    "Resource::arn:<AWS::Partition>:codebuild:<AWS::Region>:<AWS::AccountId>:report-group/<CodeBuildProjectA0FF5539>-*",
+                    "Resource::arn:<AWS::Partition>:logs:<AWS::Region>:<AWS::AccountId>:log-group:/aws/codebuild/<CodeBuildProjectA0FF5539>:*",
+                    "Resource::arn:aws:logs:<AWS::Region>:<AWS::AccountId>:log-group:/aws/bedrock/*"))
+                .reason("Wildcard permissions acceptable for workshop parallel resource creation").build(),
 
             // RDS
             new NagPackSuppression.Builder().id("AwsSolutions-RDS2").reason("Workshop non-sensitive test database does not need encryption at rest").build(),
