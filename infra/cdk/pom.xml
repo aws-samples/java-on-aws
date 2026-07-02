@@ -11,7 +11,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>25</maven.compiler.source>
         <maven.compiler.target>25</maven.compiler.target>
-        <cdk.version>2.235.0</cdk.version>
+        <cdk.version>2.250.0</cdk.version>
         <constructs.version>10.6.0</constructs.version>
         <cdknag.version>2.38.2</cdknag.version>
         <junit.version>6.1.1</junit.version>
@@ -52,13 +52,6 @@
             <groupId>software.constructs</groupId>
             <artifactId>constructs</artifactId>
             <version>${constructs.version}</version>
-        </dependency>
-
-        <!-- EKS v2 Alpha L2 Construct -->
-        <dependency>
-            <groupId>software.amazon.awscdk</groupId>
-            <artifactId>eks-v2-alpha</artifactId>
-            <version>${cdk.version}-alpha.0</version>
         </dependency>
 
         <!-- CDK Nag for best practices validation -->
