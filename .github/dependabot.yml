@@ -12,6 +12,10 @@ updates:
   - package-ecosystem: maven
     directories:
       - "**/*"
+      # Exclude the vendored artifact pom shipped inside the authorization
+      # server's META-INF/ (it is dependency metadata, not a buildable
+      # module) so Dependabot stops opening noise PRs against it.
+      - "!/samples/security/oauth/authorization-server/META-INF/**"
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 15
