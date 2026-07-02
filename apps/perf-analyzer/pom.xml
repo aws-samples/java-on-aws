@@ -21,7 +21,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-ai.version>2.0.0</spring-ai.version>
         <aws-sdk.version>2.46.6</aws-sdk.version>
-        <kubernetes-client.version>26.0.0</kubernetes-client.version>
+        <kubernetes-client.version>27.0.0</kubernetes-client.version>
     </properties>
 
     <dependencyManagement>
