@@ -15,7 +15,7 @@
 	<description>Simple Bedrock Chat Client for Spring AI</description>
 	<properties>
 		<java.version>25</java.version>
-		<spring-ai.version>1.1.7</spring-ai.version>
+		<spring-ai.version>1.1.8</spring-ai.version>
 	</properties>
 	<dependencies>
 		<dependency>
