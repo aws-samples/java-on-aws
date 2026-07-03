@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TEMPORARY placeholder to purge a stale GitHub dependency-graph manifest.
+
+  The real module under labs/unicorn-store/ was removed from main in Feb 2025,
+  but GitHub never dropped this pom.xml from the dependency graph, so it keeps
+  generating phantom Dependabot alerts / update runs (tomcat, jackson, netty,
+  logback, ...) against dependencies that no longer exist here.
+
+  This dependency-free pom re-registers the path so GitHub re-scans it (clearing
+  the phantom findings), after which it is deleted in a follow-up commit to drop
+  the manifest from the dependency graph entirely.
+
+  DO NOT keep this file. It exists only to force a dependency-graph reconciliation.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.unicorn</groupId>
+    <artifactId>unicorn-store-spring-removed</artifactId>
+    <version>0.0.0</version>
+    <packaging>pom</packaging>
+</project>
