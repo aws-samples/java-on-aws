@@ -41,6 +41,7 @@ kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1 || {
 }
 
 helm repo add grafana https://grafana.github.io/helm-charts >/dev/null 2>&1 || true
+helm repo add grafana-community https://grafana-community.github.io/helm-charts >/dev/null 2>&1 || true
 helm repo update >/dev/null
 
 CLUSTER_NAME="${PREFIX}-eks"
@@ -288,7 +289,7 @@ GRAFANA_URL="http://${GRAFANA_LB}"
 
 # Install Profiles Drilldown plugin (idempotent).
 log_info "Installing Grafana Profiles Drilldown plugin..."
-helm upgrade --install grafana grafana/grafana \
+helm upgrade --install grafana grafana-community/grafana \
     --namespace "${NAMESPACE}" \
     --reuse-values \
     --set "plugins={grafana-pyroscope-app}" \
