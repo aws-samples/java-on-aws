@@ -113,13 +113,5 @@
           <version>${junit.version}</version>
           <scope>test</scope>
         </dependency>
-
-        <!-- Property-based testing with jqwik -->
-        <dependency>
-            <groupId>net.jqwik</groupId>
-            <artifactId>jqwik</artifactId>
-            <version>1.10.1</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 </project>
