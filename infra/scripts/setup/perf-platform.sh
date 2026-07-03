@@ -293,7 +293,7 @@ helm upgrade --install grafana grafana-community/grafana \
     --namespace "${NAMESPACE}" \
     --reuse-values \
     --set "plugins={grafana-pyroscope-app}" \
-    --wait --timeout 5m
+    --wait --timeout 10m
 log_success "Profiles Drilldown plugin installed"
 
 # Wait for Grafana API to be ready after the helm upgrade restarts the pod.
