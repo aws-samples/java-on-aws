@@ -1,7 +1,8 @@
 package sample.com.constructs;
 
-import net.jqwik.api.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import sample.com.constructs.Ide.IdeArch;
 import sample.com.constructs.Ide.IdeProps;
 
@@ -24,8 +25,9 @@ public class IdePropsTest {
      * - ARM64: instance types contain 'g' suffix (m7g, m6g, c7g, t4g)
      * - X86_64: instance types do NOT contain 'g' suffix before size (m7i, m6i, m5, t3)
      */
-    @Property(tries = 100)
-    void architectureDeterminesInstanceTypes(@ForAll("ideArchProvider") IdeArch arch) {
+    @ParameterizedTest
+    @EnumSource(IdeArch.class)
+    void architectureDeterminesInstanceTypes(IdeArch arch) {
         // Given
         IdeProps props = IdeProps.builder()
             .ideArch(arch)
@@ -55,11 +57,6 @@ public class IdePropsTest {
                 );
             }
         }
-    }
-
-    @Provide
-    Arbitrary<IdeArch> ideArchProvider() {
-        return Arbitraries.of(IdeArch.ARM64, IdeArch.X86_64_AMD, IdeArch.X86_64_INTEL);
     }
 
     /**
