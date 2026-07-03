@@ -44,7 +44,7 @@ trap cleanup EXIT
 # Setup
 kubectl create namespace "$NAMESPACE" 2>/dev/null || true
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
-helm repo add grafana https://grafana.github.io/helm-charts || true
+helm repo add grafana-community https://grafana-community.github.io/helm-charts || true
 helm repo update
 
 # Grafana secret
@@ -152,7 +152,7 @@ grafana.ini:
 EOF
 
 log_info "Deploying Grafana..."
-helm upgrade --install grafana grafana/grafana \
+helm upgrade --install grafana grafana-community/grafana \
   --namespace "$NAMESPACE" \
   --values "$GRAFANA_VALUES_FILE"
 
