@@ -116,6 +116,13 @@ persistence:
   storageClassName: gp3
   size: 10Gi
 
+# The PVC above is ReadWriteOnce (EBS). RollingUpdate (the chart default)
+# starts the new pod before the old one is deleted, so the new pod cannot
+# attach the volume still held by the old pod and the upgrade deadlocks.
+# Recreate terminates the old pod first, releasing the volume.
+deploymentStrategy:
+  type: Recreate
+
 resources:
   requests:
     cpu: 100m
