@@ -289,10 +289,17 @@ GRAFANA_URL="http://${GRAFANA_LB}"
 
 # Install Profiles Drilldown plugin (idempotent).
 log_info "Installing Grafana Profiles Drilldown plugin..."
+# Pin grafana-pyroscope-app to 1.17.0. The workshop serves Grafana over plain
+# HTTP (not a browser secure context), and the 2.x plugin line calls
+# crypto.randomUUID() at load, which browsers only expose over HTTPS/localhost,
+# so 2.x fails with "crypto.randomUUID is not a function". 1.17.0 is the last
+# release whose entry bundle avoids that call. It targets React 18, so it
+# requires Grafana 12.x (see the image.tag pin in monitoring.sh); Grafana 13
+# ships React 19 and breaks the 1.x plugin.
 helm upgrade --install grafana grafana-community/grafana \
     --namespace "${NAMESPACE}" \
     --reuse-values \
-    --set "plugins={grafana-pyroscope-app}" \
+    --set "plugins={grafana-pyroscope-app@1.17.0}" \
     --wait --timeout 10m
 log_success "Profiles Drilldown plugin installed"
 
