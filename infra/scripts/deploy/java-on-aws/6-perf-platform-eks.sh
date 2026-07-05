@@ -496,9 +496,59 @@ log_info "200 requests/sec for 4 minutes against the workload's ALB."
 log_info "The alert transitions Normal -> Pending -> Firing, and Grafana posts the"
 log_info "webhook to the analyzer. This runs in the foreground for the full 4 minutes."
 
+ANALYSIS_PREFIX="perf-platform/analysis/eks/unicorn-store-spring/"
+
+# Record the newest report that exists BEFORE the regression, so we can tell the
+# webhook-triggered report apart from the on-demand sanity report above.
+BASELINE_REPORT=$(aws s3 ls "s3://${S3_BUCKET}/${ANALYSIS_PREFIX}" --recursive --no-cli-pager 2>/dev/null \
+  | grep analysis.md | sort | tail -1 | awk '{print $4}' || true)
+log_info "Baseline latest report before regression: ${BASELINE_REPORT:-<none>}"
+
 SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks)
 log_info "Load target: ${SVC_URL}"
 ~/java-on-aws/infra/scripts/test/benchmark.sh ${SVC_URL} 240 200
 
-log_success "Performance platform deployed and regression driven."
-echo "✅ Success: perf-collector + perf-analyzer deployed, workload onboarded, ServiceLatency-eks rule created, regression driven (200 rps / 4 min)"
+log_success "Regression load finished."
+
+# ============================================================================
+# SECTION 6: Reading the auto-generated report (on-alert chapter, final step)
+# ============================================================================
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "SECTION 6: Reading the auto-generated report"
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "Waiting for the webhook-triggered analysis report to land in Amazon S3..."
+
+# The alert fires ~1-2 min into the load and the analyzer writes the report
+# ~30-60s later, so a fresh report usually already exists. Poll for one newer
+# than the pre-regression baseline (up to ~5 minutes).
+LATEST=""
+for i in {1..30}; do
+  LATEST=$(aws s3 ls "s3://${S3_BUCKET}/${ANALYSIS_PREFIX}" --recursive --no-cli-pager 2>/dev/null \
+    | grep analysis.md | sort | tail -1 | awk '{print $4}' || true)
+  if [[ -n "${LATEST}" && "${LATEST}" != "${BASELINE_REPORT}" ]]; then
+    log_success "New analysis report detected."
+    break
+  fi
+  log_info "Waiting for the analysis report... ($i/30)"
+  sleep 10
+done
+
+if [[ -z "${LATEST}" ]]; then
+  log_warning "No analysis report found under s3://${S3_BUCKET}/${ANALYSIS_PREFIX} yet."
+  log_warning "Check the analyzer logs: kubectl logs -n ${MON_NS} -l app=perf-analyzer --tail=80"
+elif [[ "${LATEST}" == "${BASELINE_REPORT}" ]]; then
+  log_warning "No report newer than the baseline appeared within the wait window."
+  log_warning "The alert may not have fired yet; latest available report: ${LATEST}"
+fi
+
+if [[ -n "${LATEST}" ]]; then
+  ANALYSIS_ID=$(echo "${LATEST}" | awk -F/ '{print $(NF-1)}')
+  LOCAL_FILE=~/environment/incident-analysis-${ANALYSIS_ID}.md
+  aws s3 cp "s3://${S3_BUCKET}/${LATEST}" "${LOCAL_FILE}" --no-cli-pager
+  echo "📄 Local file: ${LOCAL_FILE}"
+  echo "🔗 S3 console: https://${AWS_REGION}.console.aws.amazon.com/s3/buckets/${S3_BUCKET}?prefix=$(dirname ${LATEST})/"
+  command -v code >/dev/null 2>&1 && code "${LOCAL_FILE}" || true
+fi
+
+log_success "Performance platform deployed, regression driven, report retrieved."
+echo "✅ Success: perf-collector + perf-analyzer deployed, workload onboarded, ServiceLatency-eks rule created, regression driven (200 rps / 4 min), analysis report downloaded"
