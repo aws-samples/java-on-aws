@@ -100,6 +100,15 @@ trap - EXIT
 
 # Grafana values
 cat > "$GRAFANA_VALUES_FILE" <<EOF
+# Pin Grafana to 12.x (React 18). Grafana 13 moved to React 19, which breaks
+# the grafana-pyroscope-app 1.x plugin (it reads a React 18 internal removed
+# in React 19). We must stay on the 1.x plugin because the 2.x line calls
+# crypto.randomUUID(), unavailable over plain HTTP (the workshop serves
+# Grafana over HTTP, not a browser secure context). Grafana 12.x + plugin
+# 1.17.0 is the combination that loads over HTTP.
+image:
+  tag: "12.3.1"
+
 admin:
   existingSecret: grafana-admin
   userKey: username
