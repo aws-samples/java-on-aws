@@ -56,6 +56,7 @@ log_info "SECTION 1: Deploying the collector"
 log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 log_info "Copying perf-collector sources..."
+rm -rf ~/environment/perf-collector
 cp -r ~/java-on-aws/apps/perf-collector ~/environment/
 log_success "perf-collector sources copied"
 
@@ -228,6 +229,7 @@ log_info "SECTION 2: Building the analyzer"
 log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 log_info "Copying perf-analyzer sources..."
+rm -rf ~/environment/perf-analyzer
 cp -r ~/java-on-aws/apps/perf-analyzer ~/environment/
 log_success "perf-analyzer sources copied"
 
