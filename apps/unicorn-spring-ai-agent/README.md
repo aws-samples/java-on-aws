@@ -30,10 +30,10 @@ This application serves as:
 
 ### Technology Stack
 
-- **Java 21**: Latest LTS version with modern language features
-- **Spring Boot 3.5.4**: Core framework for building the application
-- **Spring AI 1.0.0**: AI integration framework
-- **Amazon Bedrock**: AI model provider (Claude 3.7 Sonnet)
+- **Java 25**: Latest LTS version with modern language features
+- **Spring Boot 4.1.0**: Core framework for building the application
+- **Spring AI 2.0.0**: AI integration framework
+- **Amazon Bedrock**: AI model provider (Claude Sonnet 4.6)
 - **PostgreSQL**: Database with pgvector extension for vector operations
 - **Thymeleaf**: Server-side templating for the web interface
 - **Tailwind CSS**: Utility-first CSS framework for styling
@@ -94,8 +94,8 @@ The application follows a layered architecture with the following components:
 
 ### Prerequisites
 
-- Java 21 or higher
-- Maven 3.8 or higher
+- Java 25 or higher
+- Maven 3.9 or higher
 - Docker and Docker Compose (for PostgreSQL)
 - PostgreSQL with pgvector extension
 - AWS account with Amazon Bedrock access
@@ -137,7 +137,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
    ```
 
 2. Ensure you have access to Amazon Bedrock and the required models:
-   - Claude 3.7 Sonnet (`us.anthropic.claude-3-7-sonnet-20250219-v1:0`)
+   - Claude Sonnet 4.6 (`global.anthropic.claude-sonnet-4-6`)
    - Titan Embed Text v2 (`amazon.titan-embed-text-v2:0`)
 
 ### Application Configuration
@@ -338,7 +338,7 @@ spring.application.name=agent
 logging.level.org.springframework.ai=DEBUG
 
 # Amazon Bedrock Configuration
-spring.ai.bedrock.converse.chat.options.model=us.anthropic.claude-3-7-sonnet-20250219-v1:0
+spring.ai.bedrock.converse.chat.options.model=global.anthropic.claude-sonnet-4-6
 
 # UI Configuration
 spring.thymeleaf.cache=false
