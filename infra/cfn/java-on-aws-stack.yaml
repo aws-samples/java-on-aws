@@ -13,10 +13,14 @@ Metadata:
         reason: API Gateway access logging not needed for workshop
       - id: AwsSolutions-COG4
         reason: Workshop environment does not require Cognito User Pool authorization
-      - id: AwsSolutions-IAM4
-        reason: AWS Managed policies are acceptable for workshop
-      - id: AwsSolutions-IAM5
-        reason: Wildcard permissions acceptable for workshop parallel resource creation
+      - applies_to:
+          - regex: /^Policy::.*$/g
+        id: AwsSolutions-IAM4
+        reason: AWS managed policies are acceptable for the ephemeral workshop environment
+      - applies_to:
+          - regex: /^(Action|Resource)::.*$/g
+        id: AwsSolutions-IAM5
+        reason: Wildcard permissions are acceptable for the ephemeral workshop environment
       - id: AwsSolutions-RDS2
         reason: Workshop non-sensitive test database does not need encryption at rest
       - id: AwsSolutions-RDS3
@@ -422,7 +426,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1780311401249"
+      ContentHash: "1783086703971"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2013,7 +2017,7 @@ Resources:
                   - prod-xdkflymybwmvi
                   - prod-mxcfnwvpd6kb4
                   - prod-jhuafngbly644
-                  - prod-4pmewlybdftbs
+                  - prod-5ukwuglpt66kg
                   - prod-ffvjxvh4ltq64
               "Null":
                 aws-marketplace:ProductId: "false"
@@ -3381,7 +3385,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260601125641"
+            - "-20260703155143"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
