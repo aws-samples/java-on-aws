@@ -170,8 +170,51 @@ roleRef:
 EOF
 
 kubectl apply -f ~/environment/perf-collector/k8s/daemonset.yaml
-kubectl rollout status daemonset/perf-collector -n ${MON_NS} --timeout=180s
-log_success "perf-collector DaemonSet is healthy"
+
+# The collector is a DaemonSet (one pod per node). A small, compute-optimized
+# EKS Auto node (e.g. c6a.large, ~3Gi) can be memory-saturated by the monitoring
+# stack and unable to fit the 256Mi collector pod. That is harmless as long as
+# the collector runs on the node(s) hosting the target workload, so wait for
+# coverage of the workload node(s) rather than requiring every DaemonSet pod to
+# be Ready (a plain `kubectl rollout status` would hang and then hard-fail).
+kubectl rollout status daemonset/perf-collector -n ${MON_NS} --timeout=120s \
+  || log_warning "DaemonSet not fully rolled out; a node may be too small to fit the collector. Checking workload coverage..."
+
+log_info "Confirming a collector pod runs on the node(s) hosting ${APP_NAME}..."
+COVERED=""
+for i in {1..18}; do
+  WORKLOAD_NODES=$(kubectl get pods -n ${APP_NAMESPACE} -l app=${APP_NAME} \
+    --field-selector=status.phase=Running \
+    -o jsonpath='{range .items[*]}{.spec.nodeName}{"\n"}{end}' 2>/dev/null | sort -u)
+  COLLECTOR_NODES=$(kubectl get pods -n ${MON_NS} -l app=perf-collector \
+    --field-selector=status.phase=Running \
+    -o jsonpath='{range .items[*]}{.spec.nodeName}{"\n"}{end}' 2>/dev/null | sort -u)
+  if [[ -n "${WORKLOAD_NODES}" ]]; then
+    COVERED="yes"
+    while IFS= read -r n; do
+      [[ -z "$n" ]] && continue
+      echo "${COLLECTOR_NODES}" | grep -qx "$n" || COVERED=""
+    done <<< "${WORKLOAD_NODES}"
+    [[ -n "${COVERED}" ]] && break
+  fi
+  log_info "Waiting for collector coverage of workload node(s)... ($i/18)"
+  sleep 10
+done
+
+if [[ -z "${COVERED}" ]]; then
+  log_error "No perf-collector pod is Running on the node(s) hosting ${APP_NAME}."
+  kubectl get pods -n ${MON_NS} -l app=perf-collector -o wide || true
+  exit 1
+fi
+log_success "perf-collector covers the workload node(s)"
+
+# Surface, but tolerate, collector pods that cannot schedule on saturated nodes.
+PENDING=$(kubectl get pods -n ${MON_NS} -l app=perf-collector \
+  --field-selector=status.phase=Pending -o name 2>/dev/null || true)
+if [[ -n "${PENDING}" ]]; then
+  log_warning "Some collector pods are Pending (a node is too small/saturated to fit the 256Mi request)."
+  log_warning "Expected on tight EKS Auto nodes and harmless here — the collector covers the workload node(s)."
+fi
 
 log_info "Collector pods:"
 kubectl get pods -n ${MON_NS} -l app=perf-collector -o wide
