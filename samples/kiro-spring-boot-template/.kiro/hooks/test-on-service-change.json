@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Test on Service Change",
+      "trigger": "PostFileSave",
+      "description": "Triggers the write-tests skill when Java files in service, api, or persistence packages are saved",
+      "matcher": "(service|api|persistence)/.*\\\\.java$",
+      "action": {
+        "type": "agent",
+        "prompt": "A Java file in the service, api, or persistence layer was just saved. Use the write-tests skill to add or improve tests for the changed code using the smallest suitable test scope."
+      }
+    }
+  ]
+}

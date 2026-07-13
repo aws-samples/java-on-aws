@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Review on PR",
+      "trigger": "PostToolUse",
+      "description": "Triggers the review-pr skill when a PR is created",
+      "matcher": "gh.*pr",
+      "action": {
+        "type": "agent",
+        "prompt": "A pull request was just created or opened. Use the review-pr skill to review the code changes against repository steering and provide actionable findings."
+      }
+    }
+  ]
+}
