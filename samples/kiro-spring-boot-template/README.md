@@ -26,8 +26,8 @@ This template is designed to give Kiro enough structure to produce consistent, r
     architecture-principles.md
     review-checklist.md
   hooks/
-    review-on-pr.yaml
-    test-on-service-change.yaml
+    review-on-pr.json
+    test-on-service-change.json
   skills/
     implement-endpoint/
       SKILL.md
@@ -137,11 +137,13 @@ Example task prompts:
 
 ## Hooks
 
-### `review-on-pr.yaml`
-Triggers the `review-pr` skill when a pull request is opened.
+The hooks are defined as JSON files under `.kiro/hooks/`.
 
-### `test-on-service-change.yaml`
-Triggers the `write-tests` skill when Java files in service, API, or persistence paths change.
+### `review-on-pr.json`
+A `PostToolUse` hook with the matcher `gh.*pr`. It triggers the `review-pr` skill when a pull request is created or opened through the GitHub CLI (`gh`), reviewing the change against the local steering.
+
+### `test-on-service-change.json`
+A `PostFileSave` hook with the matcher `(service|api|persistence)/.*\.java$`. It triggers the `write-tests` skill when a Java file in the service, API, or persistence layer is saved, adding or improving tests with the smallest suitable scope.
 
 These hooks are intentionally narrow. They should support the workflow, not dominate it.
 
@@ -151,7 +153,7 @@ The `.kiro/` directory acts as a repository-local overlay.
 
 It does not replace your application code, build files, or test structure. Instead, it sits alongside the project and tells Kiro how to reason about that codebase.
 
-Think of it as an instruction layer with three jobs:
+Think of it as an instruction layer with four jobs:
 
 1. Steering tells Kiro what “good” looks like in this repository.
 2. Architecture principles tell Kiro which boundaries and dependency directions must be preserved.
