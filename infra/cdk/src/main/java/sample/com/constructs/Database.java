@@ -87,7 +87,7 @@ public class Database extends Construct {
         database = DatabaseCluster.Builder.create(this, "Cluster")
             .engine(DatabaseClusterEngine.auroraPostgres(
                 AuroraPostgresClusterEngineProps.builder()
-                    .version(AuroraPostgresEngineVersion.VER_16_4)
+                    .version(AuroraPostgresEngineVersion.VER_16_13)
                     .build()))
             .serverlessV2MinCapacity(0.5)
             .serverlessV2MaxCapacity(4)

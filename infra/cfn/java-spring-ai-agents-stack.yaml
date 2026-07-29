@@ -1134,7 +1134,7 @@ Resources:
       DatabaseName: workshop
       EnableHttpEndpoint: true
       Engine: aurora-postgresql
-      EngineVersion: "16.4"
+      EngineVersion: "16.13
       MasterUserPassword:
         Fn::Join:
           - ""
