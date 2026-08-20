@@ -4,10 +4,13 @@ import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 import software.amazon.awscdk.services.ecr.Repository;
+import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
+import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.constructs.Construct;
 import sample.com.constructs.*;
 import sample.com.constructs.Ide.IdeProps;
+import java.util.List;
 import java.util.Map;
 
 public class WorkshopStack extends Stack {
@@ -84,6 +87,17 @@ public class WorkshopStack extends Stack {
                 .environmentVariables(Map.of(
                     "TEMPLATE_TYPE", templateType,
                     "GIT_BRANCH", gitBranch))
+                .rolePolicyStatements(List.of(PolicyStatement.Builder.create()
+                    .effect(Effect.ALLOW)
+                    .actions(List.of("iam:CreateServiceLinkedRole"))
+                    .resources(List.of("arn:aws:iam::*:role/aws-service-role/*"))
+                    .conditions(Map.of("StringEquals", Map.of("iam:AWSServiceName", List.of(
+                        "ecs.amazonaws.com",
+                        "elasticloadbalancing.amazonaws.com",
+                        "network.bedrock-agentcore.amazonaws.com",
+                        "runtime-identity.bedrock-agentcore.amazonaws.com"
+                    ))))
+                    .build()))
                 .buildSpec(buildSpec)
                 .build());
 
@@ -94,9 +108,17 @@ public class WorkshopStack extends Stack {
                 .build());
 
         // ECR Registry settings (Repository Creation Template for create-on-push)
+        List<String> ecrRepositoryNames = (isJavaOnAws || isEks)
+            ? List.of("ai-jvm-analyzer", "perf-analyzer", "perf-collector")
+            : isSpringAi
+                ? List.of("aiagent", "mcpserver")
+                : (isAiAgents || isAiAgentsAdvanced)
+                    ? List.of("aiagent", "backoffice")
+                    : List.of();
         EcrRegistry ecrRegistry = new EcrRegistry(this, "EcrRegistry",
             EcrRegistry.EcrRegistryProps.builder()
                 .prefix(prefix)
+                .repositoryNames(ecrRepositoryNames)
                 .build());
 
         // Bedrock logging role (for model invocation logging to CloudWatch)
@@ -200,18 +222,81 @@ public class WorkshopStack extends Stack {
                             .statements(java.util.List.of(
                                 software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
                                     .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
-                                    .actions(java.util.List.of("bedrock:*", "bedrock-agentcore:*"))
+                                    .actions(java.util.List.of(
+                                        "bedrock:InvokeModel",
+                                        "bedrock:InvokeModelWithResponseStream"
+                                    ))
+                                    .resources(java.util.List.of(
+                                        "arn:aws:bedrock:*::foundation-model/*",
+                                        "arn:aws:bedrock:*:" + this.getAccount() + ":inference-profile/*"
+                                    ))
+                                    .build(),
+                                software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                                    .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                                    .actions(java.util.List.of("bedrock:Retrieve", "bedrock:RetrieveAndGenerate"))
+                                    .resources(java.util.List.of("arn:aws:bedrock:*:" + this.getAccount() + ":knowledge-base/*"))
+                                    .build(),
+                                software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                                    .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                                    .actions(java.util.List.of(
+                                        "bedrock-agentcore:CreateEvent",
+                                        "bedrock-agentcore:GetEvent",
+                                        "bedrock-agentcore:ListEvents",
+                                        "bedrock-agentcore:RetrieveMemoryRecords",
+                                        "bedrock-agentcore:GetWorkloadAccessToken",
+                                        "bedrock-agentcore:GetWorkloadAccessTokenForJWT",
+                                        "bedrock-agentcore:GetWorkloadAccessTokenForUserId",
+                                        "bedrock-agentcore:InvokeAgentRuntime",
+                                        "bedrock-agentcore:InvokeGateway",
+                                        "bedrock-agentcore:StartBrowserSession",
+                                        "bedrock-agentcore:GetBrowserSession",
+                                        "bedrock-agentcore:StopBrowserSession",
+                                        "bedrock-agentcore:UpdateBrowserStream",
+                                        "bedrock-agentcore:StartCodeInterpreterSession",
+                                        "bedrock-agentcore:GetCodeInterpreterSession",
+                                        "bedrock-agentcore:InvokeCodeInterpreter",
+                                        "bedrock-agentcore:StopCodeInterpreterSession"
+                                    ))
+                                    .resources(java.util.List.of("arn:aws:bedrock-agentcore:*:" + this.getAccount() + ":*"))
+                                    .build(),
+                                software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                                    .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                                    .actions(java.util.List.of("ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"))
+                                    .resources(java.util.List.of("arn:aws:ecr:*:" + this.getAccount() + ":repository/aiagent"))
+                                    .build(),
+                                software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                                    .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                                    .actions(java.util.List.of("ecr:GetAuthorizationToken"))
                                     .resources(java.util.List.of("*"))
                                     .build(),
                                 software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
                                     .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
-                                    .actions(java.util.List.of("ecr:*", "logs:*", "xray:*", "cloudwatch:*"))
+                                    .actions(java.util.List.of(
+                                        "logs:DescribeLogStreams",
+                                        "logs:CreateLogGroup",
+                                        "logs:PutResourcePolicy",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ))
+                                    .resources(java.util.List.of("arn:aws:logs:*:" + this.getAccount() + ":log-group:/aws/bedrock-agentcore/runtimes/*"))
+                                    .build(),
+                                software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                                    .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                                    .actions(java.util.List.of(
+                                        "logs:DescribeLogGroups",
+                                        "xray:PutTraceSegments",
+                                        "xray:PutTelemetryRecords",
+                                        "xray:GetSamplingRules",
+                                        "xray:GetSamplingTargets"
+                                    ))
                                     .resources(java.util.List.of("*"))
                                     .build(),
                                 software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
                                     .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
-                                    .actions(java.util.List.of("aws-marketplace:Subscribe", "aws-marketplace:Unsubscribe", "aws-marketplace:ViewSubscriptions"))
+                                    .actions(java.util.List.of("cloudwatch:PutMetricData"))
                                     .resources(java.util.List.of("*"))
+                                    .conditions(java.util.Map.of("StringEquals", java.util.Map.of(
+                                        "cloudwatch:namespace", "bedrock-agentcore")))
                                     .build()
                             ))
                             .build()
@@ -302,6 +387,25 @@ public class WorkshopStack extends Stack {
                         .privilegedMode(true)
                         .environmentVariables(Map.of(
                             "TEMPLATE_TYPE", templateType))
+                        .rolePolicyStatements(List.of(
+                            PolicyStatement.Builder.create()
+                                .effect(Effect.ALLOW)
+                                .actions(List.of("sts:GetCallerIdentity", "ecr:GetAuthorizationToken"))
+                                .resources(List.of("*"))
+                                .build(),
+                            PolicyStatement.Builder.create()
+                                .effect(Effect.ALLOW)
+                                .actions(List.of(
+                                    "ecr:BatchCheckLayerAvailability",
+                                    "ecr:CompleteLayerUpload",
+                                    "ecr:GetDownloadUrlForLayer",
+                                    "ecr:InitiateLayerUpload",
+                                    "ecr:PutImage",
+                                    "ecr:UploadLayerPart"
+                                ))
+                                .resources(List.of("arn:aws:ecr:" + this.getRegion() + ":" + this.getAccount() + ":repository/aiagent"))
+                                .build()
+                        ))
                         .buildSpec(placeholderBuildSpec)
                         .dependencies(java.util.List.of(
                             vpc.getConcreteVpc(),  // Ensures NAT Gateway is ready
@@ -328,6 +432,7 @@ public class WorkshopStack extends Stack {
             CfnPreDeleteCleanup.CfnPreDeleteCleanupProps.builder()
                 .prefix(prefix)
                 .vpc(vpc.getVpc())
+                .buckets(java.util.List.of(workshopBucket.getBucket(), workshopBucket.getAccessLogBucket()))
                 .build());
     }
 }

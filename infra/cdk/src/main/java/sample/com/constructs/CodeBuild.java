@@ -1,7 +1,9 @@
 package sample.com.constructs;
 
+import software.amazon.awscdk.ArnComponents;
 import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.services.codebuild.*;
 import software.amazon.awscdk.services.events.*;
 import software.amazon.awscdk.services.events.targets.LambdaFunction;
@@ -12,6 +14,7 @@ import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.constructs.Construct;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
 import java.util.Arrays;
@@ -33,6 +36,7 @@ public class CodeBuild extends Construct {
         private Map<String, String> environmentVariables;
         private String buildSpec;
         private List<software.constructs.IDependable> dependencies;
+        private List<PolicyStatement> rolePolicyStatements = List.of();
 
         public static CodeBuildProps.Builder builder() { return new Builder(); }
 
@@ -48,6 +52,7 @@ public class CodeBuild extends Construct {
             public Builder environmentVariables(Map<String, String> environmentVariables) { props.environmentVariables = environmentVariables; return this; }
             public Builder buildSpec(String buildSpec) { props.buildSpec = buildSpec; return this; }
             public Builder dependencies(List<software.constructs.IDependable> dependencies) { props.dependencies = dependencies; return this; }
+            public Builder rolePolicyStatements(List<PolicyStatement> rolePolicyStatements) { props.rolePolicyStatements = List.copyOf(rolePolicyStatements); return this; }
 
             public CodeBuildProps build() { return props; }
         }
@@ -62,6 +67,7 @@ public class CodeBuild extends Construct {
         public Map<String, String> getEnvironmentVariables() { return environmentVariables; }
         public String getBuildSpec() { return buildSpec; }
         public List<software.constructs.IDependable> getDependencies() { return dependencies; }
+        public List<PolicyStatement> getRolePolicyStatements() { return rolePolicyStatements; }
     }
 
     public CodeBuild(final Construct scope, final String id, final IVpc vpc, final Map<String, String> environmentVariables, final String buildSpec) {
@@ -78,10 +84,8 @@ public class CodeBuild extends Construct {
         // Create CodeBuild service role
         this.codeBuildRole = Role.Builder.create(this, "Role")
             .assumedBy(ServicePrincipal.Builder.create("codebuild.amazonaws.com").build())
-            .managedPolicies(List.of(
-                ManagedPolicy.fromAwsManagedPolicyName("PowerUserAccess")
-            ))
             .build();
+        props.getRolePolicyStatements().forEach(codeBuildRole::addToPolicy);
 
         // Create Lambda role for CodeBuild Lambda functions
         this.lambdaRole = Role.Builder.create(this, "LambdaRole")
@@ -90,18 +94,6 @@ public class CodeBuild extends Construct {
                 ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")
             ))
             .build();
-
-        // Add CodeBuild permissions for Lambda functions
-        PolicyStatement codeBuildPermissions = PolicyStatement.Builder.create()
-            .effect(Effect.ALLOW)
-            .actions(List.of(
-                "codebuild:StartBuild",
-                "codebuild:BatchGetBuilds"
-            ))
-            .resources(List.of("*"))
-            .build();
-
-        lambdaRole.addToPolicy(codeBuildPermissions);
 
         // Convert environment variables to CodeBuild format
         Map<String, BuildEnvironmentVariable> codeBuildEnvVars = props.getEnvironmentVariables().entrySet().stream()
@@ -130,6 +122,69 @@ public class CodeBuild extends Construct {
             .environmentVariables(codeBuildEnvVars)
             .timeout(props.getTimeout())
             .build();
+
+        String networkInterfaceArn = Stack.of(this).formatArn(ArnComponents.builder()
+            .service("ec2")
+            .resource("network-interface")
+            .resourceName("*")
+            .build());
+        List<String> subnetArns = props.getVpc().getPrivateSubnets().stream()
+            .map(subnet -> Stack.of(this).formatArn(ArnComponents.builder()
+                .service("ec2")
+                .resource("subnet")
+                .resourceName(subnet.getSubnetId())
+                .build()))
+            .toList();
+        List<String> createNetworkInterfaceResources = new ArrayList<>(subnetArns);
+        createNetworkInterfaceResources.addAll(codebuildProject.getConnections().getSecurityGroups().stream()
+            .map(securityGroup -> Stack.of(this).formatArn(ArnComponents.builder()
+                .service("ec2")
+                .resource("security-group")
+                .resourceName(securityGroup.getSecurityGroupId())
+                .build()))
+            .toList());
+        createNetworkInterfaceResources.add(networkInterfaceArn);
+
+        CfnPolicy vpcPolicy = (CfnPolicy) codebuildProject.getNode()
+            .findChild("PolicyDocument").getNode().getDefaultChild();
+        vpcPolicy.addPropertyOverride("PolicyDocument.Statement", List.of(
+            Map.of(
+                "Effect", "Allow",
+                "Action", List.of("ec2:CreateNetworkInterface"),
+                "Resource", createNetworkInterfaceResources
+            ),
+            Map.of(
+                "Effect", "Allow",
+                "Action", List.of("ec2:CreateNetworkInterfacePermission"),
+                "Resource", networkInterfaceArn,
+                "Condition", Map.of(
+                    "StringEquals", Map.of("ec2:AuthorizedService", "codebuild.amazonaws.com"),
+                    "ArnEquals", Map.of("ec2:Subnet", subnetArns)
+                )
+            ),
+            Map.of(
+                "Effect", "Allow",
+                "Action", List.of("ec2:DeleteNetworkInterface"),
+                "Resource", networkInterfaceArn
+            ),
+            Map.of(
+                "Effect", "Allow",
+                "Action", List.of(
+                    "ec2:DescribeDhcpOptions",
+                    "ec2:DescribeNetworkInterfaces",
+                    "ec2:DescribeSecurityGroups",
+                    "ec2:DescribeSubnets",
+                    "ec2:DescribeVpcs"
+                ),
+                "Resource", "*"
+            )
+        ));
+
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("codebuild:StartBuild", "codebuild:BatchGetBuilds"))
+            .resources(List.of(codebuildProject.getProjectArn()))
+            .build());
 
         // Create start build Lambda function
         var startLambda = new Lambda(this, "StartLambda",

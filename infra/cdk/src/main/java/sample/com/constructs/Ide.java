@@ -179,22 +179,12 @@ public class Ide extends Construct {
         }
         this.ideRole = props.getIdeRole();
 
-        // Add CloudFormation signaling permissions
-        PolicyStatement cfnSignalPermissions = PolicyStatement.Builder.create()
-            .effect(Effect.ALLOW)
-            .actions(List.of(
-                "cloudformation:SignalResource"
-            ))
-            .resources(List.of("*"))
-            .build();
-
-        this.ideRole.addToPolicy(cfnSignalPermissions);
-
         // Load IAM policy: base template uses AdministratorAccess, others use iam-policy.json
         if ("base".equals(props.getTemplateType())) {
             this.ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
         } else {
-            String policyDocumentJson = loadFile("/iam-policy.json");
+            String policyDocumentJson = loadFile("/iam-policy.json")
+                .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
             var policyDocument = PolicyDocument.fromJson(new JSONObject(policyDocumentJson).toMap());
             var policy = ManagedPolicy.Builder.create(this, "UserPolicy")
                 .document(policyDocument)
@@ -202,7 +192,8 @@ public class Ide extends Construct {
             this.ideRole.addManagedPolicy(policy);
 
             // Create permissions boundary for roles created by workshop scripts
-            String boundaryJson = loadFile("/workshop-boundary.json");
+            String boundaryJson = loadFile("/workshop-boundary.json")
+                .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
             var boundaryDocument = PolicyDocument.fromJson(new JSONObject(boundaryJson).toMap());
             ManagedPolicy.Builder.create(this, "WorkshopBoundary")
                 .managedPolicyName("workshop-boundary")
@@ -219,27 +210,55 @@ public class Ide extends Construct {
             .build();
 
         // Add specific permissions for Lambda functions
-        PolicyStatement lambdaPermissions = PolicyStatement.Builder.create()
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
             .actions(List.of(
                 "ec2:DescribeManagedPrefixLists",
-                "ec2:RunInstances",
-                "ec2:TerminateInstances",
-                "ec2:CreateTags",
                 "ec2:DescribeInstances",
                 "ec2:DescribeInstanceStatus",
-                "ec2:DescribeSubnets",
-                "iam:PassRole",
-                "ssm:DescribeInstanceInformation",
-                "ssm:SendCommand",
-                "ssm:GetCommandInvocation",
-                "secretsmanager:GetSecretValue",
-                "secretsmanager:DescribeSecret"
+                "ec2:DescribeSubnets"
             ))
             .resources(List.of("*"))
-            .build();
+            .build());
 
-        lambdaRole.addToPolicy(lambdaPermissions);
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("ec2:RunInstances"))
+            .resources(List.of(
+                "arn:aws:ec2:*::image/*",
+                "arn:aws:ec2:*:*:instance/*",
+                "arn:aws:ec2:*:*:network-interface/*",
+                "arn:aws:ec2:*:*:security-group/*",
+                "arn:aws:ec2:*:*:subnet/*",
+                "arn:aws:ec2:*:*:volume/*"
+            ))
+            .build());
+
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("ec2:CreateTags"))
+            .resources(List.of("arn:aws:ec2:*:*:instance/*"))
+            .conditions(Map.of(
+                "StringEquals", Map.of(
+                    "ec2:CreateAction", "RunInstances",
+                    "aws:RequestTag/Workshop", "true"
+                )
+            ))
+            .build());
+
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("ec2:TerminateInstances"))
+            .resources(List.of("arn:aws:ec2:*:*:instance/*"))
+            .conditions(Map.of("StringEquals", Map.of("ec2:ResourceTag/Workshop", "true")))
+            .build());
+
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("iam:PassRole"))
+            .resources(List.of(this.ideRole.getRoleArn()))
+            .conditions(Map.of("StringEquals", Map.of("iam:PassedToService", "ec2.amazonaws.com")))
+            .build());
 
         // Set up wait condition handle for bootstrap completion (needed for User Data)
         var waitHandle = CfnWaitConditionHandle.Builder.create(this, "WaitConditionHandle")

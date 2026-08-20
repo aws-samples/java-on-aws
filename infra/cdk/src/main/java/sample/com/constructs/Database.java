@@ -96,6 +96,7 @@ public class Database extends Construct {
                 .autoMinorVersionUpgrade(true)
                 .build()))
             .enableDataApi(true)
+            .iamAuthentication(true)
             .defaultDatabaseName("workshop")
             .clusterIdentifier(prefix + "-db-cluster")
             .vpc(vpc)

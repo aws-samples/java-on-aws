@@ -1,6 +1,8 @@
 package sample.com.constructs;
 
+import software.amazon.awscdk.ArnComponents;
 import software.amazon.awscdk.CfnTag;
+import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.services.ecr.CfnRepositoryCreationTemplate;
 import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
@@ -20,6 +22,7 @@ public class EcrRegistry extends Construct {
 
     public static class EcrRegistryProps {
         private String prefix = "workshop";
+        private List<String> repositoryNames = List.of();
 
         public static Builder builder() { return new Builder(); }
 
@@ -27,10 +30,12 @@ public class EcrRegistry extends Construct {
             private EcrRegistryProps props = new EcrRegistryProps();
 
             public Builder prefix(String prefix) { props.prefix = prefix; return this; }
+            public Builder repositoryNames(List<String> repositoryNames) { props.repositoryNames = List.copyOf(repositoryNames); return this; }
             public EcrRegistryProps build() { return props; }
         }
 
         public String getPrefix() { return prefix; }
+        public List<String> getRepositoryNames() { return repositoryNames; }
     }
 
     public EcrRegistry(final Construct scope, final String id, final EcrRegistryProps props) {
@@ -84,12 +89,20 @@ public class EcrRegistry extends Construct {
                 "ecr:TagResource",
                 "ecr:PutLifecyclePolicy"
             ))
-            .resources(List.of("*"))
+            .resources(props.getRepositoryNames().isEmpty()
+                ? List.of("*")
+                : props.getRepositoryNames().stream()
+                    .map(repositoryName -> Stack.of(this).formatArn(ArnComponents.builder()
+                        .service("ecr")
+                        .resource("repository")
+                        .resourceName(repositoryName)
+                        .build()))
+                    .toList())
             .build());
 
         // Create Repository Creation Template
         this.repositoryCreationTemplate = CfnRepositoryCreationTemplate.Builder.create(this, "Template")
-            .prefix("ROOT")  // Applies to all repositories
+            .prefix("ROOT")
             .appliedFor(List.of("CREATE_ON_PUSH", "REPLICATION"))
             .imageTagMutability("MUTABLE")
             .lifecyclePolicy(lifecyclePolicyJson)

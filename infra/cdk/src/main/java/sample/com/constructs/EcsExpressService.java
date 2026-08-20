@@ -66,7 +66,7 @@ public class EcsExpressService extends Construct {
         taskExecutionRole.addToPolicy(PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
             .actions(List.of("logs:CreateLogGroup"))
-            .resources(List.of("*"))
+            .resources(List.of("arn:aws:logs:*:*:log-group:/aws/ecs/" + appName + "*"))
             .build());
         props.getDatabase().grantSecretsRead(taskExecutionRole);
 

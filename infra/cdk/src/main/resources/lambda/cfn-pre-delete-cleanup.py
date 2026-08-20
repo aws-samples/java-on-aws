@@ -11,13 +11,14 @@ def lambda_handler(event, context):
     Custom Resource handler to cleanup resources before stack deletion.
     - GuardDuty VPC endpoints that block VPC deletion
     - GuardDuty managed security groups
-    - S3 bucket contents for workshop- buckets
+    - S3 buckets supplied by the stack
     Note: CloudWatch logs are kept for debugging/analysis
     """
     print(f"Event: {event}")
 
     request_type = event['RequestType']
     vpc_id = event['ResourceProperties'].get('VpcId', '')
+    bucket_names = event['ResourceProperties'].get('BucketNames', [])
 
     try:
         if request_type == 'Delete':
@@ -25,7 +26,7 @@ def lambda_handler(event, context):
             endpoint_ids = start_guardduty_endpoint_deletion(vpc_id)
 
             # While endpoints are deleting, clean up S3
-            cleanup_s3_buckets()
+            cleanup_s3_buckets(bucket_names)
 
             # Wait for VPC endpoint deletion to complete
             if endpoint_ids:
@@ -112,17 +113,16 @@ def cleanup_guardduty_security_groups(vpc_id, max_retries=6, retry_delay=10):
 
     print("GuardDuty security group cleanup completed")
 
-def cleanup_s3_buckets():
-    """Empty S3 buckets with workshop- prefix."""
-    try:
-        response = s3.list_buckets()
-        for bucket in response.get('Buckets', []):
-            bucket_name = bucket['Name']
-            if bucket_name.startswith('workshop-'):
-                print(f"Emptying S3 bucket: {bucket_name}")
-                empty_bucket(bucket_name)
-    except Exception as e:
-        print(f"Error listing S3 buckets: {e}")
+def cleanup_s3_buckets(bucket_names):
+    """Delete only the S3 buckets supplied by the stack."""
+    for bucket_name in bucket_names:
+        print(f"Deleting S3 bucket: {bucket_name}")
+        empty_bucket(bucket_name)
+        try:
+            s3.delete_bucket(Bucket=bucket_name)
+            print(f"Deleted bucket: {bucket_name}")
+        except Exception as e:
+            print(f"Error deleting bucket {bucket_name}: {e}")
 
     print("S3 bucket cleanup completed")
 
