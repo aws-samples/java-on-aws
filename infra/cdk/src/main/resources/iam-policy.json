@@ -197,6 +197,7 @@
 						"bedrock-agentcore.amazonaws.com",
 						"codebuild.amazonaws.com",
 						"ec2.amazonaws.com",
+						"ecs.amazonaws.com",
 						"ecs-tasks.amazonaws.com",
 						"lambda.amazonaws.com",
 						"pods.eks.amazonaws.com"

@@ -501,7 +501,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1787226502073"
+      ContentHash: "1787230220256"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2533,6 +2533,7 @@ Resources:
                   - bedrock-agentcore.amazonaws.com
                   - codebuild.amazonaws.com
                   - ec2.amazonaws.com
+                  - ecs.amazonaws.com
                   - ecs-tasks.amazonaws.com
                   - lambda.amazonaws.com
                   - pods.eks.amazonaws.com
@@ -4149,7 +4150,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260820134822"
+            - "-20260820145020"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -4220,7 +4221,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260820134822"
+            - "-20260820145020"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
