@@ -8,6 +8,7 @@ import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Fn;
 import software.amazon.awscdk.RemovalPolicy;
+import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.services.cloudfront.AllowedMethods;
 import software.amazon.awscdk.services.cloudfront.BehaviorOptions;
 import software.amazon.awscdk.services.cloudfront.CachePolicy;
@@ -93,6 +94,7 @@ public class Ide extends Construct {
         private int bootstrapTimeoutMinutes = 30;
         private String gitBranch = "main";
         private String templateType = "base";
+        private String workshopId = "base";
         private Role ideRole;
 
         // Architecture-specific instance type lists
@@ -118,6 +120,7 @@ public class Ide extends Construct {
             public Builder bootstrapTimeoutMinutes(int bootstrapTimeoutMinutes) { props.bootstrapTimeoutMinutes = bootstrapTimeoutMinutes; return this; }
             public Builder gitBranch(String gitBranch) { props.gitBranch = gitBranch; return this; }
             public Builder templateType(String templateType) { props.templateType = templateType; return this; }
+            public Builder workshopId(String workshopId) { props.workshopId = workshopId; return this; }
             public Builder ideRole(Role ideRole) { props.ideRole = ideRole; return this; }
             public IdeProps build() { return props; }
         }
@@ -149,6 +152,7 @@ public class Ide extends Construct {
         public int getBootstrapTimeoutMinutes() { return bootstrapTimeoutMinutes; }
         public String getGitBranch() { return gitBranch; }
         public String getTemplateType() { return templateType; }
+        public String getWorkshopId() { return workshopId; }
         public Role getIdeRole() { return ideRole; }
     }
 
@@ -359,6 +363,9 @@ public class Ide extends Construct {
             .replace("${GIT_BRANCH}", gitBranch)
             .replace("${AWS_REGION}", Aws.REGION)
             .replace("${TEMPLATE_TYPE}", templateType)
+            .replace("${WORKSHOP_ID}", props.getWorkshopId())
+            .replace("${WORKSHOP_STACK_NAME}", Aws.STACK_NAME)
+            .replace("${WORKSHOP_DEPLOYMENT_ID}", Stack.of(this).getStackId())
             .replace("${ARCH}", props.getIdeArch().getUnameValue())
             .replace("${IDE_TYPE}", props.getIdeType().getScriptName())
             .replace("${WAIT_CONDITION_HANDLE_URL}", waitHandle.getRef())

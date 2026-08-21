@@ -22,6 +22,7 @@ public class EcrRegistry extends Construct {
 
     public static class EcrRegistryProps {
         private String prefix = "workshop";
+        private String workshopId = "base";
         private List<String> repositoryNames = List.of();
 
         public static Builder builder() { return new Builder(); }
@@ -30,11 +31,13 @@ public class EcrRegistry extends Construct {
             private EcrRegistryProps props = new EcrRegistryProps();
 
             public Builder prefix(String prefix) { props.prefix = prefix; return this; }
+            public Builder workshopId(String workshopId) { props.workshopId = workshopId; return this; }
             public Builder repositoryNames(List<String> repositoryNames) { props.repositoryNames = List.copyOf(repositoryNames); return this; }
             public EcrRegistryProps build() { return props; }
         }
 
         public String getPrefix() { return prefix; }
+        public String getWorkshopId() { return workshopId; }
         public List<String> getRepositoryNames() { return repositoryNames; }
     }
 
@@ -115,6 +118,18 @@ public class EcrRegistry extends Construct {
                 CfnTag.builder()
                     .key("ManagedBy")
                     .value("ecr-create-on-push")
+                    .build(),
+                CfnTag.builder()
+                    .key("WorkshopId")
+                    .value(props.getWorkshopId())
+                    .build(),
+                CfnTag.builder()
+                    .key("WorkshopDeploymentId")
+                    .value(Stack.of(this).getStackId())
+                    .build(),
+                CfnTag.builder()
+                    .key("WorkshopOwner")
+                    .value("workshop-run")
                     .build()
             ))
             .description("Auto-create repositories on push with lifecycle policies for " + prefix + " workshop")

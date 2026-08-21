@@ -3,6 +3,7 @@ package sample.com;
 import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
+import software.amazon.awscdk.Tags;
 import software.amazon.awscdk.services.ecr.Repository;
 import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
@@ -49,6 +50,11 @@ public class WorkshopStack extends Stack {
             templateType = "base"; // default
         }
 
+        String workshopId = templateType;
+        Tags.of(this).add("WorkshopId", workshopId);
+        Tags.of(this).add("WorkshopDeploymentId", this.getStackId());
+        Tags.of(this).add("WorkshopOwner", "cloudformation");
+
         // Configuration values - get current git branch from CDK context
         String gitBranch = (String) this.getNode().tryGetContext("git.branch");
         if (gitBranch == null) {
@@ -75,6 +81,7 @@ public class WorkshopStack extends Stack {
             .vpc(vpc.getVpc())
             .gitBranch(gitBranch)
             .templateType(templateType)
+            .workshopId(workshopId)
             .ideArch((isAiAgents || isAiAgentsAdvanced) ? Ide.IdeArch.ARM64 : Ide.IdeArch.X86_64_AMD)
             .build();
         Ide ide = new Ide(this, "Ide", ideProps);
@@ -118,6 +125,7 @@ public class WorkshopStack extends Stack {
         EcrRegistry ecrRegistry = new EcrRegistry(this, "EcrRegistry",
             EcrRegistry.EcrRegistryProps.builder()
                 .prefix(prefix)
+                .workshopId(workshopId)
                 .repositoryNames(ecrRepositoryNames)
                 .build());
 
