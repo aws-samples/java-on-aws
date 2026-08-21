@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AI JVM Analyzer - Deploy continuous profiling and AI-powered analysis
-# Based on: java-on-aws-immersion-day/content/analysis/ai-jvm-analyzer/
+# Based on workshop content under content/analysis/ai-jvm-analyzer/
 # Covers: Continuous profiling, AI JVM Analyzer deployment, up to Grafana credentials retrieval
 #
 # Prerequisites: 1-containerize.sh and 2-eks.sh must be run first

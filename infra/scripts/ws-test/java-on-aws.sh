@@ -5,28 +5,14 @@
 set -Eeuo pipefail
 WS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${WS_SCRIPT_DIR}/runtime.sh"
-ws_begin_run 'Java on AWS - Containers' "${WS_SCRIPT_DIR}/reports/java-on-aws-immersion-day" 5
+ws_begin_run 'Java on AWS - Containers' "${WS_SCRIPT_DIR}/reports/java-on-aws" 5
 ws_source_environment '/etc/profile.d/workshop.sh'
 
 ws_begin_page 'Workshop setup' 20 'workshop-setup/index.en.md'
 
-ws_run_block 'block-001' 'Deploying the development environment' '2. Deploy the CloudFormation stack:' 35 42 'bash' 600 <<'WS_TEST_BLOCK_020_001'
-curl -sL https://raw.githubusercontent.com/aws-samples/java-on-aws/main/infra/cfn/java-on-aws-stack.yaml \
-    -o workshop-stack.yaml
-CFN_S3=cfn-$(uuidgen | tr -d - | tr '[:upper:]' '[:lower:]')
-aws s3 mb s3://${CFN_S3}
-aws cloudformation deploy --stack-name workshop-stack \
-    --template-file ./workshop-stack.yaml \
-    --s3-bucket ${CFN_S3} \
-    --capabilities CAPABILITY_NAMED_IAM
-WS_TEST_BLOCK_020_001
+ws_skip_block 'block-001' 'Deploying the development environment' '2. Deploy the CloudFormation stack:' 35 43 'bash' 'deploys workshop infrastructure in a participant-owned account'
 
-ws_run_block 'block-002' 'Deploying the development environment' '3. Get the development environment URL and password:' 50 53 'bash' 600 <<'WS_TEST_BLOCK_020_002'
-aws cloudformation describe-stacks --stack-name unicornstore-stack \
-    --query "Stacks[0].Outputs[?OutputKey=='IdeUrl'].OutputValue" --output text
-aws cloudformation describe-stacks --stack-name unicornstore-stack \
-    --query "Stacks[0].Outputs[?OutputKey=='IdePassword'].OutputValue" --output text
-WS_TEST_BLOCK_020_002
+ws_skip_block 'block-002' 'Deploying the development environment' '3. Get the development environment URL and password:' 51 54 'bash' 'queries a participant-owned workshop stack'
 
 ws_end_page
 
@@ -3387,9 +3373,7 @@ ws_end_page
 
 ws_begin_page 'Cleanup' 999 'cleanup/index.en.md'
 
-ws_run_block 'block-001' 'Deleting workshop resources' '1. Run the cleanup script to delete all workshop resources:' 19 19 'bash' 600 <<'WS_TEST_BLOCK_999_001'
-~/java-on-aws/infra/scripts/cleanup/all.sh
-WS_TEST_BLOCK_999_001
+ws_skip_block 'block-001' 'Deleting workshop resources' '1. Run the cleanup script to delete all workshop resources:' 19 19 'bash' 'deletes participant-owned workshop resources and its CloudFormation stack'
 
 ws_end_page
 

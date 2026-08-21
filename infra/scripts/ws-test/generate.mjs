@@ -282,7 +282,7 @@ function renderWorkshop(pages, config) {
     'set -Eeuo pipefail',
     'WS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"',
     'source "${WS_SCRIPT_DIR}/runtime.sh"',
-    `ws_begin_run ${shellQuote(config.title)} "\${WS_SCRIPT_DIR}/reports/${config.repository}" ${config.delay}`,
+    `ws_begin_run ${shellQuote(config.title)} "\${WS_SCRIPT_DIR}/reports/${config.template}" ${config.delay}`,
     ...config.environmentFiles.map((path) => `ws_source_environment ${shellQuote(path)}`),
     '',
   ];
@@ -325,11 +325,12 @@ function readRegistry() {
     .map((workshop) => {
       const environmentFiles = workshop.test.environmentFiles ?? defaults.environmentFiles ?? [];
       if (environmentFiles.some((path) => !isAbsolute(path))) {
-        throw new Error(`${workshop.repository}: test environment files must use absolute paths`);
+        throw new Error(`${workshop.template}: test environment files must use absolute paths`);
       }
       return {
+        template: workshop.template,
         repository: workshop.repository,
-        title: workshop.test.title ?? workshop.repository,
+        title: workshop.test.title ?? workshop.template,
         contentDirectory: workshop.test.contentDirectory ?? 'content',
         timeout: workshop.test.blockTimeoutSeconds ?? defaults.blockTimeoutSeconds ?? 600,
         delay: workshop.test.delayBetweenBlocksSeconds ?? defaults.delayBetweenBlocksSeconds ?? 5,
@@ -341,18 +342,31 @@ function readRegistry() {
 
 function selectWorkshops(workshops, requested) {
   if (requested.length === 0) return workshops;
-  const byRepository = new Map(workshops.map((workshop) => [workshop.repository, workshop]));
-  return requested.map((repository) => {
-    const workshop = byRepository.get(repository);
-    if (!workshop) throw new Error(`Test generation is not enabled for workshop '${repository}'`);
+  const byTemplate = new Map(workshops.map((workshop) => [workshop.template, workshop]));
+  return requested.map((template) => {
+    const workshop = byTemplate.get(template);
+    if (!workshop) throw new Error(`Test generation is not enabled for workshop '${template}'`);
     return workshop;
   });
 }
 
-function cleanStaleTemporaryFiles(repository) {
-  const prefix = `.${repository}.sh.tmp-`;
+function cleanStaleTemporaryFiles(artifactId) {
+  const prefix = `.${artifactId}.sh.tmp-`;
   for (const entry of readdirSync(SCRIPT_DIR, { withFileTypes: true })) {
     if (entry.isFile() && entry.name.startsWith(prefix)) rmSync(join(SCRIPT_DIR, entry.name), { force: true });
+  }
+}
+
+function cleanMigratedRepositoryArtifacts(config, outputPath) {
+  if (config.repository === config.template) return;
+
+  const previousOutputPath = join(SCRIPT_DIR, `${config.repository}.sh`);
+  if (previousOutputPath !== outputPath) rmSync(previousOutputPath, { force: true });
+  cleanStaleTemporaryFiles(config.repository);
+
+  const previousLegacyDirectory = join(SCRIPT_DIR, config.repository);
+  if (existsSync(previousLegacyDirectory)) {
+    rmSync(previousLegacyDirectory, { recursive: true, force: true });
   }
 }
 
@@ -364,9 +378,9 @@ function generateWorkshop(config) {
     throw new Error(`${config.repository}: content directory not found: ${contentRoot}`);
   }
 
-  const outputPath = join(SCRIPT_DIR, `${config.repository}.sh`);
-  const temporaryPath = join(SCRIPT_DIR, `.${config.repository}.sh.tmp-${process.pid}`);
-  cleanStaleTemporaryFiles(config.repository);
+  const outputPath = join(SCRIPT_DIR, `${config.template}.sh`);
+  const temporaryPath = join(SCRIPT_DIR, `.${config.template}.sh.tmp-${process.pid}`);
+  cleanStaleTemporaryFiles(config.template);
 
   try {
     const allPages = listMarkdownFiles(contentRoot).map((path) => parsePage(path, contentRoot, config.timeout));
@@ -380,8 +394,9 @@ function generateWorkshop(config) {
     writeFileSync(temporaryPath, renderWorkshop(pages, config), { mode: 0o755 });
     renameSync(temporaryPath, outputPath);
 
-    const legacyDirectory = join(SCRIPT_DIR, config.repository);
+    const legacyDirectory = join(SCRIPT_DIR, config.template);
     if (existsSync(legacyDirectory)) rmSync(legacyDirectory, { recursive: true, force: true });
+    cleanMigratedRepositoryArtifacts(config, outputPath);
 
     const elapsedMilliseconds = Number(process.hrtime.bigint() - started) / 1_000_000;
     console.log(`\n${config.title}`);

@@ -64,7 +64,7 @@ generate_template() {
     log_info "Generating $template_type template..."
     export TEMPLATE_TYPE="$template_type"
 
-    cdk synth WorkshopStack --yaml --path-metadata false --version-reporting false \
+    cdk synth WorkshopStack --path-metadata false --version-reporting false \
         --context git.branch="$GIT_BRANCH" --context template.type="$template_type" > "$output_file" || {
         log_error "CDK synthesis failed for $template_type"
         return 1
