@@ -42,5 +42,6 @@ build/
 
 infrastructure/cdk/output*
 dependency-reduced-pom.xml
+infra/scripts/ws-test/reports/
 
 .env

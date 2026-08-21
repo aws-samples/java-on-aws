@@ -4,7 +4,8 @@
   "description": "Unified AWS workshop infrastructure",
   "scripts": {
     "gen": "./scripts/cfn/generate.sh",
-    "sync": "./scripts/cfn/sync.sh"
+    "sync": "./scripts/cfn/sync.sh",
+    "ws-test:gen": "node ./scripts/ws-test/generate.mjs"
   },
   "author": "",
   "license": "ISC"
