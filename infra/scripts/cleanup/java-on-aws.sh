@@ -9,7 +9,7 @@ set -Eeuo pipefail
 #   2. Treat the validated EKS cluster and VPC as dedicated workshop boundaries.
 #   3. Enumerate Kubernetes and ECS workloads instead of naming applications.
 #   4. Skip ECS cleanly when the participant selected only the EKS path.
-#   5. Request stack deletion only after external dependencies are removed.
+#   5. Retain the validated CloudFormation stack after external dependencies are removed.
 
 readonly EXPECTED_WORKSHOP_ID="java-on-aws"
 readonly FOUNDATION_OWNER="cloudformation"
@@ -907,12 +907,12 @@ cleanup_security_groups() {
 
 request_stack_deletion() {
     if (( ERRORS > 0 )); then
-        log_error "$ERRORS cleanup operation(s) failed; stack deletion was not requested"
+        log_error "$ERRORS cleanup operation(s) failed; stack deletion remains disabled"
         exit 1
     fi
-    log_info "Requesting deletion of validated stack $WORKSHOP_DEPLOYMENT_ID"
-    aws_cli cloudformation delete-stack --stack-name "$WORKSHOP_DEPLOYMENT_ID"
-    log_info "Stack deletion requested; this IDE disconnects when CloudFormation deletes its instance"
+    # Stack deletion is intentionally disabled so cleanup can be rerun.
+    # aws_cli cloudformation delete-stack --stack-name "$WORKSHOP_DEPLOYMENT_ID"
+    log_info "Cleanup complete; validated stack $WORKSHOP_DEPLOYMENT_ID was retained"
 }
 
 main() {

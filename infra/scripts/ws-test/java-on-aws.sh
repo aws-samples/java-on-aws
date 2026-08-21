@@ -372,7 +372,7 @@ kubectl apply -f ~/environment/unicorn-store-spring/k8s/ingress.yaml
 WS_TEST_BLOCK_120_010
 
 ws_run_block 'block-011' 'Verifying the deployment' '1. Wait for the deployment to be ready:' 299 300 'bash' 600 <<'WS_TEST_BLOCK_120_011'
-kubectl wait deployment unicorn-store-spring -n unicorn-store-spring --for condition=Available=True --timeout=180s
+kubectl wait deployment unicorn-store-spring -n unicorn-store-spring --for condition=Available=True --timeout=300s
 kubectl get deployment unicorn-store-spring -n unicorn-store-spring
 WS_TEST_BLOCK_120_011
 
@@ -383,14 +383,14 @@ WS_TEST_BLOCK_120_012
 ws_run_block 'block-013' 'Verifying the deployment' '3. Wait for the ALB to be provisioned and get the URL:' 314 342 'bash' 600 <<'WS_TEST_BLOCK_120_013'
 SVC_URL=""
 echo -n "Waiting for service"
-service_deadline=$((SECONDS + 180))
+service_deadline=$((SECONDS + 300))
 while (( SECONDS < service_deadline )); do
   ingress_hostname=$(kubectl get ingress unicorn-store-spring \
     -n unicorn-store-spring \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
   if [[ -n "${ingress_hostname}" ]]; then
     SVC_URL="http://${ingress_hostname}"
-    http_status=$(curl -sS -o /dev/null -w "%{http_code}" \
+    http_status=$(curl -s -o /dev/null -w "%{http_code}" \
       --connect-timeout 5 --max-time 10 "${SVC_URL}/" || true)
     if [[ "${http_status}" == "200" ]]; then
       echo " AVAILABLE"
@@ -501,11 +501,11 @@ aws ecs update-service \
   --no-cli-pager
 WS_TEST_BLOCK_140_005
 
-ws_run_block 'block-006' 'Verifying the deployment' 'Wait for the service to become active and get the URL:' 168 217 'bash' 840 <<'WS_TEST_BLOCK_140_006'
+ws_run_block 'block-006' 'Verifying the deployment' 'Wait for the service to become active and get the URL:' 168 216 'bash' 660 <<'WS_TEST_BLOCK_140_006'
 echo -n "Waiting for service"
-service_deadline=$((SECONDS + 600))
+readiness_deadline=$((SECONDS + 600))
 service_status=""
-while (( SECONDS < service_deadline )); do
+while (( SECONDS < readiness_deadline )); do
   service_status=$(aws ecs describe-express-gateway-service \
     --service-arn arn:aws:ecs:${AWS_REGION}:${ACCOUNT_ID}:service/unicorn-store-spring/unicorn-store-spring \
     --query 'service.status.statusCode' --output text --no-cli-pager)
@@ -530,10 +530,9 @@ SVC_URL=https://$(aws ecs describe-express-gateway-service \
   --query 'service.activeConfigurations[0].ingressPaths[0].endpoint' --output text --no-cli-pager)
 
 echo -n "Waiting for endpoint"
-endpoint_deadline=$((SECONDS + 180))
 http_status=""
-while (( SECONDS < endpoint_deadline )); do
-  http_status=$(curl -sS -o /dev/null -w "%{http_code}" \
+while (( SECONDS < readiness_deadline )); do
+  http_status=$(curl -s -o /dev/null -w "%{http_code}" \
     --connect-timeout 5 --max-time 10 "${SVC_URL}/" || true)
   if [[ "${http_status}" == "200" ]]; then
     echo " AVAILABLE"
@@ -554,13 +553,13 @@ fi
 echo "${SVC_URL}" > ~/environment/.workshop-svc-url-ecs
 WS_TEST_BLOCK_140_006
 
-ws_run_block 'block-007' 'Testing the application' '1. Load the service URL:' 444 446 'bash' 600 <<'WS_TEST_BLOCK_140_007'
+ws_run_block 'block-007' 'Testing the application' '1. Load the service URL:' 443 445 'bash' 600 <<'WS_TEST_BLOCK_140_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 echo ${SVC_URL}
 curl -s ${SVC_URL} && echo
 WS_TEST_BLOCK_140_007
 
-ws_run_block 'block-008' 'Testing the application' '2. Test the application:' 452 459 'bash' 600 <<'WS_TEST_BLOCK_140_008'
+ws_run_block 'block-008' 'Testing the application' '2. Test the application:' 451 458 'bash' 600 <<'WS_TEST_BLOCK_140_008'
 curl -s --request POST ${SVC_URL}/unicorns \
   --header 'Content-Type: application/json' \
   --data-raw '{
@@ -571,9 +570,9 @@ curl -s --request POST ${SVC_URL}/unicorns \
 }' | jq
 WS_TEST_BLOCK_140_008
 
-ws_skip_block 'block-009' 'Testing the application' 'You should see a response like:' 465 471 'json' 'copy action disabled'
+ws_skip_block 'block-009' 'Testing the application' 'You should see a response like:' 464 470 'json' 'copy action disabled'
 
-ws_run_block 'block-010' 'Accessing application logs' 'Get the logs from the running task:' 483 491 'bash' 600 <<'WS_TEST_BLOCK_140_010'
+ws_run_block 'block-010' 'Accessing application logs' 'Get the logs from the running task:' 482 490 'bash' 600 <<'WS_TEST_BLOCK_140_010'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -585,7 +584,7 @@ aws logs get-log-events \
   | jq -r '.events[].message'
 WS_TEST_BLOCK_140_010
 
-ws_skip_block 'block-011' 'Using e1s' 'Open a new terminal window and run e1s to view the state of the Amazon ECS cluster:' 511 511 'bash' 'interactive terminal UI'
+ws_skip_block 'block-011' 'Using e1s' 'Open a new terminal window and run e1s to view the state of the Amazon ECS cluster:' 510 510 'bash' 'interactive terminal UI'
 
 ws_end_page
 
@@ -618,7 +617,7 @@ yq -i '.spec.template.spec.containers[].resources.requests.cpu = "2" |
        ~/environment/unicorn-store-spring/k8s/deployment.yaml
 
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
@@ -640,7 +639,7 @@ yq -i '.spec.template.spec.containers[].resources.requests.cpu = "1" |
        ~/environment/unicorn-store-spring/k8s/deployment.yaml
 
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 yq '.spec.template.spec.containers[].resources' ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_205_006
 
@@ -665,7 +664,7 @@ ws_skip_block 'block-003' 'Installing Kube Startup CPU Boost' 'If you see the fo
 ws_run_block 'block-004' 'Installing Kube Startup CPU Boost' 'Verify the controller is running:' 58 60 'bash' 600 <<'WS_TEST_BLOCK_210_004'
 kubectl get pods -n kube-startup-cpu-boost-system
 kubectl wait --for=condition=ready pod -l control-plane=controller-manager \
-  -n kube-startup-cpu-boost-system --timeout=180s
+  -n kube-startup-cpu-boost-system --timeout=300s
 WS_TEST_BLOCK_210_004
 
 ws_run_block 'block-005' 'Configuring the CPU boost policy' 'Create a StartupCPUBoost resource that will use in-place pod resizing to temporarily double the CPU allocation during startup:' 68 90 'yaml' 600 <<'WS_TEST_BLOCK_210_005'
@@ -701,7 +700,7 @@ WS_TEST_BLOCK_210_006
 
 ws_run_block 'block-007' 'Applying the in-place pod resize' 'Trigger a pod restart to see the in-place resizing in action:' 108 109 'bash' 600 <<'WS_TEST_BLOCK_210_007'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 WS_TEST_BLOCK_210_007
 
 ws_run_block 'block-008' 'Monitoring the in-place resize process' 'Observe the in-place pod resizing:' 117 120 'bash' 600 <<'WS_TEST_BLOCK_210_008'
@@ -753,53 +752,52 @@ WS_TEST_BLOCK_215_003
 
 ws_run_block 'block-004' 'Re-deploying the application' 'After pushing the new image to ECR, you can restart the deployment of the application:' 71 73 'bash' 600 <<'WS_TEST_BLOCK_215_004'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_215_004
 
-ws_run_block 'block-005' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 82 101 'bash' 660 <<'WS_TEST_BLOCK_215_005'
-aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring --force-new-deployment --no-cli-pager
+ws_run_block 'block-005' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 82 100 'bash' 660 <<'WS_TEST_BLOCK_215_005'
+deployment_id=$(aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring \
+  --force-new-deployment \
+  --query "service.deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
 echo -n "Waiting for deployment"
-deployment_deadline=$((SECONDS + 600))
-deployment_count=2
-while (( SECONDS < deployment_deadline )); do
-  deployment_count=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
-    --query 'services[0].deployments | length(@)' --output text --no-cli-pager)
-  if (( deployment_count <= 1 )); then
-    echo " COMPLETE"
-    break
-  fi
-  echo -n "."
-  sleep 5
-done
-if (( deployment_count > 1 )); then
+if ! aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring; then
   echo " TIMEOUT"
   aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
     --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
   return 1
 fi
+active_deployment_id=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+  --query "services[0].deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if [[ -z "${deployment_id}" || "${deployment_id}" == "None" || "${active_deployment_id}" != "${deployment_id}" ]]; then
+  echo " FAILED"
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+echo " COMPLETE"
 WS_TEST_BLOCK_215_005
 
-ws_run_block 'block-006' 'Testing the application' 'Testing the application' 115 117 'bash' 600 <<'WS_TEST_BLOCK_215_006'
+ws_run_block 'block-006' 'Testing the application' 'Testing the application' 114 116 'bash' 600 <<'WS_TEST_BLOCK_215_006'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_215_006
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 124 125 'bash' 600 <<'WS_TEST_BLOCK_215_007'
+ws_run_block 'block-007' 'Testing the application' 'Testing the application' 123 124 'bash' 600 <<'WS_TEST_BLOCK_215_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_215_007
 
-ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 134 134 '' 'informational block without language'
+ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 133 133 '' 'informational block without language'
 
-ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 145 147 'bash' 600 <<'WS_TEST_BLOCK_215_009'
+ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 144 146 'bash' 600 <<'WS_TEST_BLOCK_215_009'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_215_009
 
-ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 154 161 'bash' 600 <<'WS_TEST_BLOCK_215_010'
+ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 153 160 'bash' 600 <<'WS_TEST_BLOCK_215_010'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -881,53 +879,52 @@ WS_TEST_BLOCK_220_003
 
 ws_run_block 'block-004' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment of the application:' 116 118 'bash' 600 <<'WS_TEST_BLOCK_220_004'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_220_004
 
-ws_run_block 'block-005' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 127 146 'bash' 660 <<'WS_TEST_BLOCK_220_005'
-aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring --force-new-deployment --no-cli-pager
+ws_run_block 'block-005' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 127 145 'bash' 660 <<'WS_TEST_BLOCK_220_005'
+deployment_id=$(aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring \
+  --force-new-deployment \
+  --query "service.deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
 echo -n "Waiting for deployment"
-deployment_deadline=$((SECONDS + 600))
-deployment_count=2
-while (( SECONDS < deployment_deadline )); do
-  deployment_count=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
-    --query 'services[0].deployments | length(@)' --output text --no-cli-pager)
-  if (( deployment_count <= 1 )); then
-    echo " COMPLETE"
-    break
-  fi
-  echo -n "."
-  sleep 5
-done
-if (( deployment_count > 1 )); then
+if ! aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring; then
   echo " TIMEOUT"
   aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
     --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
   return 1
 fi
+active_deployment_id=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+  --query "services[0].deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if [[ -z "${deployment_id}" || "${deployment_id}" == "None" || "${active_deployment_id}" != "${deployment_id}" ]]; then
+  echo " FAILED"
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+echo " COMPLETE"
 WS_TEST_BLOCK_220_005
 
-ws_run_block 'block-006' 'Testing the application' 'Testing the application' 160 162 'bash' 600 <<'WS_TEST_BLOCK_220_006'
+ws_run_block 'block-006' 'Testing the application' 'Testing the application' 159 161 'bash' 600 <<'WS_TEST_BLOCK_220_006'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_220_006
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 169 170 'bash' 600 <<'WS_TEST_BLOCK_220_007'
+ws_run_block 'block-007' 'Testing the application' 'Testing the application' 168 169 'bash' 600 <<'WS_TEST_BLOCK_220_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_220_007
 
-ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 179 179 '' 'informational block without language'
+ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 178 178 '' 'informational block without language'
 
-ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 190 192 'bash' 600 <<'WS_TEST_BLOCK_220_009'
+ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 189 191 'bash' 600 <<'WS_TEST_BLOCK_220_009'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_220_009
 
-ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 199 206 'bash' 600 <<'WS_TEST_BLOCK_220_010'
+ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 198 205 'bash' 600 <<'WS_TEST_BLOCK_220_010'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -1005,39 +1002,52 @@ WS_TEST_BLOCK_225_004
 
 ws_run_block 'block-005' 'Re-deploying the application' 'For EKS, ensure your nodes support SOCI. See Introducing Seekable OCI parallel pull mode for Amazon EKS for setup instructions.' 131 133 'bash' 600 <<'WS_TEST_BLOCK_225_005'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_225_005
 
-ws_run_block 'block-006' 'Re-deploying the application' 'ECS with Fargate automatically uses SOCI indexes when available.' 144 149 'bash' 600 <<'WS_TEST_BLOCK_225_006'
-aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring --force-new-deployment --no-cli-pager
-while [[ $(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
-  --query 'services[0].deployments | length(@)' --output text) -gt 1 ]]; do
-  echo "Waiting for deployment to complete..." && sleep 15
-done
-echo "Deployment complete."
+ws_run_block 'block-006' 'Re-deploying the application' 'ECS with Fargate automatically uses SOCI indexes when available.' 144 162 'bash' 660 <<'WS_TEST_BLOCK_225_006'
+deployment_id=$(aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring \
+  --force-new-deployment \
+  --query "service.deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+echo -n "Waiting for deployment"
+if ! aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring; then
+  echo " TIMEOUT"
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+active_deployment_id=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+  --query "services[0].deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if [[ -z "${deployment_id}" || "${deployment_id}" == "None" || "${active_deployment_id}" != "${deployment_id}" ]]; then
+  echo " FAILED"
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+echo " COMPLETE"
 WS_TEST_BLOCK_225_006
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 163 165 'bash' 600 <<'WS_TEST_BLOCK_225_007'
+ws_run_block 'block-007' 'Testing the application' 'Testing the application' 176 178 'bash' 600 <<'WS_TEST_BLOCK_225_007'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_225_007
 
-ws_run_block 'block-008' 'Testing the application' 'Testing the application' 172 173 'bash' 600 <<'WS_TEST_BLOCK_225_008'
+ws_run_block 'block-008' 'Testing the application' 'Testing the application' 185 186 'bash' 600 <<'WS_TEST_BLOCK_225_008'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_225_008
 
-ws_skip_block 'block-009' 'Testing the application' 'Expected output:' 182 182 '' 'informational block without language'
+ws_skip_block 'block-009' 'Testing the application' 'Expected output:' 195 195 '' 'informational block without language'
 
-ws_run_block 'block-010' 'Retrieving the results' 'Retrieve the startup time:' 193 195 'bash' 600 <<'WS_TEST_BLOCK_225_010'
+ws_run_block 'block-010' 'Retrieving the results' 'Retrieve the startup time:' 206 208 'bash' 600 <<'WS_TEST_BLOCK_225_010'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_225_010
 
-ws_run_block 'block-011' 'Retrieving the results' 'Retrieving the results' 202 209 'bash' 600 <<'WS_TEST_BLOCK_225_011'
+ws_run_block 'block-011' 'Retrieving the results' 'Retrieving the results' 215 222 'bash' 600 <<'WS_TEST_BLOCK_225_011'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -1091,53 +1101,52 @@ WS_TEST_BLOCK_230_003
 
 ws_run_block 'block-004' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment of the application:' 87 89 'bash' 600 <<'WS_TEST_BLOCK_230_004'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_230_004
 
-ws_run_block 'block-005' 'Re-deploying the application' 'Deployment takes around 2 minutes.' 98 117 'bash' 660 <<'WS_TEST_BLOCK_230_005'
-aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring --force-new-deployment --no-cli-pager
+ws_run_block 'block-005' 'Re-deploying the application' 'Deployment takes around 2 minutes.' 98 116 'bash' 660 <<'WS_TEST_BLOCK_230_005'
+deployment_id=$(aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring \
+  --force-new-deployment \
+  --query "service.deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
 echo -n "Waiting for deployment"
-deployment_deadline=$((SECONDS + 600))
-deployment_count=2
-while (( SECONDS < deployment_deadline )); do
-  deployment_count=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
-    --query 'services[0].deployments | length(@)' --output text --no-cli-pager)
-  if (( deployment_count <= 1 )); then
-    echo " COMPLETE"
-    break
-  fi
-  echo -n "."
-  sleep 5
-done
-if (( deployment_count > 1 )); then
+if ! aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring; then
   echo " TIMEOUT"
   aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
     --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
   return 1
 fi
+active_deployment_id=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+  --query "services[0].deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if [[ -z "${deployment_id}" || "${deployment_id}" == "None" || "${active_deployment_id}" != "${deployment_id}" ]]; then
+  echo " FAILED"
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+echo " COMPLETE"
 WS_TEST_BLOCK_230_005
 
-ws_run_block 'block-006' 'Testing the application' 'Testing the application' 131 133 'bash' 600 <<'WS_TEST_BLOCK_230_006'
+ws_run_block 'block-006' 'Testing the application' 'Testing the application' 130 132 'bash' 600 <<'WS_TEST_BLOCK_230_006'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_230_006
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 140 141 'bash' 600 <<'WS_TEST_BLOCK_230_007'
+ws_run_block 'block-007' 'Testing the application' 'Testing the application' 139 140 'bash' 600 <<'WS_TEST_BLOCK_230_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_230_007
 
-ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 150 150 '' 'informational block without language'
+ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 149 149 '' 'informational block without language'
 
-ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 161 163 'bash' 600 <<'WS_TEST_BLOCK_230_009'
+ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 160 162 'bash' 600 <<'WS_TEST_BLOCK_230_009'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_230_009
 
-ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 170 177 'bash' 600 <<'WS_TEST_BLOCK_230_010'
+ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 169 176 'bash' 600 <<'WS_TEST_BLOCK_230_010'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -1262,53 +1271,52 @@ WS_TEST_BLOCK_235_003
 
 ws_run_block 'block-004' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment of the application:' 168 170 'bash' 600 <<'WS_TEST_BLOCK_235_004'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_235_004
 
-ws_run_block 'block-005' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 179 198 'bash' 660 <<'WS_TEST_BLOCK_235_005'
-aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring --force-new-deployment --no-cli-pager
+ws_run_block 'block-005' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 179 197 'bash' 660 <<'WS_TEST_BLOCK_235_005'
+deployment_id=$(aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring \
+  --force-new-deployment \
+  --query "service.deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
 echo -n "Waiting for deployment"
-deployment_deadline=$((SECONDS + 600))
-deployment_count=2
-while (( SECONDS < deployment_deadline )); do
-  deployment_count=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
-    --query 'services[0].deployments | length(@)' --output text --no-cli-pager)
-  if (( deployment_count <= 1 )); then
-    echo " COMPLETE"
-    break
-  fi
-  echo -n "."
-  sleep 5
-done
-if (( deployment_count > 1 )); then
+if ! aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring; then
   echo " TIMEOUT"
   aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
     --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
   return 1
 fi
+active_deployment_id=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+  --query "services[0].deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if [[ -z "${deployment_id}" || "${deployment_id}" == "None" || "${active_deployment_id}" != "${deployment_id}" ]]; then
+  echo " FAILED"
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+echo " COMPLETE"
 WS_TEST_BLOCK_235_005
 
-ws_run_block 'block-006' 'Testing the application' 'Testing the application' 212 214 'bash' 600 <<'WS_TEST_BLOCK_235_006'
+ws_run_block 'block-006' 'Testing the application' 'Testing the application' 211 213 'bash' 600 <<'WS_TEST_BLOCK_235_006'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_235_006
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 221 222 'bash' 600 <<'WS_TEST_BLOCK_235_007'
+ws_run_block 'block-007' 'Testing the application' 'Testing the application' 220 221 'bash' 600 <<'WS_TEST_BLOCK_235_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_235_007
 
-ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 231 231 '' 'informational block without language'
+ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 230 230 '' 'informational block without language'
 
-ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 242 244 'bash' 600 <<'WS_TEST_BLOCK_235_009'
+ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 241 243 'bash' 600 <<'WS_TEST_BLOCK_235_009'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_235_009
 
-ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 251 258 'bash' 600 <<'WS_TEST_BLOCK_235_010'
+ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 250 257 'bash' 600 <<'WS_TEST_BLOCK_235_010'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -1384,53 +1392,52 @@ WS_TEST_BLOCK_240_005
 
 ws_run_block 'block-006' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment:' 174 176 'bash' 600 <<'WS_TEST_BLOCK_240_006'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_240_006
 
-ws_run_block 'block-007' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 185 204 'bash' 660 <<'WS_TEST_BLOCK_240_007'
-aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring --force-new-deployment --no-cli-pager
+ws_run_block 'block-007' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 185 203 'bash' 660 <<'WS_TEST_BLOCK_240_007'
+deployment_id=$(aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring \
+  --force-new-deployment \
+  --query "service.deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
 echo -n "Waiting for deployment"
-deployment_deadline=$((SECONDS + 600))
-deployment_count=2
-while (( SECONDS < deployment_deadline )); do
-  deployment_count=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
-    --query 'services[0].deployments | length(@)' --output text --no-cli-pager)
-  if (( deployment_count <= 1 )); then
-    echo " COMPLETE"
-    break
-  fi
-  echo -n "."
-  sleep 5
-done
-if (( deployment_count > 1 )); then
+if ! aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring; then
   echo " TIMEOUT"
   aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
     --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
   return 1
 fi
+active_deployment_id=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+  --query "services[0].deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if [[ -z "${deployment_id}" || "${deployment_id}" == "None" || "${active_deployment_id}" != "${deployment_id}" ]]; then
+  echo " FAILED"
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+echo " COMPLETE"
 WS_TEST_BLOCK_240_007
 
-ws_run_block 'block-008' 'Testing the application' 'Testing the application' 218 220 'bash' 600 <<'WS_TEST_BLOCK_240_008'
+ws_run_block 'block-008' 'Testing the application' 'Testing the application' 217 219 'bash' 600 <<'WS_TEST_BLOCK_240_008'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_240_008
 
-ws_run_block 'block-009' 'Testing the application' 'Testing the application' 227 228 'bash' 600 <<'WS_TEST_BLOCK_240_009'
+ws_run_block 'block-009' 'Testing the application' 'Testing the application' 226 227 'bash' 600 <<'WS_TEST_BLOCK_240_009'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_240_009
 
-ws_skip_block 'block-010' 'Testing the application' 'Expected output:' 237 237 '' 'informational block without language'
+ws_skip_block 'block-010' 'Testing the application' 'Expected output:' 236 236 '' 'informational block without language'
 
-ws_run_block 'block-011' 'Retrieving the results' 'Retrieve the startup time:' 248 250 'bash' 600 <<'WS_TEST_BLOCK_240_011'
+ws_run_block 'block-011' 'Retrieving the results' 'Retrieve the startup time:' 247 249 'bash' 600 <<'WS_TEST_BLOCK_240_011'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_240_011
 
-ws_run_block 'block-012' 'Retrieving the results' 'Retrieving the results' 257 264 'bash' 600 <<'WS_TEST_BLOCK_240_012'
+ws_run_block 'block-012' 'Retrieving the results' 'Retrieving the results' 256 263 'bash' 600 <<'WS_TEST_BLOCK_240_012'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -1530,53 +1537,52 @@ WS_TEST_BLOCK_245_006
 
 ws_run_block 'block-007' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment:' 209 211 'bash' 600 <<'WS_TEST_BLOCK_245_007'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_245_007
 
-ws_run_block 'block-008' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 220 239 'bash' 660 <<'WS_TEST_BLOCK_245_008'
-aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring --force-new-deployment --no-cli-pager
+ws_run_block 'block-008' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 220 238 'bash' 660 <<'WS_TEST_BLOCK_245_008'
+deployment_id=$(aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring \
+  --force-new-deployment \
+  --query "service.deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
 echo -n "Waiting for deployment"
-deployment_deadline=$((SECONDS + 600))
-deployment_count=2
-while (( SECONDS < deployment_deadline )); do
-  deployment_count=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
-    --query 'services[0].deployments | length(@)' --output text --no-cli-pager)
-  if (( deployment_count <= 1 )); then
-    echo " COMPLETE"
-    break
-  fi
-  echo -n "."
-  sleep 5
-done
-if (( deployment_count > 1 )); then
+if ! aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring; then
   echo " TIMEOUT"
   aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
     --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
   return 1
 fi
+active_deployment_id=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+  --query "services[0].deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if [[ -z "${deployment_id}" || "${deployment_id}" == "None" || "${active_deployment_id}" != "${deployment_id}" ]]; then
+  echo " FAILED"
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+echo " COMPLETE"
 WS_TEST_BLOCK_245_008
 
-ws_run_block 'block-009' 'Testing the application' 'Testing the application' 253 255 'bash' 600 <<'WS_TEST_BLOCK_245_009'
+ws_run_block 'block-009' 'Testing the application' 'Testing the application' 252 254 'bash' 600 <<'WS_TEST_BLOCK_245_009'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_245_009
 
-ws_run_block 'block-010' 'Testing the application' 'Testing the application' 262 263 'bash' 600 <<'WS_TEST_BLOCK_245_010'
+ws_run_block 'block-010' 'Testing the application' 'Testing the application' 261 262 'bash' 600 <<'WS_TEST_BLOCK_245_010'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_245_010
 
-ws_skip_block 'block-011' 'Testing the application' 'Expected output:' 272 272 '' 'informational block without language'
+ws_skip_block 'block-011' 'Testing the application' 'Expected output:' 271 271 '' 'informational block without language'
 
-ws_run_block 'block-012' 'Retrieving the results' 'Retrieve the startup time:' 283 285 'bash' 600 <<'WS_TEST_BLOCK_245_012'
+ws_run_block 'block-012' 'Retrieving the results' 'Retrieve the startup time:' 282 284 'bash' 600 <<'WS_TEST_BLOCK_245_012'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Restored StoreApplication"
 WS_TEST_BLOCK_245_012
 
-ws_run_block 'block-013' 'Retrieving the results' 'Retrieving the results' 292 299 'bash' 600 <<'WS_TEST_BLOCK_245_013'
+ws_run_block 'block-013' 'Retrieving the results' 'Retrieving the results' 291 298 'bash' 600 <<'WS_TEST_BLOCK_245_013'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -1587,7 +1593,7 @@ aws logs get-log-events \
   | jq -r '.events[].message' | grep "Restored StoreApplication"
 WS_TEST_BLOCK_245_013
 
-ws_run_block 'block-014' 'Cleaning up' 'Remove CRaC-specific code changes:' 312 313 'bash' 600 <<'WS_TEST_BLOCK_245_014'
+ws_run_block 'block-014' 'Cleaning up' 'Remove CRaC-specific code changes:' 311 312 'bash' 600 <<'WS_TEST_BLOCK_245_014'
 cd ~/environment/unicorn-store-spring
 mv src/main/java/com/unicorn/store/data/UnicornPublisher.java.orig src/main/java/com/unicorn/store/data/UnicornPublisher.java
 WS_TEST_BLOCK_245_014
@@ -1725,7 +1731,7 @@ roleRef:
 EOF
 
 kubectl apply -f ~/environment/perf-collector/k8s/daemonset.yaml
-kubectl rollout status daemonset/perf-collector -n monitoring --timeout=180s
+kubectl rollout status daemonset/perf-collector -n monitoring --timeout=300s
 WS_TEST_BLOCK_311_007
 
 ws_run_block 'block-008' 'Deploying the collector' '- Modest CPU and memory — discovery is lightweight; async-profiler runs inside each target JVM.' 266 267 'bash' 600 <<'WS_TEST_BLOCK_311_008'
@@ -1733,7 +1739,7 @@ kubectl get pods -n monitoring -l app=perf-collector -o wide
 kubectl logs -n monitoring -l app=perf-collector --tail=20
 WS_TEST_BLOCK_311_008
 
-ws_run_block 'block-009' 'Deploying the collector' 'Register a new task definition revision that adds the sidecar container and sets pidMode: task. The task role itself is untouched:' 281 322 'bash' 600 <<'WS_TEST_BLOCK_311_009'
+ws_run_block 'block-009' 'Deploying the collector' 'Register a new task definition revision that adds the sidecar container and sets pidMode: task. The task role itself is untouched:' 281 334 'bash' 660 <<'WS_TEST_BLOCK_311_009'
 ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/perf-collector
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 NLB_DNS=$(kubectl get svc pyroscope-nlb -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
@@ -1771,20 +1777,32 @@ aws ecs describe-task-definition \
   > /tmp/unicorn-store-spring-task.json
 
 aws ecs register-task-definition --cli-input-json file:///tmp/unicorn-store-spring-task.json --no-cli-pager
-aws ecs update-service --cluster unicorn-store-spring \
+deployment_id=$(aws ecs update-service --cluster unicorn-store-spring \
   --service unicorn-store-spring \
   --task-definition unicorn-store-spring-unicorn-store-spring \
-  --force-new-deployment --no-cli-pager
-aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring
+  --force-new-deployment \
+  --query "service.deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if ! aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring; then
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+active_deployment_id=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+  --query "services[0].deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if [[ -z "${deployment_id}" || "${deployment_id}" == "None" || "${active_deployment_id}" != "${deployment_id}" ]]; then
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
 WS_TEST_BLOCK_311_009
 
-ws_run_block 'block-010' 'Deploying the collector' '- Sidecar container perf-collector — essential: false means the app container'"'"'s lifecycle drives the task; SYSPTRACE lets the sidecar attach to the sibling JVM; PYROSCOPEURL points at the cluster'"'"'s internal NLB so the ECS task can reach Pyroscope.' 336 338 'bash' 600 <<'WS_TEST_BLOCK_311_010'
+ws_run_block 'block-010' 'Deploying the collector' '- Sidecar container perf-collector — essential: false means the app container'"'"'s lifecycle drives the task; SYSPTRACE lets the sidecar attach to the sibling JVM; PYROSCOPEURL points at the cluster'"'"'s internal NLB so the ECS task can reach Pyroscope.' 348 350 'bash' 600 <<'WS_TEST_BLOCK_311_010'
 aws ecs describe-tasks --cluster unicorn-store-spring \
   --tasks $(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring --query 'taskArns[0]' --output text --no-cli-pager) \
   --query 'tasks[0].containers[*].[name,lastStatus]' --output table --no-cli-pager
 WS_TEST_BLOCK_311_010
 
-ws_run_block 'block-011' 'Deploying the collector' 'Both the app container (Main) and perf-collector should be RUNNING. Tail the sidecar'"'"'s CloudWatch logs to see its boot output:' 344 347 'bash' 600 <<'WS_TEST_BLOCK_311_011'
+ws_run_block 'block-011' 'Deploying the collector' 'Both the app container (Main) and perf-collector should be RUNNING. Tail the sidecar'"'"'s CloudWatch logs to see its boot output:' 356 359 'bash' 600 <<'WS_TEST_BLOCK_311_011'
 TASK_ID=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager | awk -F/ '{print $NF}')
 aws logs tail /aws/ecs/unicorn-store-spring \
@@ -1932,7 +1950,7 @@ roleRef:
 EOF
 
 kubectl apply -f ~/environment/perf-analyzer/k8s/deployment.yaml
-kubectl wait deployment perf-analyzer -n monitoring --for condition=Available=True --timeout=180s
+kubectl wait deployment perf-analyzer -n monitoring --for condition=Available=True --timeout=300s
 WS_TEST_BLOCK_312_008
 
 ws_run_block 'block-009' 'Deploying to Amazon EKS' '- 69-95: ServiceAccount + ClusterRole + ClusterRoleBinding — Pod Identity handles AWS API calls, but reading pod metadata and listing collector pods are Kubernetes API calls. The perf-analyzer ServiceAccount gets cluster-wide get/list pods through Kubernetes RBAC, which is a separate permission system from IAM. Both are needed.' 324 324 'bash' 600 <<'WS_TEST_BLOCK_312_009'
@@ -1954,10 +1972,10 @@ spec:
         perf-profile/github-repo: aws-samples/java-on-aws
         perf-profile/github-path: apps/unicorn-store-spring
 '
-kubectl rollout status deploy/unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deploy/unicorn-store-spring -n unicorn-store-spring --timeout=300s
 WS_TEST_BLOCK_313_001
 
-ws_run_block 'block-002' 'Onboarding the application' 'Onboarding the application' 63 77 'bash' 600 <<'WS_TEST_BLOCK_313_002'
+ws_run_block 'block-002' 'Onboarding the application' 'Onboarding the application' 63 89 'bash' 660 <<'WS_TEST_BLOCK_313_002'
 SERVICE_ARN=$(aws ecs describe-services --cluster unicorn-store-spring \
   --services unicorn-store-spring --query 'services[0].serviceArn' \
   --output text --no-cli-pager)
@@ -1968,20 +1986,32 @@ aws ecs tag-resource --resource-arn ${SERVICE_ARN} --no-cli-pager \
     key=perf-profile:github-repo,value=aws-samples/java-on-aws \
     key=perf-profile:github-path,value=apps/unicorn-store-spring
 
-aws ecs update-service --cluster unicorn-store-spring \
+deployment_id=$(aws ecs update-service --cluster unicorn-store-spring \
   --service unicorn-store-spring \
   --task-definition unicorn-store-spring-unicorn-store-spring \
-  --force-new-deployment --no-cli-pager
-aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring
+  --force-new-deployment \
+  --query "service.deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if ! aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring; then
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+active_deployment_id=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+  --query "services[0].deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if [[ -z "${deployment_id}" || "${deployment_id}" == "None" || "${active_deployment_id}" != "${deployment_id}" ]]; then
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
 WS_TEST_BLOCK_313_002
 
-ws_run_block 'block-003' 'Onboarding the application' 'Samples arrive ~30 seconds after the new pods (or tasks) are Ready. Confirm the collector attached and Pyroscope received real frames:' 93 95 'bash' 600 <<'WS_TEST_BLOCK_313_003'
+ws_run_block 'block-003' 'Onboarding the application' 'Samples arrive ~30 seconds after the new pods (or tasks) are Ready. Confirm the collector attached and Pyroscope received real frames:' 105 107 'bash' 600 <<'WS_TEST_BLOCK_313_003'
 sleep 30
 kubectl logs -n monitoring -l app=perf-collector --tail=200 \
   | grep -E 'Attached|Pushed' | tail -10
 WS_TEST_BLOCK_313_003
 
-ws_run_block 'block-004' 'Onboarding the application' 'You should see a handful of Attached async-profiler (cpu+wall, JFR/15s) to pid ... lines (one per opted-in JVM) and regular Pushed ... bytes ... service=unicorn-store-spring-eks ... entries.' 105 110 'bash' 600 <<'WS_TEST_BLOCK_313_004'
+ws_run_block 'block-004' 'Onboarding the application' 'You should see a handful of Attached async-profiler (cpu+wall, JFR/15s) to pid ... lines (one per opted-in JVM) and regular Pushed ... bytes ... service=unicorn-store-spring-eks ... entries.' 117 122 'bash' 600 <<'WS_TEST_BLOCK_313_004'
 sleep 30
 TASK_ID=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager | awk -F/ '{print $NF}')
@@ -1990,7 +2020,7 @@ aws logs tail /aws/ecs/unicorn-store-spring \
   | grep -E 'Attached|Pushed' | tail -10
 WS_TEST_BLOCK_313_004
 
-ws_run_block 'block-005' 'Onboarding the application' 'Retrieve Grafana access details — you'"'"'ll use the same URL throughout this module:' 122 127 'bash' 600 <<'WS_TEST_BLOCK_313_005'
+ws_run_block 'block-005' 'Onboarding the application' 'Retrieve Grafana access details — you'"'"'ll use the same URL throughout this module:' 134 139 'bash' 600 <<'WS_TEST_BLOCK_313_005'
 GRAFANA_URL=$(kubectl get svc grafana -n monitoring -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 GRAFANA_PASSWORD=$(kubectl get secret grafana-admin -n monitoring -o jsonpath="{.data.password}" | base64 --decode)
 echo "✅ Grafana Access Details" &&
@@ -1999,7 +2029,7 @@ echo "👤 Username: admin" &&
 echo "🔑 Password: ${GRAFANA_PASSWORD}"
 WS_TEST_BLOCK_313_005
 
-ws_run_block 'block-006' 'First analysis: a quiet service' 'Trigger an analysis on the service as it stands now — no extra load, just whatever traffic happens to be hitting it:' 141 150 'bash' 600 <<'WS_TEST_BLOCK_313_006'
+ws_run_block 'block-006' 'First analysis: a quiet service' 'Trigger an analysis on the service as it stands now — no extra load, just whatever traffic happens to be hitting it:' 153 162 'bash' 600 <<'WS_TEST_BLOCK_313_006'
 POD=$(kubectl get pods -n unicorn-store-spring \
   -l app=unicorn-store-spring --field-selector=status.phase=Running \
   -o jsonpath='{.items[0].metadata.name}')
@@ -2012,11 +2042,11 @@ kubectl run -n monitoring trigger-analyze --rm --attach=true --restart=Never \
     -d "{\"service\":\"unicorn-store-spring\",\"platform\":\"eks\",\"pod\":\"${POD}\",\"reason\":\"pre-change check\"}"
 WS_TEST_BLOCK_313_006
 
-ws_skip_block 'block-007' 'First analysis: a quiet service' 'Tail the analyzer logs to watch the lanes fire:' 160 160 'bash' 'follows logs until Ctrl+C'
+ws_skip_block 'block-007' 'First analysis: a quiet service' 'Tail the analyzer logs to watch the lanes fire:' 172 172 'bash' 'follows logs until Ctrl+C'
 
-ws_skip_block 'block-008' 'First analysis: a quiet service' 'A healthy run looks like this:' 166 176 '' 'informational block without language'
+ws_skip_block 'block-008' 'First analysis: a quiet service' 'A healthy run looks like this:' 178 188 '' 'informational block without language'
 
-ws_run_block 'block-009' 'First analysis: a quiet service' 'Retrieve the report:' 184 191 'bash' 600 <<'WS_TEST_BLOCK_313_009'
+ws_run_block 'block-009' 'First analysis: a quiet service' 'Retrieve the report:' 196 203 'bash' 600 <<'WS_TEST_BLOCK_313_009'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 LATEST=$(aws s3 ls s3://${S3_BUCKET}/perf-platform/analysis/eks/unicorn-store-spring/ --recursive \
   | grep analysis.md | sort | tail -1 | awk '{print $4}')
@@ -2027,13 +2057,13 @@ echo "📄 Local file: ${LOCAL_FILE}"
 echo "🔗 S3 console: https://${AWS_REGION}.console.aws.amazon.com/s3/buckets/${S3_BUCKET}?prefix=$(dirname ${LATEST})/"
 WS_TEST_BLOCK_313_009
 
-ws_skip_block 'block-010' 'First analysis: a quiet service' 'Open the downloaded report in the IDE:' 197 197 'bash' 'opens the report in the IDE'
+ws_skip_block 'block-010' 'First analysis: a quiet service' 'Open the downloaded report in the IDE:' 209 209 'bash' 'opens the report in the IDE'
 
-ws_skip_block 'block-011' 'First analysis: a quiet service' 'A typical events.md excerpt against a quiet service:' 205 219 '' 'informational block without language'
+ws_skip_block 'block-011' 'First analysis: a quiet service' 'A typical events.md excerpt against a quiet service:' 217 231 '' 'informational block without language'
 
-ws_skip_block 'block-012' 'First analysis: a quiet service' 'The Bedrock report (analysis.md) starts with the verdict and rolls into prioritized findings. A typical idle-service report — the verdict line, then a finding citing source by file and line:' 227 249 '' 'informational block without language'
+ws_skip_block 'block-012' 'First analysis: a quiet service' 'The Bedrock report (analysis.md) starts with the verdict and rolls into prioritized findings. A typical idle-service report — the verdict line, then a finding citing source by file and line:' 239 261 '' 'informational block without language'
 
-ws_run_block 'block-013' 'Second analysis: under light load' 'Generate a small steady load and re-run. The picture changes — under any non-trivial request rate the publisher'"'"'s blocking call dominates the wall profile, and the agent'"'"'s findings sharpen:' 259 304 'bash' 300 <<'WS_TEST_BLOCK_313_013'
+ws_run_block 'block-013' 'Second analysis: under light load' 'Generate a small steady load and re-run. The picture changes — under any non-trivial request rate the publisher'"'"'s blocking call dominates the wall profile, and the agent'"'"'s findings sharpen:' 271 316 'bash' 300 <<'WS_TEST_BLOCK_313_013'
 SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks)
 echo "Load target: ${SVC_URL}"
 ~/java-on-aws/infra/scripts/test/benchmark.sh "${SVC_URL}" 120 30 &
@@ -2082,9 +2112,9 @@ trap - INT TERM
 unset -f analyze_under_load cleanup_benchmark
 WS_TEST_BLOCK_313_013
 
-ws_skip_block 'block-014' 'Second analysis: under light load' 'The deterministic events.md summary already shows the load arrived. Compare with the idle-run excerpt above:' 314 331 '' 'informational block without language'
+ws_skip_block 'block-014' 'Second analysis: under light load' 'The deterministic events.md summary already shows the load arrived. Compare with the idle-run excerpt above:' 326 343 '' 'informational block without language'
 
-ws_skip_block 'block-015' 'Second analysis: under light load' 'The Bedrock report sharpens accordingly. A typical under-load excerpt — the verdict line, then the dominant finding citing source by file and line:' 339 382 '' 'informational block without language'
+ws_skip_block 'block-015' 'Second analysis: under light load' 'The Bedrock report sharpens accordingly. A typical under-load excerpt — the verdict line, then the dominant finding citing source by file and line:' 351 394 '' 'informational block without language'
 
 ws_end_page
 
@@ -2277,47 +2307,46 @@ WS_TEST_BLOCK_322_003
 
 ws_run_block 'block-004' 'Re-deploying the application' 'Re-deploying the application' 68 70 'bash' 600 <<'WS_TEST_BLOCK_322_004'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_322_004
 
-ws_run_block 'block-005' 'Re-deploying the application' 'Deployment takes around 2 minutes.' 79 98 'bash' 660 <<'WS_TEST_BLOCK_322_005'
-aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring --force-new-deployment --no-cli-pager
+ws_run_block 'block-005' 'Re-deploying the application' 'Deployment takes around 2 minutes.' 79 97 'bash' 660 <<'WS_TEST_BLOCK_322_005'
+deployment_id=$(aws ecs update-service --cluster unicorn-store-spring --service unicorn-store-spring \
+  --force-new-deployment \
+  --query "service.deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
 echo -n "Waiting for deployment"
-deployment_deadline=$((SECONDS + 600))
-deployment_count=2
-while (( SECONDS < deployment_deadline )); do
-  deployment_count=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
-    --query 'services[0].deployments | length(@)' --output text --no-cli-pager)
-  if (( deployment_count <= 1 )); then
-    echo " COMPLETE"
-    break
-  fi
-  echo -n "."
-  sleep 5
-done
-if (( deployment_count > 1 )); then
+if ! aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring; then
   echo " TIMEOUT"
   aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
     --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
   return 1
 fi
+active_deployment_id=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+  --query "services[0].deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if [[ -z "${deployment_id}" || "${deployment_id}" == "None" || "${active_deployment_id}" != "${deployment_id}" ]]; then
+  echo " FAILED"
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+echo " COMPLETE"
 WS_TEST_BLOCK_322_005
 
-ws_run_block 'block-006' 'Testing the application' 'Testing the application' 112 114 'bash' 600 <<'WS_TEST_BLOCK_322_006'
+ws_run_block 'block-006' 'Testing the application' 'Testing the application' 111 113 'bash' 600 <<'WS_TEST_BLOCK_322_006'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_322_006
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 121 122 'bash' 600 <<'WS_TEST_BLOCK_322_007'
+ws_run_block 'block-007' 'Testing the application' 'Testing the application' 120 121 'bash' 600 <<'WS_TEST_BLOCK_322_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_322_007
 
-ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 131 131 '' 'informational block without language'
+ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 130 130 '' 'informational block without language'
 
-ws_run_block 'block-009' 'Enabling Prometheus metrics collection' 'Add Prometheus scraping annotations to your deployment:' 142 152 'bash' 600 <<'WS_TEST_BLOCK_322_009'
+ws_run_block 'block-009' 'Enabling Prometheus metrics collection' 'Add Prometheus scraping annotations to your deployment:' 141 151 'bash' 600 <<'WS_TEST_BLOCK_322_009'
 # These annotations enable Prometheus to automatically discover and scrape metrics
 yq eval '.spec.template.metadata.annotations."prometheus.io/scrape" = "true"' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
 yq eval '.spec.template.metadata.annotations."prometheus.io/port" = "8080"' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
@@ -2328,10 +2357,10 @@ yq eval 'del(.spec.template.spec.containers[0].env[] | select(.name == "CLUSTER"
 yq eval '.spec.template.spec.containers[0].env += [{"name": "CLUSTER", "value": "workshop-eks"}]' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
 
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 WS_TEST_BLOCK_322_009
 
-ws_run_block 'block-010' 'Enabling Prometheus metrics collection' 'Add the Java application metrics URL to the Prometheus configuration:' 161 209 'bash' 600 <<'WS_TEST_BLOCK_322_010'
+ws_run_block 'block-010' 'Enabling Prometheus metrics collection' 'Add the Java application metrics URL to the Prometheus configuration:' 160 208 'bash' 600 <<'WS_TEST_BLOCK_322_010'
 # Get ECS service URL
 ECS_URL=$(cat ~/environment/.workshop-svc-url-ecs | tr -d '\n\r ')
 
@@ -2363,7 +2392,7 @@ rm /tmp/prometheus-cm.yaml
 
 # Restart Prometheus to pick up new config
 kubectl rollout restart deployment prometheus-server -n monitoring
-kubectl rollout status deployment prometheus-server -n monitoring --timeout=180s
+kubectl rollout status deployment prometheus-server -n monitoring --timeout=300s
 
 # Allow Lambda to reach ECS tasks for thread dump collection
 VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=workshop-vpc" \
@@ -2383,7 +2412,7 @@ fi
 echo "✅ ECS metrics endpoint added: ${ECS_URL}/actuator/prometheus"
 WS_TEST_BLOCK_322_010
 
-ws_run_block 'block-011' 'Verifying the endpoints' 'Verify that the Actuator endpoints are accessible:' 223 233 'bash' 600 <<'WS_TEST_BLOCK_322_011'
+ws_run_block 'block-011' 'Verifying the endpoints' 'Verify that the Actuator endpoints are accessible:' 222 232 'bash' 600 <<'WS_TEST_BLOCK_322_011'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 
@@ -2397,7 +2426,7 @@ curl -s "${SVC_URL}/actuator/prometheus" | grep "jvm_threads"
 curl -s "${SVC_URL}/actuator/health" | jq '.status'
 WS_TEST_BLOCK_322_011
 
-ws_run_block 'block-012' 'Verifying the endpoints' 'Verifying the endpoints' 240 249 'bash' 600 <<'WS_TEST_BLOCK_322_012'
+ws_run_block 'block-012' 'Verifying the endpoints' 'Verifying the endpoints' 239 248 'bash' 600 <<'WS_TEST_BLOCK_322_012'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 
 # Test thread dump endpoint
@@ -2583,7 +2612,7 @@ WS_TEST_BLOCK_341_008
 
 ws_run_block 'block-009' 'Deploying the Application' 'Deploy with profiling enabled:' 202 204 'bash' 600 <<'WS_TEST_BLOCK_341_009'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_341_009
 
@@ -2735,7 +2764,7 @@ metadata:
 EOF
 
 kubectl apply -f ~/environment/ai-jvm-analyzer/k8s/deployment.yaml
-kubectl wait deployment ai-jvm-analyzer -n monitoring --for condition=Available=True --timeout=120s
+kubectl wait deployment ai-jvm-analyzer -n monitoring --for condition=Available=True --timeout=300s
 sleep 15
 kubectl logs $(kubectl get pods -n monitoring -l app=ai-jvm-analyzer --field-selector=status.phase=Running -o json \
     | jq -r '.items[0].metadata.name') -n monitoring
@@ -2789,7 +2818,7 @@ WS_TEST_BLOCK_344_007
 
 ws_run_block 'block-008' 'Stopping profiling' '2. Restart the deployment:' 247 249 'bash' 600 <<'WS_TEST_BLOCK_344_008'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_344_008
 
@@ -2902,20 +2931,25 @@ ws_end_page
 
 ws_begin_page 'Observability add-on' 421 'observability/eks/observability-addon/index.en.md'
 
-ws_run_block 'block-001' 'Installing the add-on' 'Install the add-on with Pod Identity:' 32 37 'bash' 600 <<'WS_TEST_BLOCK_421_001'
+ws_run_block 'block-001' 'Installing the add-on' 'Install the add-on with Pod Identity:' 32 40 'bash' 660 <<'WS_TEST_BLOCK_421_001'
 aws eks create-addon \
     --addon-name amazon-cloudwatch-observability \
     --cluster-name workshop-eks \
     --pod-identity-associations \
         "serviceAccount=cloudwatch-agent,roleArn=arn:aws:iam::${ACCOUNT_ID}:role/workshop-eks-cloudwatch-agent-role" \
     --no-cli-pager
+aws eks wait addon-active \
+    --addon-name amazon-cloudwatch-observability \
+    --cluster-name workshop-eks
 WS_TEST_BLOCK_421_001
 
-ws_run_block 'block-002' 'Verifying the installation' 'Verify the add-on pods are running:' 47 47 'bash' 600 <<'WS_TEST_BLOCK_421_002'
+ws_run_block 'block-002' 'Verifying the installation' 'Wait for all add-on pods to become ready, then display their status:' 50 52 'bash' 660 <<'WS_TEST_BLOCK_421_002'
+kubectl wait --for=condition=Ready pod --all \
+    -n amazon-cloudwatch --timeout=600s
 kubectl get pods -n amazon-cloudwatch
 WS_TEST_BLOCK_421_002
 
-ws_skip_block 'block-003' 'Verifying the installation' 'Expected output:' 53 58 '' 'informational block without language'
+ws_skip_block 'block-003' 'Verifying the installation' 'Expected output:' 58 63 '' 'informational block without language'
 
 ws_end_page
 
@@ -2987,7 +3021,7 @@ WS_TEST_BLOCK_424_002
 
 ws_run_block 'block-003' 'Re-deploying the application' 'Apply the updated deployment:' 78 80 'bash' 600 <<'WS_TEST_BLOCK_424_003'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_424_003
 
@@ -3127,47 +3161,46 @@ ws_run_block 'block-004' 'Creating the task definition' '- Collect Application S
 aws ecs register-task-definition --cli-input-json file:///tmp/task-def.json --no-cli-pager
 WS_TEST_BLOCK_443_004
 
-ws_run_block 'block-005' 'Deploying the application' 'Get the latest task definition revision and update the service:' 160 169 'bash' 600 <<'WS_TEST_BLOCK_443_005'
+ws_run_block 'block-005' 'Deploying the application' 'Get the latest task definition revision and update the service:' 160 171 'bash' 600 <<'WS_TEST_BLOCK_443_005'
 TASK_DEF_ARN=$(aws ecs describe-task-definition \
   --task-definition unicorn-store-spring-unicorn-store-spring \
   --query 'taskDefinition.taskDefinitionArn' --output text)
 
-aws ecs update-service \
+deployment_id=$(aws ecs update-service \
   --cluster unicorn-store-spring \
   --service unicorn-store-spring \
   --task-definition ${TASK_DEF_ARN} \
   --force-new-deployment \
-  --no-cli-pager
+  --query "service.deployments[?status=='PRIMARY'].id | [0]" \
+  --output text \
+  --no-cli-pager)
 WS_TEST_BLOCK_443_005
 
-ws_run_block 'block-006' 'Deploying the application' 'Wait for the deployment to complete:' 175 193 'bash' 660 <<'WS_TEST_BLOCK_443_006'
+ws_run_block 'block-006' 'Deploying the application' 'Wait for the deployment to complete:' 177 192 'bash' 660 <<'WS_TEST_BLOCK_443_006'
 echo -n "Waiting for deployment"
-deployment_deadline=$((SECONDS + 600))
-deployment_count=2
-while (( SECONDS < deployment_deadline )); do
-  deployment_count=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
-    --query 'services[0].deployments | length(@)' --output text --no-cli-pager)
-  if (( deployment_count <= 1 )); then
-    echo " COMPLETE"
-    break
-  fi
-  echo -n "."
-  sleep 5
-done
-if (( deployment_count > 1 )); then
+if ! aws ecs wait services-stable --cluster unicorn-store-spring --services unicorn-store-spring; then
   echo " TIMEOUT"
   aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
     --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
   return 1
 fi
+active_deployment_id=$(aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+  --query "services[0].deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if [[ -z "${deployment_id}" || "${deployment_id}" == "None" || "${active_deployment_id}" != "${deployment_id}" ]]; then
+  echo " FAILED"
+  aws ecs describe-services --cluster unicorn-store-spring --services unicorn-store-spring \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+echo " COMPLETE"
 WS_TEST_BLOCK_443_006
 
-ws_run_block 'block-007' 'Testing the application' 'Generate traffic to create traces:' 201 202 'bash' 600 <<'WS_TEST_BLOCK_443_007'
+ws_run_block 'block-007' 'Testing the application' 'Generate traffic to create traces:' 200 201 'bash' 600 <<'WS_TEST_BLOCK_443_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 ~/java-on-aws/infra/scripts/test/test.sh ${SVC_URL}
 WS_TEST_BLOCK_443_007
 
-ws_skip_block 'block-008' 'Viewing trace details' 'Filter expression:' 224 224 '' 'informational block without language'
+ws_skip_block 'block-008' 'Viewing trace details' 'Filter expression:' 223 223 '' 'informational block without language'
 
 ws_end_page
 
@@ -3285,7 +3318,7 @@ WS_TEST_BLOCK_520_002
 
 ws_run_block 'block-003' 'Re-deploying the application' 'Apply the updated deployment:' 77 79 'bash' 600 <<'WS_TEST_BLOCK_520_003'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
-kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=180s
+kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_520_003
 
@@ -3309,7 +3342,7 @@ ws_begin_page 'Amazon ECS' 540 'graviton/arm64-ecs/index.en.md'
 
 ws_skip_block 'block-001' 'Changing the task definition' 'The task definition must use the ARM64 Linux runtime platform:' 15 18 'json' 'copy action disabled'
 
-ws_run_block 'block-002' 'Changing the task definition' '1. Create an ARM64 revision from the task definition currently used by the service, deploy it, and wait for the service to stabilize:' 24 73 'bash' 600 <<'WS_TEST_BLOCK_540_002'
+ws_run_block 'block-002' 'Changing the task definition' '1. Create an ARM64 revision from the task definition currently used by the service, deploy it, and wait for the service to stabilize:' 24 87 'bash' 660 <<'WS_TEST_BLOCK_540_002'
 CLUSTER_NAME=unicorn-store-spring
 SERVICE_NAME=unicorn-store-spring
 TASK_DEFINITION_FILE=~/environment/unicorn-store-spring-task-definition-arm64.json
@@ -3347,27 +3380,41 @@ NEW_TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
   --output text \
   --no-cli-pager)
 
-aws ecs update-service \
+deployment_id=$(aws ecs update-service \
   --cluster "${CLUSTER_NAME}" \
   --service "${SERVICE_NAME}" \
   --task-definition "${NEW_TASK_DEFINITION_ARN}" \
-  --no-cli-pager
+  --query "service.deployments[?status=='PRIMARY'].id | [0]" \
+  --output text \
+  --no-cli-pager)
 
-aws ecs wait services-stable \
+if ! aws ecs wait services-stable \
   --cluster "${CLUSTER_NAME}" \
   --services "${SERVICE_NAME}" \
-  --no-cli-pager
+  --no-cli-pager; then
+  aws ecs describe-services --cluster "${CLUSTER_NAME}" --services "${SERVICE_NAME}" \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
+
+active_deployment_id=$(aws ecs describe-services --cluster "${CLUSTER_NAME}" --services "${SERVICE_NAME}" \
+  --query "services[0].deployments[?status=='PRIMARY'].id | [0]" --output text --no-cli-pager)
+if [[ -z "${deployment_id}" || "${deployment_id}" == "None" || "${active_deployment_id}" != "${deployment_id}" ]]; then
+  aws ecs describe-services --cluster "${CLUSTER_NAME}" --services "${SERVICE_NAME}" \
+    --query 'services[0].{status:status,deployments:deployments,events:events[:5]}' --no-cli-pager || true
+  return 1
+fi
 
 rm -f "${TASK_DEFINITION_FILE}"
 echo "Deployment complete: ${NEW_TASK_DEFINITION_ARN}"
 WS_TEST_BLOCK_540_002
 
-ws_run_block 'block-003' 'Testing the application' 'Testing the application' 83 84 'bash' 600 <<'WS_TEST_BLOCK_540_003'
+ws_run_block 'block-003' 'Testing the application' 'Testing the application' 97 98 'bash' 600 <<'WS_TEST_BLOCK_540_003'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_540_003
 
-ws_skip_block 'block-004' 'Testing the application' 'Expected output:' 90 90 '' 'informational block without language'
+ws_skip_block 'block-004' 'Testing the application' 'Expected output:' 104 104 '' 'informational block without language'
 
 ws_end_page
 
