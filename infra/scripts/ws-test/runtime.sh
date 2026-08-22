@@ -619,7 +619,8 @@ ws_run_block() {
   ws_append_event "passed" "$duration" ""
   ws_append_markdown_row "PASSED" "$duration" ""
   ws_append_junit "passed" "$duration" ""
-  echo "PASSED (${duration}s)"
+  printf '\033[1mPASSED (%ss) - %s - %s - %s - %s\033[0m\n' \
+    "$duration" "$WS_CURRENT_PAGE" "$WS_CURRENT_SECTION" "$WS_CURRENT_STEP" "$WS_CURRENT_BLOCK"
 }
 
 ws_skip_block() {

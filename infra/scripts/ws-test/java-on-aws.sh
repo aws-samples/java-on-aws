@@ -1556,7 +1556,7 @@ fi
 sleep 15
 WS_TEST_BLOCK_311_006
 
-ws_run_block 'block-007' 'Deploying the collector' 'Apply the DaemonSet:' 164 250 'yaml' 'eks' 600 <<'WS_TEST_BLOCK_311_007'
+ws_run_block 'block-007' 'Deploying the collector' 'Apply the DaemonSet:' 164 254 'yaml' 'eks' 600 <<'WS_TEST_BLOCK_311_007'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 mkdir -p ~/environment/perf-collector/k8s/
 cat <<EOF > ~/environment/perf-collector/k8s/daemonset.yaml
@@ -1576,6 +1576,10 @@ spec:
       labels:
         app: perf-collector
     spec:
+      # The target JVM workload is scheduled on this node pool. The collector
+      # must run alongside it because discovery and profiling are node-local.
+      nodeSelector:
+        karpenter.sh/nodepool: workshop
       serviceAccountName: perf-collector
       hostPID: true
       containers:
@@ -1646,12 +1650,12 @@ kubectl apply -f ~/environment/perf-collector/k8s/daemonset.yaml
 kubectl rollout status daemonset/perf-collector -n monitoring --timeout=300s
 WS_TEST_BLOCK_311_007
 
-ws_run_block 'block-008' 'Deploying the collector' '- Modest CPU and memory — discovery is lightweight; async-profiler runs inside each target JVM.' 266 267 'bash' 'eks' 600 <<'WS_TEST_BLOCK_311_008'
+ws_run_block 'block-008' 'Deploying the collector' '- Modest CPU and memory — discovery is lightweight; async-profiler runs inside each target JVM.' 271 272 'bash' 'eks' 600 <<'WS_TEST_BLOCK_311_008'
 kubectl get pods -n monitoring -l app=perf-collector -o wide
 kubectl logs -n monitoring -l app=perf-collector --tail=20
 WS_TEST_BLOCK_311_008
 
-ws_run_block 'block-009' 'Deploying the collector' 'Register a new task definition revision that adds the sidecar container and sets pidMode: task. The task role itself is untouched:' 281 321 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_311_009'
+ws_run_block 'block-009' 'Deploying the collector' 'Register a new task definition revision that adds the sidecar container and sets pidMode: task. The task role itself is untouched:' 286 326 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_311_009'
 ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/perf-collector
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 NLB_DNS=$(kubectl get svc pyroscope-nlb -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
@@ -1695,13 +1699,13 @@ aws ecs register-task-definition --cli-input-json file:///tmp/unicorn-store-spri
   unicorn-store-spring-unicorn-store-spring
 WS_TEST_BLOCK_311_009
 
-ws_run_block 'block-010' 'Deploying the collector' '- Sidecar container perf-collector — essential: false means the app container'"'"'s lifecycle drives the task; SYSPTRACE lets the sidecar attach to the sibling JVM; PYROSCOPEURL points at the cluster'"'"'s internal NLB so the ECS task can reach Pyroscope.' 335 337 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_311_010'
+ws_run_block 'block-010' 'Deploying the collector' '- Sidecar container perf-collector — essential: false means the app container'"'"'s lifecycle drives the task; SYSPTRACE lets the sidecar attach to the sibling JVM; PYROSCOPEURL points at the cluster'"'"'s internal NLB so the ECS task can reach Pyroscope.' 340 342 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_311_010'
 aws ecs describe-tasks --cluster unicorn-store-spring \
   --tasks $(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring --query 'taskArns[0]' --output text --no-cli-pager) \
   --query 'tasks[0].containers[*].[name,lastStatus]' --output table --no-cli-pager
 WS_TEST_BLOCK_311_010
 
-ws_run_block 'block-011' 'Deploying the collector' 'Both the app container (Main) and perf-collector should be RUNNING. Tail the sidecar'"'"'s CloudWatch logs to see its boot output:' 343 346 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_311_011'
+ws_run_block 'block-011' 'Deploying the collector' 'Both the app container (Main) and perf-collector should be RUNNING. Tail the sidecar'"'"'s CloudWatch logs to see its boot output:' 348 351 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_311_011'
 TASK_ID=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager | awk -F/ '{print $NF}')
 aws logs tail /aws/ecs/unicorn-store-spring \
