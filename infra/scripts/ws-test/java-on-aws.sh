@@ -1864,11 +1864,9 @@ ws_end_page
 
 ws_begin_page 'On-demand analysis' 313 'analysis/perf-platform/on-demand/index.en.md'
 
-ws_run_block 'block-001' 'Returning to the base image' 'Earlier optimization chapters mutate the latest image tag. Before starting analysis, return latest to the mandatory multi-stage image built at the start of the workshop:' 40 49 'bash' '' 600 132 217 <<'WS_TEST_BLOCK_313_001'
-aws ecr get-login-password --region "${AWS_REGION}" \
-  | docker login \
-      --username AWS \
-      --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+ws_run_block 'block-001' 'Returning to the base image' 'Earlier optimization chapters mutate the latest image tag. Before starting analysis, return latest to the mandatory multi-stage image built at the start of the workshop:' 37 44 'bash' '' 600 132 217 <<'WS_TEST_BLOCK_313_001'
+aws ecr get-login-password --region "${AWS_REGION}" | docker login \
+  --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
 APP_ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/unicorn-store-spring
 
@@ -1877,7 +1875,7 @@ docker tag "${APP_ECR_URI}:01-multi-stage" "${APP_ECR_URI}:latest"
 docker push "${APP_ECR_URI}:latest"
 WS_TEST_BLOCK_313_001
 
-ws_run_block 'block-002' 'Onboarding the application' 'Onboarding the application' 63 73 'bash' 'eks' 600 133 217 <<'WS_TEST_BLOCK_313_002'
+ws_run_block 'block-002' 'Onboarding the application' 'Onboarding the application' 56 66 'bash' 'eks' 600 133 217 <<'WS_TEST_BLOCK_313_002'
 kubectl patch deploy/unicorn-store-spring -n unicorn-store-spring --type=strategic --patch '
 spec:
   template:
@@ -1891,7 +1889,7 @@ spec:
 kubectl rollout status deploy/unicorn-store-spring -n unicorn-store-spring --timeout=300s
 WS_TEST_BLOCK_313_002
 
-ws_run_block 'block-003' 'Onboarding the application' 'Onboarding the application' 83 96 'bash' 'ecs' 600 134 217 <<'WS_TEST_BLOCK_313_003'
+ws_run_block 'block-003' 'Onboarding the application' 'Onboarding the application' 76 89 'bash' 'ecs' 600 134 217 <<'WS_TEST_BLOCK_313_003'
 SERVICE_ARN=$(aws ecs describe-services --cluster unicorn-store-spring \
   --services unicorn-store-spring --query 'services[0].serviceArn' \
   --output text --no-cli-pager)
@@ -1908,7 +1906,7 @@ aws ecs tag-resource --resource-arn ${SERVICE_ARN} --no-cli-pager \
   unicorn-store-spring-unicorn-store-spring
 WS_TEST_BLOCK_313_003
 
-ws_run_block 'block-004' 'Onboarding the application' 'Discovery runs every 30 seconds, then async-profiler must finish its first rotated JFR before the collector can push it. Wait until a successful push confirms both attachment and Pyroscope ingestion:' 112 125 'bash' 'eks' 600 135 217 <<'WS_TEST_BLOCK_313_004'
+ws_run_block 'block-004' 'Onboarding the application' 'Discovery runs every 30 seconds, then async-profiler must finish its first rotated JFR before the collector can push it. Wait until a successful push confirms both attachment and Pyroscope ingestion:' 105 118 'bash' 'eks' 600 135 217 <<'WS_TEST_BLOCK_313_004'
 COLLECTOR_LOGS=""
 for attempt in {1..24}; do
   COLLECTOR_LOGS=$(kubectl logs -n monitoring -l app=perf-collector --tail=200)
@@ -1925,7 +1923,7 @@ for attempt in {1..24}; do
 done
 WS_TEST_BLOCK_313_004
 
-ws_run_block 'block-005' 'Onboarding the application' 'You should see a handful of Attached async-profiler (cpu+wall, JFR/15s) to pid ... lines (one per opted-in JVM) and regular Pushed ... bytes ... service=unicorn-store-spring-eks ... entries.' 135 151 'bash' 'ecs' 600 136 217 <<'WS_TEST_BLOCK_313_005'
+ws_run_block 'block-005' 'Onboarding the application' 'You should see a handful of Attached async-profiler (cpu+wall, JFR/15s) to pid ... lines (one per opted-in JVM) and regular Pushed ... bytes ... service=unicorn-store-spring-eks ... entries.' 128 144 'bash' 'ecs' 600 136 217 <<'WS_TEST_BLOCK_313_005'
 TASK_ID=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager | awk -F/ '{print $NF}')
 COLLECTOR_LOGS=""
@@ -1945,7 +1943,7 @@ for attempt in {1..24}; do
 done
 WS_TEST_BLOCK_313_005
 
-ws_run_block 'block-006' 'Onboarding the application' 'Retrieve Grafana access details — you'"'"'ll use the same URL throughout this module:' 163 168 'bash' '' 600 137 217 <<'WS_TEST_BLOCK_313_006'
+ws_run_block 'block-006' 'Onboarding the application' 'Retrieve Grafana access details — you'"'"'ll use the same URL throughout this module:' 156 161 'bash' '' 600 137 217 <<'WS_TEST_BLOCK_313_006'
 GRAFANA_URL=$(kubectl get svc grafana -n monitoring -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 GRAFANA_PASSWORD=$(kubectl get secret grafana-admin -n monitoring -o jsonpath="{.data.password}" | base64 --decode)
 echo "✅ Grafana Access Details" &&
@@ -1954,7 +1952,7 @@ echo "👤 Username: admin" &&
 echo "🔑 Password: ${GRAFANA_PASSWORD}"
 WS_TEST_BLOCK_313_006
 
-ws_run_block 'block-007' 'First analysis: a quiet service' 'Trigger an analysis on the service as it stands now — no extra load, just whatever traffic happens to be hitting it:' 182 191 'bash' '' 600 138 217 <<'WS_TEST_BLOCK_313_007'
+ws_run_block 'block-007' 'First analysis: a quiet service' 'Trigger an analysis on the service as it stands now — no extra load, just whatever traffic happens to be hitting it:' 175 184 'bash' '' 600 138 217 <<'WS_TEST_BLOCK_313_007'
 POD=$(kubectl get pods -n unicorn-store-spring \
   -l app=unicorn-store-spring --field-selector=status.phase=Running \
   -o jsonpath='{.items[0].metadata.name}')
@@ -1967,11 +1965,11 @@ kubectl run -n monitoring trigger-analyze --rm --attach=true --restart=Never \
     -d "{\"service\":\"unicorn-store-spring\",\"platform\":\"eks\",\"pod\":\"${POD}\",\"reason\":\"pre-change check\"}"
 WS_TEST_BLOCK_313_007
 
-ws_skip_block 'block-008' 'First analysis: a quiet service' 'Tail the analyzer logs to watch the lanes fire:' 201 201 'bash' '' 'follows logs until Ctrl+C'
+ws_skip_block 'block-008' 'First analysis: a quiet service' 'Tail the analyzer logs to watch the lanes fire:' 194 194 'bash' '' 'follows logs until Ctrl+C'
 
-ws_skip_block 'block-009' 'First analysis: a quiet service' 'A healthy run looks like this:' 207 217 '' '' 'informational block without language'
+ws_skip_block 'block-009' 'First analysis: a quiet service' 'A healthy run looks like this:' 200 210 '' '' 'informational block without language'
 
-ws_run_block 'block-010' 'First analysis: a quiet service' 'Retrieve the report:' 225 232 'bash' '' 600 139 217 <<'WS_TEST_BLOCK_313_010'
+ws_run_block 'block-010' 'First analysis: a quiet service' 'Retrieve the report:' 218 225 'bash' '' 600 139 217 <<'WS_TEST_BLOCK_313_010'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 LATEST=$(aws s3 ls s3://${S3_BUCKET}/perf-platform/analysis/eks/unicorn-store-spring/ --recursive \
   | grep analysis.md | sort | tail -1 | awk '{print $4}')
@@ -1982,13 +1980,13 @@ echo "📄 Local file: ${LOCAL_FILE}"
 echo "🔗 S3 console: https://${AWS_REGION}.console.aws.amazon.com/s3/buckets/${S3_BUCKET}?prefix=$(dirname ${LATEST})/"
 WS_TEST_BLOCK_313_010
 
-ws_skip_block 'block-011' 'First analysis: a quiet service' 'Open the downloaded report in the IDE:' 238 238 'bash' '' 'opens the report in the IDE'
+ws_skip_block 'block-011' 'First analysis: a quiet service' 'Open the downloaded report in the IDE:' 231 231 'bash' '' 'opens the report in the IDE'
 
-ws_skip_block 'block-012' 'First analysis: a quiet service' 'A typical events.md excerpt against a quiet service:' 246 260 '' '' 'informational block without language'
+ws_skip_block 'block-012' 'First analysis: a quiet service' 'A typical events.md excerpt against a quiet service:' 239 253 '' '' 'informational block without language'
 
-ws_skip_block 'block-013' 'First analysis: a quiet service' 'The Bedrock report (analysis.md) starts with the verdict and rolls into prioritized findings. A typical idle-service report — the verdict line, then a finding citing source by file and line:' 268 290 '' '' 'informational block without language'
+ws_skip_block 'block-013' 'First analysis: a quiet service' 'The Bedrock report (analysis.md) starts with the verdict and rolls into prioritized findings. A typical idle-service report — the verdict line, then a finding citing source by file and line:' 261 283 '' '' 'informational block without language'
 
-ws_run_block 'block-014' 'Second analysis: under light load' 'Generate a small steady load and re-run. The picture changes — under any non-trivial request rate the publisher'"'"'s blocking call dominates the wall profile, and the agent'"'"'s findings sharpen:' 300 345 'bash' '' 600 140 217 <<'WS_TEST_BLOCK_313_014'
+ws_run_block 'block-014' 'Second analysis: under light load' 'Generate a small steady load and re-run. The picture changes — under any non-trivial request rate the publisher'"'"'s blocking call dominates the wall profile, and the agent'"'"'s findings sharpen:' 293 338 'bash' '' 600 140 217 <<'WS_TEST_BLOCK_313_014'
 SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks)
 echo "Load target: ${SVC_URL}"
 ~/java-on-aws/infra/scripts/test/benchmark.sh "${SVC_URL}" 120 30 &
@@ -2037,9 +2035,9 @@ trap - INT TERM
 unset -f analyze_under_load cleanup_benchmark
 WS_TEST_BLOCK_313_014
 
-ws_skip_block 'block-015' 'Second analysis: under light load' 'The deterministic events.md summary already shows the load arrived. Compare with the idle-run excerpt above:' 355 372 '' '' 'informational block without language'
+ws_skip_block 'block-015' 'Second analysis: under light load' 'The deterministic events.md summary already shows the load arrived. Compare with the idle-run excerpt above:' 348 365 '' '' 'informational block without language'
 
-ws_skip_block 'block-016' 'Second analysis: under light load' 'The Bedrock report sharpens accordingly. A typical under-load excerpt — the verdict line, then the dominant finding citing source by file and line:' 380 423 '' '' 'informational block without language'
+ws_skip_block 'block-016' 'Second analysis: under light load' 'The Bedrock report sharpens accordingly. A typical under-load excerpt — the verdict line, then the dominant finding citing source by file and line:' 373 416 '' '' 'informational block without language'
 
 ws_end_page
 
@@ -2186,11 +2184,9 @@ ws_end_page
 
 ws_begin_page 'Deployment' 322 'analysis/thread-dump/deployment/index.en.md'
 
-ws_run_block 'block-001' 'Returning to the base image' 'Earlier optimization chapters mutate the latest image tag. Before starting thread-dump analysis, return latest to the mandatory multi-stage image built at the start of the workshop:' 11 20 'bash' '' 600 148 217 <<'WS_TEST_BLOCK_322_001'
-aws ecr get-login-password --region "${AWS_REGION}" \
-  | docker login \
-      --username AWS \
-      --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+ws_run_block 'block-001' 'Returning to the base image' 'Earlier optimization chapters mutate the latest image tag. Before starting thread-dump analysis, return latest to the mandatory multi-stage image built at the start of the workshop:' 11 18 'bash' '' 600 148 217 <<'WS_TEST_BLOCK_322_001'
+aws ecr get-login-password --region "${AWS_REGION}" | docker login \
+  --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
 APP_ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/unicorn-store-spring
 
@@ -2199,30 +2195,30 @@ docker tag "${APP_ECR_URI}:01-multi-stage" "${APP_ECR_URI}:latest"
 docker push "${APP_ECR_URI}:latest"
 WS_TEST_BLOCK_322_001
 
-ws_run_block 'block-002' 'Re-deploying the application' 'Re-deploying the application' 31 33 'bash' 'eks' 600 149 217 <<'WS_TEST_BLOCK_322_002'
+ws_run_block 'block-002' 'Re-deploying the application' 'Re-deploying the application' 27 29 'bash' 'eks' 600 149 217 <<'WS_TEST_BLOCK_322_002'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_322_002
 
-ws_run_block 'block-003' 'Re-deploying the application' 'Deployment takes around 2 minutes.' 42 42 'bash' 'ecs' 600 150 217 <<'WS_TEST_BLOCK_322_003'
+ws_run_block 'block-003' 'Re-deploying the application' 'Deployment takes around 2 minutes.' 38 38 'bash' 'ecs' 600 150 217 <<'WS_TEST_BLOCK_322_003'
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh unicorn-store-spring unicorn-store-spring
 WS_TEST_BLOCK_322_003
 
-ws_run_block 'block-004' 'Testing the application' 'Testing the application' 56 58 'bash' 'eks' 600 151 217 <<'WS_TEST_BLOCK_322_004'
+ws_run_block 'block-004' 'Testing the application' 'Testing the application' 52 54 'bash' 'eks' 600 151 217 <<'WS_TEST_BLOCK_322_004'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_322_004
 
-ws_run_block 'block-005' 'Testing the application' 'Testing the application' 65 66 'bash' 'ecs' 600 152 217 <<'WS_TEST_BLOCK_322_005'
+ws_run_block 'block-005' 'Testing the application' 'Testing the application' 61 62 'bash' 'ecs' 600 152 217 <<'WS_TEST_BLOCK_322_005'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_322_005
 
-ws_skip_block 'block-006' 'Testing the application' 'Expected output:' 75 75 '' '' 'informational block without language'
+ws_skip_block 'block-006' 'Testing the application' 'Expected output:' 71 71 '' '' 'informational block without language'
 
-ws_run_block 'block-007' 'Enabling Prometheus metrics collection' 'Add Prometheus scraping annotations to your deployment:' 86 96 'bash' 'eks' 600 153 217 <<'WS_TEST_BLOCK_322_007'
+ws_run_block 'block-007' 'Enabling Prometheus metrics collection' 'Add Prometheus scraping annotations to your deployment:' 82 92 'bash' 'eks' 600 153 217 <<'WS_TEST_BLOCK_322_007'
 # These annotations enable Prometheus to automatically discover and scrape metrics
 yq eval '.spec.template.metadata.annotations."prometheus.io/scrape" = "true"' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
 yq eval '.spec.template.metadata.annotations."prometheus.io/port" = "8080"' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
@@ -2236,7 +2232,7 @@ kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 WS_TEST_BLOCK_322_007
 
-ws_run_block 'block-008' 'Enabling Prometheus metrics collection' 'Add the Java application metrics URL to the Prometheus configuration:' 105 153 'bash' 'ecs' 600 154 217 <<'WS_TEST_BLOCK_322_008'
+ws_run_block 'block-008' 'Enabling Prometheus metrics collection' 'Add the Java application metrics URL to the Prometheus configuration:' 101 149 'bash' 'ecs' 600 154 217 <<'WS_TEST_BLOCK_322_008'
 # Get ECS service URL
 ECS_URL=$(cat ~/environment/.workshop-svc-url-ecs | tr -d '\n\r ')
 
@@ -2288,7 +2284,7 @@ fi
 echo "✅ ECS metrics endpoint added: ${ECS_URL}/actuator/prometheus"
 WS_TEST_BLOCK_322_008
 
-ws_run_block 'block-009' 'Verifying the endpoints' 'Verify that the Actuator endpoints are accessible:' 167 177 'bash' 'eks' 600 155 217 <<'WS_TEST_BLOCK_322_009'
+ws_run_block 'block-009' 'Verifying the endpoints' 'Verify that the Actuator endpoints are accessible:' 163 173 'bash' 'eks' 600 155 217 <<'WS_TEST_BLOCK_322_009'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 
@@ -2302,7 +2298,7 @@ curl -s "${SVC_URL}/actuator/prometheus" | grep "jvm_threads"
 curl -s "${SVC_URL}/actuator/health" | jq '.status'
 WS_TEST_BLOCK_322_009
 
-ws_run_block 'block-010' 'Verifying the endpoints' 'Verifying the endpoints' 184 193 'bash' 'ecs' 600 156 217 <<'WS_TEST_BLOCK_322_010'
+ws_run_block 'block-010' 'Verifying the endpoints' 'Verifying the endpoints' 180 189 'bash' 'ecs' 600 156 217 <<'WS_TEST_BLOCK_322_010'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 
 # Test thread dump endpoint
