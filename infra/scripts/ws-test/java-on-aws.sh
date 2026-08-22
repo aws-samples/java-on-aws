@@ -2052,37 +2052,14 @@ ws_end_page
 
 ws_begin_page 'On-alert analysis' 314 'analysis/perf-platform/on-alert/index.en.md'
 
-ws_run_block 'block-001' 'Creating the ServiceLatency alert rule' 'The alert rule depends on a specific load-balancer dimension, so it can only be created after unicorn-store-spring is deployed (and an ALB exists). First discover the ALB'"'"'s CloudWatch dimension on the platform you'"'"'re working with:' 41 50 'bash' 'eks' 600 142 219 <<'WS_TEST_BLOCK_314_001'
-INGRESS_DNS=$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
-  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-ALB_ARN=$(aws elbv2 describe-load-balancers \
-  --query "LoadBalancers[?DNSName=='${INGRESS_DNS}'].LoadBalancerArn" \
-  --output text --no-cli-pager)
-ALB_DIM=$(echo "${ALB_ARN}" | sed 's|.*loadbalancer/||')
-PLATFORM_SUFFIX=eks
-SERVICE_NAME_LABEL=unicorn-store-spring-${PLATFORM_SUFFIX}
-echo "ALB dimension: ${ALB_DIM}"
-echo "service_name label: ${SERVICE_NAME_LABEL}"
-WS_TEST_BLOCK_314_001
+ws_run_block 'block-001' 'Creating the ServiceLatency alert rule' 'The alert payload is the same for both platforms. Define the helper, then run the tab for each platform you want to monitor:' 39 117 'bash' '' 600 142 219 <<'WS_TEST_BLOCK_314_001'
+create_service_latency_alert() {
+  GRAFANA_URL=http://$(kubectl get svc grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+  GRAFANA_PASSWORD=$(kubectl get secret grafana-admin -n monitoring -o jsonpath='{.data.password}' | base64 --decode)
+  FOLDER_UID=$(curl -sS --fail -u "admin:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/folders" \
+    | jq -er '.[] | select(.title=="Workshop Dashboards") | .uid')
 
-ws_run_block 'block-002' 'Creating the ServiceLatency alert rule' 'Creating the ServiceLatency alert rule' 58 65 'bash' 'ecs' 600 143 219 <<'WS_TEST_BLOCK_314_002'
-ALB_ARN=$(aws elbv2 describe-load-balancers \
-  --query "LoadBalancers[?starts_with(LoadBalancerName, 'ecs-express-gateway-alb')].LoadBalancerArn | [0]" \
-  --output text --no-cli-pager)
-ALB_DIM=$(echo "${ALB_ARN}" | sed 's|.*loadbalancer/||')
-PLATFORM_SUFFIX=ecs
-SERVICE_NAME_LABEL=unicorn-store-spring-${PLATFORM_SUFFIX}
-echo "ALB dimension: ${ALB_DIM}"
-echo "service_name label: ${SERVICE_NAME_LABEL}"
-WS_TEST_BLOCK_314_002
-
-ws_run_block 'block-003' 'Creating the ServiceLatency alert rule' 'The rest of the rule creation is the same regardless of platform. Build the alert payload and POST it to Grafana'"'"'s provisioning API:' 75 138 'bash' '' 600 144 219 <<'WS_TEST_BLOCK_314_003'
-GRAFANA_URL=http://$(kubectl get svc grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-GRAFANA_PASSWORD=$(kubectl get secret grafana-admin -n monitoring -o jsonpath='{.data.password}' | base64 --decode)
-FOLDER_UID=$(curl -s -u "admin:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/folders" \
-  | jq -r '.[] | select(.title=="Workshop Dashboards") | .uid')
-
-cat > /tmp/service-latency-alert.json <<EOF
+  cat > /tmp/service-latency-alert.json <<EOF
 {
   "title": "ServiceLatency-${PLATFORM_SUFFIX}",
   "ruleGroup": "workshop-analysis-group",
@@ -2138,29 +2115,70 @@ cat > /tmp/service-latency-alert.json <<EOF
 }
 EOF
 
-curl -s -X POST -u "admin:${GRAFANA_PASSWORD}" \
-  -H "Content-Type: application/json" -d @/tmp/service-latency-alert.json \
-  "${GRAFANA_URL}/api/v1/provisioning/alert-rules" | jq '{title, uid, ruleGroup}'
+  RULE_UID=$(curl -sS --fail -u "admin:${GRAFANA_PASSWORD}" \
+    "${GRAFANA_URL}/api/v1/provisioning/alert-rules" \
+    | jq -r --arg title "ServiceLatency-${PLATFORM_SUFFIX}" --arg folder "${FOLDER_UID}" \
+      'first(.[] | select(.title == $title and .folderUID == $folder and .ruleGroup == "workshop-analysis-group") | .uid) // empty')
+
+  if [[ -n "${RULE_UID}" ]]; then
+    METHOD=PUT
+    RULE_URL="${GRAFANA_URL}/api/v1/provisioning/alert-rules/${RULE_UID}"
+  else
+    METHOD=POST
+    RULE_URL="${GRAFANA_URL}/api/v1/provisioning/alert-rules"
+  fi
+
+  curl -sS --fail-with-body -X "${METHOD}" -u "admin:${GRAFANA_PASSWORD}" \
+    -H "Content-Type: application/json" -d @/tmp/service-latency-alert.json \
+    "${RULE_URL}" | jq '{title, uid, ruleGroup}'
+}
+WS_TEST_BLOCK_314_001
+
+ws_run_block 'block-002' 'Creating the ServiceLatency alert rule' 'Creating the ServiceLatency alert rule' 125 135 'bash' 'eks' 600 143 219 <<'WS_TEST_BLOCK_314_002'
+INGRESS_DNS=$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
+  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+ALB_ARN=$(aws elbv2 describe-load-balancers \
+  --query "LoadBalancers[?DNSName=='${INGRESS_DNS}'].LoadBalancerArn" \
+  --output text --no-cli-pager)
+ALB_DIM=$(echo "${ALB_ARN}" | sed 's|.*loadbalancer/||')
+PLATFORM_SUFFIX=eks
+SERVICE_NAME_LABEL=unicorn-store-spring-${PLATFORM_SUFFIX}
+echo "ALB dimension: ${ALB_DIM}"
+echo "service_name label: ${SERVICE_NAME_LABEL}"
+create_service_latency_alert
+WS_TEST_BLOCK_314_002
+
+ws_run_block 'block-003' 'Creating the ServiceLatency alert rule' 'Creating the ServiceLatency alert rule' 143 151 'bash' 'ecs' 600 144 219 <<'WS_TEST_BLOCK_314_003'
+ALB_ARN=$(aws elbv2 describe-load-balancers \
+  --query "LoadBalancers[?starts_with(LoadBalancerName, 'ecs-express-gateway-alb')].LoadBalancerArn | [0]" \
+  --output text --no-cli-pager)
+ALB_DIM=$(echo "${ALB_ARN}" | sed 's|.*loadbalancer/||')
+PLATFORM_SUFFIX=ecs
+SERVICE_NAME_LABEL=unicorn-store-spring-${PLATFORM_SUFFIX}
+echo "ALB dimension: ${ALB_DIM}"
+echo "service_name label: ${SERVICE_NAME_LABEL}"
+create_service_latency_alert
 WS_TEST_BLOCK_314_003
 
-ws_run_block 'block-004' 'Creating the ServiceLatency alert rule' '- The labels carry servicename=unicorn-store-spring-{eks|ecs} and analysistype=perf-platform. The first tells the analyzer'"'"'s webhook handler which workload to analyze (it strips the -eks/-ecs suffix to recover the workload name and derives the platform from the suffix). The second matches the notification policy that routes the alert to the analyzer'"'"'s webhook contact point. The label is platform-specific so the older ai-jvm-analyzer lab'"'"'s analysistype=profiling route doesn'"'"'t accidentally swallow these alerts.' 150 152 'bash' '' 600 145 219 <<'WS_TEST_BLOCK_314_004'
+ws_run_block 'block-004' 'Creating the ServiceLatency alert rule' '- The labels carry servicename=unicorn-store-spring-{eks|ecs} and analysistype=perf-platform. The first tells the analyzer'"'"'s webhook handler which workload to analyze (it strips the -eks/-ecs suffix to recover the workload name and derives the platform from the suffix). The second matches the notification policy that routes the alert to the analyzer'"'"'s webhook contact point. The label is platform-specific so the older ai-jvm-analyzer lab'"'"'s analysistype=profiling route doesn'"'"'t accidentally swallow these alerts.' 167 169 'bash' '' 600 145 219 <<'WS_TEST_BLOCK_314_004'
 curl -s -u "admin:${GRAFANA_PASSWORD}" \
   "${GRAFANA_URL}/api/prometheus/grafana/api/v1/rules" \
   | jq '.data.groups[].rules[] | select(.name | startswith("ServiceLatency-")) | {name, state, lastEvaluation}'
 WS_TEST_BLOCK_314_004
 
-ws_run_block 'block-005' 'Driving the regression' 'The application code does not change. We just give it more traffic than it can handle:' 164 165 'bash' '' 600 146 219 <<'WS_TEST_BLOCK_314_005'
-SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks)
-~/java-on-aws/infra/scripts/test/benchmark.sh ${SVC_URL} 240 200
+ws_run_block 'block-005' 'Driving the regression' 'The application code does not change. We just give it more traffic than it can handle:' 181 183 'bash' '' 600 146 219 <<'WS_TEST_BLOCK_314_005'
+LOAD_PLATFORM=eks
+SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh "${LOAD_PLATFORM}")
+~/java-on-aws/infra/scripts/test/benchmark.sh "${SVC_URL}" 240 200
 WS_TEST_BLOCK_314_005
 
-ws_run_block 'block-006' 'Driving the regression' 'About a minute after the metric stays above 1 second, the alert transitions:' 179 181 'bash' '' 600 147 219 <<'WS_TEST_BLOCK_314_006'
+ws_run_block 'block-006' 'Driving the regression' 'About a minute after the metric stays above 1 second, the alert transitions:' 197 199 'bash' '' 600 147 219 <<'WS_TEST_BLOCK_314_006'
 curl -s -u "admin:${GRAFANA_PASSWORD}" \
   "${GRAFANA_URL}/api/prometheus/grafana/api/v1/rules" \
   | jq '.data.groups[].rules[] | select(.name | startswith("ServiceLatency-")) | {name, state, alerts}'
 WS_TEST_BLOCK_314_006
 
-ws_run_block 'block-007' 'The webhook fires' 'The analyzer'"'"'s logs catch the webhook landing and run the four-lane pipeline against the workload:' 193 202 'bash' '' 600 148 219 <<'WS_TEST_BLOCK_314_007'
+ws_run_block 'block-007' 'The webhook fires' 'The analyzer'"'"'s logs catch the webhook landing and run the four-lane pipeline against the workload:' 211 220 'bash' '' 600 148 219 <<'WS_TEST_BLOCK_314_007'
 WEBHOOK_RECEIVED=
 while IFS= read -r LINE; do
   echo "${LINE}"
@@ -2173,13 +2191,13 @@ while IFS= read -r LINE; do
 done < <(kubectl logs -n monitoring -l app=perf-analyzer --tail=80 -f)
 WS_TEST_BLOCK_314_007
 
-ws_skip_block 'block-008' 'The webhook fires' 'A real run under 200 rps looks like this:' 208 220 '' '' 'informational block without language'
+ws_skip_block 'block-008' 'The webhook fires' 'A real run under 200 rps looks like this:' 226 238 '' '' 'informational block without language'
 
-ws_skip_block 'block-009' 'The webhook fires' 'The Bedrock report is sharp anyway — Pyroscope alone is enough to identify the root cause when it'"'"'s bad enough to crash the pod:' 230 263 '' '' 'informational block without language'
+ws_skip_block 'block-009' 'The webhook fires' 'The Bedrock report is sharp anyway — Pyroscope alone is enough to identify the root cause when it'"'"'s bad enough to crash the pod:' 248 281 '' '' 'informational block without language'
 
-ws_run_block 'block-010' 'Reading the auto-generated report' 'Reading the auto-generated report' 271 278 'bash' '' 600 149 219 <<'WS_TEST_BLOCK_314_010'
+ws_run_block 'block-010' 'Reading the auto-generated report' 'Reading the auto-generated report' 289 296 'bash' '' 600 149 219 <<'WS_TEST_BLOCK_314_010'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
-LATEST=$(aws s3 ls s3://${S3_BUCKET}/perf-platform/analysis/eks/unicorn-store-spring/ --recursive \
+LATEST=$(aws s3 ls s3://${S3_BUCKET}/perf-platform/analysis/${LOAD_PLATFORM}/unicorn-store-spring/ --recursive \
   | grep analysis.md | sort | tail -1 | awk '{print $4}')
 ANALYSIS_ID=$(echo "${LATEST}" | awk -F/ '{print $(NF-1)}')
 LOCAL_FILE=~/environment/incident-analysis-${ANALYSIS_ID}.md
@@ -2188,7 +2206,7 @@ echo "📄 Local file: ${LOCAL_FILE}"
 echo "🔗 S3 console: https://${AWS_REGION}.console.aws.amazon.com/s3/buckets/${S3_BUCKET}?prefix=$(dirname ${LATEST})/"
 WS_TEST_BLOCK_314_010
 
-ws_skip_block 'block-011' 'Reading the auto-generated report' 'Open the downloaded report in the IDE:' 284 284 'bash' '' 'opens the report in the IDE'
+ws_skip_block 'block-011' 'Reading the auto-generated report' 'Open the downloaded report in the IDE:' 302 302 'bash' '' 'opens the report in the IDE'
 
 ws_end_page
 
