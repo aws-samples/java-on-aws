@@ -630,9 +630,10 @@ kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_205_004
 
-ws_run_block 'block-005' 'Understanding CPU impact' 'Create and deploy a 2-vCPU revision. AWS Fargate requires at least 4 GB of memory with 2 vCPUs:' 80 100 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_205_005'
+ws_run_block 'block-005' 'Understanding CPU impact' 'Create and deploy a 2-vCPU revision. AWS Fargate requires at least 4 GB of memory with 2 vCPUs:' 80 101 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_205_005'
 ORIGINAL_TASK_DEF=$(aws ecs describe-services --cluster unicorn-store-spring \
-  --services unicorn-store-spring --query 'services[0].taskDefinition' \
+  --services unicorn-store-spring \
+  --query "services[0].deployments[?status=='PRIMARY'].taskDefinition | [0]" \
   --output text --no-cli-pager)
 echo "${ORIGINAL_TASK_DEF}" > ~/environment/.baseline-ecs-task-definition
 
@@ -654,7 +655,7 @@ aws ecs describe-task-definition --task-definition "${TWO_CPU_TASK_DEF}" \
   --query 'taskDefinition.{cpu:cpu,memory:memory}' --no-cli-pager
 WS_TEST_BLOCK_205_005
 
-ws_run_block 'block-006' 'Rolling back to baseline' 'Before proceeding to optimization techniques, rollback the CPU changes:' 120 126 'bash' 'eks' 600 <<'WS_TEST_BLOCK_205_006'
+ws_run_block 'block-006' 'Rolling back to baseline' 'Before proceeding to optimization techniques, rollback the CPU changes:' 121 127 'bash' 'eks' 600 <<'WS_TEST_BLOCK_205_006'
 yq -i '.spec.template.spec.containers[].resources.requests.cpu = "1" |
        .spec.template.spec.containers[].resources.limits.cpu = "1"' \
        ~/environment/unicorn-store-spring/k8s/deployment.yaml
@@ -664,7 +665,7 @@ kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring -
 yq '.spec.template.spec.containers[].resources' ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_205_006
 
-ws_run_block 'block-007' 'Rolling back to baseline' 'Rolling back to baseline' 133 139 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_205_007'
+ws_run_block 'block-007' 'Rolling back to baseline' 'Rolling back to baseline' 134 140 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_205_007'
 ORIGINAL_TASK_DEF=$(cat ~/environment/.baseline-ecs-task-definition)
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh \
   unicorn-store-spring unicorn-store-spring "${ORIGINAL_TASK_DEF}"
@@ -3192,7 +3193,7 @@ TASK_DEFINITION_FILE=~/environment/unicorn-store-spring-task-definition-arm64.js
 CURRENT_TASK_DEFINITION_ARN=$(aws ecs describe-services \
   --cluster "${CLUSTER_NAME}" \
   --services "${SERVICE_NAME}" \
-  --query 'services[0].taskDefinition' \
+  --query "services[0].deployments[?status=='PRIMARY'].taskDefinition | [0]" \
   --output text \
   --no-cli-pager)
 
