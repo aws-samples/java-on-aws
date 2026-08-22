@@ -2292,7 +2292,7 @@ kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 WS_TEST_BLOCK_322_007
 
-ws_run_block 'block-008' 'Enabling Prometheus metrics collection' 'Add the Java application metrics URL to the Prometheus configuration:' 119 167 'bash' 'ecs' 600 156 219 <<'WS_TEST_BLOCK_322_008'
+ws_run_block 'block-008' 'Enabling Prometheus metrics collection' 'Add the Java application metrics URL to the Prometheus configuration:' 119 172 'bash' 'ecs' 600 156 219 <<'WS_TEST_BLOCK_322_008'
 # Get ECS service URL
 ECS_URL=$(cat ~/environment/.workshop-svc-url-ecs | tr -d '\n\r ')
 
@@ -2309,14 +2309,19 @@ fi
 kubectl get configmap prometheus-server -n monitoring -o yaml > /tmp/prometheus-cm.yaml
 
 yq -i '.data["prometheus.yml"] |= (
-  from_yaml | .scrape_configs += [{
-    "job_name": "ecs-unicorn-store-spring",
-    "scheme": "'"${SCHEME}"'",
-    "metrics_path": "/actuator/prometheus",
-    "scrape_interval": "15s",
-    "tls_config": {"insecure_skip_verify": true},
-    "static_configs": [{"targets": ["'"${TARGET}"'"]}]
-  }] | to_yaml
+  from_yaml
+  | .scrape_configs = (
+      [.scrape_configs[] | select(.job_name != "ecs-unicorn-store-spring")]
+      + [{
+        "job_name": "ecs-unicorn-store-spring",
+        "scheme": "'"${SCHEME}"'",
+        "metrics_path": "/actuator/prometheus",
+        "scrape_interval": "15s",
+        "tls_config": {"insecure_skip_verify": true},
+        "static_configs": [{"targets": ["'"${TARGET}"'"]}]
+      }]
+    )
+  | to_yaml
 )' /tmp/prometheus-cm.yaml
 
 kubectl apply -f /tmp/prometheus-cm.yaml
@@ -2344,7 +2349,7 @@ fi
 echo "✅ ECS metrics endpoint added: ${ECS_URL}/actuator/prometheus"
 WS_TEST_BLOCK_322_008
 
-ws_run_block 'block-009' 'Verifying the endpoints' 'Verify that the Actuator endpoints are accessible:' 181 191 'bash' 'eks' 600 157 219 <<'WS_TEST_BLOCK_322_009'
+ws_run_block 'block-009' 'Verifying the endpoints' 'Verify that the Actuator endpoints are accessible:' 186 196 'bash' 'eks' 600 157 219 <<'WS_TEST_BLOCK_322_009'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 
@@ -2358,7 +2363,7 @@ curl -s "${SVC_URL}/actuator/prometheus" | grep "jvm_threads"
 curl -s "${SVC_URL}/actuator/health" | jq '.status'
 WS_TEST_BLOCK_322_009
 
-ws_run_block 'block-010' 'Verifying the endpoints' 'Verifying the endpoints' 198 207 'bash' 'ecs' 600 158 219 <<'WS_TEST_BLOCK_322_010'
+ws_run_block 'block-010' 'Verifying the endpoints' 'Verifying the endpoints' 203 212 'bash' 'ecs' 600 158 219 <<'WS_TEST_BLOCK_322_010'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 
 # Test thread dump endpoint
