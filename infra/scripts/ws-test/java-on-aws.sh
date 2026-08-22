@@ -989,43 +989,49 @@ docker push ${ECR_URI}:04-soci
 docker push ${ECR_URI}:latest
 WS_TEST_BLOCK_225_003
 
-ws_run_block 'block-004' 'Creating and pushing SOCI indexes' 'A SOCI index is an artifact that enables lazy loading. It consists of a manifest and zTOCs (table of contents for compressed data). Layers smaller than 10MB are skipped by default since lazy loading provides less benefit for small layers.' 109 112 'bash' '' 600 <<'WS_TEST_BLOCK_225_004'
-sudo soci -n moby create ${ECR_URI}:04-soci
-sudo aws ecr get-login-password --region ${AWS_REGION} \
-  | sudo docker login --username AWS --password-stdin ${ECR_URI}
-sudo soci -n moby push ${ECR_URI}:04-soci
+ws_run_block 'block-004' 'Creating and pushing SOCI indexes' 'A SOCI index is an artifact that enables lazy loading. It consists of a manifest and zTOCs (table of contents for compressed data). Layers smaller than 10MB are skipped by default since lazy loading provides less benefit for small layers.' 109 118 'bash' '' 600 <<'WS_TEST_BLOCK_225_004'
+SOCI_ECR_PASSWORD=$(aws ecr get-login-password --region "${AWS_REGION}")
+sudo ctr -n moby images pull \
+  --user "AWS:${SOCI_ECR_PASSWORD}" \
+  "${ECR_URI}:04-soci"
+printf '%s' "${SOCI_ECR_PASSWORD}" \
+  | sudo docker login --username AWS --password-stdin "${ECR_URI%%/*}"
+unset SOCI_ECR_PASSWORD
+
+sudo soci -n moby create "${ECR_URI}:04-soci"
+sudo soci -n moby push "${ECR_URI}:04-soci"
 WS_TEST_BLOCK_225_004
 
-ws_run_block 'block-005' 'Re-deploying the application' 'For EKS, ensure your nodes support SOCI. See Introducing Seekable OCI parallel pull mode for Amazon EKS for setup instructions.' 131 133 'bash' 'eks' 600 <<'WS_TEST_BLOCK_225_005'
+ws_run_block 'block-005' 'Re-deploying the application' 'For EKS, ensure your nodes support SOCI. See Introducing Seekable OCI parallel pull mode for Amazon EKS for setup instructions.' 137 139 'bash' 'eks' 600 <<'WS_TEST_BLOCK_225_005'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_225_005
 
-ws_run_block 'block-006' 'Re-deploying the application' 'ECS with Fargate automatically uses SOCI indexes when available.' 144 144 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_225_006'
+ws_run_block 'block-006' 'Re-deploying the application' 'ECS with Fargate automatically uses SOCI indexes when available.' 150 150 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_225_006'
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh unicorn-store-spring unicorn-store-spring
 WS_TEST_BLOCK_225_006
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 158 160 'bash' 'eks' 600 <<'WS_TEST_BLOCK_225_007'
+ws_run_block 'block-007' 'Testing the application' 'Testing the application' 164 166 'bash' 'eks' 600 <<'WS_TEST_BLOCK_225_007'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_225_007
 
-ws_run_block 'block-008' 'Testing the application' 'Testing the application' 167 168 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_225_008'
+ws_run_block 'block-008' 'Testing the application' 'Testing the application' 173 174 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_225_008'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_225_008
 
-ws_skip_block 'block-009' 'Testing the application' 'Expected output:' 177 177 '' '' 'informational block without language'
+ws_skip_block 'block-009' 'Testing the application' 'Expected output:' 183 183 '' '' 'informational block without language'
 
-ws_run_block 'block-010' 'Retrieving the results' 'Retrieve the startup time:' 188 190 'bash' 'eks' 600 <<'WS_TEST_BLOCK_225_010'
+ws_run_block 'block-010' 'Retrieving the results' 'Retrieve the startup time:' 194 196 'bash' 'eks' 600 <<'WS_TEST_BLOCK_225_010'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_225_010
 
-ws_run_block 'block-011' 'Retrieving the results' 'Retrieving the results' 197 204 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_225_011'
+ws_run_block 'block-011' 'Retrieving the results' 'Retrieving the results' 203 210 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_225_011'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
