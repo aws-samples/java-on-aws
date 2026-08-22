@@ -998,7 +998,7 @@ printf '%s' "${SOCI_ECR_PASSWORD}" \
   | sudo docker login --username AWS --password-stdin "${ECR_URI%%/*}"
 unset SOCI_ECR_PASSWORD
 
-sudo soci -n moby create "${ECR_URI}:04-soci"
+sudo soci -n moby create --force "${ECR_URI}:04-soci"
 sudo soci -n moby push "${ECR_URI}:04-soci"
 WS_TEST_BLOCK_225_004
 
