@@ -488,7 +488,7 @@ aws ecs create-express-gateway-service \
   --no-cli-pager
 WS_TEST_BLOCK_140_004
 
-ws_run_block 'block-005' 'Deploying the application' '5. Speed up deployment configuration:' 151 160 'bash' '' 600 <<'WS_TEST_BLOCK_140_005'
+ws_run_block 'block-005' 'Deploying the application' '5. Speed up deployment configuration:' 151 166 'bash' '' 600 <<'WS_TEST_BLOCK_140_005'
 aws ecs update-service \
   --cluster unicorn-store-spring \
   --service unicorn-store-spring \
@@ -499,9 +499,15 @@ aws ecs update-service \
     "canaryConfiguration": {"canaryPercent": 100, "canaryBakeTimeInMinutes": 0}
   }' \
   --no-cli-pager
+
+echo -n "Waiting for service deployment"
+aws ecs wait services-stable \
+  --cluster unicorn-store-spring \
+  --services unicorn-store-spring
+echo " STABLE"
 WS_TEST_BLOCK_140_005
 
-ws_run_block 'block-006' 'Verifying the deployment' 'Wait for the service to become active and get the URL:' 168 216 'bash' '' 660 <<'WS_TEST_BLOCK_140_006'
+ws_run_block 'block-006' 'Verifying the deployment' 'Wait for the service to become active and get the URL:' 174 222 'bash' '' 660 <<'WS_TEST_BLOCK_140_006'
 echo -n "Waiting for service"
 readiness_deadline=$((SECONDS + 600))
 service_status=""
@@ -533,7 +539,7 @@ echo -n "Waiting for endpoint"
 http_status=""
 while (( SECONDS < readiness_deadline )); do
   http_status=$(curl -s -o /dev/null -w "%{http_code}" \
-    --connect-timeout 5 --max-time 10 "${SVC_URL}/" || true)
+    --connect-timeout 5 --max-time 10 "${SVC_URL}/actuator/health" || true)
   if [[ "${http_status}" == "200" ]]; then
     echo " AVAILABLE"
     break
@@ -553,13 +559,13 @@ fi
 echo "${SVC_URL}" > ~/environment/.workshop-svc-url-ecs
 WS_TEST_BLOCK_140_006
 
-ws_run_block 'block-007' 'Testing the application' '1. Load the service URL:' 443 445 'bash' '' 600 <<'WS_TEST_BLOCK_140_007'
+ws_run_block 'block-007' 'Testing the application' '1. Load the service URL:' 449 451 'bash' '' 600 <<'WS_TEST_BLOCK_140_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 echo ${SVC_URL}
 curl -s ${SVC_URL} && echo
 WS_TEST_BLOCK_140_007
 
-ws_run_block 'block-008' 'Testing the application' '2. Test the application:' 451 458 'bash' '' 600 <<'WS_TEST_BLOCK_140_008'
+ws_run_block 'block-008' 'Testing the application' '2. Test the application:' 457 464 'bash' '' 600 <<'WS_TEST_BLOCK_140_008'
 curl -s --request POST ${SVC_URL}/unicorns \
   --header 'Content-Type: application/json' \
   --data-raw '{
@@ -570,9 +576,9 @@ curl -s --request POST ${SVC_URL}/unicorns \
 }' | jq
 WS_TEST_BLOCK_140_008
 
-ws_skip_block 'block-009' 'Testing the application' 'You should see a response like:' 464 470 'json' '' 'copy action disabled'
+ws_skip_block 'block-009' 'Testing the application' 'You should see a response like:' 470 476 'json' '' 'copy action disabled'
 
-ws_run_block 'block-010' 'Accessing application logs' 'Get the logs from the running task:' 482 490 'bash' '' 600 <<'WS_TEST_BLOCK_140_010'
+ws_run_block 'block-010' 'Accessing application logs' 'Get the logs from the running task:' 488 496 'bash' '' 600 <<'WS_TEST_BLOCK_140_010'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -584,7 +590,7 @@ aws logs get-log-events \
   | jq -r '.events[].message'
 WS_TEST_BLOCK_140_010
 
-ws_skip_block 'block-011' 'Using e1s' 'Open a new terminal window and run e1s to view the state of the Amazon ECS cluster:' 510 510 'bash' '' 'interactive terminal UI'
+ws_skip_block 'block-011' 'Using e1s' 'Open a new terminal window and run e1s to view the state of the Amazon ECS cluster:' 516 516 'bash' '' 'interactive terminal UI'
 
 ws_end_page
 
