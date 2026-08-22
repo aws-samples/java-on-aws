@@ -2237,30 +2237,48 @@ docker tag "${APP_ECR_URI}:01-multi-stage" "${APP_ECR_URI}:latest"
 docker push "${APP_ECR_URI}:latest"
 WS_TEST_BLOCK_322_001
 
-ws_run_block 'block-002' 'Re-deploying the application' 'Re-deploying the application' 27 29 'bash' 'eks' 600 151 219 <<'WS_TEST_BLOCK_322_002'
+ws_run_block 'block-002' 'Re-deploying the application' 'Re-deploying the application' 27 47 'bash' 'eks' 600 151 219 <<'WS_TEST_BLOCK_322_002'
+# Remove profiling configuration that may remain when entering this module directly
+# after the continuous-profiling module. The base image does not include async-profiler.
+yq -i '
+  del(
+    .spec.template.spec.containers[0].command,
+    .spec.template.spec.containers[0].args
+  )
+  | del(
+      .spec.template.spec.containers[0].volumeMounts[]
+      | select(.name == "persistent-storage")
+    )
+  | del(
+      .spec.template.spec.volumes[]
+      | select(.name == "persistent-storage")
+    )
+' ~/environment/unicorn-store-spring/k8s/deployment.yaml
+
+kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_322_002
 
-ws_run_block 'block-003' 'Re-deploying the application' 'Deployment takes around 2 minutes.' 38 38 'bash' 'ecs' 600 152 219 <<'WS_TEST_BLOCK_322_003'
+ws_run_block 'block-003' 'Re-deploying the application' 'Deployment takes around 2 minutes.' 56 56 'bash' 'ecs' 600 152 219 <<'WS_TEST_BLOCK_322_003'
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh unicorn-store-spring unicorn-store-spring
 WS_TEST_BLOCK_322_003
 
-ws_run_block 'block-004' 'Testing the application' 'Testing the application' 52 54 'bash' 'eks' 600 153 219 <<'WS_TEST_BLOCK_322_004'
+ws_run_block 'block-004' 'Testing the application' 'Testing the application' 70 72 'bash' 'eks' 600 153 219 <<'WS_TEST_BLOCK_322_004'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_322_004
 
-ws_run_block 'block-005' 'Testing the application' 'Testing the application' 61 62 'bash' 'ecs' 600 154 219 <<'WS_TEST_BLOCK_322_005'
+ws_run_block 'block-005' 'Testing the application' 'Testing the application' 79 80 'bash' 'ecs' 600 154 219 <<'WS_TEST_BLOCK_322_005'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_322_005
 
-ws_skip_block 'block-006' 'Testing the application' 'Expected output:' 71 71 '' '' 'informational block without language'
+ws_skip_block 'block-006' 'Testing the application' 'Expected output:' 89 89 '' '' 'informational block without language'
 
-ws_run_block 'block-007' 'Enabling Prometheus metrics collection' 'Add Prometheus scraping annotations to your deployment:' 82 92 'bash' 'eks' 600 155 219 <<'WS_TEST_BLOCK_322_007'
+ws_run_block 'block-007' 'Enabling Prometheus metrics collection' 'Add Prometheus scraping annotations to your deployment:' 100 110 'bash' 'eks' 600 155 219 <<'WS_TEST_BLOCK_322_007'
 # These annotations enable Prometheus to automatically discover and scrape metrics
 yq eval '.spec.template.metadata.annotations."prometheus.io/scrape" = "true"' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
 yq eval '.spec.template.metadata.annotations."prometheus.io/port" = "8080"' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
@@ -2274,7 +2292,7 @@ kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 WS_TEST_BLOCK_322_007
 
-ws_run_block 'block-008' 'Enabling Prometheus metrics collection' 'Add the Java application metrics URL to the Prometheus configuration:' 101 149 'bash' 'ecs' 600 156 219 <<'WS_TEST_BLOCK_322_008'
+ws_run_block 'block-008' 'Enabling Prometheus metrics collection' 'Add the Java application metrics URL to the Prometheus configuration:' 119 167 'bash' 'ecs' 600 156 219 <<'WS_TEST_BLOCK_322_008'
 # Get ECS service URL
 ECS_URL=$(cat ~/environment/.workshop-svc-url-ecs | tr -d '\n\r ')
 
@@ -2326,7 +2344,7 @@ fi
 echo "✅ ECS metrics endpoint added: ${ECS_URL}/actuator/prometheus"
 WS_TEST_BLOCK_322_008
 
-ws_run_block 'block-009' 'Verifying the endpoints' 'Verify that the Actuator endpoints are accessible:' 163 173 'bash' 'eks' 600 157 219 <<'WS_TEST_BLOCK_322_009'
+ws_run_block 'block-009' 'Verifying the endpoints' 'Verify that the Actuator endpoints are accessible:' 181 191 'bash' 'eks' 600 157 219 <<'WS_TEST_BLOCK_322_009'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 
@@ -2340,7 +2358,7 @@ curl -s "${SVC_URL}/actuator/prometheus" | grep "jvm_threads"
 curl -s "${SVC_URL}/actuator/health" | jq '.status'
 WS_TEST_BLOCK_322_009
 
-ws_run_block 'block-010' 'Verifying the endpoints' 'Verifying the endpoints' 180 189 'bash' 'ecs' 600 158 219 <<'WS_TEST_BLOCK_322_010'
+ws_run_block 'block-010' 'Verifying the endpoints' 'Verifying the endpoints' 198 207 'bash' 'ecs' 600 158 219 <<'WS_TEST_BLOCK_322_010'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 
 # Test thread dump endpoint
