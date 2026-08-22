@@ -519,6 +519,12 @@ ws_begin_page() {
   WS_CURRENT_PAGE="$1"
   WS_CURRENT_WEIGHT="$2"
   WS_CURRENT_SOURCE="$3"
+  if [[ -n "$WS_TO_WEIGHT" ]] && (( WS_CURRENT_WEIGHT >= WS_TO_WEIGHT )); then
+    echo
+    echo "Reached --to ${WS_TO_WEIGHT}; stopping before ${WS_CURRENT_WEIGHT} ${WS_CURRENT_PAGE}."
+    ws_finish_run
+    exit 0
+  fi
   ws_select_current_page "$WS_CURRENT_WEIGHT"
   echo
   if [[ "$WS_CURRENT_PAGE_SELECTED" == "1" ]]; then

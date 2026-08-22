@@ -1965,16 +1965,19 @@ kubectl run -n monitoring trigger-analyze --rm --attach=true --restart=Never \
     -d "{\"service\":\"unicorn-store-spring\",\"platform\":\"eks\",\"pod\":\"${POD}\",\"reason\":\"pre-change check\"}"
 WS_TEST_BLOCK_313_007
 
-ws_run_block 'block-008' 'First analysis: a quiet service' 'Tail the analyzer logs to watch the lanes fire:' 194 197 'bash' '' 600 139 219 <<'WS_TEST_BLOCK_313_008'
-while IFS= read -r LINE; do
-  echo "${LINE}"
-  [[ "${LINE}" == *" complete: s3://"* ]] && break
-done < <(kubectl logs -n monitoring -l app=perf-analyzer --tail=0 -f)
+ws_run_block 'block-008' 'First analysis: a quiet service' 'Tail the analyzer logs to watch the lanes fire:' 194 200 'bash' '' 600 139 219 <<'WS_TEST_BLOCK_313_008'
+(
+  set +o pipefail
+  kubectl logs -n monitoring -l app=perf-analyzer --tail=0 -f | awk '
+    { print; fflush() }
+    / complete: s3:\/\// { exit }
+  '
+)
 WS_TEST_BLOCK_313_008
 
-ws_skip_block 'block-009' 'First analysis: a quiet service' 'A healthy run looks like this:' 203 213 '' '' 'informational block without language'
+ws_skip_block 'block-009' 'First analysis: a quiet service' 'A healthy run looks like this:' 206 216 '' '' 'informational block without language'
 
-ws_run_block 'block-010' 'First analysis: a quiet service' 'Retrieve the report:' 221 228 'bash' '' 600 140 219 <<'WS_TEST_BLOCK_313_010'
+ws_run_block 'block-010' 'First analysis: a quiet service' 'Retrieve the report:' 224 231 'bash' '' 600 140 219 <<'WS_TEST_BLOCK_313_010'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 LATEST=$(aws s3 ls s3://${S3_BUCKET}/perf-platform/analysis/eks/unicorn-store-spring/ --recursive \
   | grep analysis.md | sort | tail -1 | awk '{print $4}')
@@ -1985,13 +1988,13 @@ echo "📄 Local file: ${LOCAL_FILE}"
 echo "🔗 S3 console: https://${AWS_REGION}.console.aws.amazon.com/s3/buckets/${S3_BUCKET}?prefix=$(dirname ${LATEST})/"
 WS_TEST_BLOCK_313_010
 
-ws_skip_block 'block-011' 'First analysis: a quiet service' 'Open the downloaded report in the IDE:' 234 234 'bash' '' 'opens the report in the IDE'
+ws_skip_block 'block-011' 'First analysis: a quiet service' 'Open the downloaded report in the IDE:' 237 237 'bash' '' 'opens the report in the IDE'
 
-ws_skip_block 'block-012' 'First analysis: a quiet service' 'A typical events.md excerpt against a quiet service:' 242 256 '' '' 'informational block without language'
+ws_skip_block 'block-012' 'First analysis: a quiet service' 'A typical events.md excerpt against a quiet service:' 245 259 '' '' 'informational block without language'
 
-ws_skip_block 'block-013' 'First analysis: a quiet service' 'The Bedrock report (analysis.md) starts with the verdict and rolls into prioritized findings. A typical idle-service report — the verdict line, then a finding citing source by file and line:' 264 286 '' '' 'informational block without language'
+ws_skip_block 'block-013' 'First analysis: a quiet service' 'The Bedrock report (analysis.md) starts with the verdict and rolls into prioritized findings. A typical idle-service report — the verdict line, then a finding citing source by file and line:' 267 289 '' '' 'informational block without language'
 
-ws_run_block 'block-014' 'Second analysis: under light load' 'Generate a small steady load and re-run. The picture changes — under any non-trivial request rate the publisher'"'"'s blocking call dominates the wall profile, and the agent'"'"'s findings sharpen:' 296 345 'bash' '' 600 141 219 <<'WS_TEST_BLOCK_313_014'
+ws_run_block 'block-014' 'Second analysis: under light load' 'Generate a small steady load and re-run. The picture changes — under any non-trivial request rate the publisher'"'"'s blocking call dominates the wall profile, and the agent'"'"'s findings sharpen:' 299 351 'bash' '' 600 141 219 <<'WS_TEST_BLOCK_313_014'
 SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks)
 echo "Load target: ${SVC_URL}"
 ~/java-on-aws/infra/scripts/test/benchmark.sh "${SVC_URL}" 120 30 &
@@ -2029,10 +2032,13 @@ if ! analyze_under_load; then
   unset -f analyze_under_load cleanup_benchmark
   return 1
 fi
-while IFS= read -r LINE; do
-  echo "${LINE}"
-  [[ "${LINE}" == *" complete: s3://"* ]] && break
-done < <(kubectl logs -n monitoring -l app=perf-analyzer --tail=0 -f)
+(
+  set +o pipefail
+  kubectl logs -n monitoring -l app=perf-analyzer --tail=0 -f | awk '
+    { print; fflush() }
+    / complete: s3:\/\// { exit }
+  '
+)
 if ! wait "${BENCHMARK_PID}"; then
   BENCHMARK_PID=""
   trap - INT TERM
@@ -2044,9 +2050,9 @@ trap - INT TERM
 unset -f analyze_under_load cleanup_benchmark
 WS_TEST_BLOCK_313_014
 
-ws_skip_block 'block-015' 'Second analysis: under light load' 'The deterministic events.md summary already shows the load arrived. Compare with the idle-run excerpt above:' 355 372 '' '' 'informational block without language'
+ws_skip_block 'block-015' 'Second analysis: under light load' 'The deterministic events.md summary already shows the load arrived. Compare with the idle-run excerpt above:' 361 378 '' '' 'informational block without language'
 
-ws_skip_block 'block-016' 'Second analysis: under light load' 'The Bedrock report sharpens accordingly. A typical under-load excerpt — the verdict line, then the dominant finding citing source by file and line:' 380 423 '' '' 'informational block without language'
+ws_skip_block 'block-016' 'Second analysis: under light load' 'The Bedrock report sharpens accordingly. A typical under-load excerpt — the verdict line, then the dominant finding citing source by file and line:' 386 429 '' '' 'informational block without language'
 
 ws_end_page
 
@@ -2160,7 +2166,7 @@ echo "service_name label: ${SERVICE_NAME_LABEL}"
 create_service_latency_alert
 WS_TEST_BLOCK_314_003
 
-ws_run_block 'block-004' 'Creating the ServiceLatency alert rule' '- The labels carry servicename=unicorn-store-spring-{eks|ecs} and analysistype=perf-platform. The first tells the analyzer'"'"'s webhook handler which workload to analyze (it strips the -eks/-ecs suffix to recover the workload name and derives the platform from the suffix). The second matches the notification policy that routes the alert to the analyzer'"'"'s webhook contact point. The label is platform-specific so the older ai-jvm-analyzer lab'"'"'s analysistype=profiling route doesn'"'"'t accidentally swallow these alerts.' 167 169 'bash' '' 600 145 219 <<'WS_TEST_BLOCK_314_004'
+ws_run_block 'block-004' 'Creating the ServiceLatency alert rule' '- The labels carry servicename=unicorn-store-spring-{eks|ecs} and analysistype=perf-platform. The first tells the analyzer'"'"'s webhook handler which workload to analyze (it strips the -eks/-ecs suffix to recover the workload name and derives the platform from the suffix). The second matches the notification policy that routes the alert to the analyzer'"'"'s webhook contact point.' 167 169 'bash' '' 600 145 219 <<'WS_TEST_BLOCK_314_004'
 curl -s -u "admin:${GRAFANA_PASSWORD}" \
   "${GRAFANA_URL}/api/prometheus/grafana/api/v1/rules" \
   | jq '.data.groups[].rules[] | select(.name | startswith("ServiceLatency-")) | {name, state, lastEvaluation}'
@@ -2178,24 +2184,22 @@ curl -s -u "admin:${GRAFANA_PASSWORD}" \
   | jq '.data.groups[].rules[] | select(.name | startswith("ServiceLatency-")) | {name, state, alerts}'
 WS_TEST_BLOCK_314_006
 
-ws_run_block 'block-007' 'The webhook fires' 'The analyzer'"'"'s logs catch the webhook landing and run the four-lane pipeline against the workload:' 211 220 'bash' '' 600 148 219 <<'WS_TEST_BLOCK_314_007'
-WEBHOOK_RECEIVED=
-while IFS= read -r LINE; do
-  echo "${LINE}"
-  if [[ "${LINE}" == *"Grafana webhook analysis:"* ]]; then
-    WEBHOOK_RECEIVED=1
-  fi
-  if [[ -n "${WEBHOOK_RECEIVED}" && "${LINE}" == *" complete: s3://"* ]]; then
-    break
-  fi
-done < <(kubectl logs -n monitoring -l app=perf-analyzer --tail=80 -f)
+ws_run_block 'block-007' 'The webhook fires' 'The analyzer'"'"'s logs catch the webhook landing and run the four-lane pipeline against the workload:' 211 218 'bash' '' 600 148 219 <<'WS_TEST_BLOCK_314_007'
+(
+  set +o pipefail
+  kubectl logs -n monitoring -l app=perf-analyzer --tail=80 -f | awk '
+    { print; fflush() }
+    /Grafana webhook analysis:/ { webhook_received=1 }
+    webhook_received && / complete: s3:\/\// { exit }
+  '
+)
 WS_TEST_BLOCK_314_007
 
-ws_skip_block 'block-008' 'The webhook fires' 'A real run under 200 rps looks like this:' 226 238 '' '' 'informational block without language'
+ws_skip_block 'block-008' 'The webhook fires' 'A real run under 200 rps looks like this:' 224 236 '' '' 'informational block without language'
 
-ws_skip_block 'block-009' 'The webhook fires' 'The Bedrock report is sharp anyway — Pyroscope alone is enough to identify the root cause when it'"'"'s bad enough to crash the pod:' 248 281 '' '' 'informational block without language'
+ws_skip_block 'block-009' 'The webhook fires' 'The Bedrock report is sharp anyway — Pyroscope alone is enough to identify the root cause when it'"'"'s bad enough to crash the pod:' 246 279 '' '' 'informational block without language'
 
-ws_run_block 'block-010' 'Reading the auto-generated report' 'Reading the auto-generated report' 289 296 'bash' '' 600 149 219 <<'WS_TEST_BLOCK_314_010'
+ws_run_block 'block-010' 'Reading the auto-generated report' 'Reading the auto-generated report' 287 294 'bash' '' 600 149 219 <<'WS_TEST_BLOCK_314_010'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 LATEST=$(aws s3 ls s3://${S3_BUCKET}/perf-platform/analysis/${LOAD_PLATFORM}/unicorn-store-spring/ --recursive \
   | grep analysis.md | sort | tail -1 | awk '{print $4}')
@@ -2206,7 +2210,7 @@ echo "📄 Local file: ${LOCAL_FILE}"
 echo "🔗 S3 console: https://${AWS_REGION}.console.aws.amazon.com/s3/buckets/${S3_BUCKET}?prefix=$(dirname ${LATEST})/"
 WS_TEST_BLOCK_314_010
 
-ws_skip_block 'block-011' 'Reading the auto-generated report' 'Open the downloaded report in the IDE:' 302 302 'bash' '' 'opens the report in the IDE'
+ws_skip_block 'block-011' 'Reading the auto-generated report' 'Open the downloaded report in the IDE:' 300 300 'bash' '' 'opens the report in the IDE'
 
 ws_end_page
 
