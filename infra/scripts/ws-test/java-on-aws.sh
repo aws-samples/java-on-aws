@@ -30,11 +30,11 @@ ws_end_page
 
 ws_begin_page 'Containerize and run' 50 'containerize-run/index.en.md'
 
-ws_run_block 'block-001' 'Building the Java application in the container' '1. Navigate to the Java application folder:' 19 19 'bash' '' 600 <<'WS_TEST_BLOCK_050_001'
+ws_run_block 'block-001' 'Building the Java application in the container' '1. Navigate to the Java application folder:' 19 19 'bash' '' 600 1 217 <<'WS_TEST_BLOCK_050_001'
 cd ~/environment/unicorn-store-spring
 WS_TEST_BLOCK_050_001
 
-ws_run_block 'block-002' 'Building the Java application in the container' '2. Create the Dockerfile:' 25 43 'dockerfile' '' 600 <<'WS_TEST_BLOCK_050_002'
+ws_run_block 'block-002' 'Building the Java application in the container' '2. Create the Dockerfile:' 25 43 'dockerfile' '' 600 2 217 <<'WS_TEST_BLOCK_050_002'
 cat <<'EOF' > ~/environment/unicorn-store-spring/Dockerfile
 FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
 
@@ -56,16 +56,16 @@ ENTRYPOINT ["java", "-XX:+UseCompactObjectHeaders", "-jar", "-Dserver.port=8080"
 EOF
 WS_TEST_BLOCK_050_002
 
-ws_run_block 'block-003' 'Building the Java application in the container' '3. Build the container image:' 56 57 'bash' '' 600 <<'WS_TEST_BLOCK_050_003'
+ws_run_block 'block-003' 'Building the Java application in the container' '3. Build the container image:' 56 57 'bash' '' 600 3 217 <<'WS_TEST_BLOCK_050_003'
 cd ~/environment/unicorn-store-spring
 docker build -t unicorn-store-spring:latest .
 WS_TEST_BLOCK_050_003
 
-ws_run_block 'block-004' 'Building the Java application in the container' '3. List the container images:' 63 63 'bash' '' 600 <<'WS_TEST_BLOCK_050_004'
+ws_run_block 'block-004' 'Building the Java application in the container' '3. List the container images:' 63 63 'bash' '' 600 4 217 <<'WS_TEST_BLOCK_050_004'
 docker images unicorn-store-spring
 WS_TEST_BLOCK_050_004
 
-ws_run_block 'block-005' 'Testing the container locally' '1. Run a container instance:' 73 108 'bash' '' 600 <<'WS_TEST_BLOCK_050_005'
+ws_run_block 'block-005' 'Testing the container locally' '1. Run a container instance:' 73 108 'bash' '' 600 5 217 <<'WS_TEST_BLOCK_050_005'
 SPRING_DATASOURCE_URL=$(aws ssm get-parameter --name workshop-db-connection-string --no-cli-pager \
   | jq --raw-output '.Parameter.Value')
 SPRING_DATASOURCE_USERNAME=$(aws secretsmanager get-secret-value --secret-id workshop-db-secret --no-cli-pager \
@@ -104,7 +104,7 @@ if [[ "${application_status}" != "200" ]]; then
 fi
 WS_TEST_BLOCK_050_005
 
-ws_run_block 'block-006' 'Testing the container locally' '2. Run the test command:' 114 121 'bash' '' 600 <<'WS_TEST_BLOCK_050_006'
+ws_run_block 'block-006' 'Testing the container locally' '2. Run the test command:' 114 121 'bash' '' 600 6 217 <<'WS_TEST_BLOCK_050_006'
 curl --location --request POST 'localhost:8080/unicorns' \
   --header 'Content-Type: application/json' \
   --data-raw '{
@@ -115,15 +115,15 @@ curl --location --request POST 'localhost:8080/unicorns' \
 }' | jq
 WS_TEST_BLOCK_050_006
 
-ws_run_block 'block-007' 'Testing the container locally' '3. Stop and remove the local container:' 127 127 'bash' '' 600 <<'WS_TEST_BLOCK_050_007'
+ws_run_block 'block-007' 'Testing the container locally' '3. Stop and remove the local container:' 127 127 'bash' '' 600 7 217 <<'WS_TEST_BLOCK_050_007'
 docker rm --force "${CONTAINER_NAME}"
 WS_TEST_BLOCK_050_007
 
-ws_run_block 'block-008' 'Optimizing the Dockerfile' '1. Check size of the initial image:' 137 137 'bash' '' 600 <<'WS_TEST_BLOCK_050_008'
+ws_run_block 'block-008' 'Optimizing the Dockerfile' '1. Check size of the initial image:' 137 137 'bash' '' 600 8 217 <<'WS_TEST_BLOCK_050_008'
 docker images unicorn-store-spring
 WS_TEST_BLOCK_050_008
 
-ws_run_block 'block-009' 'Optimizing the Dockerfile' '2. Create the optimized Dockerfile with multi-stage build:' 145 166 'dockerfile' '' 600 <<'WS_TEST_BLOCK_050_009'
+ws_run_block 'block-009' 'Optimizing the Dockerfile' '2. Create the optimized Dockerfile with multi-stage build:' 145 166 'dockerfile' '' 600 9 217 <<'WS_TEST_BLOCK_050_009'
 cat <<'EOF' > ~/environment/unicorn-store-spring/Dockerfile
 FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
 
@@ -148,21 +148,21 @@ ENTRYPOINT ["java", "-jar", "-Dserver.port=8080", "/store-spring.jar"]
 EOF
 WS_TEST_BLOCK_050_009
 
-ws_run_block 'block-010' 'Optimizing the Dockerfile' '3. Build the container image:' 175 176 'bash' '' 600 <<'WS_TEST_BLOCK_050_010'
+ws_run_block 'block-010' 'Optimizing the Dockerfile' '3. Build the container image:' 175 176 'bash' '' 600 10 217 <<'WS_TEST_BLOCK_050_010'
 cd ~/environment/unicorn-store-spring
 docker build -t unicorn-store-spring:latest .
 WS_TEST_BLOCK_050_010
 
-ws_run_block 'block-011' 'Optimizing the Dockerfile' '4. Check size of the image:' 182 182 'bash' '' 600 <<'WS_TEST_BLOCK_050_011'
+ws_run_block 'block-011' 'Optimizing the Dockerfile' '4. Check size of the image:' 182 182 'bash' '' 600 11 217 <<'WS_TEST_BLOCK_050_011'
 docker images unicorn-store-spring
 WS_TEST_BLOCK_050_011
 
-ws_run_block 'block-012' 'Pushing to Amazon ECR' '1. Login to Amazon ECR:' 194 195 'bash' '' 600 <<'WS_TEST_BLOCK_050_012'
+ws_run_block 'block-012' 'Pushing to Amazon ECR' '1. Login to Amazon ECR:' 194 195 'bash' '' 600 12 217 <<'WS_TEST_BLOCK_050_012'
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 WS_TEST_BLOCK_050_012
 
-ws_run_block 'block-013' 'Pushing to Amazon ECR' '2. Create the ECR repository and push the image:' 201 206 'bash' '' 600 <<'WS_TEST_BLOCK_050_013'
+ws_run_block 'block-013' 'Pushing to Amazon ECR' '2. Create the ECR repository and push the image:' 201 206 'bash' '' 600 13 217 <<'WS_TEST_BLOCK_050_013'
 ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/unicorn-store-spring
 docker tag unicorn-store-spring:latest ${ECR_URI}:01-multi-stage
 docker tag unicorn-store-spring:latest ${ECR_URI}:latest
@@ -175,15 +175,15 @@ ws_end_page
 
 ws_begin_page 'Amazon EKS' 120 'deploy-containers/deploy-to-eks/index.en.md'
 
-ws_run_block 'block-001' 'Setting up the namespace and service account' '1. Create the namespace for the application:' 62 62 'bash' '' 600 <<'WS_TEST_BLOCK_120_001'
+ws_run_block 'block-001' 'Setting up the namespace and service account' '1. Create the namespace for the application:' 62 62 'bash' '' 600 14 217 <<'WS_TEST_BLOCK_120_001'
 kubectl create namespace unicorn-store-spring
 WS_TEST_BLOCK_120_001
 
-ws_run_block 'block-002' 'Setting up the namespace and service account' '2. Create a service account for the application:' 68 68 'bash' '' 600 <<'WS_TEST_BLOCK_120_002'
+ws_run_block 'block-002' 'Setting up the namespace and service account' '2. Create a service account for the application:' 68 68 'bash' '' 600 15 217 <<'WS_TEST_BLOCK_120_002'
 kubectl create serviceaccount unicorn-store-spring -n unicorn-store-spring
 WS_TEST_BLOCK_120_002
 
-ws_run_block 'block-003' 'Configuring EKS Pod Identity' '1. Create the Pod Identity association:' 78 83 'bash' '' 600 <<'WS_TEST_BLOCK_120_003'
+ws_run_block 'block-003' 'Configuring EKS Pod Identity' '1. Create the Pod Identity association:' 78 83 'bash' '' 600 16 217 <<'WS_TEST_BLOCK_120_003'
 aws eks create-pod-identity-association \
   --cluster-name workshop-eks \
   --namespace unicorn-store-spring \
@@ -192,7 +192,7 @@ aws eks create-pod-identity-association \
   --no-cli-pager
 WS_TEST_BLOCK_120_003
 
-ws_run_block 'block-004' 'Configuring EKS Pod Identity' '2. Verify the association was created:' 89 94 'bash' '' 600 <<'WS_TEST_BLOCK_120_004'
+ws_run_block 'block-004' 'Configuring EKS Pod Identity' '2. Verify the association was created:' 89 94 'bash' '' 600 17 217 <<'WS_TEST_BLOCK_120_004'
 ASSOCIATION_ID=$(aws eks list-pod-identity-associations --cluster-name workshop-eks --no-cli-pager \
   | jq -r '.associations[] | select(.namespace=="unicorn-store-spring") | .associationId')
 aws eks describe-pod-identity-association \
@@ -201,7 +201,7 @@ aws eks describe-pod-identity-association \
   --no-cli-pager
 WS_TEST_BLOCK_120_004
 
-ws_run_block 'block-005' 'Configuring EKS Pod Identity' '3. View the permissions attached to the Pod role:' 100 104 'bash' '' 600 <<'WS_TEST_BLOCK_120_005'
+ws_run_block 'block-005' 'Configuring EKS Pod Identity' '3. View the permissions attached to the Pod role:' 100 104 'bash' '' 600 18 217 <<'WS_TEST_BLOCK_120_005'
 POLICY_NAME=$(aws iam list-role-policies --role-name unicornstore-eks-pod-role --no-cli-pager \
   | jq -r '.PolicyNames[0]')
 aws iam get-role-policy --role-name unicornstore-eks-pod-role \
@@ -209,11 +209,11 @@ aws iam get-role-policy --role-name unicornstore-eks-pod-role \
   | jq '.PolicyDocument'
 WS_TEST_BLOCK_120_005
 
-ws_run_block 'block-006' 'Configuring secrets access' '1. Create the k8s directory for manifests:' 112 112 'bash' '' 600 <<'WS_TEST_BLOCK_120_006'
+ws_run_block 'block-006' 'Configuring secrets access' '1. Create the k8s directory for manifests:' 112 112 'bash' '' 600 19 217 <<'WS_TEST_BLOCK_120_006'
 mkdir -p ~/environment/unicorn-store-spring/k8s
 WS_TEST_BLOCK_120_006
 
-ws_run_block 'block-007' 'Configuring secrets access' '2. Create and apply the SecretProviderClass that defines which secrets to mount as files:' 118 140 'yaml' '' 600 <<'WS_TEST_BLOCK_120_007'
+ws_run_block 'block-007' 'Configuring secrets access' '2. Create and apply the SecretProviderClass that defines which secrets to mount as files:' 118 140 'yaml' '' 600 20 217 <<'WS_TEST_BLOCK_120_007'
 cat <<EOF > ~/environment/unicorn-store-spring/k8s/secret-provider-class.yaml
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
@@ -239,7 +239,7 @@ EOF
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/secret-provider-class.yaml
 WS_TEST_BLOCK_120_007
 
-ws_run_block 'block-008' 'Deploying the application' '1. Create and apply the Deployment manifest:' 154 232 'yaml' '' 600 <<'WS_TEST_BLOCK_120_008'
+ws_run_block 'block-008' 'Deploying the application' '1. Create and apply the Deployment manifest:' 154 232 'yaml' '' 600 21 217 <<'WS_TEST_BLOCK_120_008'
 ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/unicorn-store-spring
 cat <<EOF > ~/environment/unicorn-store-spring/k8s/deployment.yaml
 apiVersion: apps/v1
@@ -321,7 +321,7 @@ EOF
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_120_008
 
-ws_run_block 'block-009' 'Deploying the application' '2. Create and apply the Service manifest:' 243 260 'bash' '' 600 <<'WS_TEST_BLOCK_120_009'
+ws_run_block 'block-009' 'Deploying the application' '2. Create and apply the Service manifest:' 243 260 'bash' '' 600 22 217 <<'WS_TEST_BLOCK_120_009'
 cat <<EOF > ~/environment/unicorn-store-spring/k8s/service.yaml
 apiVersion: v1
 kind: Service
@@ -342,7 +342,7 @@ EOF
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/service.yaml
 WS_TEST_BLOCK_120_009
 
-ws_run_block 'block-010' 'Deploying the application' '3. Create and apply the Ingress manifest:' 266 291 'bash' '' 600 <<'WS_TEST_BLOCK_120_010'
+ws_run_block 'block-010' 'Deploying the application' '3. Create and apply the Ingress manifest:' 266 291 'bash' '' 600 23 217 <<'WS_TEST_BLOCK_120_010'
 cat <<EOF > ~/environment/unicorn-store-spring/k8s/ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -371,16 +371,16 @@ EOF
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/ingress.yaml
 WS_TEST_BLOCK_120_010
 
-ws_run_block 'block-011' 'Verifying the deployment' '1. Wait for the deployment to be ready:' 299 300 'bash' '' 600 <<'WS_TEST_BLOCK_120_011'
+ws_run_block 'block-011' 'Verifying the deployment' '1. Wait for the deployment to be ready:' 299 300 'bash' '' 600 24 217 <<'WS_TEST_BLOCK_120_011'
 kubectl wait deployment unicorn-store-spring -n unicorn-store-spring --for condition=Available=True --timeout=300s
 kubectl get deployment unicorn-store-spring -n unicorn-store-spring
 WS_TEST_BLOCK_120_011
 
-ws_run_block 'block-012' 'Verifying the deployment' '2. Check the pod status:' 306 306 'bash' '' 600 <<'WS_TEST_BLOCK_120_012'
+ws_run_block 'block-012' 'Verifying the deployment' '2. Check the pod status:' 306 306 'bash' '' 600 25 217 <<'WS_TEST_BLOCK_120_012'
 kubectl get pods -n unicorn-store-spring
 WS_TEST_BLOCK_120_012
 
-ws_run_block 'block-013' 'Verifying the deployment' '3. Wait for the ALB to be provisioned and get the URL:' 314 342 'bash' '' 600 <<'WS_TEST_BLOCK_120_013'
+ws_run_block 'block-013' 'Verifying the deployment' '3. Wait for the ALB to be provisioned and get the URL:' 314 342 'bash' '' 600 26 217 <<'WS_TEST_BLOCK_120_013'
 SVC_URL=""
 echo -n "Waiting for service"
 service_deadline=$((SECONDS + 300))
@@ -412,7 +412,7 @@ echo "${SVC_URL}"
 curl -sS --fail --connect-timeout 5 --max-time 10 "${SVC_URL}/" && echo
 WS_TEST_BLOCK_120_013
 
-ws_run_block 'block-014' 'Testing the application' '1. Test the application:' 350 357 'bash' '' 600 <<'WS_TEST_BLOCK_120_014'
+ws_run_block 'block-014' 'Testing the application' '1. Test the application:' 350 357 'bash' '' 600 27 217 <<'WS_TEST_BLOCK_120_014'
 curl -s --request POST ${SVC_URL}/unicorns \
   --header 'Content-Type: application/json' \
   --data-raw '{
@@ -427,7 +427,7 @@ ws_skip_block 'block-015' 'Testing the application' 'You should see a response l
 
 ws_skip_block 'block-016' 'Viewing nodes with eks-node-viewer' 'Open a new terminal window and run eks-node-viewer to view the state of the nodes:' 381 381 'bash' '' 'interactive terminal UI'
 
-ws_run_block 'block-017' 'Accessing application logs' 'Get the logs from the running pod:' 391 391 'bash' '' 600 <<'WS_TEST_BLOCK_120_017'
+ws_run_block 'block-017' 'Accessing application logs' 'Get the logs from the running pod:' 391 391 'bash' '' 600 28 217 <<'WS_TEST_BLOCK_120_017'
 kubectl logs -l app=unicorn-store-spring -n unicorn-store-spring
 WS_TEST_BLOCK_120_017
 
@@ -437,11 +437,11 @@ ws_end_page
 
 ws_begin_page 'Amazon ECS' 140 'deploy-containers/deploy-to-ecs/index.en.md'
 
-ws_run_block 'block-001' 'Deploying the application' '1. Create the ECS cluster:' 79 79 'bash' '' 600 <<'WS_TEST_BLOCK_140_001'
+ws_run_block 'block-001' 'Deploying the application' '1. Create the ECS cluster:' 79 79 'bash' '' 600 29 217 <<'WS_TEST_BLOCK_140_001'
 aws ecs create-cluster --cluster-name unicorn-store-spring --no-cli-pager
 WS_TEST_BLOCK_140_001
 
-ws_run_block 'block-002' 'Deploying the application' '2. Get VPC, subnets, and database security group:' 85 93 'bash' '' 600 <<'WS_TEST_BLOCK_140_002'
+ws_run_block 'block-002' 'Deploying the application' '2. Get VPC, subnets, and database security group:' 85 93 'bash' '' 600 30 217 <<'WS_TEST_BLOCK_140_002'
 VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=workshop-vpc" \
   --query 'Vpcs[0].VpcId' --output text --no-cli-pager)
 PUBLIC_SUBNET_IDS=$(aws ec2 describe-subnets \
@@ -453,7 +453,7 @@ echo "VPC: ${VPC_ID}, DB SG: ${DB_SG_ID}"
 echo "Subnets: ${PUBLIC_SUBNET_IDS}"
 WS_TEST_BLOCK_140_002
 
-ws_run_block 'block-003' 'Deploying the application' '3. Get database secrets:' 99 104 'bash' '' 600 <<'WS_TEST_BLOCK_140_003'
+ws_run_block 'block-003' 'Deploying the application' '3. Get database secrets:' 99 104 'bash' '' 600 31 217 <<'WS_TEST_BLOCK_140_003'
 DB_SECRET_ARN=$(aws secretsmanager describe-secret --secret-id workshop-db-secret \
   --query 'ARN' --output text --no-cli-pager)
 DB_CONNECTION_ARN=$(aws ssm get-parameter --name workshop-db-connection-string \
@@ -462,7 +462,7 @@ echo "DB Secret: ${DB_SECRET_ARN}"
 echo "DB Connection: ${DB_CONNECTION_ARN}"
 WS_TEST_BLOCK_140_003
 
-ws_run_block 'block-004' 'Deploying the application' '4. Deploy the ECS Express Mode service:' 110 132 'bash' '' 600 <<'WS_TEST_BLOCK_140_004'
+ws_run_block 'block-004' 'Deploying the application' '4. Deploy the ECS Express Mode service:' 110 132 'bash' '' 600 32 217 <<'WS_TEST_BLOCK_140_004'
 aws ecs create-express-gateway-service \
   --service-name unicorn-store-spring \
   --cluster unicorn-store-spring \
@@ -488,7 +488,7 @@ aws ecs create-express-gateway-service \
   --no-cli-pager
 WS_TEST_BLOCK_140_004
 
-ws_run_block 'block-005' 'Deploying the application' '5. Speed up deployment configuration:' 151 166 'bash' '' 600 <<'WS_TEST_BLOCK_140_005'
+ws_run_block 'block-005' 'Deploying the application' '5. Speed up deployment configuration:' 151 166 'bash' '' 600 33 217 <<'WS_TEST_BLOCK_140_005'
 aws ecs update-service \
   --cluster unicorn-store-spring \
   --service unicorn-store-spring \
@@ -507,7 +507,7 @@ aws ecs wait services-stable \
 echo " STABLE"
 WS_TEST_BLOCK_140_005
 
-ws_run_block 'block-006' 'Verifying the deployment' 'Wait for the service to become active and get the URL:' 174 222 'bash' '' 660 <<'WS_TEST_BLOCK_140_006'
+ws_run_block 'block-006' 'Verifying the deployment' 'Wait for the service to become active and get the URL:' 174 222 'bash' '' 660 34 217 <<'WS_TEST_BLOCK_140_006'
 echo -n "Waiting for service"
 readiness_deadline=$((SECONDS + 600))
 service_status=""
@@ -559,13 +559,13 @@ fi
 echo "${SVC_URL}" > ~/environment/.workshop-svc-url-ecs
 WS_TEST_BLOCK_140_006
 
-ws_run_block 'block-007' 'Testing the application' '1. Load the service URL:' 449 451 'bash' '' 600 <<'WS_TEST_BLOCK_140_007'
+ws_run_block 'block-007' 'Testing the application' '1. Load the service URL:' 449 451 'bash' '' 600 35 217 <<'WS_TEST_BLOCK_140_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 echo ${SVC_URL}
 curl -s ${SVC_URL} && echo
 WS_TEST_BLOCK_140_007
 
-ws_run_block 'block-008' 'Testing the application' '2. Test the application:' 457 464 'bash' '' 600 <<'WS_TEST_BLOCK_140_008'
+ws_run_block 'block-008' 'Testing the application' '2. Test the application:' 457 464 'bash' '' 600 36 217 <<'WS_TEST_BLOCK_140_008'
 curl -s --request POST ${SVC_URL}/unicorns \
   --header 'Content-Type: application/json' \
   --data-raw '{
@@ -578,7 +578,7 @@ WS_TEST_BLOCK_140_008
 
 ws_skip_block 'block-009' 'Testing the application' 'You should see a response like:' 470 476 'json' '' 'copy action disabled'
 
-ws_run_block 'block-010' 'Accessing application logs' 'Get the logs from the running task:' 488 496 'bash' '' 600 <<'WS_TEST_BLOCK_140_010'
+ws_run_block 'block-010' 'Accessing application logs' 'Get the logs from the running task:' 488 496 'bash' '' 600 37 217 <<'WS_TEST_BLOCK_140_010'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -596,13 +596,13 @@ ws_end_page
 
 ws_begin_page 'Baseline' 205 'optimize-containers/baseline/index.en.md'
 
-ws_run_block 'block-001' 'Measuring startup time' 'To understand container startup times, check the application logs and retrieve the Spring application context startup as a reference.' 20 22 'bash' 'eks' 600 <<'WS_TEST_BLOCK_205_001'
+ws_run_block 'block-001' 'Measuring startup time' 'To understand container startup times, check the application logs and retrieve the Spring application context startup as a reference.' 20 22 'bash' 'eks' 600 38 217 <<'WS_TEST_BLOCK_205_001'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_205_001
 
-ws_run_block 'block-002' 'Measuring startup time' 'Measuring startup time' 29 36 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_205_002'
+ws_run_block 'block-002' 'Measuring startup time' 'Measuring startup time' 29 36 'bash' 'ecs' 600 39 217 <<'WS_TEST_BLOCK_205_002'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -613,11 +613,11 @@ aws logs get-log-events \
   | jq -r '.events[].message' | grep "Started StoreApplication"
 WS_TEST_BLOCK_205_002
 
-ws_run_block 'block-003' 'Understanding CPU impact' 'Check current resource allocation:' 56 56 'bash' 'eks' 600 <<'WS_TEST_BLOCK_205_003'
+ws_run_block 'block-003' 'Understanding CPU impact' 'Check current resource allocation:' 56 56 'bash' 'eks' 600 40 217 <<'WS_TEST_BLOCK_205_003'
 yq '.spec.template.spec.containers[].resources' ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_205_003
 
-ws_run_block 'block-004' 'Understanding CPU impact' 'Increase CPU to 2 cores:' 62 71 'bash' 'eks' 600 <<'WS_TEST_BLOCK_205_004'
+ws_run_block 'block-004' 'Understanding CPU impact' 'Increase CPU to 2 cores:' 62 71 'bash' 'eks' 600 41 217 <<'WS_TEST_BLOCK_205_004'
 yq -i '.spec.template.spec.containers[].resources.requests.cpu = "2" |
        .spec.template.spec.containers[].resources.limits.cpu = "2"' \
        ~/environment/unicorn-store-spring/k8s/deployment.yaml
@@ -630,7 +630,7 @@ kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_205_004
 
-ws_run_block 'block-005' 'Understanding CPU impact' 'Create and deploy a 2-vCPU revision. AWS Fargate requires at least 4 GB of memory with 2 vCPUs:' 80 101 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_205_005'
+ws_run_block 'block-005' 'Understanding CPU impact' 'Create and deploy a 2-vCPU revision. AWS Fargate requires at least 4 GB of memory with 2 vCPUs:' 80 101 'bash' 'ecs' 600 42 217 <<'WS_TEST_BLOCK_205_005'
 ORIGINAL_TASK_DEF=$(aws ecs describe-services --cluster unicorn-store-spring \
   --services unicorn-store-spring \
   --query "services[0].deployments[?status=='PRIMARY'].taskDefinition | [0]" \
@@ -655,7 +655,7 @@ aws ecs describe-task-definition --task-definition "${TWO_CPU_TASK_DEF}" \
   --query 'taskDefinition.{cpu:cpu,memory:memory}' --no-cli-pager
 WS_TEST_BLOCK_205_005
 
-ws_run_block 'block-006' 'Rolling back to baseline' 'Before proceeding to optimization techniques, rollback the CPU changes:' 121 127 'bash' 'eks' 600 <<'WS_TEST_BLOCK_205_006'
+ws_run_block 'block-006' 'Rolling back to baseline' 'Before proceeding to optimization techniques, rollback the CPU changes:' 121 127 'bash' 'eks' 600 43 217 <<'WS_TEST_BLOCK_205_006'
 yq -i '.spec.template.spec.containers[].resources.requests.cpu = "1" |
        .spec.template.spec.containers[].resources.limits.cpu = "1"' \
        ~/environment/unicorn-store-spring/k8s/deployment.yaml
@@ -665,7 +665,7 @@ kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring -
 yq '.spec.template.spec.containers[].resources' ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_205_006
 
-ws_run_block 'block-007' 'Rolling back to baseline' 'Rolling back to baseline' 134 140 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_205_007'
+ws_run_block 'block-007' 'Rolling back to baseline' 'Rolling back to baseline' 134 140 'bash' 'ecs' 600 44 217 <<'WS_TEST_BLOCK_205_007'
 ORIGINAL_TASK_DEF=$(cat ~/environment/.baseline-ecs-task-definition)
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh \
   unicorn-store-spring unicorn-store-spring "${ORIGINAL_TASK_DEF}"
@@ -679,7 +679,7 @@ ws_end_page
 
 ws_begin_page 'In-place pod resize' 210 'optimize-containers/pod-resize/index.en.md'
 
-ws_run_block 'block-001' 'Verifying prerequisites' 'Verify that the EKS cluster supports in-place pod resizing:' 21 25 'bash' '' 600 <<'WS_TEST_BLOCK_210_001'
+ws_run_block 'block-001' 'Verifying prerequisites' 'Verify that the EKS cluster supports in-place pod resizing:' 21 25 'bash' '' 600 45 217 <<'WS_TEST_BLOCK_210_001'
 kubectl get --raw /api/v1 | jq '.resources[] | select(.name=="pods") | .verbs' \
   | grep -q patch && echo "✓ Pod patching supported" || echo "✗ Pod patching not available"
 kubectl explain pod.spec.containers.resizePolicy >/dev/null 2>&1 \
@@ -687,19 +687,19 @@ kubectl explain pod.spec.containers.resizePolicy >/dev/null 2>&1 \
 kubectl version
 WS_TEST_BLOCK_210_001
 
-ws_run_block 'block-002' 'Installing Kube Startup CPU Boost' 'Install Kube Startup CPU Boost, which uses Kubernetes in-place pod resizing to temporarily boost CPU during startup:' 33 33 'bash' '' 600 <<'WS_TEST_BLOCK_210_002'
+ws_run_block 'block-002' 'Installing Kube Startup CPU Boost' 'Install Kube Startup CPU Boost, which uses Kubernetes in-place pod resizing to temporarily boost CPU during startup:' 33 33 'bash' '' 600 46 217 <<'WS_TEST_BLOCK_210_002'
 kubectl apply -f https://github.com/google/kube-startup-cpu-boost/releases/download/v0.17.1/manifests.yaml
 WS_TEST_BLOCK_210_002
 
 ws_skip_block 'block-003' 'Installing Kube Startup CPU Boost' 'If you see the following output, the controller has been installed successfully:' 39 52 '' '' 'informational block without language'
 
-ws_run_block 'block-004' 'Installing Kube Startup CPU Boost' 'Verify the controller is running:' 58 60 'bash' '' 600 <<'WS_TEST_BLOCK_210_004'
+ws_run_block 'block-004' 'Installing Kube Startup CPU Boost' 'Verify the controller is running:' 58 60 'bash' '' 600 47 217 <<'WS_TEST_BLOCK_210_004'
 kubectl get pods -n kube-startup-cpu-boost-system
 kubectl wait --for=condition=ready pod -l control-plane=controller-manager \
   -n kube-startup-cpu-boost-system --timeout=300s
 WS_TEST_BLOCK_210_004
 
-ws_run_block 'block-005' 'Configuring the CPU boost policy' 'Create a StartupCPUBoost resource that will use in-place pod resizing to temporarily double the CPU allocation during startup:' 68 90 'yaml' '' 600 <<'WS_TEST_BLOCK_210_005'
+ws_run_block 'block-005' 'Configuring the CPU boost policy' 'Create a StartupCPUBoost resource that will use in-place pod resizing to temporarily double the CPU allocation during startup:' 68 90 'yaml' '' 600 48 217 <<'WS_TEST_BLOCK_210_005'
 cat <<EOF > ~/environment/unicorn-store-spring/k8s/startup-cpu-boost.yaml
 apiVersion: autoscaling.x-k8s.io/v1alpha1
 kind: StartupCPUBoost
@@ -725,24 +725,24 @@ EOF
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/startup-cpu-boost.yaml
 WS_TEST_BLOCK_210_005
 
-ws_run_block 'block-006' 'Configuring the CPU boost policy' '- Line 21: Remove boost when pod becomes ready' 99 100 'bash' '' 600 <<'WS_TEST_BLOCK_210_006'
+ws_run_block 'block-006' 'Configuring the CPU boost policy' '- Line 21: Remove boost when pod becomes ready' 99 100 'bash' '' 600 49 217 <<'WS_TEST_BLOCK_210_006'
 kubectl get startupcpuboost -n unicorn-store-spring
 kubectl describe startupcpuboost unicorn-store-spring -n unicorn-store-spring
 WS_TEST_BLOCK_210_006
 
-ws_run_block 'block-007' 'Applying the in-place pod resize' 'Trigger a pod restart to see the in-place resizing in action:' 108 109 'bash' '' 600 <<'WS_TEST_BLOCK_210_007'
+ws_run_block 'block-007' 'Applying the in-place pod resize' 'Trigger a pod restart to see the in-place resizing in action:' 108 109 'bash' '' 600 50 217 <<'WS_TEST_BLOCK_210_007'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 WS_TEST_BLOCK_210_007
 
-ws_run_block 'block-008' 'Monitoring the in-place resize process' 'Observe the in-place pod resizing:' 117 120 'bash' '' 600 <<'WS_TEST_BLOCK_210_008'
+ws_run_block 'block-008' 'Monitoring the in-place resize process' 'Observe the in-place pod resizing:' 117 120 'bash' '' 600 51 217 <<'WS_TEST_BLOCK_210_008'
 kubectl get startupcpuboost unicorn-store-spring -n unicorn-store-spring -o yaml | grep -A 10 status
 kubectl get pod -n unicorn-store-spring -o jsonpath='{.items[0].spec.containers[0].resources}' | jq
 kubectl get events -n unicorn-store-spring --sort-by='.lastTimestamp' | tail -10
 kubectl get pod -n unicorn-store-spring -o jsonpath='{.items[0].status.containerStatuses[0].restartCount}'
 WS_TEST_BLOCK_210_008
 
-ws_run_block 'block-009' 'Retrieving the results' 'After the pod becomes ready, the CPU boost should be automatically removed via in-place resizing:' 128 133 'bash' '' 600 <<'WS_TEST_BLOCK_210_009'
+ws_run_block 'block-009' 'Retrieving the results' 'After the pod becomes ready, the CPU boost should be automatically removed via in-place resizing:' 128 133 'bash' '' 600 52 217 <<'WS_TEST_BLOCK_210_009'
 kubectl get pod -n unicorn-store-spring -o jsonpath='{.items[0].spec.containers[0].resources}' | jq
 kubectl get startupcpuboost unicorn-store-spring -n unicorn-store-spring -o jsonpath='{.status}' | jq
 kubectl logs $(kubectl get pods -n unicorn-store-spring \
@@ -753,7 +753,7 @@ WS_TEST_BLOCK_210_009
 
 ws_skip_block 'block-010' 'Retrieving the results' 'The result should show improved startup time, similar to:' 139 139 '' '' 'informational block without language'
 
-ws_run_block 'block-011' 'Cleaning up' 'Cleaning up' 147 150 'bash' '' 600 <<'WS_TEST_BLOCK_210_011'
+ws_run_block 'block-011' 'Cleaning up' 'Cleaning up' 147 150 'bash' '' 600 53 217 <<'WS_TEST_BLOCK_210_011'
 kubectl delete -f ~/environment/unicorn-store-spring/k8s/startup-cpu-boost.yaml
 kubectl get startupcpuboost -n unicorn-store-spring
 kubectl delete -f https://github.com/google/kube-startup-cpu-boost/releases/download/v0.17.1/manifests.yaml
@@ -766,13 +766,13 @@ ws_begin_page 'Jib' 215 'optimize-containers/jib/index.en.md'
 
 ws_skip_block 'block-001' 'Introduction to Jib' '- Direct-to-registry: Push images directly to ECR without local Docker operations' 22 34 'xml' '' 'copy action disabled'
 
-ws_run_block 'block-002' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 46 48 'bash' '' 600 <<'WS_TEST_BLOCK_215_002'
+ws_run_block 'block-002' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 46 48 'bash' '' 600 54 217 <<'WS_TEST_BLOCK_215_002'
 cd ~/environment/unicorn-store-spring
 sed -i 's/Welcome to the Unicorn Store.*/Welcome to the Unicorn Store - from Jib!");/' \
   src/main/java/com/unicorn/store/controller/UnicornController.java
 WS_TEST_BLOCK_215_002
 
-ws_run_block 'block-003' 'Building the container image' 'Building the container image' 54 60 'bash' '' 600 <<'WS_TEST_BLOCK_215_003'
+ws_run_block 'block-003' 'Building the container image' 'Building the container image' 54 60 'bash' '' 600 55 217 <<'WS_TEST_BLOCK_215_003'
 cd ~/environment/unicorn-store-spring
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -782,36 +782,36 @@ mvn compile jib:build -Dimage=${ECR_URI}:02-jib
 mvn compile jib:build -Dimage=${ECR_URI}:latest
 WS_TEST_BLOCK_215_003
 
-ws_run_block 'block-004' 'Re-deploying the application' 'After pushing the new image to ECR, you can restart the deployment of the application:' 71 73 'bash' 'eks' 600 <<'WS_TEST_BLOCK_215_004'
+ws_run_block 'block-004' 'Re-deploying the application' 'After pushing the new image to ECR, you can restart the deployment of the application:' 71 73 'bash' 'eks' 600 56 217 <<'WS_TEST_BLOCK_215_004'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_215_004
 
-ws_run_block 'block-005' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 82 82 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_215_005'
+ws_run_block 'block-005' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 82 82 'bash' 'ecs' 600 57 217 <<'WS_TEST_BLOCK_215_005'
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh unicorn-store-spring unicorn-store-spring
 WS_TEST_BLOCK_215_005
 
-ws_run_block 'block-006' 'Testing the application' 'Testing the application' 96 98 'bash' 'eks' 600 <<'WS_TEST_BLOCK_215_006'
+ws_run_block 'block-006' 'Testing the application' 'Testing the application' 96 98 'bash' 'eks' 600 58 217 <<'WS_TEST_BLOCK_215_006'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_215_006
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 105 106 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_215_007'
+ws_run_block 'block-007' 'Testing the application' 'Testing the application' 105 106 'bash' 'ecs' 600 59 217 <<'WS_TEST_BLOCK_215_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_215_007
 
 ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 115 115 '' '' 'informational block without language'
 
-ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 126 128 'bash' 'eks' 600 <<'WS_TEST_BLOCK_215_009'
+ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 126 128 'bash' 'eks' 600 60 217 <<'WS_TEST_BLOCK_215_009'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_215_009
 
-ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 135 142 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_215_010'
+ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 135 142 'bash' 'ecs' 600 61 217 <<'WS_TEST_BLOCK_215_010'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -826,13 +826,13 @@ ws_end_page
 
 ws_begin_page 'Custom JRE' 220 'optimize-containers/custom-jre/index.en.md'
 
-ws_run_block 'block-001' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 30 32 'bash' '' 600 <<'WS_TEST_BLOCK_220_001'
+ws_run_block 'block-001' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 30 32 'bash' '' 600 62 217 <<'WS_TEST_BLOCK_220_001'
 cd ~/environment/unicorn-store-spring
 sed -i 's/Welcome to the Unicorn Store.*/Welcome to the Unicorn Store - from Custom JRE!");/' \
   src/main/java/com/unicorn/store/controller/UnicornController.java
 WS_TEST_BLOCK_220_001
 
-ws_run_block 'block-002' 'Changing the Dockerfile' 'Create the optimized Dockerfile:' 40 82 'dockerfile' '' 600 <<'WS_TEST_BLOCK_220_002'
+ws_run_block 'block-002' 'Changing the Dockerfile' 'Create the optimized Dockerfile:' 40 82 'dockerfile' '' 600 63 217 <<'WS_TEST_BLOCK_220_002'
 cat <<'EOF' > ~/environment/unicorn-store-spring/Dockerfile
 FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
 
@@ -878,7 +878,7 @@ ENTRYPOINT ["./custom-jre/bin/java", "-jar", "-Dserver.port=8080", "/store-sprin
 EOF
 WS_TEST_BLOCK_220_002
 
-ws_run_block 'block-003' 'Building the container image' 'Building the container image' 96 105 'bash' '' 600 <<'WS_TEST_BLOCK_220_003'
+ws_run_block 'block-003' 'Building the container image' 'Building the container image' 96 105 'bash' '' 600 64 217 <<'WS_TEST_BLOCK_220_003'
 cd ~/environment/unicorn-store-spring
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -891,36 +891,36 @@ docker push ${ECR_URI}:03-custom-jre
 docker push ${ECR_URI}:latest
 WS_TEST_BLOCK_220_003
 
-ws_run_block 'block-004' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment of the application:' 116 118 'bash' 'eks' 600 <<'WS_TEST_BLOCK_220_004'
+ws_run_block 'block-004' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment of the application:' 116 118 'bash' 'eks' 600 65 217 <<'WS_TEST_BLOCK_220_004'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_220_004
 
-ws_run_block 'block-005' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 127 127 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_220_005'
+ws_run_block 'block-005' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 127 127 'bash' 'ecs' 600 66 217 <<'WS_TEST_BLOCK_220_005'
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh unicorn-store-spring unicorn-store-spring
 WS_TEST_BLOCK_220_005
 
-ws_run_block 'block-006' 'Testing the application' 'Testing the application' 141 143 'bash' 'eks' 600 <<'WS_TEST_BLOCK_220_006'
+ws_run_block 'block-006' 'Testing the application' 'Testing the application' 141 143 'bash' 'eks' 600 67 217 <<'WS_TEST_BLOCK_220_006'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_220_006
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 150 151 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_220_007'
+ws_run_block 'block-007' 'Testing the application' 'Testing the application' 150 151 'bash' 'ecs' 600 68 217 <<'WS_TEST_BLOCK_220_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_220_007
 
 ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 160 160 '' '' 'informational block without language'
 
-ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 171 173 'bash' 'eks' 600 <<'WS_TEST_BLOCK_220_009'
+ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 171 173 'bash' 'eks' 600 69 217 <<'WS_TEST_BLOCK_220_009'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_220_009
 
-ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 180 187 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_220_010'
+ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 180 187 'bash' 'ecs' 600 70 217 <<'WS_TEST_BLOCK_220_010'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -935,13 +935,13 @@ ws_end_page
 
 ws_begin_page 'Seekable OCI (SOCI)' 225 'optimize-containers/soci/index.en.md'
 
-ws_run_block 'block-001' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 36 38 'bash' '' 600 <<'WS_TEST_BLOCK_225_001'
+ws_run_block 'block-001' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 36 38 'bash' '' 600 71 217 <<'WS_TEST_BLOCK_225_001'
 cd ~/environment/unicorn-store-spring
 sed -i 's/Welcome to the Unicorn Store.*/Welcome to the Unicorn Store - from SOCI!");/' \
   src/main/java/com/unicorn/store/controller/UnicornController.java
 WS_TEST_BLOCK_225_001
 
-ws_run_block 'block-002' 'Changing the Dockerfile' 'Create the layered Dockerfile:' 50 81 'dockerfile' '' 600 <<'WS_TEST_BLOCK_225_002'
+ws_run_block 'block-002' 'Changing the Dockerfile' 'Create the layered Dockerfile:' 50 81 'dockerfile' '' 600 72 217 <<'WS_TEST_BLOCK_225_002'
 cat <<'EOF' > ~/environment/unicorn-store-spring/Dockerfile
 FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
 
@@ -976,7 +976,7 @@ ENTRYPOINT ["java", "-Dserver.port=8080", "org.springframework.boot.loader.launc
 EOF
 WS_TEST_BLOCK_225_002
 
-ws_run_block 'block-003' 'Building the container image' 'Building the container image' 92 101 'bash' '' 600 <<'WS_TEST_BLOCK_225_003'
+ws_run_block 'block-003' 'Building the container image' 'Building the container image' 92 101 'bash' '' 600 73 217 <<'WS_TEST_BLOCK_225_003'
 cd ~/environment/unicorn-store-spring
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -989,7 +989,7 @@ docker push ${ECR_URI}:04-soci
 docker push ${ECR_URI}:latest
 WS_TEST_BLOCK_225_003
 
-ws_run_block 'block-004' 'Creating and pushing SOCI indexes' 'A SOCI index is an artifact that enables lazy loading. It consists of a manifest and zTOCs (table of contents for compressed data). Layers smaller than 10MB are skipped by default since lazy loading provides less benefit for small layers.' 109 118 'bash' '' 600 <<'WS_TEST_BLOCK_225_004'
+ws_run_block 'block-004' 'Creating and pushing SOCI indexes' 'A SOCI index is an artifact that enables lazy loading. It consists of a manifest and zTOCs (table of contents for compressed data). Layers smaller than 10MB are skipped by default since lazy loading provides less benefit for small layers.' 109 118 'bash' '' 600 74 217 <<'WS_TEST_BLOCK_225_004'
 SOCI_ECR_PASSWORD=$(aws ecr get-login-password --region "${AWS_REGION}")
 sudo ctr -n moby images pull \
   --user "AWS:${SOCI_ECR_PASSWORD}" \
@@ -1002,36 +1002,36 @@ sudo soci -n moby create --force "${ECR_URI}:04-soci"
 sudo soci -n moby push "${ECR_URI}:04-soci"
 WS_TEST_BLOCK_225_004
 
-ws_run_block 'block-005' 'Re-deploying the application' 'For EKS, ensure your nodes support SOCI. See Introducing Seekable OCI parallel pull mode for Amazon EKS for setup instructions.' 137 139 'bash' 'eks' 600 <<'WS_TEST_BLOCK_225_005'
+ws_run_block 'block-005' 'Re-deploying the application' 'For EKS, ensure your nodes support SOCI. See Introducing Seekable OCI parallel pull mode for Amazon EKS for setup instructions.' 137 139 'bash' 'eks' 600 75 217 <<'WS_TEST_BLOCK_225_005'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_225_005
 
-ws_run_block 'block-006' 'Re-deploying the application' 'ECS with Fargate automatically uses SOCI indexes when available.' 150 150 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_225_006'
+ws_run_block 'block-006' 'Re-deploying the application' 'ECS with Fargate automatically uses SOCI indexes when available.' 150 150 'bash' 'ecs' 600 76 217 <<'WS_TEST_BLOCK_225_006'
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh unicorn-store-spring unicorn-store-spring
 WS_TEST_BLOCK_225_006
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 164 166 'bash' 'eks' 600 <<'WS_TEST_BLOCK_225_007'
+ws_run_block 'block-007' 'Testing the application' 'Testing the application' 164 166 'bash' 'eks' 600 77 217 <<'WS_TEST_BLOCK_225_007'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_225_007
 
-ws_run_block 'block-008' 'Testing the application' 'Testing the application' 173 174 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_225_008'
+ws_run_block 'block-008' 'Testing the application' 'Testing the application' 173 174 'bash' 'ecs' 600 78 217 <<'WS_TEST_BLOCK_225_008'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_225_008
 
 ws_skip_block 'block-009' 'Testing the application' 'Expected output:' 183 183 '' '' 'informational block without language'
 
-ws_run_block 'block-010' 'Retrieving the results' 'Retrieve the startup time:' 194 196 'bash' 'eks' 600 <<'WS_TEST_BLOCK_225_010'
+ws_run_block 'block-010' 'Retrieving the results' 'Retrieve the startup time:' 194 196 'bash' 'eks' 600 79 217 <<'WS_TEST_BLOCK_225_010'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_225_010
 
-ws_run_block 'block-011' 'Retrieving the results' 'Retrieving the results' 203 210 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_225_011'
+ws_run_block 'block-011' 'Retrieving the results' 'Retrieving the results' 203 210 'bash' 'ecs' 600 80 217 <<'WS_TEST_BLOCK_225_011'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -1046,19 +1046,19 @@ ws_end_page
 
 ws_begin_page 'Class Data Sharing (CDS)' 230 'optimize-containers/cds/index.en.md'
 
-ws_run_block 'block-001' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 32 34 'bash' '' 600 <<'WS_TEST_BLOCK_230_001'
+ws_run_block 'block-001' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 32 34 'bash' '' 600 81 217 <<'WS_TEST_BLOCK_230_001'
 cd ~/environment/unicorn-store-spring
 sed -i 's/Welcome to the Unicorn Store.*/Welcome to the Unicorn Store - from CDS!");/' \
   src/main/java/com/unicorn/store/controller/UnicornController.java
 WS_TEST_BLOCK_230_001
 
-ws_run_block 'block-002' 'Building the container image' 'Install pack CLI:' 44 46 'bash' '' 600 <<'WS_TEST_BLOCK_230_002'
+ws_run_block 'block-002' 'Building the container image' 'Install pack CLI:' 44 46 'bash' '' 600 82 217 <<'WS_TEST_BLOCK_230_002'
 curl -sSL "https://github.com/buildpacks/pack/releases/download/v0.38.2/pack-v0.38.2-linux.tgz" | \
   sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack
 pack version
 WS_TEST_BLOCK_230_002
 
-ws_run_block 'block-003' 'Building the container image' 'Build and push the image:' 52 73 'bash' '' 600 <<'WS_TEST_BLOCK_230_003'
+ws_run_block 'block-003' 'Building the container image' 'Build and push the image:' 52 73 'bash' '' 600 83 217 <<'WS_TEST_BLOCK_230_003'
 cd ~/environment/unicorn-store-spring
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -1083,36 +1083,36 @@ pack build ${ECR_URI}:05-cds \
   --publish
 WS_TEST_BLOCK_230_003
 
-ws_run_block 'block-004' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment of the application:' 87 89 'bash' 'eks' 600 <<'WS_TEST_BLOCK_230_004'
+ws_run_block 'block-004' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment of the application:' 87 89 'bash' 'eks' 600 84 217 <<'WS_TEST_BLOCK_230_004'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_230_004
 
-ws_run_block 'block-005' 'Re-deploying the application' 'Deployment takes around 2 minutes.' 98 98 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_230_005'
+ws_run_block 'block-005' 'Re-deploying the application' 'Deployment takes around 2 minutes.' 98 98 'bash' 'ecs' 600 85 217 <<'WS_TEST_BLOCK_230_005'
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh unicorn-store-spring unicorn-store-spring
 WS_TEST_BLOCK_230_005
 
-ws_run_block 'block-006' 'Testing the application' 'Testing the application' 112 114 'bash' 'eks' 600 <<'WS_TEST_BLOCK_230_006'
+ws_run_block 'block-006' 'Testing the application' 'Testing the application' 112 114 'bash' 'eks' 600 86 217 <<'WS_TEST_BLOCK_230_006'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_230_006
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 121 122 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_230_007'
+ws_run_block 'block-007' 'Testing the application' 'Testing the application' 121 122 'bash' 'ecs' 600 87 217 <<'WS_TEST_BLOCK_230_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_230_007
 
 ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 131 131 '' '' 'informational block without language'
 
-ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 142 144 'bash' 'eks' 600 <<'WS_TEST_BLOCK_230_009'
+ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 142 144 'bash' 'eks' 600 88 217 <<'WS_TEST_BLOCK_230_009'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_230_009
 
-ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 151 158 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_230_010'
+ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 151 158 'bash' 'ecs' 600 89 217 <<'WS_TEST_BLOCK_230_010'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -1127,13 +1127,13 @@ ws_end_page
 
 ws_begin_page 'AOT cache' 235 'optimize-containers/aot/index.en.md'
 
-ws_run_block 'block-001' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 33 35 'bash' '' 600 <<'WS_TEST_BLOCK_235_001'
+ws_run_block 'block-001' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 33 35 'bash' '' 600 90 217 <<'WS_TEST_BLOCK_235_001'
 cd ~/environment/unicorn-store-spring
 sed -i 's/Welcome to the Unicorn Store.*/Welcome to the Unicorn Store - from AOT!");/' \
   src/main/java/com/unicorn/store/controller/UnicornController.java
 WS_TEST_BLOCK_235_001
 
-ws_run_block 'block-002' 'Changing the Dockerfile' 'Create the AOT Dockerfile:' 43 116 'dockerfile' '' 600 <<'WS_TEST_BLOCK_235_002'
+ws_run_block 'block-002' 'Changing the Dockerfile' 'Create the AOT Dockerfile:' 43 116 'dockerfile' '' 600 91 217 <<'WS_TEST_BLOCK_235_002'
 cat <<'EOF' > ~/environment/unicorn-store-spring/Dockerfile
 FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
 
@@ -1210,7 +1210,7 @@ ENTRYPOINT ["sh", "-c", "exec java -XX:AOTCache=/opt/app/app.aot -Dserver.port=8
 EOF
 WS_TEST_BLOCK_235_002
 
-ws_run_block 'block-003' 'Building the container image' 'Build with database credentials to capture Hibernate/JDBC classes in the AOT cache:' 136 157 'bash' '' 600 <<'WS_TEST_BLOCK_235_003'
+ws_run_block 'block-003' 'Building the container image' 'Build with database credentials to capture Hibernate/JDBC classes in the AOT cache:' 136 157 'bash' '' 600 92 217 <<'WS_TEST_BLOCK_235_003'
 cd ~/environment/unicorn-store-spring
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -1235,36 +1235,36 @@ docker push ${ECR_URI}:06-aot
 docker push ${ECR_URI}:latest
 WS_TEST_BLOCK_235_003
 
-ws_run_block 'block-004' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment of the application:' 168 170 'bash' 'eks' 600 <<'WS_TEST_BLOCK_235_004'
+ws_run_block 'block-004' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment of the application:' 168 170 'bash' 'eks' 600 93 217 <<'WS_TEST_BLOCK_235_004'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_235_004
 
-ws_run_block 'block-005' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 179 179 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_235_005'
+ws_run_block 'block-005' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 179 179 'bash' 'ecs' 600 94 217 <<'WS_TEST_BLOCK_235_005'
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh unicorn-store-spring unicorn-store-spring
 WS_TEST_BLOCK_235_005
 
-ws_run_block 'block-006' 'Testing the application' 'Testing the application' 193 195 'bash' 'eks' 600 <<'WS_TEST_BLOCK_235_006'
+ws_run_block 'block-006' 'Testing the application' 'Testing the application' 193 195 'bash' 'eks' 600 95 217 <<'WS_TEST_BLOCK_235_006'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_235_006
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 202 203 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_235_007'
+ws_run_block 'block-007' 'Testing the application' 'Testing the application' 202 203 'bash' 'ecs' 600 96 217 <<'WS_TEST_BLOCK_235_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_235_007
 
 ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 212 212 '' '' 'informational block without language'
 
-ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 223 225 'bash' 'eks' 600 <<'WS_TEST_BLOCK_235_009'
+ws_run_block 'block-009' 'Retrieving the results' 'Retrieve the startup time:' 223 225 'bash' 'eks' 600 97 217 <<'WS_TEST_BLOCK_235_009'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_235_009
 
-ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 232 239 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_235_010'
+ws_run_block 'block-010' 'Retrieving the results' 'Retrieving the results' 232 239 'bash' 'ecs' 600 98 217 <<'WS_TEST_BLOCK_235_010'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -1283,13 +1283,13 @@ ws_skip_block 'block-001' 'Understanding Spring Boot and Native Image' 'Spring B
 
 ws_skip_block 'block-002' 'Understanding Spring Boot and Native Image' 'Understanding Spring Boot and Native Image' 43 47 'xml' '' 'copy action disabled'
 
-ws_run_block 'block-003' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 57 59 'bash' '' 600 <<'WS_TEST_BLOCK_240_003'
+ws_run_block 'block-003' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 57 59 'bash' '' 600 99 217 <<'WS_TEST_BLOCK_240_003'
 cd ~/environment/unicorn-store-spring
 sed -i 's/Welcome to the Unicorn Store.*/Welcome to the Unicorn Store - from Native!");/' \
   src/main/java/com/unicorn/store/controller/UnicornController.java
 WS_TEST_BLOCK_240_003
 
-ws_run_block 'block-004' 'Changing the Dockerfile' '1. Create the native Dockerfile:' 73 104 'dockerfile' '' 600 <<'WS_TEST_BLOCK_240_004'
+ws_run_block 'block-004' 'Changing the Dockerfile' '1. Create the native Dockerfile:' 73 104 'dockerfile' '' 600 100 217 <<'WS_TEST_BLOCK_240_004'
 cat <<'EOF' > ~/environment/unicorn-store-spring/Dockerfile
 FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-25 AS builder
 
@@ -1324,7 +1324,7 @@ ENTRYPOINT ["./store-spring", "-Dserver.port=8080"]
 EOF
 WS_TEST_BLOCK_240_004
 
-ws_run_block 'block-005' 'Changing the Dockerfile' '2. Build and push the image:' 120 130 'bash' '' 600 <<'WS_TEST_BLOCK_240_005'
+ws_run_block 'block-005' 'Changing the Dockerfile' '2. Build and push the image:' 120 130 'bash' '' 600 101 217 <<'WS_TEST_BLOCK_240_005'
 cd ~/environment/unicorn-store-spring
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -1338,36 +1338,36 @@ docker push ${ECR_URI}:07-native
 docker push ${ECR_URI}:latest
 WS_TEST_BLOCK_240_005
 
-ws_run_block 'block-006' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment:' 174 176 'bash' 'eks' 600 <<'WS_TEST_BLOCK_240_006'
+ws_run_block 'block-006' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment:' 174 176 'bash' 'eks' 600 102 217 <<'WS_TEST_BLOCK_240_006'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_240_006
 
-ws_run_block 'block-007' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 185 185 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_240_007'
+ws_run_block 'block-007' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 185 185 'bash' 'ecs' 600 103 217 <<'WS_TEST_BLOCK_240_007'
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh unicorn-store-spring unicorn-store-spring
 WS_TEST_BLOCK_240_007
 
-ws_run_block 'block-008' 'Testing the application' 'Testing the application' 199 201 'bash' 'eks' 600 <<'WS_TEST_BLOCK_240_008'
+ws_run_block 'block-008' 'Testing the application' 'Testing the application' 199 201 'bash' 'eks' 600 104 217 <<'WS_TEST_BLOCK_240_008'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_240_008
 
-ws_run_block 'block-009' 'Testing the application' 'Testing the application' 208 209 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_240_009'
+ws_run_block 'block-009' 'Testing the application' 'Testing the application' 208 209 'bash' 'ecs' 600 105 217 <<'WS_TEST_BLOCK_240_009'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_240_009
 
 ws_skip_block 'block-010' 'Testing the application' 'Expected output:' 218 218 '' '' 'informational block without language'
 
-ws_run_block 'block-011' 'Retrieving the results' 'Retrieve the startup time:' 229 231 'bash' 'eks' 600 <<'WS_TEST_BLOCK_240_011'
+ws_run_block 'block-011' 'Retrieving the results' 'Retrieve the startup time:' 229 231 'bash' 'eks' 600 106 217 <<'WS_TEST_BLOCK_240_011'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Started StoreApplication"
 WS_TEST_BLOCK_240_011
 
-ws_run_block 'block-012' 'Retrieving the results' 'Retrieving the results' 238 245 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_240_012'
+ws_run_block 'block-012' 'Retrieving the results' 'Retrieving the results' 238 245 'bash' 'ecs' 600 107 217 <<'WS_TEST_BLOCK_240_012'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -1386,19 +1386,19 @@ ws_skip_block 'block-001' 'Preparing the application' 'CRaC requires the org.cra
 
 ws_skip_block 'block-002' 'Preparing the application' 'The code snippet below shows how UnicornPublisher class is altered to handle CRaC requirements for network connections through org.crac.Resource interface:' 51 89 'java' '' 'copy action disabled'
 
-ws_run_block 'block-003' 'Preparing the application' '- Line 18: Recreate connections after restore' 100 102 'bash' '' 600 <<'WS_TEST_BLOCK_245_003'
+ws_run_block 'block-003' 'Preparing the application' '- Line 18: Recreate connections after restore' 100 102 'bash' '' 600 108 217 <<'WS_TEST_BLOCK_245_003'
 cd ~/environment/unicorn-store-spring
 mv src/main/java/com/unicorn/store/data/UnicornPublisher.java src/main/java/com/unicorn/store/data/UnicornPublisher.java.orig
 cp src/main/java/com/unicorn/store/data/UnicornPublisher.crac src/main/java/com/unicorn/store/data/UnicornPublisher.java
 WS_TEST_BLOCK_245_003
 
-ws_run_block 'block-004' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 110 112 'bash' '' 600 <<'WS_TEST_BLOCK_245_004'
+ws_run_block 'block-004' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 110 112 'bash' '' 600 109 217 <<'WS_TEST_BLOCK_245_004'
 cd ~/environment/unicorn-store-spring
 sed -i 's/Welcome to the Unicorn Store.*/Welcome to the Unicorn Store - from CRaC!");/' \
   src/main/java/com/unicorn/store/controller/UnicornController.java
 WS_TEST_BLOCK_245_004
 
-ws_run_block 'block-005' 'Changing the Dockerfile' 'Create the CRaC Dockerfile:' 120 158 'dockerfile' '' 600 <<'WS_TEST_BLOCK_245_005'
+ws_run_block 'block-005' 'Changing the Dockerfile' 'Create the CRaC Dockerfile:' 120 158 'dockerfile' '' 600 110 217 <<'WS_TEST_BLOCK_245_005'
 cat <<'EOF' > ~/environment/unicorn-store-spring/Dockerfile
 FROM azul/zulu-openjdk:25-jdk-crac-latest AS builder
 
@@ -1440,7 +1440,7 @@ ENTRYPOINT ["java", "-XX:CRaCEngine=warp", "-XX:CRaCRestoreFrom=/opt/crac-files"
 EOF
 WS_TEST_BLOCK_245_005
 
-ws_run_block 'block-006' 'Building the container image' 'Build with database credentials (required for checkpoint creation):' 177 198 'bash' '' 600 <<'WS_TEST_BLOCK_245_006'
+ws_run_block 'block-006' 'Building the container image' 'Build with database credentials (required for checkpoint creation):' 177 198 'bash' '' 600 111 217 <<'WS_TEST_BLOCK_245_006'
 cd ~/environment/unicorn-store-spring
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -1465,36 +1465,36 @@ docker push ${ECR_URI}:08-crac
 docker push ${ECR_URI}:latest
 WS_TEST_BLOCK_245_006
 
-ws_run_block 'block-007' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment:' 209 211 'bash' 'eks' 600 <<'WS_TEST_BLOCK_245_007'
+ws_run_block 'block-007' 'Re-deploying the application' 'After pushing the new image to ECR, restart the deployment:' 209 211 'bash' 'eks' 600 112 217 <<'WS_TEST_BLOCK_245_007'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_245_007
 
-ws_run_block 'block-008' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 220 220 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_245_008'
+ws_run_block 'block-008' 'Re-deploying the application' '> Deployment takes around 2 minutes.' 220 220 'bash' 'ecs' 600 113 217 <<'WS_TEST_BLOCK_245_008'
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh unicorn-store-spring unicorn-store-spring
 WS_TEST_BLOCK_245_008
 
-ws_run_block 'block-009' 'Testing the application' 'Testing the application' 234 236 'bash' 'eks' 600 <<'WS_TEST_BLOCK_245_009'
+ws_run_block 'block-009' 'Testing the application' 'Testing the application' 234 236 'bash' 'eks' 600 114 217 <<'WS_TEST_BLOCK_245_009'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_245_009
 
-ws_run_block 'block-010' 'Testing the application' 'Testing the application' 243 244 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_245_010'
+ws_run_block 'block-010' 'Testing the application' 'Testing the application' 243 244 'bash' 'ecs' 600 115 217 <<'WS_TEST_BLOCK_245_010'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_245_010
 
 ws_skip_block 'block-011' 'Testing the application' 'Expected output:' 253 253 '' '' 'informational block without language'
 
-ws_run_block 'block-012' 'Retrieving the results' 'Retrieve the startup time:' 264 266 'bash' 'eks' 600 <<'WS_TEST_BLOCK_245_012'
+ws_run_block 'block-012' 'Retrieving the results' 'Retrieve the startup time:' 264 266 'bash' 'eks' 600 116 217 <<'WS_TEST_BLOCK_245_012'
 kubectl logs $(kubectl get pods -n unicorn-store-spring -o json \
   | jq --raw-output '.items[0].metadata.name') -n unicorn-store-spring \
   | grep "Restored StoreApplication"
 WS_TEST_BLOCK_245_012
 
-ws_run_block 'block-013' 'Retrieving the results' 'Retrieving the results' 273 280 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_245_013'
+ws_run_block 'block-013' 'Retrieving the results' 'Retrieving the results' 273 280 'bash' 'ecs' 600 117 217 <<'WS_TEST_BLOCK_245_013'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -1505,7 +1505,7 @@ aws logs get-log-events \
   | jq -r '.events[].message' | grep "Restored StoreApplication"
 WS_TEST_BLOCK_245_013
 
-ws_run_block 'block-014' 'Cleaning up' 'Remove CRaC-specific code changes:' 293 294 'bash' '' 600 <<'WS_TEST_BLOCK_245_014'
+ws_run_block 'block-014' 'Cleaning up' 'Remove CRaC-specific code changes:' 293 294 'bash' '' 600 118 217 <<'WS_TEST_BLOCK_245_014'
 cd ~/environment/unicorn-store-spring
 mv src/main/java/com/unicorn/store/data/UnicornPublisher.java.orig src/main/java/com/unicorn/store/data/UnicornPublisher.java
 WS_TEST_BLOCK_245_014
@@ -1520,7 +1520,7 @@ ws_end_page
 
 ws_begin_page 'Deploying the collector' 311 'analysis/perf-platform/collector/index.en.md'
 
-ws_run_block 'block-001' 'Exploring the source code' 'Copy the collector sources to the environment:' 36 36 'bash' '' 600 <<'WS_TEST_BLOCK_311_001'
+ws_run_block 'block-001' 'Exploring the source code' 'Copy the collector sources to the environment:' 36 36 'bash' '' 600 119 217 <<'WS_TEST_BLOCK_311_001'
 cp -r ~/java-on-aws/apps/perf-collector ~/environment/
 WS_TEST_BLOCK_311_001
 
@@ -1530,7 +1530,7 @@ ws_skip_block 'block-003' 'Pushing to Pyroscope' 'The collector'"'"'s push threa
 
 ws_skip_block 'block-004' 'Capturing dumps on demand' 'Capturing dumps on demand' 106 115 'java' '' 'copy action disabled'
 
-ws_run_block 'block-005' 'Building the container image' 'Building the container image' 126 131 'bash' '' 600 <<'WS_TEST_BLOCK_311_005'
+ws_run_block 'block-005' 'Building the container image' 'Building the container image' 126 131 'bash' '' 600 120 217 <<'WS_TEST_BLOCK_311_005'
 cd ~/environment/perf-collector
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -1539,7 +1539,7 @@ ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/perf-collector
 mvn clean compile jib:build -Dimage=${ECR_URI}:latest
 WS_TEST_BLOCK_311_005
 
-ws_run_block 'block-006' 'Deploying the collector' 'Bind the perf-collector ServiceAccount to the perf-collector-eks-pod-role IAM role that the workshop setup provisioned. The role grants S3 write access:' 145 158 'bash' 'eks' 600 <<'WS_TEST_BLOCK_311_006'
+ws_run_block 'block-006' 'Deploying the collector' 'Bind the perf-collector ServiceAccount to the perf-collector-eks-pod-role IAM role that the workshop setup provisioned. The role grants S3 write access:' 145 158 'bash' 'eks' 600 121 217 <<'WS_TEST_BLOCK_311_006'
 CLUSTER_NAME=$(kubectl config current-context | cut -d'/' -f2)
 
 if ! aws eks list-pod-identity-associations --cluster-name ${CLUSTER_NAME} \
@@ -1556,7 +1556,7 @@ fi
 sleep 15
 WS_TEST_BLOCK_311_006
 
-ws_run_block 'block-007' 'Deploying the collector' 'Apply the DaemonSet:' 164 254 'yaml' 'eks' 600 <<'WS_TEST_BLOCK_311_007'
+ws_run_block 'block-007' 'Deploying the collector' 'Apply the DaemonSet:' 164 254 'yaml' 'eks' 600 122 217 <<'WS_TEST_BLOCK_311_007'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 mkdir -p ~/environment/perf-collector/k8s/
 cat <<EOF > ~/environment/perf-collector/k8s/daemonset.yaml
@@ -1650,12 +1650,12 @@ kubectl apply -f ~/environment/perf-collector/k8s/daemonset.yaml
 kubectl rollout status daemonset/perf-collector -n monitoring --timeout=300s
 WS_TEST_BLOCK_311_007
 
-ws_run_block 'block-008' 'Deploying the collector' '- Modest CPU and memory — discovery is lightweight; async-profiler runs inside each target JVM.' 271 272 'bash' 'eks' 600 <<'WS_TEST_BLOCK_311_008'
+ws_run_block 'block-008' 'Deploying the collector' '- Modest CPU and memory — discovery is lightweight; async-profiler runs inside each target JVM.' 271 272 'bash' 'eks' 600 123 217 <<'WS_TEST_BLOCK_311_008'
 kubectl get pods -n monitoring -l app=perf-collector -o wide
 kubectl logs -n monitoring -l app=perf-collector --tail=20
 WS_TEST_BLOCK_311_008
 
-ws_run_block 'block-009' 'Deploying the collector' 'Register a new task definition revision that adds the sidecar container and sets pidMode: task. The task role itself is untouched:' 286 326 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_311_009'
+ws_run_block 'block-009' 'Deploying the collector' 'Register a new task definition revision that adds the sidecar container and sets pidMode: task. The task role itself is untouched:' 286 326 'bash' 'ecs' 600 124 217 <<'WS_TEST_BLOCK_311_009'
 ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/perf-collector
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 NLB_DNS=$(kubectl get svc pyroscope-nlb -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
@@ -1699,13 +1699,13 @@ aws ecs register-task-definition --cli-input-json file:///tmp/unicorn-store-spri
   unicorn-store-spring-unicorn-store-spring
 WS_TEST_BLOCK_311_009
 
-ws_run_block 'block-010' 'Deploying the collector' '- Sidecar container perf-collector — essential: false means the app container'"'"'s lifecycle drives the task; SYSPTRACE lets the sidecar attach to the sibling JVM; PYROSCOPEURL points at the cluster'"'"'s internal NLB so the ECS task can reach Pyroscope.' 340 342 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_311_010'
+ws_run_block 'block-010' 'Deploying the collector' '- Sidecar container perf-collector — essential: false means the app container'"'"'s lifecycle drives the task; SYSPTRACE lets the sidecar attach to the sibling JVM; PYROSCOPEURL points at the cluster'"'"'s internal NLB so the ECS task can reach Pyroscope.' 340 342 'bash' 'ecs' 600 125 217 <<'WS_TEST_BLOCK_311_010'
 aws ecs describe-tasks --cluster unicorn-store-spring \
   --tasks $(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring --query 'taskArns[0]' --output text --no-cli-pager) \
   --query 'tasks[0].containers[*].[name,lastStatus]' --output table --no-cli-pager
 WS_TEST_BLOCK_311_010
 
-ws_run_block 'block-011' 'Deploying the collector' 'Both the app container (Main) and perf-collector should be RUNNING. Tail the sidecar'"'"'s CloudWatch logs to see its boot output:' 348 351 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_311_011'
+ws_run_block 'block-011' 'Deploying the collector' 'Both the app container (Main) and perf-collector should be RUNNING. Tail the sidecar'"'"'s CloudWatch logs to see its boot output:' 348 351 'bash' 'ecs' 600 126 217 <<'WS_TEST_BLOCK_311_011'
 TASK_ID=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager | awk -F/ '{print $NF}')
 aws logs tail /aws/ecs/unicorn-store-spring \
@@ -1716,7 +1716,7 @@ ws_end_page
 
 ws_begin_page 'Building the analyzer' 312 'analysis/perf-platform/analyzer/index.en.md'
 
-ws_run_block 'block-001' 'Exploring the source code' 'Copy the analyzer sources to the environment:' 37 37 'bash' '' 600 <<'WS_TEST_BLOCK_312_001'
+ws_run_block 'block-001' 'Exploring the source code' 'Copy the analyzer sources to the environment:' 37 37 'bash' '' 600 127 217 <<'WS_TEST_BLOCK_312_001'
 cp -r ~/java-on-aws/apps/perf-analyzer ~/environment/
 WS_TEST_BLOCK_312_001
 
@@ -1728,7 +1728,7 @@ ws_skip_block 'block-004' 'The AI piece' '- GitHubSourceCodeTool — fetchSource
 
 ws_skip_block 'block-005' 'The AI piece' 'The prompt builder injects the workload'"'"'s repo coordinates into a "source-code tool" block when the target advertised them through its pod annotations or task tags:' 161 168 'java' '' 'copy action disabled'
 
-ws_run_block 'block-006' 'Building the container image' 'Building the container image' 178 183 'bash' '' 600 <<'WS_TEST_BLOCK_312_006'
+ws_run_block 'block-006' 'Building the container image' 'Building the container image' 178 183 'bash' '' 600 128 217 <<'WS_TEST_BLOCK_312_006'
 cd ~/environment/perf-analyzer
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -1737,7 +1737,7 @@ ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/perf-analyzer
 mvn clean compile jib:build -Dimage=${ECR_URI}:latest
 WS_TEST_BLOCK_312_006
 
-ws_run_block 'block-007' 'Configuring Pod Identity' 'The analyzer needs to call Amazon Bedrock, read and write Amazon S3, and query the Kubernetes API. Bind its ServiceAccount to the perf-analyzer-eks-pod-role IAM role that the workshop setup provisioned:' 191 204 'bash' '' 600 <<'WS_TEST_BLOCK_312_007'
+ws_run_block 'block-007' 'Configuring Pod Identity' 'The analyzer needs to call Amazon Bedrock, read and write Amazon S3, and query the Kubernetes API. Bind its ServiceAccount to the perf-analyzer-eks-pod-role IAM role that the workshop setup provisioned:' 191 204 'bash' '' 600 129 217 <<'WS_TEST_BLOCK_312_007'
 CLUSTER_NAME=$(kubectl config current-context | cut -d'/' -f2)
 
 if ! aws eks list-pod-identity-associations --cluster-name ${CLUSTER_NAME} \
@@ -1754,7 +1754,7 @@ fi
 sleep 15
 WS_TEST_BLOCK_312_007
 
-ws_run_block 'block-008' 'Deploying to Amazon EKS' 'Apply the Deployment, Service, and ServiceAccount:' 212 310 'yaml' '' 600 <<'WS_TEST_BLOCK_312_008'
+ws_run_block 'block-008' 'Deploying to Amazon EKS' 'Apply the Deployment, Service, and ServiceAccount:' 212 310 'yaml' '' 600 130 217 <<'WS_TEST_BLOCK_312_008'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 mkdir -p ~/environment/perf-analyzer/k8s/
 cat <<EOF > ~/environment/perf-analyzer/k8s/deployment.yaml
@@ -1856,7 +1856,7 @@ kubectl apply -f ~/environment/perf-analyzer/k8s/deployment.yaml
 kubectl wait deployment perf-analyzer -n monitoring --for condition=Available=True --timeout=300s
 WS_TEST_BLOCK_312_008
 
-ws_run_block 'block-009' 'Deploying to Amazon EKS' '- 69-95: ServiceAccount + ClusterRole + ClusterRoleBinding — Pod Identity handles AWS API calls, but reading pod metadata and listing collector pods are Kubernetes API calls. The perf-analyzer ServiceAccount gets cluster-wide get/list pods through Kubernetes RBAC, which is a separate permission system from IAM. Both are needed.' 324 324 'bash' '' 600 <<'WS_TEST_BLOCK_312_009'
+ws_run_block 'block-009' 'Deploying to Amazon EKS' '- 69-95: ServiceAccount + ClusterRole + ClusterRoleBinding — Pod Identity handles AWS API calls, but reading pod metadata and listing collector pods are Kubernetes API calls. The perf-analyzer ServiceAccount gets cluster-wide get/list pods through Kubernetes RBAC, which is a separate permission system from IAM. Both are needed.' 324 324 'bash' '' 600 131 217 <<'WS_TEST_BLOCK_312_009'
 kubectl logs -n monitoring -l app=perf-analyzer --tail=50
 WS_TEST_BLOCK_312_009
 
@@ -1864,7 +1864,20 @@ ws_end_page
 
 ws_begin_page 'On-demand analysis' 313 'analysis/perf-platform/on-demand/index.en.md'
 
-ws_run_block 'block-001' 'Onboarding the application' 'Onboarding the application' 43 53 'bash' 'eks' 600 <<'WS_TEST_BLOCK_313_001'
+ws_run_block 'block-001' 'Returning to the base image' 'Earlier optimization chapters mutate the latest image tag. Before starting analysis, return latest to the mandatory multi-stage image built at the start of the workshop:' 40 49 'bash' '' 600 132 217 <<'WS_TEST_BLOCK_313_001'
+aws ecr get-login-password --region "${AWS_REGION}" \
+  | docker login \
+      --username AWS \
+      --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+APP_ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/unicorn-store-spring
+
+docker pull "${APP_ECR_URI}:01-multi-stage"
+docker tag "${APP_ECR_URI}:01-multi-stage" "${APP_ECR_URI}:latest"
+docker push "${APP_ECR_URI}:latest"
+WS_TEST_BLOCK_313_001
+
+ws_run_block 'block-002' 'Onboarding the application' 'Onboarding the application' 63 73 'bash' 'eks' 600 133 217 <<'WS_TEST_BLOCK_313_002'
 kubectl patch deploy/unicorn-store-spring -n unicorn-store-spring --type=strategic --patch '
 spec:
   template:
@@ -1876,9 +1889,9 @@ spec:
         perf-profile/github-path: apps/unicorn-store-spring
 '
 kubectl rollout status deploy/unicorn-store-spring -n unicorn-store-spring --timeout=300s
-WS_TEST_BLOCK_313_001
+WS_TEST_BLOCK_313_002
 
-ws_run_block 'block-002' 'Onboarding the application' 'Onboarding the application' 63 76 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_313_002'
+ws_run_block 'block-003' 'Onboarding the application' 'Onboarding the application' 83 96 'bash' 'ecs' 600 134 217 <<'WS_TEST_BLOCK_313_003'
 SERVICE_ARN=$(aws ecs describe-services --cluster unicorn-store-spring \
   --services unicorn-store-spring --query 'services[0].serviceArn' \
   --output text --no-cli-pager)
@@ -1893,33 +1906,55 @@ aws ecs tag-resource --resource-arn ${SERVICE_ARN} --no-cli-pager \
   unicorn-store-spring \
   unicorn-store-spring \
   unicorn-store-spring-unicorn-store-spring
-WS_TEST_BLOCK_313_002
-
-ws_run_block 'block-003' 'Onboarding the application' 'Samples arrive ~30 seconds after the new pods (or tasks) are Ready. Confirm the collector attached and Pyroscope received real frames:' 92 94 'bash' 'eks' 600 <<'WS_TEST_BLOCK_313_003'
-sleep 30
-kubectl logs -n monitoring -l app=perf-collector --tail=200 \
-  | grep -E 'Attached|Pushed' | tail -10
 WS_TEST_BLOCK_313_003
 
-ws_run_block 'block-004' 'Onboarding the application' 'You should see a handful of Attached async-profiler (cpu+wall, JFR/15s) to pid ... lines (one per opted-in JVM) and regular Pushed ... bytes ... service=unicorn-store-spring-eks ... entries.' 104 109 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_313_004'
-sleep 30
-TASK_ID=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
-  --query 'taskArns[0]' --output text --no-cli-pager | awk -F/ '{print $NF}')
-aws logs tail /aws/ecs/unicorn-store-spring \
-  --log-stream-names ecs/perf-collector/${TASK_ID} --since 5m \
-  | grep -E 'Attached|Pushed' | tail -10
+ws_run_block 'block-004' 'Onboarding the application' 'Discovery runs every 30 seconds, then async-profiler must finish its first rotated JFR before the collector can push it. Wait until a successful push confirms both attachment and Pyroscope ingestion:' 112 125 'bash' 'eks' 600 135 217 <<'WS_TEST_BLOCK_313_004'
+COLLECTOR_LOGS=""
+for attempt in {1..24}; do
+  COLLECTOR_LOGS=$(kubectl logs -n monitoring -l app=perf-collector --tail=200)
+  if grep -q 'Pushed .*service=unicorn-store-spring-eks' <<<"${COLLECTOR_LOGS}"; then
+    grep -E 'Attached|Pushed' <<<"${COLLECTOR_LOGS}" | tail -10
+    break
+  fi
+  if (( attempt == 24 )); then
+    echo "Collector did not push EKS samples within 120 seconds" >&2
+    printf '%s\n' "${COLLECTOR_LOGS}" >&2
+    exit 1
+  fi
+  sleep 5
+done
 WS_TEST_BLOCK_313_004
 
-ws_run_block 'block-005' 'Onboarding the application' 'Retrieve Grafana access details — you'"'"'ll use the same URL throughout this module:' 121 126 'bash' '' 600 <<'WS_TEST_BLOCK_313_005'
+ws_run_block 'block-005' 'Onboarding the application' 'You should see a handful of Attached async-profiler (cpu+wall, JFR/15s) to pid ... lines (one per opted-in JVM) and regular Pushed ... bytes ... service=unicorn-store-spring-eks ... entries.' 135 151 'bash' 'ecs' 600 136 217 <<'WS_TEST_BLOCK_313_005'
+TASK_ID=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
+  --query 'taskArns[0]' --output text --no-cli-pager | awk -F/ '{print $NF}')
+COLLECTOR_LOGS=""
+for attempt in {1..24}; do
+  COLLECTOR_LOGS=$(aws logs tail /aws/ecs/unicorn-store-spring \
+    --log-stream-names ecs/perf-collector/${TASK_ID} --since 5m)
+  if grep -q 'Pushed .*service=unicorn-store-spring-ecs' <<<"${COLLECTOR_LOGS}"; then
+    grep -E 'Attached|Pushed' <<<"${COLLECTOR_LOGS}" | tail -10
+    break
+  fi
+  if (( attempt == 24 )); then
+    echo "Collector did not push ECS samples within 120 seconds" >&2
+    printf '%s\n' "${COLLECTOR_LOGS}" >&2
+    exit 1
+  fi
+  sleep 5
+done
+WS_TEST_BLOCK_313_005
+
+ws_run_block 'block-006' 'Onboarding the application' 'Retrieve Grafana access details — you'"'"'ll use the same URL throughout this module:' 163 168 'bash' '' 600 137 217 <<'WS_TEST_BLOCK_313_006'
 GRAFANA_URL=$(kubectl get svc grafana -n monitoring -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 GRAFANA_PASSWORD=$(kubectl get secret grafana-admin -n monitoring -o jsonpath="{.data.password}" | base64 --decode)
 echo "✅ Grafana Access Details" &&
 echo "🌍 URL:      http://${GRAFANA_URL}" &&
 echo "👤 Username: admin" &&
 echo "🔑 Password: ${GRAFANA_PASSWORD}"
-WS_TEST_BLOCK_313_005
+WS_TEST_BLOCK_313_006
 
-ws_run_block 'block-006' 'First analysis: a quiet service' 'Trigger an analysis on the service as it stands now — no extra load, just whatever traffic happens to be hitting it:' 140 149 'bash' '' 600 <<'WS_TEST_BLOCK_313_006'
+ws_run_block 'block-007' 'First analysis: a quiet service' 'Trigger an analysis on the service as it stands now — no extra load, just whatever traffic happens to be hitting it:' 182 191 'bash' '' 600 138 217 <<'WS_TEST_BLOCK_313_007'
 POD=$(kubectl get pods -n unicorn-store-spring \
   -l app=unicorn-store-spring --field-selector=status.phase=Running \
   -o jsonpath='{.items[0].metadata.name}')
@@ -1930,13 +1965,13 @@ kubectl run -n monitoring trigger-analyze --rm --attach=true --restart=Never \
   curl -sS --fail --connect-timeout 10 --max-time 60 -X POST "http://perf-analyzer.monitoring.svc.cluster.local:8080/api/v1/analyze" \
     -H 'Content-Type: application/json' \
     -d "{\"service\":\"unicorn-store-spring\",\"platform\":\"eks\",\"pod\":\"${POD}\",\"reason\":\"pre-change check\"}"
-WS_TEST_BLOCK_313_006
+WS_TEST_BLOCK_313_007
 
-ws_skip_block 'block-007' 'First analysis: a quiet service' 'Tail the analyzer logs to watch the lanes fire:' 159 159 'bash' '' 'follows logs until Ctrl+C'
+ws_skip_block 'block-008' 'First analysis: a quiet service' 'Tail the analyzer logs to watch the lanes fire:' 201 201 'bash' '' 'follows logs until Ctrl+C'
 
-ws_skip_block 'block-008' 'First analysis: a quiet service' 'A healthy run looks like this:' 165 175 '' '' 'informational block without language'
+ws_skip_block 'block-009' 'First analysis: a quiet service' 'A healthy run looks like this:' 207 217 '' '' 'informational block without language'
 
-ws_run_block 'block-009' 'First analysis: a quiet service' 'Retrieve the report:' 183 190 'bash' '' 600 <<'WS_TEST_BLOCK_313_009'
+ws_run_block 'block-010' 'First analysis: a quiet service' 'Retrieve the report:' 225 232 'bash' '' 600 139 217 <<'WS_TEST_BLOCK_313_010'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 LATEST=$(aws s3 ls s3://${S3_BUCKET}/perf-platform/analysis/eks/unicorn-store-spring/ --recursive \
   | grep analysis.md | sort | tail -1 | awk '{print $4}')
@@ -1945,15 +1980,15 @@ LOCAL_FILE=~/environment/analysis-${ANALYSIS_ID}.md
 aws s3 cp s3://${S3_BUCKET}/${LATEST} ${LOCAL_FILE} --no-cli-pager
 echo "📄 Local file: ${LOCAL_FILE}"
 echo "🔗 S3 console: https://${AWS_REGION}.console.aws.amazon.com/s3/buckets/${S3_BUCKET}?prefix=$(dirname ${LATEST})/"
-WS_TEST_BLOCK_313_009
+WS_TEST_BLOCK_313_010
 
-ws_skip_block 'block-010' 'First analysis: a quiet service' 'Open the downloaded report in the IDE:' 196 196 'bash' '' 'opens the report in the IDE'
+ws_skip_block 'block-011' 'First analysis: a quiet service' 'Open the downloaded report in the IDE:' 238 238 'bash' '' 'opens the report in the IDE'
 
-ws_skip_block 'block-011' 'First analysis: a quiet service' 'A typical events.md excerpt against a quiet service:' 204 218 '' '' 'informational block without language'
+ws_skip_block 'block-012' 'First analysis: a quiet service' 'A typical events.md excerpt against a quiet service:' 246 260 '' '' 'informational block without language'
 
-ws_skip_block 'block-012' 'First analysis: a quiet service' 'The Bedrock report (analysis.md) starts with the verdict and rolls into prioritized findings. A typical idle-service report — the verdict line, then a finding citing source by file and line:' 226 248 '' '' 'informational block without language'
+ws_skip_block 'block-013' 'First analysis: a quiet service' 'The Bedrock report (analysis.md) starts with the verdict and rolls into prioritized findings. A typical idle-service report — the verdict line, then a finding citing source by file and line:' 268 290 '' '' 'informational block without language'
 
-ws_run_block 'block-013' 'Second analysis: under light load' 'Generate a small steady load and re-run. The picture changes — under any non-trivial request rate the publisher'"'"'s blocking call dominates the wall profile, and the agent'"'"'s findings sharpen:' 258 303 'bash' '' 600 <<'WS_TEST_BLOCK_313_013'
+ws_run_block 'block-014' 'Second analysis: under light load' 'Generate a small steady load and re-run. The picture changes — under any non-trivial request rate the publisher'"'"'s blocking call dominates the wall profile, and the agent'"'"'s findings sharpen:' 300 345 'bash' '' 600 140 217 <<'WS_TEST_BLOCK_313_014'
 SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks)
 echo "Load target: ${SVC_URL}"
 ~/java-on-aws/infra/scripts/test/benchmark.sh "${SVC_URL}" 120 30 &
@@ -2000,17 +2035,17 @@ fi
 BENCHMARK_PID=""
 trap - INT TERM
 unset -f analyze_under_load cleanup_benchmark
-WS_TEST_BLOCK_313_013
+WS_TEST_BLOCK_313_014
 
-ws_skip_block 'block-014' 'Second analysis: under light load' 'The deterministic events.md summary already shows the load arrived. Compare with the idle-run excerpt above:' 313 330 '' '' 'informational block without language'
+ws_skip_block 'block-015' 'Second analysis: under light load' 'The deterministic events.md summary already shows the load arrived. Compare with the idle-run excerpt above:' 355 372 '' '' 'informational block without language'
 
-ws_skip_block 'block-015' 'Second analysis: under light load' 'The Bedrock report sharpens accordingly. A typical under-load excerpt — the verdict line, then the dominant finding citing source by file and line:' 338 381 '' '' 'informational block without language'
+ws_skip_block 'block-016' 'Second analysis: under light load' 'The Bedrock report sharpens accordingly. A typical under-load excerpt — the verdict line, then the dominant finding citing source by file and line:' 380 423 '' '' 'informational block without language'
 
 ws_end_page
 
 ws_begin_page 'On-alert analysis' 314 'analysis/perf-platform/on-alert/index.en.md'
 
-ws_run_block 'block-001' 'Creating the ServiceLatency alert rule' 'The alert rule depends on a specific load-balancer dimension, so it can only be created after unicorn-store-spring is deployed (and an ALB exists). First discover the ALB'"'"'s CloudWatch dimension on the platform you'"'"'re working with:' 41 50 'bash' 'eks' 600 <<'WS_TEST_BLOCK_314_001'
+ws_run_block 'block-001' 'Creating the ServiceLatency alert rule' 'The alert rule depends on a specific load-balancer dimension, so it can only be created after unicorn-store-spring is deployed (and an ALB exists). First discover the ALB'"'"'s CloudWatch dimension on the platform you'"'"'re working with:' 41 50 'bash' 'eks' 600 141 217 <<'WS_TEST_BLOCK_314_001'
 INGRESS_DNS=$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 ALB_ARN=$(aws elbv2 describe-load-balancers \
@@ -2023,7 +2058,7 @@ echo "ALB dimension: ${ALB_DIM}"
 echo "service_name label: ${SERVICE_NAME_LABEL}"
 WS_TEST_BLOCK_314_001
 
-ws_run_block 'block-002' 'Creating the ServiceLatency alert rule' 'Creating the ServiceLatency alert rule' 58 65 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_314_002'
+ws_run_block 'block-002' 'Creating the ServiceLatency alert rule' 'Creating the ServiceLatency alert rule' 58 65 'bash' 'ecs' 600 142 217 <<'WS_TEST_BLOCK_314_002'
 ALB_ARN=$(aws elbv2 describe-load-balancers \
   --query "LoadBalancers[?starts_with(LoadBalancerName, 'ecs-express-gateway-alb')].LoadBalancerArn | [0]" \
   --output text --no-cli-pager)
@@ -2034,7 +2069,7 @@ echo "ALB dimension: ${ALB_DIM}"
 echo "service_name label: ${SERVICE_NAME_LABEL}"
 WS_TEST_BLOCK_314_002
 
-ws_run_block 'block-003' 'Creating the ServiceLatency alert rule' 'The rest of the rule creation is the same regardless of platform. Build the alert payload and POST it to Grafana'"'"'s provisioning API:' 75 138 'bash' '' 600 <<'WS_TEST_BLOCK_314_003'
+ws_run_block 'block-003' 'Creating the ServiceLatency alert rule' 'The rest of the rule creation is the same regardless of platform. Build the alert payload and POST it to Grafana'"'"'s provisioning API:' 75 138 'bash' '' 600 143 217 <<'WS_TEST_BLOCK_314_003'
 GRAFANA_URL=http://$(kubectl get svc grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 GRAFANA_PASSWORD=$(kubectl get secret grafana-admin -n monitoring -o jsonpath='{.data.password}' | base64 --decode)
 FOLDER_UID=$(curl -s -u "admin:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/folders" \
@@ -2101,18 +2136,18 @@ curl -s -X POST -u "admin:${GRAFANA_PASSWORD}" \
   "${GRAFANA_URL}/api/v1/provisioning/alert-rules" | jq '{title, uid, ruleGroup}'
 WS_TEST_BLOCK_314_003
 
-ws_run_block 'block-004' 'Creating the ServiceLatency alert rule' '- The labels carry servicename=unicorn-store-spring-{eks|ecs} and analysistype=perf-platform. The first tells the analyzer'"'"'s webhook handler which workload to analyze (it strips the -eks/-ecs suffix to recover the workload name and derives the platform from the suffix). The second matches the notification policy that routes the alert to the analyzer'"'"'s webhook contact point. The label is platform-specific so the older ai-jvm-analyzer lab'"'"'s analysistype=profiling route doesn'"'"'t accidentally swallow these alerts.' 150 152 'bash' '' 600 <<'WS_TEST_BLOCK_314_004'
+ws_run_block 'block-004' 'Creating the ServiceLatency alert rule' '- The labels carry servicename=unicorn-store-spring-{eks|ecs} and analysistype=perf-platform. The first tells the analyzer'"'"'s webhook handler which workload to analyze (it strips the -eks/-ecs suffix to recover the workload name and derives the platform from the suffix). The second matches the notification policy that routes the alert to the analyzer'"'"'s webhook contact point. The label is platform-specific so the older ai-jvm-analyzer lab'"'"'s analysistype=profiling route doesn'"'"'t accidentally swallow these alerts.' 150 152 'bash' '' 600 144 217 <<'WS_TEST_BLOCK_314_004'
 curl -s -u "admin:${GRAFANA_PASSWORD}" \
   "${GRAFANA_URL}/api/prometheus/grafana/api/v1/rules" \
   | jq '.data.groups[].rules[] | select(.name | startswith("ServiceLatency-")) | {name, state, lastEvaluation}'
 WS_TEST_BLOCK_314_004
 
-ws_run_block 'block-005' 'Driving the regression' 'The application code does not change. We just give it more traffic than it can handle:' 164 165 'bash' '' 600 <<'WS_TEST_BLOCK_314_005'
+ws_run_block 'block-005' 'Driving the regression' 'The application code does not change. We just give it more traffic than it can handle:' 164 165 'bash' '' 600 145 217 <<'WS_TEST_BLOCK_314_005'
 SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks)
 ~/java-on-aws/infra/scripts/test/benchmark.sh ${SVC_URL} 240 200
 WS_TEST_BLOCK_314_005
 
-ws_run_block 'block-006' 'Driving the regression' 'About a minute after the metric stays above 1 second, the alert transitions:' 179 181 'bash' '' 600 <<'WS_TEST_BLOCK_314_006'
+ws_run_block 'block-006' 'Driving the regression' 'About a minute after the metric stays above 1 second, the alert transitions:' 179 181 'bash' '' 600 146 217 <<'WS_TEST_BLOCK_314_006'
 curl -s -u "admin:${GRAFANA_PASSWORD}" \
   "${GRAFANA_URL}/api/prometheus/grafana/api/v1/rules" \
   | jq '.data.groups[].rules[] | select(.name | startswith("ServiceLatency-")) | {name, state, alerts}'
@@ -2124,7 +2159,7 @@ ws_skip_block 'block-008' 'The webhook fires' 'A real run under 200 rps looks li
 
 ws_skip_block 'block-009' 'The webhook fires' 'The Bedrock report is sharp anyway — Pyroscope alone is enough to identify the root cause when it'"'"'s bad enough to crash the pod:' 221 254 '' '' 'informational block without language'
 
-ws_run_block 'block-010' 'Reading the auto-generated report' 'Reading the auto-generated report' 262 269 'bash' '' 600 <<'WS_TEST_BLOCK_314_010'
+ws_run_block 'block-010' 'Reading the auto-generated report' 'Reading the auto-generated report' 262 269 'bash' '' 600 147 217 <<'WS_TEST_BLOCK_314_010'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 LATEST=$(aws s3 ls s3://${S3_BUCKET}/perf-platform/analysis/eks/unicorn-store-spring/ --recursive \
   | grep analysis.md | sort | tail -1 | awk '{print $4}')
@@ -2151,74 +2186,43 @@ ws_end_page
 
 ws_begin_page 'Deployment' 322 'analysis/thread-dump/deployment/index.en.md'
 
-ws_run_block 'block-001' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 11 13 'bash' '' 600 <<'WS_TEST_BLOCK_322_001'
-cd ~/environment/unicorn-store-spring
-sed -i 's/Welcome to the Unicorn Store.*/Welcome to the Unicorn Store - Thread Dump!");/' \
-  src/main/java/com/unicorn/store/controller/UnicornController.java
+ws_run_block 'block-001' 'Returning to the base image' 'Earlier optimization chapters mutate the latest image tag. Before starting thread-dump analysis, return latest to the mandatory multi-stage image built at the start of the workshop:' 11 20 'bash' '' 600 148 217 <<'WS_TEST_BLOCK_322_001'
+aws ecr get-login-password --region "${AWS_REGION}" \
+  | docker login \
+      --username AWS \
+      --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+APP_ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/unicorn-store-spring
+
+docker pull "${APP_ECR_URI}:01-multi-stage"
+docker tag "${APP_ECR_URI}:01-multi-stage" "${APP_ECR_URI}:latest"
+docker push "${APP_ECR_URI}:latest"
 WS_TEST_BLOCK_322_001
 
-ws_run_block 'block-002' 'Creating the Dockerfile' 'Create the Dockerfile:' 21 42 'bash' '' 600 <<'WS_TEST_BLOCK_322_002'
-cat <<'EOF' > ~/environment/unicorn-store-spring/Dockerfile
-FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
-
-COPY ./pom.xml ./pom.xml
-COPY src ./src/
-
-RUN mvn clean package -DskipTests -ntp && mv target/store-spring-1.0.0-exec.jar store-spring.jar
-
-FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
-
-RUN yum install -y shadow-utils
-
-COPY --from=builder store-spring.jar store-spring.jar
-
-RUN groupadd --system spring -g 1000
-RUN adduser spring -u 1000 -g 1000
-
-USER 1000:1000
-EXPOSE 8080
-
-ENTRYPOINT ["java", "-jar", "-Dserver.port=8080", "/store-spring.jar"]
-EOF
-WS_TEST_BLOCK_322_002
-
-ws_run_block 'block-003' 'Building the container image' 'Build and push the container image:' 50 59 'bash' '' 600 <<'WS_TEST_BLOCK_322_003'
-cd ~/environment/unicorn-store-spring
-aws ecr get-login-password --region ${AWS_REGION} \
-  | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/unicorn-store-spring
-
-docker build -t unicorn-store-spring:latest .
-docker tag unicorn-store-spring:latest ${ECR_URI}:10-thread-dump
-docker push ${ECR_URI}:10-thread-dump
-docker tag unicorn-store-spring:latest ${ECR_URI}:latest
-docker push ${ECR_URI}:latest
-WS_TEST_BLOCK_322_003
-
-ws_run_block 'block-004' 'Re-deploying the application' 'Re-deploying the application' 68 70 'bash' 'eks' 600 <<'WS_TEST_BLOCK_322_004'
+ws_run_block 'block-002' 'Re-deploying the application' 'Re-deploying the application' 31 33 'bash' 'eks' 600 149 217 <<'WS_TEST_BLOCK_322_002'
 kubectl rollout restart deployment unicorn-store-spring -n unicorn-store-spring
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
-WS_TEST_BLOCK_322_004
+WS_TEST_BLOCK_322_002
 
-ws_run_block 'block-005' 'Re-deploying the application' 'Deployment takes around 2 minutes.' 79 79 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_322_005'
+ws_run_block 'block-003' 'Re-deploying the application' 'Deployment takes around 2 minutes.' 42 42 'bash' 'ecs' 600 150 217 <<'WS_TEST_BLOCK_322_003'
 ~/java-on-aws/infra/scripts/test/ecs-redeploy.sh unicorn-store-spring unicorn-store-spring
-WS_TEST_BLOCK_322_005
+WS_TEST_BLOCK_322_003
 
-ws_run_block 'block-006' 'Testing the application' 'Testing the application' 93 95 'bash' 'eks' 600 <<'WS_TEST_BLOCK_322_006'
+ws_run_block 'block-004' 'Testing the application' 'Testing the application' 56 58 'bash' 'eks' 600 151 217 <<'WS_TEST_BLOCK_322_004'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
-WS_TEST_BLOCK_322_006
+WS_TEST_BLOCK_322_004
 
-ws_run_block 'block-007' 'Testing the application' 'Testing the application' 102 103 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_322_007'
+ws_run_block 'block-005' 'Testing the application' 'Testing the application' 65 66 'bash' 'ecs' 600 152 217 <<'WS_TEST_BLOCK_322_005'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
-WS_TEST_BLOCK_322_007
+WS_TEST_BLOCK_322_005
 
-ws_skip_block 'block-008' 'Testing the application' 'Expected output:' 112 112 '' '' 'informational block without language'
+ws_skip_block 'block-006' 'Testing the application' 'Expected output:' 75 75 '' '' 'informational block without language'
 
-ws_run_block 'block-009' 'Enabling Prometheus metrics collection' 'Add Prometheus scraping annotations to your deployment:' 123 133 'bash' 'eks' 600 <<'WS_TEST_BLOCK_322_009'
+ws_run_block 'block-007' 'Enabling Prometheus metrics collection' 'Add Prometheus scraping annotations to your deployment:' 86 96 'bash' 'eks' 600 153 217 <<'WS_TEST_BLOCK_322_007'
 # These annotations enable Prometheus to automatically discover and scrape metrics
 yq eval '.spec.template.metadata.annotations."prometheus.io/scrape" = "true"' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
 yq eval '.spec.template.metadata.annotations."prometheus.io/port" = "8080"' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
@@ -2230,9 +2234,9 @@ yq eval '.spec.template.spec.containers[0].env += [{"name": "CLUSTER", "value": 
 
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
-WS_TEST_BLOCK_322_009
+WS_TEST_BLOCK_322_007
 
-ws_run_block 'block-010' 'Enabling Prometheus metrics collection' 'Add the Java application metrics URL to the Prometheus configuration:' 142 190 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_322_010'
+ws_run_block 'block-008' 'Enabling Prometheus metrics collection' 'Add the Java application metrics URL to the Prometheus configuration:' 105 153 'bash' 'ecs' 600 154 217 <<'WS_TEST_BLOCK_322_008'
 # Get ECS service URL
 ECS_URL=$(cat ~/environment/.workshop-svc-url-ecs | tr -d '\n\r ')
 
@@ -2282,9 +2286,9 @@ if [[ -n "${LAMBDA_SG}" && "${LAMBDA_SG}" != "None" && -n "${ECS_SG}" && "${ECS_
 fi
 
 echo "✅ ECS metrics endpoint added: ${ECS_URL}/actuator/prometheus"
-WS_TEST_BLOCK_322_010
+WS_TEST_BLOCK_322_008
 
-ws_run_block 'block-011' 'Verifying the endpoints' 'Verify that the Actuator endpoints are accessible:' 204 214 'bash' 'eks' 600 <<'WS_TEST_BLOCK_322_011'
+ws_run_block 'block-009' 'Verifying the endpoints' 'Verify that the Actuator endpoints are accessible:' 167 177 'bash' 'eks' 600 155 217 <<'WS_TEST_BLOCK_322_009'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 
@@ -2296,9 +2300,9 @@ curl -s "${SVC_URL}/actuator/prometheus" | grep "jvm_threads"
 
 # Test health endpoint
 curl -s "${SVC_URL}/actuator/health" | jq '.status'
-WS_TEST_BLOCK_322_011
+WS_TEST_BLOCK_322_009
 
-ws_run_block 'block-012' 'Verifying the endpoints' 'Verifying the endpoints' 221 230 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_322_012'
+ws_run_block 'block-010' 'Verifying the endpoints' 'Verifying the endpoints' 184 193 'bash' 'ecs' 600 156 217 <<'WS_TEST_BLOCK_322_010'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 
 # Test thread dump endpoint
@@ -2309,13 +2313,13 @@ curl -s "${SVC_URL}/actuator/prometheus" | grep "jvm_threads"
 
 # Test health endpoint
 curl -s "${SVC_URL}/actuator/health" | jq '.status'
-WS_TEST_BLOCK_322_012
+WS_TEST_BLOCK_322_010
 
 ws_end_page
 
 ws_begin_page 'Analysis' 323 'analysis/thread-dump/analysis/index.en.md'
 
-ws_run_block 'block-001' 'Getting Grafana access credentials' 'Retrieve Grafana access credentials:' 11 16 'bash' '' 600 <<'WS_TEST_BLOCK_323_001'
+ws_run_block 'block-001' 'Getting Grafana access credentials' 'Retrieve Grafana access credentials:' 11 16 'bash' '' 600 157 217 <<'WS_TEST_BLOCK_323_001'
 GRAFANA_URL=$(kubectl get svc grafana -n monitoring -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 GRAFANA_PASSWORD=$(kubectl get secret grafana-admin -n monitoring -o jsonpath="{.data.password}" | base64 --decode)
 echo "✅ Grafana Access Details" &&
@@ -2328,28 +2332,28 @@ ws_skip_block 'block-002' 'Exploring the JVM threads dashboard' '3. A typical me
 
 ws_skip_block 'block-003' 'Exploring the JVM threads dashboard' 'Exploring the JVM threads dashboard' 50 58 'json' 'ecs' 'copy action disabled'
 
-ws_run_block 'block-004' 'Triggering the alert' '1. Start 500 threads in the Java application to trigger an alert in Grafana:' 78 81 'bash' 'eks' 600 <<'WS_TEST_BLOCK_323_004'
+ws_run_block 'block-004' 'Triggering the alert' '1. Start 500 threads in the Java application to trigger an alert in Grafana:' 78 81 'bash' 'eks' 600 158 217 <<'WS_TEST_BLOCK_323_004'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request POST ${SVC_URL}'/api/threads/start' --header 'Content-Type: application/json'; echo
 sleep 2
 curl --location --request GET ${SVC_URL}'/api/threads/count' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_323_004
 
-ws_run_block 'block-005' 'Triggering the alert' 'Triggering the alert' 88 91 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_323_005'
+ws_run_block 'block-005' 'Triggering the alert' 'Triggering the alert' 88 91 'bash' 'ecs' 600 159 217 <<'WS_TEST_BLOCK_323_005'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request POST ${SVC_URL}'/api/threads/start' --header 'Content-Type: application/json'; echo
 sleep 2
 curl --location --request GET ${SVC_URL}'/api/threads/count' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_323_005
 
-ws_run_block 'block-006' 'Stopping the threads' '1. Stop the threads and return the alert to normal state:' 133 136 'bash' 'eks' 600 <<'WS_TEST_BLOCK_323_006'
+ws_run_block 'block-006' 'Stopping the threads' '1. Stop the threads and return the alert to normal state:' 133 136 'bash' 'eks' 600 160 217 <<'WS_TEST_BLOCK_323_006'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request POST ${SVC_URL}'/api/threads/stop' --header 'Content-Type: application/json'; echo
 sleep 2
 curl --location --request GET ${SVC_URL}'/api/threads/count' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_323_006
 
-ws_run_block 'block-007' 'Stopping the threads' 'Stopping the threads' 143 146 'bash' 'ecs' 600 <<'WS_TEST_BLOCK_323_007'
+ws_run_block 'block-007' 'Stopping the threads' 'Stopping the threads' 143 146 'bash' 'ecs' 600 161 217 <<'WS_TEST_BLOCK_323_007'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request POST ${SVC_URL}'/api/threads/stop' --header 'Content-Type: application/json'; echo
 sleep 2
@@ -2360,13 +2364,13 @@ ws_end_page
 
 ws_begin_page 'Continuous profiling' 341 'analysis/ai-jvm-analyzer/profiling/index.en.md'
 
-ws_run_block 'block-001' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 11 13 'bash' '' 600 <<'WS_TEST_BLOCK_341_001'
+ws_run_block 'block-001' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 11 13 'bash' '' 600 162 217 <<'WS_TEST_BLOCK_341_001'
 cd ~/environment/unicorn-store-spring
 sed -i 's/Welcome to the Unicorn Store.*/Welcome to the Unicorn Store - Profiling!");/' \
   src/main/java/com/unicorn/store/controller/UnicornController.java
 WS_TEST_BLOCK_341_001
 
-ws_run_block 'block-002' 'Creating the Dockerfile' 'Create the Dockerfile with async-profiler:' 21 50 'dockerfile' '' 600 <<'WS_TEST_BLOCK_341_002'
+ws_run_block 'block-002' 'Creating the Dockerfile' 'Create the Dockerfile with async-profiler:' 21 50 'dockerfile' '' 600 163 217 <<'WS_TEST_BLOCK_341_002'
 cat <<'EOF' > ~/environment/unicorn-store-spring/Dockerfile
 FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
 
@@ -2399,7 +2403,7 @@ ENTRYPOINT ["java", "-jar", "-Dserver.port=8080", "/store-spring.jar"]
 EOF
 WS_TEST_BLOCK_341_002
 
-ws_run_block 'block-003' 'Building the Container Image' 'Build and push the image:' 62 72 'bash' '' 600 <<'WS_TEST_BLOCK_341_003'
+ws_run_block 'block-003' 'Building the Container Image' 'Build and push the image:' 62 72 'bash' '' 600 164 217 <<'WS_TEST_BLOCK_341_003'
 cd ~/environment/unicorn-store-spring
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -2413,12 +2417,12 @@ docker push ${ECR_URI}:11-profiling
 docker push ${ECR_URI}:latest
 WS_TEST_BLOCK_341_003
 
-ws_run_block 'block-004' 'Setting up S3 storage' '1. Get the S3 bucket name:' 84 85 'bash' '' 600 <<'WS_TEST_BLOCK_341_004'
+ws_run_block 'block-004' 'Setting up S3 storage' '1. Get the S3 bucket name:' 84 85 'bash' '' 600 165 217 <<'WS_TEST_BLOCK_341_004'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text)
 echo ${S3_BUCKET}
 WS_TEST_BLOCK_341_004
 
-ws_run_block 'block-005' 'Setting up S3 storage' '2. Create an S3 persistent volume for profiling data:' 91 129 'yaml' '' 600 <<'WS_TEST_BLOCK_341_005'
+ws_run_block 'block-005' 'Setting up S3 storage' '2. Create an S3 persistent volume for profiling data:' 91 129 'yaml' '' 600 166 217 <<'WS_TEST_BLOCK_341_005'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text)
 cat <<EOF > ~/environment/unicorn-store-spring/k8s/persistence.yaml
 apiVersion: v1
@@ -2460,7 +2464,7 @@ EOF
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/persistence.yaml
 WS_TEST_BLOCK_341_005
 
-ws_run_block 'block-006' 'Configuring continuous profiling' 'Configure the deployment for continuous profiling:' 140 147 'bash' '' 600 <<'WS_TEST_BLOCK_341_006'
+ws_run_block 'block-006' 'Configuring continuous profiling' 'Configure the deployment for continuous profiling:' 140 147 'bash' '' 600 167 217 <<'WS_TEST_BLOCK_341_006'
 yq eval '.spec.template.spec.containers[0].command = ["/bin/sh", "-c"]' \
   -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
 yq eval '.spec.template.spec.containers[0].args = ["mkdir -p /s3/profiling/$HOSTNAME; (while true; do sleep 10; newest=$(ls /tmp/profile-*.jfr 2>/dev/null | sort -r | head -1); for f in /tmp/profile-*.jfr; do [ -f \"$f\" ] || continue; [ \"$f\" = \"$newest\" ] && continue; mv \"$f\" /s3/profiling/$HOSTNAME/; done; done &) && java -agentpath:/async-profiler/lib/libasyncProfiler.so=start,event=wall,file=/tmp/profile-%t.jfr,loop=30s -jar -Dserver.port=8080 /store-spring.jar"]' \
@@ -2473,7 +2477,7 @@ WS_TEST_BLOCK_341_006
 
 ws_skip_block 'block-007' 'Configuring continuous profiling' 'The created deployment can be opened in the editor for review:' 153 169 '' '' 'informational block without language'
 
-ws_run_block 'block-008' 'Enabling Prometheus metrics scraping' 'The AI JVM Analyzer is triggered by Grafana alerts based on Prometheus metrics. Ensure the application deployment has Prometheus scraping annotations:' 189 194 'bash' '' 600 <<'WS_TEST_BLOCK_341_008'
+ws_run_block 'block-008' 'Enabling Prometheus metrics scraping' 'The AI JVM Analyzer is triggered by Grafana alerts based on Prometheus metrics. Ensure the application deployment has Prometheus scraping annotations:' 189 194 'bash' '' 600 168 217 <<'WS_TEST_BLOCK_341_008'
 yq eval '.spec.template.metadata.annotations."prometheus.io/scrape" = "true"' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
 yq eval '.spec.template.metadata.annotations."prometheus.io/port" = "8080"' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
 yq eval '.spec.template.metadata.annotations."prometheus.io/path" = "/actuator/prometheus"' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
@@ -2482,13 +2486,13 @@ yq eval 'del(.spec.template.spec.containers[0].env[] | select(.name == "CLUSTER"
 yq eval '.spec.template.spec.containers[0].env += [{"name": "CLUSTER", "value": "workshop-eks"}]' -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_341_008
 
-ws_run_block 'block-009' 'Deploying the Application' 'Deploy with profiling enabled:' 202 204 'bash' '' 600 <<'WS_TEST_BLOCK_341_009'
+ws_run_block 'block-009' 'Deploying the Application' 'Deploy with profiling enabled:' 202 204 'bash' '' 600 169 217 <<'WS_TEST_BLOCK_341_009'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_341_009
 
-ws_run_block 'block-010' 'Testing the application' '1. Test the application:' 212 222 'bash' '' 600 <<'WS_TEST_BLOCK_341_010'
+ws_run_block 'block-010' 'Testing the application' '1. Test the application:' 212 222 'bash' '' 600 170 217 <<'WS_TEST_BLOCK_341_010'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring \
   -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
@@ -2502,14 +2506,14 @@ curl -s --request POST ${SVC_URL}/unicorns \
 }' | jq
 WS_TEST_BLOCK_341_010
 
-ws_run_block 'block-011' 'Verifying the Results' '1. Check that profiling started:' 230 233 'bash' '' 600 <<'WS_TEST_BLOCK_341_011'
+ws_run_block 'block-011' 'Verifying the Results' '1. Check that profiling started:' 230 233 'bash' '' 600 171 217 <<'WS_TEST_BLOCK_341_011'
 kubectl logs $(kubectl get pods -n unicorn-store-spring \
                 --field-selector=status.phase=Running \
                 -o jsonpath='{.items[0].metadata.name}') \
                 -n unicorn-store-spring | grep "Profiling started"
 WS_TEST_BLOCK_341_011
 
-ws_run_block 'block-012' 'Verifying the Results' '2. Verify profiling files in S3:' 243 245 'bash' '' 600 <<'WS_TEST_BLOCK_341_012'
+ws_run_block 'block-012' 'Verifying the Results' '2. Verify profiling files in S3:' 243 245 'bash' '' 600 172 217 <<'WS_TEST_BLOCK_341_012'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text)
 POD_NAME=$(kubectl get pods -n unicorn-store-spring --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
 aws s3 ls s3://${S3_BUCKET}/profiling/${POD_NAME}/
@@ -2519,7 +2523,7 @@ ws_end_page
 
 ws_begin_page 'Deployment' 343 'analysis/ai-jvm-analyzer/deployment/index.en.md'
 
-ws_run_block 'block-001' 'Exploring the source code' 'Copy the AI JVM Analyzer sources to the environment:' 11 11 'bash' '' 600 <<'WS_TEST_BLOCK_343_001'
+ws_run_block 'block-001' 'Exploring the source code' 'Copy the AI JVM Analyzer sources to the environment:' 11 11 'bash' '' 600 173 217 <<'WS_TEST_BLOCK_343_001'
 cp -r ~/java-on-aws/apps/ai-jvm-analyzer ~/environment/
 WS_TEST_BLOCK_343_001
 
@@ -2527,7 +2531,7 @@ ws_skip_block 'block-002' 'Exploring the source code' '- FlamegraphGenerator use
 
 ws_skip_block 'block-003' 'Exploring the source code' '- 100-104: When source code tools are available, appends an additional instruction telling the model to look up actual source code of methods from stack traces and provide concrete code fixes with file paths and line numbers' 156 196 'java' '' 'copy action disabled'
 
-ws_run_block 'block-004' 'Building the container image' 'Building the container image' 216 221 'bash' '' 600 <<'WS_TEST_BLOCK_343_004'
+ws_run_block 'block-004' 'Building the container image' 'Building the container image' 216 221 'bash' '' 600 174 217 <<'WS_TEST_BLOCK_343_004'
 cd ~/environment/ai-jvm-analyzer
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -2536,7 +2540,7 @@ ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/ai-jvm-analyzer
 mvn compile jib:build -Dimage=${ECR_URI}:latest
 WS_TEST_BLOCK_343_004
 
-ws_run_block 'block-005' 'Configuring Pod Identity' 'Configure Pod Identity for Amazon S3 and Amazon Bedrock access for the service account:' 229 239 'bash' '' 600 <<'WS_TEST_BLOCK_343_005'
+ws_run_block 'block-005' 'Configuring Pod Identity' 'Configure Pod Identity for Amazon S3 and Amazon Bedrock access for the service account:' 229 239 'bash' '' 600 175 217 <<'WS_TEST_BLOCK_343_005'
 CLUSTER_NAME=$(kubectl config current-context | cut -d'/' -f2)
 
 if ! aws eks list-pod-identity-associations --cluster-name ${CLUSTER_NAME} --query "associations[?serviceAccount=='ai-jvm-analyzer' && namespace=='monitoring']" --output text --no-cli-pager | grep -q .; then
@@ -2550,7 +2554,7 @@ fi
 sleep 15
 WS_TEST_BLOCK_343_005
 
-ws_run_block 'block-006' 'Deploying to EKS' 'Deploy the service to EKS:' 247 335 'yaml' '' 600 <<'WS_TEST_BLOCK_343_006'
+ws_run_block 'block-006' 'Deploying to EKS' 'Deploy the service to EKS:' 247 335 'yaml' '' 600 176 217 <<'WS_TEST_BLOCK_343_006'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text)
 mkdir -p ~/environment/ai-jvm-analyzer/k8s/
 cat <<EOF > ~/environment/ai-jvm-analyzer/k8s/deployment.yaml
@@ -2642,7 +2646,7 @@ kubectl logs $(kubectl get pods -n monitoring -l app=ai-jvm-analyzer --field-sel
     | jq -r '.items[0].metadata.name') -n monitoring
 WS_TEST_BLOCK_343_006
 
-ws_run_block 'block-007' 'Verifying the deployment' 'Check that the analyzer service is running:' 349 350 'bash' '' 600 <<'WS_TEST_BLOCK_343_007'
+ws_run_block 'block-007' 'Verifying the deployment' 'Check that the analyzer service is running:' 349 350 'bash' '' 600 177 217 <<'WS_TEST_BLOCK_343_007'
 kubectl get pods -n monitoring -l app=ai-jvm-analyzer
 kubectl get svc ai-jvm-analyzer -n monitoring
 WS_TEST_BLOCK_343_007
@@ -2651,7 +2655,7 @@ ws_end_page
 
 ws_begin_page 'Analysis' 344 'analysis/ai-jvm-analyzer/analysis/index.en.md'
 
-ws_run_block 'block-001' 'Getting Grafana access credentials' 'Retrieve Grafana access credentials:' 11 16 'bash' '' 600 <<'WS_TEST_BLOCK_344_001'
+ws_run_block 'block-001' 'Getting Grafana access credentials' 'Retrieve Grafana access credentials:' 11 16 'bash' '' 600 178 217 <<'WS_TEST_BLOCK_344_001'
 GRAFANA_URL=$(kubectl get svc grafana -n monitoring -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 GRAFANA_PASSWORD=$(kubectl get secret grafana-admin -n monitoring -o jsonpath="{.data.password}" | base64 --decode)
 echo "✅ Grafana Access Details" &&
@@ -2660,7 +2664,7 @@ echo "👤 Username: admin" &&
 echo "🔑 Password: ${GRAFANA_PASSWORD}"
 WS_TEST_BLOCK_344_001
 
-ws_run_block 'block-002' 'Running the load test' 'This test generates 50 POST requests per second for 120 seconds, which will exceed the alert threshold of 20 requests/second and trigger the automated analysis.' 36 37 'bash' '' 600 <<'WS_TEST_BLOCK_344_002'
+ws_run_block 'block-002' 'Running the load test' 'This test generates 50 POST requests per second for 120 seconds, which will exceed the alert threshold of 20 requests/second and trigger the automated analysis.' 36 37 'bash' '' 600 179 217 <<'WS_TEST_BLOCK_344_002'
 SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) && echo ${SVC_URL}
 ~/java-on-aws/infra/scripts/test/benchmark.sh ${SVC_URL} 120 50
 WS_TEST_BLOCK_344_002
@@ -2669,7 +2673,7 @@ ws_skip_block 'block-003' 'Checking the analyzer logs' 'Once the alert fires, ch
 
 ws_skip_block 'block-004' 'Checking the analyzer logs' 'The logs show the full pipeline — from alert reception through JFR parsing, flamegraph generation, thread dump collection, Amazon Bedrock analysis, and S3 storage:' 68 80 '' '' 'informational block without language'
 
-ws_run_block 'block-005' 'Reviewing the analysis results' '- Verify that the analysis result files (.html, .md, and .json) have been created' 97 105 'bash' '' 600 <<'WS_TEST_BLOCK_344_005'
+ws_run_block 'block-005' 'Reviewing the analysis results' '- Verify that the analysis result files (.html, .md, and .json) have been created' 97 105 'bash' '' 600 180 217 <<'WS_TEST_BLOCK_344_005'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text)
 
 # List all analysis results
@@ -2683,18 +2687,18 @@ WS_TEST_BLOCK_344_005
 
 ws_skip_block 'block-006' 'Reviewing the analysis results' '2. Open the analysis.md file in the file Explorer or right-click on the .md file and choose Open Preview. The analysis includes source code references with concrete code fixes. You should see similar results:' 111 192 'markdown' '' 'copy action disabled'
 
-ws_run_block 'block-007' 'Stopping profiling' '1. Remove command and args from the deployment manifest:' 240 241 'bash' '' 600 <<'WS_TEST_BLOCK_344_007'
+ws_run_block 'block-007' 'Stopping profiling' '1. Remove command and args from the deployment manifest:' 240 241 'bash' '' 600 181 217 <<'WS_TEST_BLOCK_344_007'
 yq eval 'del(.spec.template.spec.containers[0].command, .spec.template.spec.containers[0].args)' \
   -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_344_007
 
-ws_run_block 'block-008' 'Stopping profiling' '2. Restart the deployment:' 247 249 'bash' '' 600 <<'WS_TEST_BLOCK_344_008'
+ws_run_block 'block-008' 'Stopping profiling' '2. Restart the deployment:' 247 249 'bash' '' 600 182 217 <<'WS_TEST_BLOCK_344_008'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_344_008
 
-ws_run_block 'block-009' 'Stopping profiling' '3. Verify the application pod was restarted without the profiler:' 255 255 'bash' '' 600 <<'WS_TEST_BLOCK_344_009'
+ws_run_block 'block-009' 'Stopping profiling' '3. Verify the application pod was restarted without the profiler:' 255 255 'bash' '' 600 183 217 <<'WS_TEST_BLOCK_344_009'
 kubectl get pods -n unicorn-store-spring
 WS_TEST_BLOCK_344_009
 
@@ -2708,7 +2712,7 @@ ws_skip_block 'block-002' 'Application pre-configuration' 'UnicornService.java -
 
 ws_skip_block 'block-003' 'Application pre-configuration' 'UnicornPublisher.java - @Observed on publish method (already present):' 79 80 'java' '' 'copy action disabled'
 
-ws_run_block 'block-004' 'Activating observation instrumentation' 'Add the AspectJ weaver dependency to enable @Observed annotation processing:' 90 96 'bash' '' 600 <<'WS_TEST_BLOCK_410_004'
+ws_run_block 'block-004' 'Activating observation instrumentation' 'Add the AspectJ weaver dependency to enable @Observed annotation processing:' 90 96 'bash' '' 600 184 217 <<'WS_TEST_BLOCK_410_004'
 cd ~/environment/unicorn-store-spring
 
 sed -i '/<artifactId>micrometer-registry-prometheus<\/artifactId>/a\
@@ -2718,13 +2722,13 @@ sed -i '/<artifactId>micrometer-registry-prometheus<\/artifactId>/a\
             <artifactId>aspectjweaver</artifactId>' pom.xml
 WS_TEST_BLOCK_410_004
 
-ws_run_block 'block-005' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 106 108 'bash' '' 600 <<'WS_TEST_BLOCK_410_005'
+ws_run_block 'block-005' 'Changing the source code' 'Change the application code of UnicornController.java to identify the new version of the application deployment:' 106 108 'bash' '' 600 185 217 <<'WS_TEST_BLOCK_410_005'
 cd ~/environment/unicorn-store-spring
 sed -i 's/Welcome to the Unicorn Store.*/Welcome to the Unicorn Store - from OTEL!");/' \
   src/main/java/com/unicorn/store/controller/UnicornController.java
 WS_TEST_BLOCK_410_005
 
-ws_run_block 'block-006' 'Changing the source code' 'Add the Spring Boot OpenTelemetry starter to bridge Micrometer observations to OpenTelemetry spans:' 114 120 'bash' '' 600 <<'WS_TEST_BLOCK_410_006'
+ws_run_block 'block-006' 'Changing the source code' 'Add the Spring Boot OpenTelemetry starter to bridge Micrometer observations to OpenTelemetry spans:' 114 120 'bash' '' 600 186 217 <<'WS_TEST_BLOCK_410_006'
 cd ~/environment/unicorn-store-spring
 
 sed -i '/<artifactId>aspectjweaver<\/artifactId>/a\
@@ -2734,12 +2738,12 @@ sed -i '/<artifactId>aspectjweaver<\/artifactId>/a\
             <artifactId>spring-boot-starter-opentelemetry</artifactId>' pom.xml
 WS_TEST_BLOCK_410_006
 
-ws_run_block 'block-007' 'Changing the source code' 'Disable Micrometer'"'"'s OTLP metrics export to prevent conflicts with the ADOT agent:' 128 129 'bash' '' 600 <<'WS_TEST_BLOCK_410_007'
+ws_run_block 'block-007' 'Changing the source code' 'Disable Micrometer'"'"'s OTLP metrics export to prevent conflicts with the ADOT agent:' 128 129 'bash' '' 600 187 217 <<'WS_TEST_BLOCK_410_007'
 yq -i '.management.otlp.metrics.export.enabled = false' \
   src/main/resources/application.yaml
 WS_TEST_BLOCK_410_007
 
-ws_run_block 'block-008' 'Changing the Dockerfile' 'Create the Dockerfile with the ADOT Java agent and OpenTelemetry configuration:' 141 184 'dockerfile' '' 600 <<'WS_TEST_BLOCK_410_008'
+ws_run_block 'block-008' 'Changing the Dockerfile' 'Create the Dockerfile with the ADOT Java agent and OpenTelemetry configuration:' 141 184 'dockerfile' '' 600 188 217 <<'WS_TEST_BLOCK_410_008'
 cat <<'EOF' > Dockerfile
 FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
 
@@ -2786,7 +2790,7 @@ ENTRYPOINT ["java", "-XX:+UseCompactObjectHeaders", "-jar", "-Dserver.port=8080"
 EOF
 WS_TEST_BLOCK_410_008
 
-ws_run_block 'block-009' 'Building the container image' 'Building the container image' 224 233 'bash' '' 600 <<'WS_TEST_BLOCK_410_009'
+ws_run_block 'block-009' 'Building the container image' 'Building the container image' 224 233 'bash' '' 600 189 217 <<'WS_TEST_BLOCK_410_009'
 cd ~/environment/unicorn-store-spring
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -2803,7 +2807,7 @@ ws_end_page
 
 ws_begin_page 'Observability add-on' 421 'observability/eks/observability-addon/index.en.md'
 
-ws_run_block 'block-001' 'Installing the add-on' 'Install the add-on with Pod Identity:' 32 44 'bash' '' 660 <<'WS_TEST_BLOCK_421_001'
+ws_run_block 'block-001' 'Installing the add-on' 'Install the add-on with Pod Identity:' 32 44 'bash' '' 660 190 217 <<'WS_TEST_BLOCK_421_001'
 ADDON_NAME=amazon-cloudwatch-observability
 if [[ $(aws eks list-addons --cluster-name workshop-eks \
     --query "contains(addons, '${ADDON_NAME}')" --output text --no-cli-pager) != "True" ]]; then
@@ -2819,7 +2823,7 @@ aws eks wait addon-active \
     --cluster-name workshop-eks
 WS_TEST_BLOCK_421_001
 
-ws_run_block 'block-002' 'Verifying the installation' 'Wait for all add-on pods to become ready, then display their status:' 54 56 'bash' '' 660 <<'WS_TEST_BLOCK_421_002'
+ws_run_block 'block-002' 'Verifying the installation' 'Wait for all add-on pods to become ready, then display their status:' 54 56 'bash' '' 660 191 217 <<'WS_TEST_BLOCK_421_002'
 kubectl wait --for=condition=Ready pod --all \
     -n amazon-cloudwatch --timeout=600s
 kubectl get pods -n amazon-cloudwatch
@@ -2831,24 +2835,24 @@ ws_end_page
 
 ws_begin_page 'Logs' 422 'observability/eks/logs/index.en.md'
 
-ws_run_block 'block-001' 'How log collection works' 'Verify Fluent Bit is running:' 24 24 'bash' '' 600 <<'WS_TEST_BLOCK_422_001'
+ws_run_block 'block-001' 'How log collection works' 'Verify Fluent Bit is running:' 24 24 'bash' '' 600 192 217 <<'WS_TEST_BLOCK_422_001'
 kubectl get daemonset fluent-bit -n amazon-cloudwatch
 WS_TEST_BLOCK_422_001
 
 ws_skip_block 'block-002' 'How log collection works' 'Expected output:' 30 31 '' '' 'informational block without language'
 
-ws_run_block 'block-003' 'Control plane logging' 'Enable control plane logging:' 52 55 'bash' '' 600 <<'WS_TEST_BLOCK_422_003'
+ws_run_block 'block-003' 'Control plane logging' 'Enable control plane logging:' 52 55 'bash' '' 600 193 217 <<'WS_TEST_BLOCK_422_003'
 aws eks update-cluster-config \
     --name workshop-eks \
     --logging '{"clusterLogging":[{"types":["api","audit","authenticator","controllerManager","scheduler"],"enabled":true}]}' \
     --no-cli-pager
 WS_TEST_BLOCK_422_003
 
-ws_run_block 'block-004' 'Control plane logging' 'Wait for the update to complete:' 61 61 'bash' '' 600 <<'WS_TEST_BLOCK_422_004'
+ws_run_block 'block-004' 'Control plane logging' 'Wait for the update to complete:' 61 61 'bash' '' 600 194 217 <<'WS_TEST_BLOCK_422_004'
 aws eks wait cluster-active --name workshop-eks
 WS_TEST_BLOCK_422_004
 
-ws_run_block 'block-005' 'Viewing application logs' '1. Generate some application traffic:' 73 76 'bash' '' 600 <<'WS_TEST_BLOCK_422_005'
+ws_run_block 'block-005' 'Viewing application logs' '1. Generate some application traffic:' 73 76 'bash' '' 600 195 217 <<'WS_TEST_BLOCK_422_005'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring \
   -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
@@ -2859,7 +2863,7 @@ ws_end_page
 
 ws_begin_page 'Metrics' 423 'observability/eks/metrics/index.en.md'
 
-ws_run_block 'block-001' 'How metrics collection works' 'Verify the CloudWatch agent is running:' 31 31 'bash' '' 600 <<'WS_TEST_BLOCK_423_001'
+ws_run_block 'block-001' 'How metrics collection works' 'Verify the CloudWatch agent is running:' 31 31 'bash' '' 600 196 217 <<'WS_TEST_BLOCK_423_001'
 kubectl get daemonset cloudwatch-agent -n amazon-cloudwatch
 WS_TEST_BLOCK_423_001
 
@@ -2871,7 +2875,7 @@ ws_begin_page 'Traces' 424 'observability/eks/traces/index.en.md'
 
 ws_skip_block 'block-001' 'Architecture' 'Architecture' 20 31 '' '' 'informational block without language'
 
-ws_run_block 'block-002' 'Updating the deployment' 'Add Kubernetes metadata via Downward API and OTEL endpoint overrides:' 43 63 'bash' '' 600 <<'WS_TEST_BLOCK_424_002'
+ws_run_block 'block-002' 'Updating the deployment' 'Add Kubernetes metadata via Downward API and OTEL endpoint overrides:' 43 63 'bash' '' 600 197 217 <<'WS_TEST_BLOCK_424_002'
 cd ~/environment/unicorn-store-spring
 
 # Add K8S_NAMESPACE env var with Downward API
@@ -2895,13 +2899,13 @@ yq eval '.spec.template.spec.containers[0].env += [{"name": "OTEL_AWS_APPLICATIO
   -i k8s/deployment.yaml
 WS_TEST_BLOCK_424_002
 
-ws_run_block 'block-003' 'Re-deploying the application' 'Apply the updated deployment:' 78 80 'bash' '' 600 <<'WS_TEST_BLOCK_424_003'
+ws_run_block 'block-003' 'Re-deploying the application' 'Apply the updated deployment:' 78 80 'bash' '' 600 198 217 <<'WS_TEST_BLOCK_424_003'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_424_003
 
-ws_run_block 'block-004' 'Generating trace data' 'Generate traffic to create traces:' 90 93 'bash' '' 600 <<'WS_TEST_BLOCK_424_004'
+ws_run_block 'block-004' 'Generating trace data' 'Generate traffic to create traces:' 90 93 'bash' '' 600 199 217 <<'WS_TEST_BLOCK_424_004'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring \
   -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
@@ -2910,7 +2914,7 @@ WS_TEST_BLOCK_424_004
 
 ws_skip_block 'block-005' 'Viewing trace details' 'Filter expression:' 115 115 '' '' 'informational block without language'
 
-ws_run_block 'block-006' 'Trace-to-log correlation' 'Check the application logs for trace IDs:' 152 152 'bash' '' 600 <<'WS_TEST_BLOCK_424_006'
+ws_run_block 'block-006' 'Trace-to-log correlation' 'Check the application logs for trace IDs:' 152 152 'bash' '' 600 200 217 <<'WS_TEST_BLOCK_424_006'
 kubectl logs -n unicorn-store-spring -l app=unicorn-store-spring --tail=100
 WS_TEST_BLOCK_424_006
 
@@ -2920,7 +2924,7 @@ ws_begin_page 'Application Signals' 425 'observability/eks/application-signals/i
 
 ws_skip_block 'block-001' 'Architecture' 'Architecture' 22 30 '' '' 'informational block without language'
 
-ws_run_block 'block-002' 'Generating traffic' 'Generate traffic to populate Application Signals dashboards:' 40 43 'bash' '' 600 <<'WS_TEST_BLOCK_425_002'
+ws_run_block 'block-002' 'Generating traffic' 'Generate traffic to populate Application Signals dashboards:' 40 43 'bash' '' 600 201 217 <<'WS_TEST_BLOCK_425_002'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring \
   -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
@@ -2939,7 +2943,7 @@ ws_begin_page 'Traces' 443 'observability/ecs/traces/index.en.md'
 
 ws_skip_block 'block-001' 'Architecture' 'Architecture' 20 31 '' '' 'informational block without language'
 
-ws_run_block 'block-002' 'Creating the task definition' 'Get the database secret ARNs:' 41 46 'bash' '' 600 <<'WS_TEST_BLOCK_443_002'
+ws_run_block 'block-002' 'Creating the task definition' 'Get the database secret ARNs:' 41 46 'bash' '' 600 202 217 <<'WS_TEST_BLOCK_443_002'
 DB_SECRET_ARN=$(aws secretsmanager describe-secret --secret-id workshop-db-secret \
   --query 'ARN' --output text --no-cli-pager)
 DB_CONNECTION_ARN=$(aws ssm get-parameter --name workshop-db-connection-string \
@@ -2948,7 +2952,7 @@ echo "DB Secret: ${DB_SECRET_ARN}"
 echo "DB Connection: ${DB_CONNECTION_ARN}"
 WS_TEST_BLOCK_443_002
 
-ws_run_block 'block-003' 'Creating the task definition' 'Create a new task definition with the CloudWatch agent sidecar:' 52 133 'json' '' 600 <<'WS_TEST_BLOCK_443_003'
+ws_run_block 'block-003' 'Creating the task definition' 'Create a new task definition with the CloudWatch agent sidecar:' 52 133 'json' '' 600 203 217 <<'WS_TEST_BLOCK_443_003'
 cat <<EOF > /tmp/task-def.json
 {
   "family": "unicorn-store-spring-unicorn-store-spring",
@@ -3033,11 +3037,11 @@ cat <<EOF > /tmp/task-def.json
 EOF
 WS_TEST_BLOCK_443_003
 
-ws_run_block 'block-004' 'Creating the task definition' '- Collect Application Signals metrics and forward to CloudWatch' 152 152 'bash' '' 600 <<'WS_TEST_BLOCK_443_004'
+ws_run_block 'block-004' 'Creating the task definition' '- Collect Application Signals metrics and forward to CloudWatch' 152 152 'bash' '' 600 204 217 <<'WS_TEST_BLOCK_443_004'
 aws ecs register-task-definition --cli-input-json file:///tmp/task-def.json --no-cli-pager
 WS_TEST_BLOCK_443_004
 
-ws_run_block 'block-005' 'Deploying the application' 'Get the latest task definition revision and deploy it:' 160 167 'bash' '' 600 <<'WS_TEST_BLOCK_443_005'
+ws_run_block 'block-005' 'Deploying the application' 'Get the latest task definition revision and deploy it:' 160 167 'bash' '' 600 205 217 <<'WS_TEST_BLOCK_443_005'
 TASK_DEF_ARN=$(aws ecs describe-task-definition \
   --task-definition unicorn-store-spring-unicorn-store-spring \
   --query 'taskDefinition.taskDefinitionArn' --output text)
@@ -3048,7 +3052,7 @@ TASK_DEF_ARN=$(aws ecs describe-task-definition \
   "${TASK_DEF_ARN}"
 WS_TEST_BLOCK_443_005
 
-ws_run_block 'block-006' 'Testing the application' 'Generate traffic to create traces:' 175 176 'bash' '' 600 <<'WS_TEST_BLOCK_443_006'
+ws_run_block 'block-006' 'Testing the application' 'Generate traffic to create traces:' 175 176 'bash' '' 600 206 217 <<'WS_TEST_BLOCK_443_006'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 ~/java-on-aws/infra/scripts/test/test.sh ${SVC_URL}
 WS_TEST_BLOCK_443_006
@@ -3059,7 +3063,7 @@ ws_end_page
 
 ws_begin_page 'Build ARM64 image' 510 'graviton/arm64-build-image/index.en.md'
 
-ws_run_block 'block-001' 'Installing docker buildx' 'Install the buildx plugin and configure QEMU emulation:' 27 35 'bash' '' 600 <<'WS_TEST_BLOCK_510_001'
+ws_run_block 'block-001' 'Installing docker buildx' 'Install the buildx plugin and configure QEMU emulation:' 27 35 'bash' '' 600 207 217 <<'WS_TEST_BLOCK_510_001'
 BUILDX_VERSION=$(curl --silent "https://api.github.com/repos/docker/buildx/releases/latest" \
   | jq -r .tag_name)
 curl -sS -JLO \
@@ -3071,13 +3075,13 @@ docker run --privileged --rm tonistiigi/binfmt --install all
 docker buildx create --use --driver=docker-container
 WS_TEST_BLOCK_510_001
 
-ws_run_block 'block-002' 'Changing the source code' 'Change the application code to identify the new version:' 43 45 'bash' '' 600 <<'WS_TEST_BLOCK_510_002'
+ws_run_block 'block-002' 'Changing the source code' 'Change the application code to identify the new version:' 43 45 'bash' '' 600 208 217 <<'WS_TEST_BLOCK_510_002'
 cd ~/environment/unicorn-store-spring
 sed -i 's/Welcome to the Unicorn Store.*/Welcome to the Unicorn Store - from Graviton BuildX!");/' \
   src/main/java/com/unicorn/store/controller/UnicornController.java
 WS_TEST_BLOCK_510_002
 
-ws_run_block 'block-003' 'Changing the Dockerfile' 'Create the multi-stage Dockerfile:' 53 74 'bash' '' 600 <<'WS_TEST_BLOCK_510_003'
+ws_run_block 'block-003' 'Changing the Dockerfile' 'Create the multi-stage Dockerfile:' 53 74 'bash' '' 600 209 217 <<'WS_TEST_BLOCK_510_003'
 cat <<'EOF' > ~/environment/unicorn-store-spring/Dockerfile
 FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
 
@@ -3102,7 +3106,7 @@ ENTRYPOINT ["java", "-jar", "-Dserver.port=8080", "/store-spring.jar"]
 EOF
 WS_TEST_BLOCK_510_003
 
-ws_run_block 'block-004' 'Building the container image' 'Build and push a multi-architecture image (x8664 and ARM64):' 82 91 'bash' '' 600 <<'WS_TEST_BLOCK_510_004'
+ws_run_block 'block-004' 'Building the container image' 'Build and push a multi-architecture image (x8664 and ARM64):' 82 91 'bash' '' 600 210 217 <<'WS_TEST_BLOCK_510_004'
 cd ~/environment/unicorn-store-spring
 aws ecr get-login-password --region ${AWS_REGION} \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -3119,7 +3123,7 @@ ws_end_page
 
 ws_begin_page 'Amazon EKS' 520 'graviton/arm64-eks/index.en.md'
 
-ws_run_block 'block-001' 'Creating the ARM64 NodePool' 'Create a Karpenter NodePool that provisions Graviton instances:' 15 56 'yaml' '' 600 <<'WS_TEST_BLOCK_520_001'
+ws_run_block 'block-001' 'Creating the ARM64 NodePool' 'Create a Karpenter NodePool that provisions Graviton instances:' 15 56 'yaml' '' 600 211 217 <<'WS_TEST_BLOCK_520_001'
 cat <<EOF > ~/environment/unicorn-store-spring/k8s/nodepool-graviton.yaml
 apiVersion: karpenter.sh/v1
 kind: NodePool
@@ -3164,12 +3168,12 @@ EOF
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/nodepool-graviton.yaml
 WS_TEST_BLOCK_520_001
 
-ws_run_block 'block-002' 'Changing the deployment' 'Update the deployment to target Graviton nodes using nodeSelector:' 66 67 'bash' '' 600 <<'WS_TEST_BLOCK_520_002'
+ws_run_block 'block-002' 'Changing the deployment' 'Update the deployment to target Graviton nodes using nodeSelector:' 66 67 'bash' '' 600 212 217 <<'WS_TEST_BLOCK_520_002'
 yq -i '.spec.template.spec.nodeSelector."karpenter.sh/nodepool" = "graviton"' \
   ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_520_002
 
-ws_run_block 'block-003' 'Re-deploying the application' 'Apply the updated deployment:' 77 79 'bash' '' 600 <<'WS_TEST_BLOCK_520_003'
+ws_run_block 'block-003' 'Re-deploying the application' 'Apply the updated deployment:' 77 79 'bash' '' 600 213 217 <<'WS_TEST_BLOCK_520_003'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
@@ -3177,7 +3181,7 @@ WS_TEST_BLOCK_520_003
 
 ws_skip_block 'block-004' 'Verifying the results' 'Open a new terminal and run eks-node-viewer:' 89 89 'bash' '' 'interactive terminal UI'
 
-ws_run_block 'block-005' 'Testing the application' 'Testing the application' 99 101 'bash' '' 600 <<'WS_TEST_BLOCK_520_005'
+ws_run_block 'block-005' 'Testing the application' 'Testing the application' 99 101 'bash' '' 600 214 217 <<'WS_TEST_BLOCK_520_005'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
@@ -3185,7 +3189,7 @@ WS_TEST_BLOCK_520_005
 
 ws_skip_block 'block-006' 'Testing the application' 'Expected output:' 107 107 '' '' 'informational block without language'
 
-ws_run_block 'block-007' 'Testing the application' 'Verify the pod is running on a Graviton node:' 113 113 'bash' '' 600 <<'WS_TEST_BLOCK_520_007'
+ws_run_block 'block-007' 'Testing the application' 'Verify the pod is running on a Graviton node:' 113 113 'bash' '' 600 215 217 <<'WS_TEST_BLOCK_520_007'
 kubectl get pods -n unicorn-store-spring -o wide
 WS_TEST_BLOCK_520_007
 
@@ -3195,7 +3199,7 @@ ws_begin_page 'Amazon ECS' 540 'graviton/arm64-ecs/index.en.md'
 
 ws_skip_block 'block-001' 'Changing the task definition' 'The task definition must use the ARM64 Linux runtime platform:' 15 18 'json' '' 'copy action disabled'
 
-ws_run_block 'block-002' 'Changing the task definition' '1. Create an ARM64 revision from the task definition currently used by the service, deploy it, and wait for the service to stabilize:' 24 67 'bash' '' 600 <<'WS_TEST_BLOCK_540_002'
+ws_run_block 'block-002' 'Changing the task definition' '1. Create an ARM64 revision from the task definition currently used by the service, deploy it, and wait for the service to stabilize:' 24 67 'bash' '' 600 216 217 <<'WS_TEST_BLOCK_540_002'
 CLUSTER_NAME=unicorn-store-spring
 SERVICE_NAME=unicorn-store-spring
 TASK_DEFINITION_FILE=~/environment/unicorn-store-spring-task-definition-arm64.json
@@ -3242,7 +3246,7 @@ rm -f "${TASK_DEFINITION_FILE}"
 echo "Deployment complete: ${NEW_TASK_DEFINITION_ARN}"
 WS_TEST_BLOCK_540_002
 
-ws_run_block 'block-003' 'Testing the application' 'Testing the application' 77 78 'bash' '' 600 <<'WS_TEST_BLOCK_540_003'
+ws_run_block 'block-003' 'Testing the application' 'Testing the application' 77 78 'bash' '' 600 217 217 <<'WS_TEST_BLOCK_540_003'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_540_003

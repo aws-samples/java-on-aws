@@ -29,6 +29,8 @@ WS_CURRENT_LANGUAGE=""
 WS_CURRENT_TAB=""
 WS_CURRENT_CODE_FILE=""
 WS_CURRENT_STARTED=0
+WS_CURRENT_EXECUTABLE_NUMBER=0
+WS_EXECUTABLE_TOTAL=0
 WS_WATCHDOG_PID=""
 
 ws_json_escape() {
@@ -200,8 +202,18 @@ ws_write_failure() {
 ws_print_failure() {
   local exit_code="$1"
   local message="$2"
+  local now duration
+  now=$(date +%s)
+  if (( WS_CURRENT_STARTED > 0 )); then
+    duration=$((now - WS_CURRENT_STARTED))
+    (( duration < 0 )) && duration=0
+  else
+    duration=0
+  fi
   echo >&2
-  echo "FAILED" >&2
+  printf '\033[1mFAILED (%ss) - %s - %s/%s - %s - %s - %s - %s\033[0m\n' \
+    "$duration" "$WS_CURRENT_WEIGHT" "$WS_CURRENT_EXECUTABLE_NUMBER" "$WS_EXECUTABLE_TOTAL" \
+    "$WS_CURRENT_PAGE" "$WS_CURRENT_SECTION" "$WS_CURRENT_STEP" "$WS_CURRENT_BLOCK" >&2
   echo "Chapter: ${WS_CURRENT_WEIGHT} ${WS_CURRENT_PAGE}" >&2
   echo "Section: ${WS_CURRENT_SECTION}" >&2
   echo "Step: ${WS_CURRENT_STEP}" >&2
@@ -538,6 +550,8 @@ ws_run_block() {
   WS_CURRENT_LANGUAGE="$6"
   WS_CURRENT_TAB="$7"
   WS_CURRENT_TIMEOUT="$8"
+  WS_CURRENT_EXECUTABLE_NUMBER="$9"
+  WS_EXECUTABLE_TOTAL="${10}"
   WS_CURRENT_LINES="${start_line}-${end_line}"
   WS_CURRENT_CODE_FILE="${WS_RUN_DIR}/.current-block.sh"
   cat > "$WS_CURRENT_CODE_FILE"
@@ -619,8 +633,9 @@ ws_run_block() {
   ws_append_event "passed" "$duration" ""
   ws_append_markdown_row "PASSED" "$duration" ""
   ws_append_junit "passed" "$duration" ""
-  printf '\033[1mPASSED (%ss) - %s - %s - %s - %s\033[0m\n' \
-    "$duration" "$WS_CURRENT_PAGE" "$WS_CURRENT_SECTION" "$WS_CURRENT_STEP" "$WS_CURRENT_BLOCK"
+  printf '\033[1mPASSED (%ss) - %s - %s/%s - %s - %s - %s - %s\033[0m\n' \
+    "$duration" "$WS_CURRENT_WEIGHT" "$WS_CURRENT_EXECUTABLE_NUMBER" "$WS_EXECUTABLE_TOTAL" \
+    "$WS_CURRENT_PAGE" "$WS_CURRENT_SECTION" "$WS_CURRENT_STEP" "$WS_CURRENT_BLOCK"
 }
 
 ws_skip_block() {

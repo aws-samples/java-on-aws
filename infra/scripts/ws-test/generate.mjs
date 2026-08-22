@@ -311,6 +311,11 @@ function blockDelimiter(page, index, code) {
 }
 
 function renderWorkshop(pages, config) {
+  const enabledBlockCount = pages
+    .flatMap((page) => page.blocks)
+    .filter((block) => block.enabled)
+    .length;
+  let enabledBlockNumber = 0;
   const lines = [
     '#!/usr/bin/env bash',
     '',
@@ -340,9 +345,10 @@ function renderWorkshop(pages, config) {
         lines.push(`ws_skip_block ${common} ${shellQuote(block.reason)}`, '');
         return;
       }
+      enabledBlockNumber += 1;
       const delimiter = blockDelimiter(page, index, block.code);
       lines.push(
-        `ws_run_block ${common} ${block.timeout} <<'${delimiter}'`,
+        `ws_run_block ${common} ${block.timeout} ${enabledBlockNumber} ${enabledBlockCount} <<'${delimiter}'`,
         block.code,
         delimiter,
         '',
