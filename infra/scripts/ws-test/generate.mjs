@@ -138,6 +138,37 @@ function visibleHtmlContent(line, commentOpen) {
   return { visible, commentOpen: insideComment };
 }
 
+function currentTabId(containers) {
+  for (let index = containers.length - 1; index >= 0; index -= 1) {
+    if (containers[index].name === 'tab') return containers[index].id || '';
+  }
+  return '';
+}
+
+function updateContainers(visibleLine, containers) {
+  const closingMatch = visibleLine.match(/^(:{3,})\s*$/);
+  if (closingMatch) {
+    const delimiterLength = closingMatch[1].length;
+    const containerIndex = containers.findLastIndex(
+      (container) => container.delimiterLength === delimiterLength,
+    );
+    if (containerIndex >= 0) containers.splice(containerIndex);
+    return true;
+  }
+
+  const openingMatch = visibleLine.match(/^(:{3,})([A-Za-z][\w-]*)\s*(?:\{(.*)\})?\s*$/);
+  if (!openingMatch || openingMatch[2] === 'code') return false;
+
+  const name = openingMatch[2];
+  const attributes = parseAttributes(openingMatch[3] ?? '');
+  containers.push({
+    delimiterLength: openingMatch[1].length,
+    name,
+    id: name === 'tab' ? attributes.id : '',
+  });
+  return true;
+}
+
 function findStep(lines, openingIndex, lowerBound, section) {
   let proseFallback = '';
   for (let index = openingIndex - 1; index >= lowerBound; index -= 1) {
@@ -172,12 +203,16 @@ function parsePage(sourcePath, contentRoot, defaultTimeout) {
   let sectionLine = metadata.endLine;
   let previousBlockEnd = metadata.endLine;
   let htmlCommentOpen = false;
+  const containers = [];
 
   for (let index = metadata.endLine; index < lines.length; index += 1) {
     const line = lines[index];
     const htmlContent = visibleHtmlContent(line, htmlCommentOpen);
     htmlCommentOpen = htmlContent.commentOpen;
     const visibleLine = htmlContent.visible;
+
+    if (updateContainers(visibleLine, containers)) continue;
+
     const headingMatch = visibleLine.match(/^#{1,6}\s+(.+?)\s*#*\s*$/);
     if (headingMatch) {
       section = cleanInstruction(headingMatch[1]);
@@ -202,6 +237,7 @@ function parsePage(sourcePath, contentRoot, defaultTimeout) {
       const blockNumber = blocks.length + 1;
       blocks.push({
         ...info,
+        tabId: currentTabId(containers),
         id: info.explicitId || `block-${String(blockNumber).padStart(3, '0')}`,
         section,
         step: findStep(lines, index, Math.max(sectionLine + 1, previousBlockEnd + 1), section),
@@ -243,6 +279,7 @@ function parsePage(sourcePath, contentRoot, defaultTimeout) {
     const blockNumber = blocks.length + 1;
     blocks.push({
       ...info,
+      tabId: currentTabId(containers),
       id: info.explicitId || `block-${String(blockNumber).padStart(3, '0')}`,
       section,
       step: findStep(lines, index, Math.max(sectionLine + 1, previousBlockEnd + 1), section),
@@ -282,7 +319,7 @@ function renderWorkshop(pages, config) {
     'set -Eeuo pipefail',
     'WS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"',
     'source "${WS_SCRIPT_DIR}/runtime.sh"',
-    `ws_begin_run ${shellQuote(config.title)} "\${WS_SCRIPT_DIR}/reports/${config.template}" ${config.delay}`,
+    `ws_begin_run ${shellQuote(config.title)} "\${WS_SCRIPT_DIR}/reports/${config.template}" ${config.delay} "$@"`,
     ...config.environmentFiles.map((path) => `ws_source_environment ${shellQuote(path)}`),
     '',
   ];
@@ -297,6 +334,7 @@ function renderWorkshop(pages, config) {
         block.startLine,
         block.endLine,
         shellQuote(block.language),
+        shellQuote(block.tabId),
       ].join(' ');
       if (!block.enabled) {
         lines.push(`ws_skip_block ${common} ${shellQuote(block.reason)}`, '');

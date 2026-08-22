@@ -907,12 +907,11 @@ cleanup_security_groups() {
 
 request_stack_deletion() {
     if (( ERRORS > 0 )); then
-        log_error "$ERRORS cleanup operation(s) failed; stack deletion remains disabled"
+        log_error "$ERRORS cleanup operation(s) failed; stack deletion was not requested"
         exit 1
     fi
-    # Stack deletion is intentionally disabled so cleanup can be rerun.
-    # aws_cli cloudformation delete-stack --stack-name "$WORKSHOP_DEPLOYMENT_ID"
-    log_info "Cleanup complete; validated stack $WORKSHOP_DEPLOYMENT_ID was retained"
+    aws_cli cloudformation delete-stack --stack-name "$WORKSHOP_DEPLOYMENT_ID"
+    log_info "CloudFormation deletion requested for validated stack $WORKSHOP_DEPLOYMENT_ID"
 }
 
 main() {

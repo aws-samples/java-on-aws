@@ -2,7 +2,7 @@
 
 set -Eeuo pipefail
 
-WS_RUNTIME_VERSION=1
+WS_RUNTIME_VERSION=3
 WS_RUN_ACTIVE=0
 WS_RUN_FINISHED=0
 WS_FAILURE_WRITTEN=0
@@ -11,6 +11,12 @@ WS_PASSED=0
 WS_FAILED=0
 WS_SKIPPED=0
 WS_EXECUTED=0
+WS_FROM_WEIGHT=""
+WS_TO_WEIGHT=""
+WS_CURRENT_PAGE_SELECTED=1
+WS_CURRENT_PAGE_SKIP_REASON=""
+declare -a WS_SKIP_WEIGHTS=()
+declare -a WS_SKIP_TABS=()
 WS_CURRENT_PAGE=""
 WS_CURRENT_WEIGHT=""
 WS_CURRENT_SOURCE=""
@@ -20,6 +26,7 @@ WS_CURRENT_STEP=""
 WS_CURRENT_LINES=""
 WS_CURRENT_TIMEOUT=""
 WS_CURRENT_LANGUAGE=""
+WS_CURRENT_TAB=""
 WS_CURRENT_CODE_FILE=""
 WS_CURRENT_STARTED=0
 WS_WATCHDOG_PID=""
@@ -58,9 +65,10 @@ ws_append_event() {
   ws_json_escape "${WS_CURRENT_BLOCK}"; local block="$WS_ESCAPED"
   ws_json_escape "${WS_CURRENT_SECTION}"; local section="$WS_ESCAPED"
   ws_json_escape "${WS_CURRENT_STEP}"; local step="$WS_ESCAPED"
+  ws_json_escape "${WS_CURRENT_TAB}"; local tab="$WS_ESCAPED"
   ws_json_escape "$message"; local escaped_message="$WS_ESCAPED"
-  printf '{"status":"%s","page":"%s","weight":%s,"source":"%s","block":"%s","section":"%s","step":"%s","lines":"%s","durationSeconds":%s,"message":"%s"}\n' \
-    "$status" "$page" "${WS_CURRENT_WEIGHT:-0}" "$source" "$block" "$section" "$step" \
+  printf '{"status":"%s","page":"%s","weight":%s,"source":"%s","block":"%s","section":"%s","step":"%s","tab":"%s","lines":"%s","durationSeconds":%s,"message":"%s"}\n' \
+    "$status" "$page" "${WS_CURRENT_WEIGHT:-0}" "$source" "$block" "$section" "$step" "$tab" \
     "${WS_CURRENT_LINES}" "$duration" "$escaped_message" >> "$WS_EVENTS_FILE"
 }
 
@@ -266,6 +274,7 @@ ws_source_environment() {
   WS_CURRENT_STEP="Load workshop environment"
   WS_CURRENT_LINES="1"
   WS_CURRENT_LANGUAGE="bash"
+  WS_CURRENT_TAB=""
   WS_CURRENT_TIMEOUT=0
   WS_CURRENT_STARTED=$(date +%s)
   echo "Loading environment: ${environment_file}"
@@ -282,10 +291,174 @@ ws_restore_runtime_guards() {
   trap 'ws_handle_exit "$?"' EXIT
 }
 
+ws_filter_usage() {
+  cat <<EOF
+Usage: ${0##*/} [--from WEIGHT] [--to WEIGHT] [--skip WEIGHT[,WEIGHT...]] [--skipTab ID[,ID...]]
+
+Filters:
+  --from WEIGHT   Run pages with weight >= WEIGHT (inclusive).
+  --to WEIGHT     Run pages with weight < WEIGHT (exclusive).
+  --skip LIST     Skip comma-separated page hierarchy roots. Trailing zeros
+                  define the hierarchy: 200 skips 200-299, 440 skips 440-449,
+                  and 311 skips only 311.
+  --skipTab LIST  Skip code blocks inside tabs whose IDs appear in the
+                  comma-separated list. Blocks outside tabs are unaffected.
+  -h, --help      Show this help.
+
+Filters are combined. Page and tab skips take precedence over --from and --to.
+The runner checks syntax only; callers are responsible for selecting a runnable
+sequence.
+EOF
+}
+
+ws_argument_error() {
+  echo "ws-test: $1" >&2
+  echo >&2
+  ws_filter_usage >&2
+  exit 2
+}
+
+ws_normalize_weight() {
+  local option="$1"
+  local value="$2"
+  [[ "$value" =~ ^[0-9]{1,9}$ ]] || ws_argument_error "$option requires a non-negative integer"
+  WS_PARSED_WEIGHT=$((10#$value))
+}
+
+ws_add_skip_weights() {
+  local value="$1"
+  local item
+  local -a items=()
+  [[ -n "$value" && "$value" != ,* && "$value" != *, && "$value" != *,,* ]] || \
+    ws_argument_error "--skip requires a comma-separated list of positive integers"
+  IFS=',' read -r -a items <<<"$value"
+  for item in "${items[@]}"; do
+    ws_normalize_weight "--skip" "$item"
+    (( WS_PARSED_WEIGHT > 0 )) || ws_argument_error "--skip values must be greater than zero"
+    WS_SKIP_WEIGHTS+=("$WS_PARSED_WEIGHT")
+  done
+}
+
+ws_add_skip_tabs() {
+  local value="$1"
+  local item
+  local -a items=()
+  [[ -n "$value" && "$value" != ,* && "$value" != *, && "$value" != *,,* ]] || \
+    ws_argument_error "--skipTab requires a comma-separated list of tab IDs"
+  IFS=',' read -r -a items <<<"$value"
+  for item in "${items[@]}"; do
+    [[ "$item" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || \
+      ws_argument_error "--skipTab values must be tab IDs containing only letters, numbers, dot, underscore, or hyphen"
+    WS_SKIP_TABS+=("$item")
+  done
+}
+
+ws_tab_is_skipped() {
+  local tab_id="$1"
+  local skipped_tab
+  [[ -n "$tab_id" ]] || return 1
+  for skipped_tab in "${WS_SKIP_TABS[@]}"; do
+    [[ "$tab_id" == "$skipped_tab" ]] && return 0
+  done
+  return 1
+}
+
+ws_parse_filter_args() {
+  local value
+  while (( $# > 0 )); do
+    case "$1" in
+      --from|--to|--skip|--skipTab)
+        value="$1"
+        shift
+        (( $# > 0 )) || ws_argument_error "$value requires a value"
+        case "$value" in
+          --from)
+            ws_normalize_weight "--from" "$1"
+            WS_FROM_WEIGHT="$WS_PARSED_WEIGHT"
+            ;;
+          --to)
+            ws_normalize_weight "--to" "$1"
+            WS_TO_WEIGHT="$WS_PARSED_WEIGHT"
+            ;;
+          --skip)
+            ws_add_skip_weights "$1"
+            ;;
+          --skipTab)
+            ws_add_skip_tabs "$1"
+            ;;
+        esac
+        ;;
+      --from=*)
+        ws_normalize_weight "--from" "${1#*=}"
+        WS_FROM_WEIGHT="$WS_PARSED_WEIGHT"
+        ;;
+      --to=*)
+        ws_normalize_weight "--to" "${1#*=}"
+        WS_TO_WEIGHT="$WS_PARSED_WEIGHT"
+        ;;
+      --skip=*)
+        ws_add_skip_weights "${1#*=}"
+        ;;
+      --skipTab=*)
+        ws_add_skip_tabs "${1#*=}"
+        ;;
+      -h|--help)
+        ws_filter_usage
+        exit 0
+        ;;
+      *)
+        ws_argument_error "unknown argument: $1"
+        ;;
+    esac
+    shift
+  done
+}
+
+ws_select_current_page() {
+  local weight="$1"
+  local root cursor span upper
+  WS_CURRENT_PAGE_SELECTED=1
+  WS_CURRENT_PAGE_SKIP_REASON=""
+
+  if [[ -n "$WS_FROM_WEIGHT" ]] && (( weight < WS_FROM_WEIGHT )); then
+    WS_CURRENT_PAGE_SELECTED=0
+    WS_CURRENT_PAGE_SKIP_REASON="page weight $weight is below --from $WS_FROM_WEIGHT"
+    return
+  fi
+  if [[ -n "$WS_TO_WEIGHT" ]] && (( weight >= WS_TO_WEIGHT )); then
+    WS_CURRENT_PAGE_SELECTED=0
+    WS_CURRENT_PAGE_SKIP_REASON="page weight $weight is at or above --to $WS_TO_WEIGHT"
+    return
+  fi
+
+  if (( ${#WS_SKIP_WEIGHTS[@]} > 0 )); then
+    for root in "${WS_SKIP_WEIGHTS[@]}"; do
+      cursor=$root
+      span=1
+      while (( cursor > 0 && cursor % 10 == 0 )); do
+        cursor=$((cursor / 10))
+        span=$((span * 10))
+      done
+      upper=$((root + span))
+      if (( weight >= root && weight < upper )); then
+        WS_CURRENT_PAGE_SELECTED=0
+        if (( span == 1 )); then
+          WS_CURRENT_PAGE_SKIP_REASON="page weight $weight matches --skip $root"
+        else
+          WS_CURRENT_PAGE_SKIP_REASON="page weight $weight is in --skip $root range $root-$((upper - 1))"
+        fi
+        return
+      fi
+    done
+  fi
+}
+
 ws_begin_run() {
   WS_WORKSHOP_TITLE="$1"
   WS_REPORT_ROOT="$2"
   WS_DELAY_SECONDS="$3"
+  shift 3
+  ws_parse_filter_args "$@"
   WS_RUN_STARTED=$(date +%s)
   WS_STARTED_AT=$(ws_now_iso)
   WS_RUN_ID=$(date -u '+%Y%m%dT%H%M%SZ')-$$
@@ -316,14 +489,44 @@ EOF
   ws_restore_runtime_guards
   echo "Workshop: ${WS_WORKSHOP_TITLE}"
   echo "Run directory: ${WS_RUN_DIR}"
+  [[ -z "$WS_FROM_WEIGHT" ]] || echo "From weight: ${WS_FROM_WEIGHT} (inclusive)"
+  [[ -z "$WS_TO_WEIGHT" ]] || echo "To weight: ${WS_TO_WEIGHT} (exclusive)"
+  if (( ${#WS_SKIP_WEIGHTS[@]} > 0 )); then
+    local skip_display
+    skip_display=$(IFS=,; echo "${WS_SKIP_WEIGHTS[*]}")
+    echo "Skipped hierarchies: ${skip_display}"
+  fi
+  if (( ${#WS_SKIP_TABS[@]} > 0 )); then
+    local skip_tab_display
+    skip_tab_display=$(IFS=,; echo "${WS_SKIP_TABS[*]}")
+    echo "Skipped tabs: ${skip_tab_display}"
+  fi
 }
 
 ws_begin_page() {
   WS_CURRENT_PAGE="$1"
   WS_CURRENT_WEIGHT="$2"
   WS_CURRENT_SOURCE="$3"
+  ws_select_current_page "$WS_CURRENT_WEIGHT"
   echo
-  echo "=== ${WS_CURRENT_WEIGHT} ${WS_CURRENT_PAGE} ==="
+  if [[ "$WS_CURRENT_PAGE_SELECTED" == "1" ]]; then
+    echo "=== ${WS_CURRENT_WEIGHT} ${WS_CURRENT_PAGE} ==="
+  else
+    echo "=== ${WS_CURRENT_WEIGHT} ${WS_CURRENT_PAGE} (FILTERED) ==="
+    echo "Reason: ${WS_CURRENT_PAGE_SKIP_REASON}"
+  fi
+}
+
+ws_record_skip() {
+  local reason="$1"
+  WS_CURRENT_TIMEOUT=0
+  WS_CURRENT_STARTED=$(date +%s)
+  WS_SKIPPED=$((WS_SKIPPED + 1))
+  WS_TOTAL=$((WS_TOTAL + 1))
+  ws_append_event "skipped" 0 "$reason"
+  ws_append_markdown_row "SKIPPED" 0 "$reason"
+  ws_append_junit "skipped" 0 "$reason"
+  echo "SKIPPED ${WS_CURRENT_SOURCE}:${WS_CURRENT_LINES} ${WS_CURRENT_BLOCK} ${WS_CURRENT_STEP}: ${reason}"
 }
 
 ws_run_block() {
@@ -333,10 +536,20 @@ ws_run_block() {
   local start_line="$4"
   local end_line="$5"
   WS_CURRENT_LANGUAGE="$6"
-  WS_CURRENT_TIMEOUT="$7"
+  WS_CURRENT_TAB="$7"
+  WS_CURRENT_TIMEOUT="$8"
   WS_CURRENT_LINES="${start_line}-${end_line}"
   WS_CURRENT_CODE_FILE="${WS_RUN_DIR}/.current-block.sh"
   cat > "$WS_CURRENT_CODE_FILE"
+
+  if [[ "$WS_CURRENT_PAGE_SELECTED" != "1" ]]; then
+    ws_record_skip "$WS_CURRENT_PAGE_SKIP_REASON"
+    return 0
+  fi
+  if ws_tab_is_skipped "$WS_CURRENT_TAB"; then
+    ws_record_skip "tab '$WS_CURRENT_TAB' matches --skipTab"
+    return 0
+  fi
 
   if (( WS_EXECUTED > 0 )); then
     echo "Waiting ${WS_DELAY_SECONDS}s before the next command block..."
@@ -416,17 +629,16 @@ ws_skip_block() {
   local start_line="$4"
   local end_line="$5"
   WS_CURRENT_LANGUAGE="$6"
-  local reason="$7"
+  WS_CURRENT_TAB="$7"
+  local reason="$8"
   WS_CURRENT_LINES="${start_line}-${end_line}"
   WS_CURRENT_CODE_FILE=""
-  WS_CURRENT_TIMEOUT=0
-  WS_CURRENT_STARTED=$(date +%s)
-  WS_SKIPPED=$((WS_SKIPPED + 1))
-  WS_TOTAL=$((WS_TOTAL + 1))
-  ws_append_event "skipped" 0 "$reason"
-  ws_append_markdown_row "SKIPPED" 0 "$reason"
-  ws_append_junit "skipped" 0 "$reason"
-  echo "SKIPPED ${WS_CURRENT_SOURCE}:${WS_CURRENT_LINES} ${WS_CURRENT_BLOCK} ${WS_CURRENT_STEP}: ${reason}"
+  if [[ "$WS_CURRENT_PAGE_SELECTED" != "1" ]]; then
+    reason="$WS_CURRENT_PAGE_SKIP_REASON"
+  elif ws_tab_is_skipped "$WS_CURRENT_TAB"; then
+    reason="tab '$WS_CURRENT_TAB' matches --skipTab"
+  fi
+  ws_record_skip "$reason"
 }
 
 ws_end_page() {
