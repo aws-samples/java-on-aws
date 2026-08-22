@@ -301,19 +301,21 @@ service_description() {
     local cluster_arn="$1" service_arn="$2" classic="" express=""
     local classic_ok=1 express_ok=1
 
-    classic=$(aws_cli ecs describe-services --cluster "$cluster_arn" --services "$service_arn" --output json 2>/dev/null) || classic_ok=0
-    if (( classic_ok == 1 )) && [[ "$(jq -r '.services | length' <<<"$classic")" -gt 0 ]]; then
-        jq -c '.services[0] + {workshopCleanupType:"classic"}' <<<"$classic"
-        return
-    fi
-
+    # Express Gateway services are also visible through describe-services, so
+    # check the Express API first to preserve the correct deletion semantics.
     express=$(aws_cli ecs describe-express-gateway-service --service-arn "$service_arn" --output json 2>/dev/null) || express_ok=0
     if (( express_ok == 1 )) && [[ "$(jq -r '.service // empty' <<<"$express")" != "" ]]; then
         jq -c '.service + {workshopCleanupType:"express"}' <<<"$express"
         return
     fi
 
-    log_error "Neither classic nor Express ECS APIs could describe $service_arn"
+    classic=$(aws_cli ecs describe-services --cluster "$cluster_arn" --services "$service_arn" --output json 2>/dev/null) || classic_ok=0
+    if (( classic_ok == 1 )) && [[ "$(jq -r '.services | length' <<<"$classic")" -gt 0 ]]; then
+        jq -c '.services[0] + {workshopCleanupType:"classic"}' <<<"$classic"
+        return
+    fi
+
+    log_error "Neither Express nor classic ECS APIs could describe $service_arn"
     return 1
 }
 
@@ -428,7 +430,11 @@ discover_ecs_clusters() {
     for cluster_arn in ${cluster_output//$'\t'/ }; do
         [[ -n "$cluster_arn" && "$cluster_arn" != "None" ]] || continue
         cluster_name="${cluster_arn##*/}"
-        if is_stack_resource "$cluster_arn" || is_stack_resource "$cluster_name"; then
+        if jq -e --arg cluster_arn "$cluster_arn" --arg cluster_name "$cluster_name" '
+            .StackResourceSummaries[]
+            | select(.ResourceType == "AWS::ECS::Cluster")
+            | select(.PhysicalResourceId == $cluster_arn or .PhysicalResourceId == $cluster_name)
+        ' <<<"$STACK_RESOURCES_JSON" >/dev/null; then
             continue
         fi
 
