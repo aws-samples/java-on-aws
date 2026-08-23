@@ -2749,88 +2749,53 @@ echo "👤 Username: admin" &&
 echo "🔑 Password: ${GRAFANA_PASSWORD}"
 WS_TEST_BLOCK_344_1
 
-ws_run_block 2 'Running the load test' 'This test generates 50 POST requests per second for 120 seconds, which will exceed the alert threshold of 20 requests/second and trigger the automated analysis.' 36 43 'bash' '' <<'WS_TEST_BLOCK_344_2'
+ws_run_block 2 'Running the load test' 'This test generates 50 POST requests per second for 120 seconds, which will exceed the alert threshold of 20 requests/second and trigger the automated analysis.' 36 40 'bash' '' <<'WS_TEST_BLOCK_344_2'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text)
-ANALYSIS_BASELINE=$(aws s3api list-objects-v2 --bucket "${S3_BUCKET}" --prefix analysis/ --output json \
-  | jq -r '([.Contents[]?
-      | select((.Key | contains("_analysis_")) and (.Key | endswith(".md")))]
-      | sort_by(.LastModified) | last) // empty
-      | [.Key, .ETag] | @tsv')
+ANALYSIS_BASELINE=$(aws s3 ls s3://${S3_BUCKET}/analysis/ \
+  | awk '/_analysis_.*\.md$/ && $4 > latest {latest=$4} END {print latest}')
 SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) && echo ${SVC_URL}
 ~/java-on-aws/infra/scripts/test/benchmark.sh ${SVC_URL} 120 50
 WS_TEST_BLOCK_344_2
 
-ws_skip_block 3 'Checking the analyzer logs' 'Once the alert fires, check the AI JVM Analyzer logs to confirm the analysis pipeline is running:' 67 68 'bash' '' 'follows logs until Ctrl+C'
+ws_skip_block 3 'Checking the analyzer logs' 'Once the alert fires, check the AI JVM Analyzer logs to confirm the analysis pipeline is running:' 64 65 'bash' '' 'follows logs until Ctrl+C'
 
-ws_skip_block 4 'Checking the analyzer logs' 'The logs show the full pipeline — from alert reception through JFR parsing, flamegraph generation, thread dump collection, Amazon Bedrock analysis, and S3 storage:' 74 86 '' '' 'informational block without language'
+ws_skip_block 4 'Checking the analyzer logs' 'The logs show the full pipeline — from alert reception through JFR parsing, flamegraph generation, thread dump collection, Amazon Bedrock analysis, and S3 storage:' 71 83 '' '' 'informational block without language'
 
-ws_run_block 5 'Reviewing the analysis results' '- Verify that the analysis result files (.html, .md, and .json) have been created' 103 152 'bash' '' <<'WS_TEST_BLOCK_344_5'
-if [[ -z "${S3_BUCKET:-}" ]]; then
-  S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text)
-fi
+ws_run_block 5 'Reviewing the analysis results' '- Verify that the analysis result files (.html, .md, and .json) have been created' 100 117 'bash' '' <<'WS_TEST_BLOCK_344_5'
+S3_BUCKET=${S3_BUCKET:-$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text)}
 
-# A full run inherits the pre-load snapshot and requires a new report. A
-# block-qualified resume has no snapshot, so it accepts a completed report
-# from the interrupted run.
-if [[ -n "${ANALYSIS_BASELINE+x}" ]]; then
-  ANALYSIS_REQUIRE_NEW=1
-else
-  ANALYSIS_REQUIRE_NEW=0
-  ANALYSIS_BASELINE=""
-fi
-
-# The webhook returns before analysis finishes. Wait for the final report,
-# which is written after the other four artifacts.
-echo "Waiting for an AI JVM analysis report..."
-ANALYSIS_RESULT=""
-ANALYSIS_READY=0
-for i in {1..108}; do
-  ANALYSIS_RESULT=$(aws s3api list-objects-v2 --bucket "${S3_BUCKET}" --prefix analysis/ --output json \
-    | jq -r '([.Contents[]?
-        | select((.Key | contains("_analysis_")) and (.Key | endswith(".md")))]
-        | sort_by(.LastModified) | last) // empty
-        | [.Key, .ETag] | @tsv')
-  if [[ -n "${ANALYSIS_RESULT}" ]]; then
-    if (( ANALYSIS_REQUIRE_NEW == 0 )) || [[ "${ANALYSIS_RESULT}" != "${ANALYSIS_BASELINE}" ]]; then
-      ANALYSIS_READY=1
-      break
-    fi
-  fi
-  if (( i % 6 == 0 )); then
-    echo "Still waiting for analysis... $((i * 5))s"
-  fi
+# Wait up to 9 minutes for the asynchronous analysis to finish.
+deadline=$((SECONDS + 540))
+while (( SECONDS < deadline )); do
+  ANALYSIS_RESULT=$(aws s3 ls s3://${S3_BUCKET}/analysis/ \
+    | awk '/_analysis_.*\.md$/ && $4 > latest {latest=$4} END {print latest}')
+  [[ -n "${ANALYSIS_RESULT}" && "${ANALYSIS_RESULT}" != "${ANALYSIS_BASELINE:-}" ]] && break
   sleep 5
 done
-
-if (( ANALYSIS_READY == 0 )); then
-  echo "No qualifying AI JVM analysis report appeared within 9 minutes" >&2
+if [[ -z "${ANALYSIS_RESULT}" || "${ANALYSIS_RESULT}" == "${ANALYSIS_BASELINE:-}" ]]; then
+  echo "Analysis did not finish within 9 minutes" >&2
   false
-else
-  ANALYSIS_KEY=${ANALYSIS_RESULT%%$'\t'*}
-  echo "Analysis complete: s3://${S3_BUCKET}/${ANALYSIS_KEY}"
-
-  # List and download all result types for comprehensive review.
-  echo "Available analysis files:"
-  aws s3 ls s3://${S3_BUCKET}/analysis/
-  mkdir -p ~/environment/analysis-results
-  aws s3 cp s3://${S3_BUCKET}/analysis/ ~/environment/analysis-results/ --recursive
 fi
+
+aws s3 ls s3://${S3_BUCKET}/analysis/
+mkdir -p ~/environment/analysis-results
+aws s3 cp s3://${S3_BUCKET}/analysis/ ~/environment/analysis-results/ --recursive
 WS_TEST_BLOCK_344_5
 
-ws_skip_block 6 'Reviewing the analysis results' '2. Open the analysis.md file in the file Explorer or right-click on the .md file and choose Open Preview. The analysis includes source code references with concrete code fixes. You should see similar results:' 158 239 'markdown' '' 'copy action disabled'
+ws_skip_block 6 'Reviewing the analysis results' '2. Open the analysis.md file in the file Explorer or right-click on the .md file and choose Open Preview. The analysis includes source code references with concrete code fixes. You should see similar results:' 123 204 'markdown' '' 'copy action disabled'
 
-ws_run_block 7 'Stopping profiling' '1. Remove command and args from the deployment manifest:' 287 288 'bash' '' <<'WS_TEST_BLOCK_344_7'
+ws_run_block 7 'Stopping profiling' '1. Remove command and args from the deployment manifest:' 252 253 'bash' '' <<'WS_TEST_BLOCK_344_7'
 yq eval 'del(.spec.template.spec.containers[0].command, .spec.template.spec.containers[0].args)' \
   -i ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_344_7
 
-ws_run_block 8 'Stopping profiling' '2. Restart the deployment:' 294 296 'bash' '' <<'WS_TEST_BLOCK_344_8'
+ws_run_block 8 'Stopping profiling' '2. Restart the deployment:' 259 261 'bash' '' <<'WS_TEST_BLOCK_344_8'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_344_8
 
-ws_run_block 9 'Stopping profiling' '3. Verify the application pod was restarted without the profiler:' 302 302 'bash' '' <<'WS_TEST_BLOCK_344_9'
+ws_run_block 9 'Stopping profiling' '3. Verify the application pod was restarted without the profiler:' 267 267 'bash' '' <<'WS_TEST_BLOCK_344_9'
 kubectl get pods -n unicorn-store-spring
 WS_TEST_BLOCK_344_9
 
