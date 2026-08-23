@@ -10,6 +10,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -315,7 +316,6 @@ function renderWorkshop(pages, config) {
     .flatMap((page) => page.blocks)
     .filter((block) => block.enabled)
     .length;
-  let enabledBlockNumber = 0;
   const lines = [
     '#!/usr/bin/env bash',
     '',
@@ -325,6 +325,8 @@ function renderWorkshop(pages, config) {
     'WS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"',
     'source "${WS_SCRIPT_DIR}/runtime.sh"',
     `ws_begin_run ${shellQuote(config.title)} "\${WS_SCRIPT_DIR}/reports/${config.template}" ${config.delay} "$@"`,
+    `ws_set_executable_total ${enabledBlockCount}`,
+    `ws_set_default_timeout ${config.timeout}`,
     ...config.environmentFiles.map((path) => `ws_source_environment ${shellQuote(path)}`),
     '',
   ];
@@ -345,10 +347,10 @@ function renderWorkshop(pages, config) {
         lines.push(`ws_skip_block ${common} ${shellQuote(block.reason)}`, '');
         return;
       }
-      enabledBlockNumber += 1;
       const delimiter = blockDelimiter(page, index, block.code);
+      const timeoutArgument = block.timeout === config.timeout ? '' : ` ${block.timeout}`;
       lines.push(
-        `ws_run_block ${common} ${block.timeout} ${enabledBlockNumber} ${enabledBlockCount} <<'${delimiter}'`,
+        `ws_run_block ${common}${timeoutArgument} <<'${delimiter}'`,
         block.code,
         delimiter,
         '',
@@ -391,6 +393,75 @@ function selectWorkshops(workshops, requested) {
     const workshop = byTemplate.get(template);
     if (!workshop) throw new Error(`Test generation is not enabled for workshop '${template}'`);
     return workshop;
+  });
+}
+
+function parseCliArguments(args) {
+  const options = { menu: false, all: false, requested: [] };
+  for (const argument of args) {
+    if (argument === '--menu') {
+      options.menu = true;
+    } else if (argument === '--all') {
+      options.all = true;
+    } else if (argument.startsWith('-')) {
+      throw new Error(`Unknown option: ${argument}`);
+    } else {
+      options.requested.push(argument);
+    }
+  }
+  if (options.all && options.requested.length > 0) {
+    throw new Error('--all cannot be combined with workshop names');
+  }
+  return options;
+}
+
+function shouldPrompt(options) {
+  return options.menu
+    && !options.all
+    && options.requested.length === 0
+    && process.stdin.isTTY === true
+    && process.stdout.isTTY === true;
+}
+
+function promptForWorkshops(workshops) {
+  console.log('Select workshop tests to generate:\n');
+  console.log('0) All workshops');
+  workshops.forEach((workshop, index) => console.log(`${index + 1}) ${workshop.template}`));
+
+  return new Promise((resolvePromise, rejectPromise) => {
+    const readline = createInterface({ input: process.stdin, output: process.stdout });
+    let settled = false;
+
+    readline.on('SIGINT', () => {
+      if (settled) return;
+      settled = true;
+      process.stdout.write('\n');
+      readline.close();
+      const error = new Error('Selection cancelled');
+      error.exitCode = 130;
+      rejectPromise(error);
+    });
+    readline.on('close', () => {
+      if (settled) return;
+      settled = true;
+      rejectPromise(new Error('No workshop selection received'));
+    });
+    readline.question(`\nEnter choice [0-${workshops.length}]: `, (answer) => {
+      if (settled) return;
+      settled = true;
+      readline.close();
+      const choice = answer.trim();
+      if (!/^\d+$/.test(choice)) {
+        rejectPromise(new Error(`Invalid choice: ${choice || '(empty)'}`));
+        return;
+      }
+      const index = Number(choice);
+      if (index < 0 || index > workshops.length) {
+        rejectPromise(new Error(`Invalid choice: ${choice}`));
+        return;
+      }
+      resolvePromise(index === 0 ? [] : [workshops[index - 1].template]);
+    });
   });
 }
 
@@ -458,10 +529,16 @@ function generateWorkshop(config) {
 }
 
 try {
-  const workshops = selectWorkshops(readRegistry(), process.argv.slice(2));
-  if (workshops.length === 0) throw new Error('No workshops have test generation enabled');
+  const enabledWorkshops = readRegistry();
+  if (enabledWorkshops.length === 0) throw new Error('No workshops have test generation enabled');
+
+  const options = parseCliArguments(process.argv.slice(2));
+  let requested = options.all ? [] : options.requested;
+  if (shouldPrompt(options)) requested = await promptForWorkshops(enabledWorkshops);
+
+  const workshops = selectWorkshops(enabledWorkshops, requested);
   for (const workshop of workshops) generateWorkshop(workshop);
 } catch (error) {
   console.error(`ws-test generation failed: ${error.message}`);
-  process.exitCode = 1;
+  process.exitCode = error.exitCode ?? 1;
 }

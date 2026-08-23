@@ -5,7 +5,7 @@
   "scripts": {
     "gen": "./scripts/cfn/generate.sh",
     "sync": "./scripts/cfn/sync.sh",
-    "ws-test:gen": "node ./scripts/ws-test/generate.mjs"
+    "ws-test:gen": "node ./scripts/ws-test/generate.mjs --menu"
   },
   "author": "",
   "license": "ISC"

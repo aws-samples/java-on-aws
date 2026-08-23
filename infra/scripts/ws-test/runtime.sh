@@ -31,6 +31,7 @@ WS_CURRENT_CODE_FILE=""
 WS_CURRENT_STARTED=0
 WS_CURRENT_EXECUTABLE_NUMBER=0
 WS_EXECUTABLE_TOTAL=0
+WS_DEFAULT_TIMEOUT=0
 WS_WATCHDOG_PID=""
 
 ws_json_escape() {
@@ -515,6 +516,23 @@ EOF
   fi
 }
 
+ws_set_executable_total() {
+  if (( $# != 1 )) || [[ ! "$1" =~ ^[0-9]+$ ]]; then
+    echo "ws_set_executable_total expects one non-negative integer" >&2
+    return 2
+  fi
+  WS_EXECUTABLE_TOTAL="$1"
+  WS_CURRENT_EXECUTABLE_NUMBER=0
+}
+
+ws_set_default_timeout() {
+  if (( $# != 1 )) || [[ ! "$1" =~ ^[1-9][0-9]*$ ]]; then
+    echo "ws_set_default_timeout expects one positive integer" >&2
+    return 2
+  fi
+  WS_DEFAULT_TIMEOUT="$1"
+}
+
 ws_begin_page() {
   WS_CURRENT_PAGE="$1"
   WS_CURRENT_WEIGHT="$2"
@@ -548,6 +566,10 @@ ws_record_skip() {
 }
 
 ws_run_block() {
+  if (( $# != 7 && $# != 8 )); then
+    echo "ws_run_block expects 7 arguments plus an optional timeout override; regenerate the workshop test script" >&2
+    return 2
+  fi
   WS_CURRENT_BLOCK="$1"
   WS_CURRENT_SECTION="$2"
   WS_CURRENT_STEP="$3"
@@ -555,9 +577,12 @@ ws_run_block() {
   local end_line="$5"
   WS_CURRENT_LANGUAGE="$6"
   WS_CURRENT_TAB="$7"
-  WS_CURRENT_TIMEOUT="$8"
-  WS_CURRENT_EXECUTABLE_NUMBER="$9"
-  WS_EXECUTABLE_TOTAL="${10}"
+  WS_CURRENT_TIMEOUT="${8:-$WS_DEFAULT_TIMEOUT}"
+  if [[ ! "$WS_CURRENT_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
+    echo "ws_run_block timeout must be a positive integer" >&2
+    return 2
+  fi
+  WS_CURRENT_EXECUTABLE_NUMBER=$((WS_CURRENT_EXECUTABLE_NUMBER + 1))
   WS_CURRENT_LINES="${start_line}-${end_line}"
   WS_CURRENT_CODE_FILE="${WS_RUN_DIR}/.current-block.sh"
   cat > "$WS_CURRENT_CODE_FILE"
