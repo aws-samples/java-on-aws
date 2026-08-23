@@ -12,15 +12,20 @@ WS_FAILED=0
 WS_SKIPPED=0
 WS_EXECUTED=0
 WS_FROM_WEIGHT=""
+WS_FROM_BLOCK=0
 WS_TO_WEIGHT=""
+WS_TO_BLOCK=0
 WS_CURRENT_PAGE_SELECTED=1
 WS_CURRENT_PAGE_SKIP_REASON=""
+WS_CURRENT_BLOCK_SELECTED=1
+WS_CURRENT_BLOCK_SKIP_REASON=""
 declare -a WS_SKIP_WEIGHTS=()
 declare -a WS_SKIP_TABS=()
 WS_CURRENT_PAGE=""
 WS_CURRENT_WEIGHT=""
 WS_CURRENT_SOURCE=""
 WS_CURRENT_BLOCK=""
+WS_CURRENT_BLOCK_NUMBER=0
 WS_CURRENT_SECTION=""
 WS_CURRENT_STEP=""
 WS_CURRENT_LINES=""
@@ -212,9 +217,10 @@ ws_print_failure() {
     duration=0
   fi
   echo >&2
-  printf '\033[1mFAILED (%ss) - %s - %s/%s - %s - %s - %s - %s\033[0m\n' \
-    "$duration" "$WS_CURRENT_WEIGHT" "$WS_CURRENT_EXECUTABLE_NUMBER" "$WS_EXECUTABLE_TOTAL" \
-    "$WS_CURRENT_PAGE" "$WS_CURRENT_SECTION" "$WS_CURRENT_STEP" "$WS_CURRENT_BLOCK" >&2
+  printf '\033[1mFAILED (%ss) - %s:%s - %s/%s - %s - %s - %s\033[0m\n' \
+    "$duration" "$WS_CURRENT_WEIGHT" "$WS_CURRENT_BLOCK_NUMBER" \
+    "$WS_CURRENT_EXECUTABLE_NUMBER" "$WS_EXECUTABLE_TOTAL" \
+    "$WS_CURRENT_PAGE" "$WS_CURRENT_SECTION" "$WS_CURRENT_STEP" >&2
   echo "Chapter: ${WS_CURRENT_WEIGHT} ${WS_CURRENT_PAGE}" >&2
   echo "Section: ${WS_CURRENT_SECTION}" >&2
   echo "Step: ${WS_CURRENT_STEP}" >&2
@@ -306,11 +312,13 @@ ws_restore_runtime_guards() {
 
 ws_filter_usage() {
   cat <<EOF
-Usage: ${0##*/} [--from WEIGHT] [--to WEIGHT] [--skip WEIGHT[,WEIGHT...]] [--skipTab ID[,ID...]]
+Usage: ${0##*/} [--from WEIGHT[:BLOCK]] [--to WEIGHT[:BLOCK]] [--skip WEIGHT[,WEIGHT...]] [--skipTab ID[,ID...]]
 
 Filters:
-  --from WEIGHT   Run pages with weight >= WEIGHT (inclusive).
-  --to WEIGHT     Run pages with weight < WEIGHT (exclusive).
+  --from POSITION Run at or after WEIGHT[:BLOCK] (inclusive). A page-only
+                  position starts at its first block.
+  --to POSITION   Run before WEIGHT[:BLOCK] (exclusive). A page-only position
+                  stops before that page.
   --skip LIST     Skip comma-separated page hierarchy roots. Trailing zeros
                   define the hierarchy: 200 skips 200-299, 440 skips 440-449,
                   and 311 skips only 311.
@@ -336,6 +344,28 @@ ws_normalize_weight() {
   local value="$2"
   [[ "$value" =~ ^[0-9]{1,9}$ ]] || ws_argument_error "$option requires a non-negative integer"
   WS_PARSED_WEIGHT=$((10#$value))
+}
+
+ws_parse_position() {
+  local option="$1"
+  local value="$2"
+  local weight block
+  [[ "$value" =~ ^([0-9]{1,9})(:([0-9]{1,9}))?$ ]] || \
+    ws_argument_error "$option requires WEIGHT or WEIGHT:BLOCK"
+  weight="${BASH_REMATCH[1]}"
+  block="${BASH_REMATCH[3]:-0}"
+  WS_PARSED_WEIGHT=$((10#$weight))
+  WS_PARSED_BLOCK=$((10#$block))
+  if [[ "$value" == *:* ]] && (( WS_PARSED_BLOCK == 0 )); then
+    ws_argument_error "$option block number must be greater than zero"
+  fi
+}
+
+ws_format_position() {
+  local weight="$1"
+  local block="$2"
+  WS_POSITION="$weight"
+  (( block == 0 )) || WS_POSITION+=":$block"
 }
 
 ws_add_skip_weights() {
@@ -386,12 +416,14 @@ ws_parse_filter_args() {
         (( $# > 0 )) || ws_argument_error "$value requires a value"
         case "$value" in
           --from)
-            ws_normalize_weight "--from" "$1"
+            ws_parse_position "--from" "$1"
             WS_FROM_WEIGHT="$WS_PARSED_WEIGHT"
+            WS_FROM_BLOCK="$WS_PARSED_BLOCK"
             ;;
           --to)
-            ws_normalize_weight "--to" "$1"
+            ws_parse_position "--to" "$1"
             WS_TO_WEIGHT="$WS_PARSED_WEIGHT"
+            WS_TO_BLOCK="$WS_PARSED_BLOCK"
             ;;
           --skip)
             ws_add_skip_weights "$1"
@@ -402,12 +434,14 @@ ws_parse_filter_args() {
         esac
         ;;
       --from=*)
-        ws_normalize_weight "--from" "${1#*=}"
+        ws_parse_position "--from" "${1#*=}"
         WS_FROM_WEIGHT="$WS_PARSED_WEIGHT"
+        WS_FROM_BLOCK="$WS_PARSED_BLOCK"
         ;;
       --to=*)
-        ws_normalize_weight "--to" "${1#*=}"
+        ws_parse_position "--to" "${1#*=}"
         WS_TO_WEIGHT="$WS_PARSED_WEIGHT"
+        WS_TO_BLOCK="$WS_PARSED_BLOCK"
         ;;
       --skip=*)
         ws_add_skip_weights "${1#*=}"
@@ -438,9 +472,11 @@ ws_select_current_page() {
     WS_CURRENT_PAGE_SKIP_REASON="page weight $weight is below --from $WS_FROM_WEIGHT"
     return
   fi
-  if [[ -n "$WS_TO_WEIGHT" ]] && (( weight >= WS_TO_WEIGHT )); then
+  if [[ -n "$WS_TO_WEIGHT" ]] && \
+      (( weight > WS_TO_WEIGHT || (weight == WS_TO_WEIGHT && WS_TO_BLOCK == 0) )); then
     WS_CURRENT_PAGE_SELECTED=0
-    WS_CURRENT_PAGE_SKIP_REASON="page weight $weight is at or above --to $WS_TO_WEIGHT"
+    ws_format_position "$WS_TO_WEIGHT" "$WS_TO_BLOCK"
+    WS_CURRENT_PAGE_SKIP_REASON="page weight $weight is at or above --to $WS_POSITION"
     return
   fi
 
@@ -463,6 +499,30 @@ ws_select_current_page() {
         return
       fi
     done
+  fi
+}
+
+ws_stop_at_to_boundary() {
+  [[ -n "$WS_TO_WEIGHT" ]] || return 0
+  if (( WS_CURRENT_WEIGHT > WS_TO_WEIGHT ||
+        (WS_CURRENT_WEIGHT == WS_TO_WEIGHT && WS_CURRENT_BLOCK_NUMBER >= WS_TO_BLOCK) )); then
+    ws_format_position "$WS_TO_WEIGHT" "$WS_TO_BLOCK"
+    echo
+    echo "Reached --to ${WS_POSITION}; stopping before ${WS_CURRENT_WEIGHT}:${WS_CURRENT_BLOCK_NUMBER}."
+    ws_finish_run
+    exit 0
+  fi
+}
+
+ws_select_current_block() {
+  WS_CURRENT_BLOCK_SELECTED=1
+  WS_CURRENT_BLOCK_SKIP_REASON=""
+  [[ -n "$WS_FROM_WEIGHT" ]] || return 0
+  if (( WS_CURRENT_WEIGHT < WS_FROM_WEIGHT ||
+        (WS_CURRENT_WEIGHT == WS_FROM_WEIGHT && WS_CURRENT_BLOCK_NUMBER < WS_FROM_BLOCK) )); then
+    ws_format_position "$WS_FROM_WEIGHT" "$WS_FROM_BLOCK"
+    WS_CURRENT_BLOCK_SELECTED=0
+    WS_CURRENT_BLOCK_SKIP_REASON="block ${WS_CURRENT_WEIGHT}:${WS_CURRENT_BLOCK_NUMBER} is below --from $WS_POSITION"
   fi
 }
 
@@ -502,8 +562,14 @@ EOF
   ws_restore_runtime_guards
   echo "Workshop: ${WS_WORKSHOP_TITLE}"
   echo "Run directory: ${WS_RUN_DIR}"
-  [[ -z "$WS_FROM_WEIGHT" ]] || echo "From weight: ${WS_FROM_WEIGHT} (inclusive)"
-  [[ -z "$WS_TO_WEIGHT" ]] || echo "To weight: ${WS_TO_WEIGHT} (exclusive)"
+  if [[ -n "$WS_FROM_WEIGHT" ]]; then
+    ws_format_position "$WS_FROM_WEIGHT" "$WS_FROM_BLOCK"
+    echo "From: ${WS_POSITION} (inclusive)"
+  fi
+  if [[ -n "$WS_TO_WEIGHT" ]]; then
+    ws_format_position "$WS_TO_WEIGHT" "$WS_TO_BLOCK"
+    echo "To: ${WS_POSITION} (exclusive)"
+  fi
   if (( ${#WS_SKIP_WEIGHTS[@]} > 0 )); then
     local skip_display
     skip_display=$(IFS=,; echo "${WS_SKIP_WEIGHTS[*]}")
@@ -537,9 +603,12 @@ ws_begin_page() {
   WS_CURRENT_PAGE="$1"
   WS_CURRENT_WEIGHT="$2"
   WS_CURRENT_SOURCE="$3"
-  if [[ -n "$WS_TO_WEIGHT" ]] && (( WS_CURRENT_WEIGHT >= WS_TO_WEIGHT )); then
+  if [[ -n "$WS_TO_WEIGHT" ]] && \
+      (( WS_CURRENT_WEIGHT > WS_TO_WEIGHT ||
+         (WS_CURRENT_WEIGHT == WS_TO_WEIGHT && WS_TO_BLOCK == 0) )); then
+    ws_format_position "$WS_TO_WEIGHT" "$WS_TO_BLOCK"
     echo
-    echo "Reached --to ${WS_TO_WEIGHT}; stopping before ${WS_CURRENT_WEIGHT} ${WS_CURRENT_PAGE}."
+    echo "Reached --to ${WS_POSITION}; stopping before ${WS_CURRENT_WEIGHT}."
     ws_finish_run
     exit 0
   fi
@@ -570,7 +639,8 @@ ws_run_block() {
     echo "ws_run_block expects 7 arguments plus an optional timeout override; regenerate the workshop test script" >&2
     return 2
   fi
-  WS_CURRENT_BLOCK="$1"
+  WS_CURRENT_BLOCK_NUMBER="$1"
+  WS_CURRENT_BLOCK="$WS_CURRENT_BLOCK_NUMBER"
   WS_CURRENT_SECTION="$2"
   WS_CURRENT_STEP="$3"
   local start_line="$4"
@@ -578,17 +648,27 @@ ws_run_block() {
   WS_CURRENT_LANGUAGE="$6"
   WS_CURRENT_TAB="$7"
   WS_CURRENT_TIMEOUT="${8:-$WS_DEFAULT_TIMEOUT}"
+  if [[ ! "$WS_CURRENT_BLOCK_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+    echo "ws_run_block block number must be a positive integer" >&2
+    return 2
+  fi
   if [[ ! "$WS_CURRENT_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
     echo "ws_run_block timeout must be a positive integer" >&2
     return 2
   fi
-  WS_CURRENT_EXECUTABLE_NUMBER=$((WS_CURRENT_EXECUTABLE_NUMBER + 1))
   WS_CURRENT_LINES="${start_line}-${end_line}"
   WS_CURRENT_CODE_FILE="${WS_RUN_DIR}/.current-block.sh"
   cat > "$WS_CURRENT_CODE_FILE"
 
+  ws_stop_at_to_boundary
+  WS_CURRENT_EXECUTABLE_NUMBER=$((WS_CURRENT_EXECUTABLE_NUMBER + 1))
+  ws_select_current_block
   if [[ "$WS_CURRENT_PAGE_SELECTED" != "1" ]]; then
     ws_record_skip "$WS_CURRENT_PAGE_SKIP_REASON"
+    return 0
+  fi
+  if [[ "$WS_CURRENT_BLOCK_SELECTED" != "1" ]]; then
+    ws_record_skip "$WS_CURRENT_BLOCK_SKIP_REASON"
     return 0
   fi
   if ws_tab_is_skipped "$WS_CURRENT_TAB"; then
@@ -664,13 +744,19 @@ ws_run_block() {
   ws_append_event "passed" "$duration" ""
   ws_append_markdown_row "PASSED" "$duration" ""
   ws_append_junit "passed" "$duration" ""
-  printf '\033[1mPASSED (%ss) - %s - %s/%s - %s - %s - %s - %s\033[0m\n' \
-    "$duration" "$WS_CURRENT_WEIGHT" "$WS_CURRENT_EXECUTABLE_NUMBER" "$WS_EXECUTABLE_TOTAL" \
-    "$WS_CURRENT_PAGE" "$WS_CURRENT_SECTION" "$WS_CURRENT_STEP" "$WS_CURRENT_BLOCK"
+  printf '\033[1mPASSED (%ss) - %s:%s - %s/%s - %s - %s - %s\033[0m\n' \
+    "$duration" "$WS_CURRENT_WEIGHT" "$WS_CURRENT_BLOCK_NUMBER" \
+    "$WS_CURRENT_EXECUTABLE_NUMBER" "$WS_EXECUTABLE_TOTAL" \
+    "$WS_CURRENT_PAGE" "$WS_CURRENT_SECTION" "$WS_CURRENT_STEP"
 }
 
 ws_skip_block() {
-  WS_CURRENT_BLOCK="$1"
+  if (( $# != 8 )); then
+    echo "ws_skip_block expects 8 arguments; regenerate the workshop test script" >&2
+    return 2
+  fi
+  WS_CURRENT_BLOCK_NUMBER="$1"
+  WS_CURRENT_BLOCK="$WS_CURRENT_BLOCK_NUMBER"
   WS_CURRENT_SECTION="$2"
   WS_CURRENT_STEP="$3"
   local start_line="$4"
@@ -678,10 +764,18 @@ ws_skip_block() {
   WS_CURRENT_LANGUAGE="$6"
   WS_CURRENT_TAB="$7"
   local reason="$8"
+  if [[ ! "$WS_CURRENT_BLOCK_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+    echo "ws_skip_block block number must be a positive integer" >&2
+    return 2
+  fi
   WS_CURRENT_LINES="${start_line}-${end_line}"
   WS_CURRENT_CODE_FILE=""
+  ws_stop_at_to_boundary
+  ws_select_current_block
   if [[ "$WS_CURRENT_PAGE_SELECTED" != "1" ]]; then
     reason="$WS_CURRENT_PAGE_SKIP_REASON"
+  elif [[ "$WS_CURRENT_BLOCK_SELECTED" != "1" ]]; then
+    reason="$WS_CURRENT_BLOCK_SKIP_REASON"
   elif ws_tab_is_skipped "$WS_CURRENT_TAB"; then
     reason="tab '$WS_CURRENT_TAB' matches --skipTab"
   fi

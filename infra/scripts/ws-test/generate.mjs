@@ -100,7 +100,6 @@ function blockMetadata(
     language: language || attributes.language || '',
     reason,
     timeout: enabled ? timeout : 0,
-    explicitId: attributes.testId ?? attributes.id ?? '',
   };
 }
 
@@ -239,7 +238,7 @@ function parsePage(sourcePath, contentRoot, defaultTimeout) {
       blocks.push({
         ...info,
         tabId: currentTabId(containers),
-        id: info.explicitId || `block-${String(blockNumber).padStart(3, '0')}`,
+        number: blockNumber,
         section,
         step: findStep(lines, index, Math.max(sectionLine + 1, previousBlockEnd + 1), section),
         startLine: index + 2,
@@ -281,7 +280,7 @@ function parsePage(sourcePath, contentRoot, defaultTimeout) {
     blocks.push({
       ...info,
       tabId: currentTabId(containers),
-      id: info.explicitId || `block-${String(blockNumber).padStart(3, '0')}`,
+      number: blockNumber,
       section,
       step: findStep(lines, index, Math.max(sectionLine + 1, previousBlockEnd + 1), section),
       startLine: index + 2,
@@ -301,7 +300,7 @@ function parsePage(sourcePath, contentRoot, defaultTimeout) {
 }
 
 function blockDelimiter(page, index, code) {
-  const base = `WS_TEST_BLOCK_${String(page.weight).padStart(3, '0')}_${String(index + 1).padStart(3, '0')}`;
+  const base = `WS_TEST_BLOCK_${page.weight}_${index + 1}`;
   let delimiter = base;
   let suffix = 1;
   while (code.split(/\r?\n/).some((line) => line === delimiter)) {
@@ -335,7 +334,7 @@ function renderWorkshop(pages, config) {
     lines.push(`ws_begin_page ${shellQuote(page.title)} ${page.weight} ${shellQuote(page.source)}`, '');
     page.blocks.forEach((block, index) => {
       const common = [
-        shellQuote(block.id),
+        block.number,
         shellQuote(block.section),
         shellQuote(block.step),
         block.startLine,
