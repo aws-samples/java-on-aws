@@ -41,7 +41,8 @@
 				"arn:aws:s3vectors:*:{{.AccountId}}:bucket/aiagent-*",
 				"arn:aws:secretsmanager:*:{{.AccountId}}:secret:workshop-*",
 				"arn:aws:secretsmanager:*:{{.AccountId}}:secret:aiagent-*",
-				"arn:aws:secretsmanager:*:{{.AccountId}}:secret:mcp-*"
+				"arn:aws:secretsmanager:*:{{.AccountId}}:secret:mcp-*",
+				"arn:aws:secretsmanager:*:{{.AccountId}}:secret:bedrock-agentcore-identity!*"
 			]
 		},
 		{

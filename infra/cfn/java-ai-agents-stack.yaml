@@ -1155,6 +1155,27 @@ Resources:
       Roles:
         - Ref: EcrRegistryTemplateRole9295BC5C
     Type: AWS::IAM::Policy
+  IdeAgentCoreIdentityPolicy5C973EFA:
+    Properties:
+      Description: ""
+      Path: /
+      PolicyDocument:
+        Statement:
+          - Action:
+              - secretsmanager:CreateSecret
+              - secretsmanager:DeleteSecret
+              - secretsmanager:GetSecretValue
+              - secretsmanager:PutSecretValue
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:secretsmanager:*:"
+                  - Ref: AWS::AccountId
+                  - :secret:bedrock-agentcore-identity!*
+            Sid: AgentCoreIdentityCredentialSecrets
+        Version: "2012-10-17"
+    Type: AWS::IAM::ManagedPolicy
   IdeDistribution042A6660:
     DeletionPolicy: Delete
     DependsOn:
@@ -1965,6 +1986,7 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/CloudWatchAgentServerPolicy
         - Ref: IdeUserPolicy2460FC7D
+        - Ref: IdeAgentCoreIdentityPolicy5C973EFA
       RoleName: workshop-ide-user
       Tags:
         - Key: WorkshopDeploymentId
@@ -2557,6 +2579,11 @@ Resources:
                   - - "arn:aws:secretsmanager:*:"
                     - Ref: AWS::AccountId
                     - :secret:aiagent-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:secretsmanager:*:"
+                    - Ref: AWS::AccountId
+                    - :secret:bedrock-agentcore-identity!*
               - Fn::Join:
                   - ""
                   - - "arn:aws:secretsmanager:*:"

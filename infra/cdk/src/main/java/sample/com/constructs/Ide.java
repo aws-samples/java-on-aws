@@ -195,6 +195,18 @@ public class Ide extends Construct {
                 .build();
             this.ideRole.addManagedPolicy(policy);
 
+            if ("java-ai-agents".equals(props.getTemplateType())
+                || "java-ai-agents-advanced".equals(props.getTemplateType())) {
+                String agentCoreIdentityPolicyJson = loadFile("/agentcore-identity-policy.json")
+                    .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
+                var agentCoreIdentityPolicyDocument = PolicyDocument.fromJson(
+                    new JSONObject(agentCoreIdentityPolicyJson).toMap());
+                var agentCoreIdentityPolicy = ManagedPolicy.Builder.create(this, "AgentCoreIdentityPolicy")
+                    .document(agentCoreIdentityPolicyDocument)
+                    .build();
+                this.ideRole.addManagedPolicy(agentCoreIdentityPolicy);
+            }
+
             // Create permissions boundary for roles created by workshop scripts
             String boundaryJson = loadFile("/workshop-boundary.json")
                 .replace("{{.AccountId}}", Aws.ACCOUNT_ID);

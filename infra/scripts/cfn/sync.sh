@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copies workshop-specific CloudFormation templates and the shared IAM policy
+# Copies workshop-specific CloudFormation templates and policy files
 # to sibling workshop repositories defined in infra/workshops.json.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
@@ -10,6 +10,7 @@ REPO_ROOT="$(cd "$INFRA_DIR/.." && pwd)"
 WORKSPACE_ROOT="$(dirname "$REPO_ROOT")"
 CONFIG_FILE="$INFRA_DIR/workshops.json"
 SHARED_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/iam-policy.json"
+AGENTCORE_IDENTITY_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/agentcore-identity-policy.json"
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
     log_error "Workshop registry not found: $CONFIG_FILE"
@@ -17,6 +18,10 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
 fi
 if [[ ! -f "$SHARED_POLICY_FILE" ]]; then
     log_error "Shared policy file not found: $SHARED_POLICY_FILE"
+    exit 1
+fi
+if [[ ! -f "$AGENTCORE_IDENTITY_POLICY_FILE" ]]; then
+    log_error "AgentCore Identity policy file not found: $AGENTCORE_IDENTITY_POLICY_FILE"
     exit 1
 fi
 
@@ -80,6 +85,15 @@ for index in "${selected_indexes[@]}"; do
         exit 1
     }
     log_success "Synced $SHARED_POLICY_FILE to $repository/static/iam-policy.json"
+
+    if [[ "$template" == "java-ai-agents" || "$template" == "java-ai-agents-advanced" ]]; then
+        cp "$AGENTCORE_IDENTITY_POLICY_FILE" "$target_dir/agentcore-identity-policy.json" || {
+            log_error "Failed to copy AgentCore Identity policy for $template"
+            exit 1
+        }
+        log_success "Synced $AGENTCORE_IDENTITY_POLICY_FILE to $repository/static/agentcore-identity-policy.json"
+    fi
+
     synced_count=$((synced_count + 1))
 done
 
