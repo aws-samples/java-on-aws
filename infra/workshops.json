@@ -25,7 +25,10 @@
     },
     {
       "template": "java-ai-agents",
-      "repository": "java-ai-agents"
+      "repository": "java-ai-agents",
+      "test": {
+        "enabled": true
+      }
     },
     {
       "template": "java-ai-agents-advanced",
