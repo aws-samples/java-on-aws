@@ -294,9 +294,9 @@ fi
 if [ "${EXISTING_HOLIDAYS_TARGET}" = "None" ] || [ -z "${EXISTING_HOLIDAYS_TARGET}" ]; then
     echo "Creating holidays target"
 
-    OPENAPI_SPEC=$(curl -s "https://date.nager.at/openapi/v3.json" | jq -c '
+    OPENAPI_SPEC=$(curl -fsSL "https://nagerholidays.com/openapi/community-v4.json" | jq -ce '
       .openapi = "3.0.0" |
-      . + {servers: [{url: "https://date.nager.at"}]} |
+      . + {servers: [{url: "https://nagerholidays.com"}]} |
       .paths |= with_entries(
         .value |= with_entries(
           .value.operationId = (.value.tags[0] // "api") + "_" + (.key | ascii_upcase) + "_" + (.value.summary | gsub("[^a-zA-Z0-9]"; "_") | .[0:30])
@@ -307,6 +307,11 @@ if [ "${EXISTING_HOLIDAYS_TARGET}" = "None" ] || [ -z "${EXISTING_HOLIDAYS_TARGE
            elif type == "object" and .type == ["null", "integer"] then .type = "integer" | .nullable = true
            else . end)
     ')
+
+    if ! jq -e '.openapi == "3.0.0" and (.paths | type == "object" and length > 0)' >/dev/null <<<"${OPENAPI_SPEC}"; then
+        echo "Failed to download a valid holidays OpenAPI schema" >&2
+        exit 1
+    fi
 
     TARGET_CONFIG=$(jq -n --arg spec "${OPENAPI_SPEC}" \
         '{mcp: {openApiSchema: {inlinePayload: $spec}}}')
