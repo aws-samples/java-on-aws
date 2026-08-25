@@ -17,4 +17,4 @@ PGVECTOR_VERSION=$(jq -r '.records[0][0].stringValue // empty' <<<"${RESULT}")
 state_set PGVECTOR_VERSION "${PGVECTOR_VERSION}"
 state_set EMBEDDING_MODEL_ID "amazon.titan-embed-text-v2:0"
 state_set EMBEDDING_DIMENSIONS "1024"
-log "Validated PgVector ${PGVECTOR_VERSION}; the suite uses Aurora/PgVector RAG and does not create a managed Bedrock Knowledge Base."
+log "Validated PgVector ${PGVECTOR_VERSION} for Aurora/PgVector RAG."

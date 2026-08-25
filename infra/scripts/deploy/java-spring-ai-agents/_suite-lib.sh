@@ -216,9 +216,24 @@ ensure_eks_context() {
 }
 
 ensure_ecr_repository() {
-  local repository="$1"
-  aws_cli ecr describe-repositories --repository-names "${repository}" >/dev/null || \
-    die "Predeployed ECR repository not found: ${repository}"
+  local repository="$1" templates matching
+  if aws_cli ecr describe-repositories --repository-names "${repository}" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  templates=$(aws_cli ecr describe-repository-creation-templates)
+  matching=$(jq --arg repository "${repository}" '[
+    .repositoryCreationTemplates[]
+    | .prefix as $prefix
+    | select((.appliedFor | index("CREATE_ON_PUSH")) != null)
+    | select($prefix == "ROOT" or ($repository | startswith($prefix)))
+  ] | length' <<<"${templates}")
+  if [[ "${matching}" -gt 0 ]]; then
+    log "ECR repository ${repository} will be created by the matching CREATE_ON_PUSH template on first push"
+    return 0
+  fi
+
+  die "ECR repository ${repository} does not exist and no matching CREATE_ON_PUSH template is configured"
 }
 
 build_and_push_jib() {
