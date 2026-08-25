@@ -10,8 +10,8 @@ load_state
 require_state MCP_URL COGNITO_ISSUER_URI
 [[ -f "${AIAGENT_DIR}/pom.xml" ]] || die "AI-agent source not found. Run 01-setup.sh first."
 
-build_and_push_jib "${AIAGENT_DIR}" aiagent alternative
-IMAGE_DIGEST=$(aws_cli ecr describe-images --repository-name aiagent --image-ids imageTag=alternative \
+build_and_push_jib "${AIAGENT_DIR}" aiagent latest
+IMAGE_DIGEST=$(aws_cli ecr describe-images --repository-name aiagent --image-ids imageTag=latest \
   --query 'imageDetails[0].imageDigest' --output text)
 IMAGE_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent@${IMAGE_DIGEST}"
 

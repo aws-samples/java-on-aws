@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-SUITE_NAME="java-spring-ai-agents-alternative"
+SUITE_NAME="java-spring-ai-agents"
 SUITE_OWNER="java-spring-ai-agents-suite"
 ENVIRONMENT_DIR="${ENVIRONMENT_DIR:-${HOME}/environment}"
 STATE_FILE="${SUITE_STATE_FILE:-${ENVIRONMENT_DIR}/.java-spring-ai-agents-suite.env}"

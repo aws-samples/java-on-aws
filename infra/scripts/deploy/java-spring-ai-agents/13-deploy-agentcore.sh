@@ -89,13 +89,13 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]
 EOF
 
 REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-ECR_URI="${REGISTRY}/aiagent:alternative-agentcore"
+ECR_URI="${REGISTRY}/aiagent:latest"
 aws_cli ecr get-login-password | docker login --username AWS --password-stdin "${REGISTRY}"
 if ! docker buildx inspect java-spring-ai-agents-suite >/dev/null 2>&1; then
   docker buildx create --name java-spring-ai-agents-suite --driver docker-container >/dev/null
 fi
 docker buildx build --builder java-spring-ai-agents-suite --platform linux/arm64 -t "${ECR_URI}" --push "${BUILD_DIR}"
-IMAGE_DIGEST=$(aws_cli ecr describe-images --repository-name aiagent --image-ids imageTag=alternative-agentcore \
+IMAGE_DIGEST=$(aws_cli ecr describe-images --repository-name aiagent --image-ids imageTag=latest \
   --query 'imageDetails[0].imageDigest' --output text)
 CONTAINER_URI="${REGISTRY}/aiagent@${IMAGE_DIGEST}"
 state_set AGENTCORE_IMAGE_URI "${CONTAINER_URI}"
@@ -130,7 +130,7 @@ DESIRED_ENV=$(jq -nc --arg db_url "${DB_URL}" --arg db_user "${DB_USER}" --arg d
   '{SPRING_DATASOURCE_URL:$db_url,SPRING_DATASOURCE_USERNAME:$db_user,SPRING_DATASOURCE_PASSWORD:$db_pass,SPRING_AI_MCP_CLIENT_STREAMABLEHTTP_CONNECTIONS_SERVER1_URL:$mcp}')
 unset DB_JSON DB_USER DB_PASS
 
-RUNTIME_NAME="aiagent-alternative"
+RUNTIME_NAME="aiagent"
 RUNTIME_ID=$(aws_cli bedrock-agentcore-control list-agent-runtimes \
   --query "agentRuntimes[?agentRuntimeName=='${RUNTIME_NAME}'].agentRuntimeId | [0]" --output text)
 if is_none "${RUNTIME_ID}"; then

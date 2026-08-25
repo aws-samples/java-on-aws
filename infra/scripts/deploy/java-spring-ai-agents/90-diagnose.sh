@@ -35,7 +35,7 @@ aws_cli cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='
 aws_cli lambda get-function-configuration --function-name aiagent \
   --query '{State:State,LastUpdateStatus:LastUpdateStatus,Runtime:Runtime,MemorySize:MemorySize,Timeout:Timeout}' --output table
 aws_cli bedrock-agentcore-control list-agent-runtimes \
-  --query "agentRuntimes[?agentRuntimeName=='aiagent-alternative'].{Name:agentRuntimeName,Id:agentRuntimeId,Status:status}" --output table
+  --query "agentRuntimes[?agentRuntimeName=='aiagent'].{Name:agentRuntimeName,Id:agentRuntimeId,Status:status}" --output table
 aws_cli bedrock get-model-invocation-logging-configuration \
   --query 'loggingConfig.{LogGroup:cloudWatchConfig.logGroupName,Bucket:s3Config.bucketName,Text:textDataDeliveryEnabled,Embedding:embeddingDataDeliveryEnabled}' --output table
 if command -v kubectl >/dev/null 2>&1; then
