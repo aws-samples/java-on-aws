@@ -130,7 +130,9 @@
 				"arn:aws:ecs:*:{{.AccountId}}:task-definition/unicorn*:*",
 				"arn:aws:ecs:*:{{.AccountId}}:task-definition/aiagent*:*",
 				"arn:aws:s3:::workshop-*",
-				"arn:aws:s3:::aiagent-*"
+				"arn:aws:s3:::workshop-*/*",
+				"arn:aws:s3:::aiagent-*",
+				"arn:aws:s3:::aiagent-*/*"
 			]
 		},
 		{
@@ -224,15 +226,7 @@
 		},
 		{
 			"Effect": "Allow",
-			"Action": [
-				"iam:CreateRole",
-				"iam:DeleteRole",
-				"iam:PutRolePolicy",
-				"iam:DeleteRolePolicy",
-				"iam:AttachRolePolicy",
-				"iam:DetachRolePolicy",
-				"iam:UpdateAssumeRolePolicy"
-			],
+			"Action": "iam:CreateRole",
 			"Resource": [
 				"arn:aws:iam::{{.AccountId}}:role/aiagent*",
 				"arn:aws:iam::{{.AccountId}}:role/mcp*",
@@ -243,6 +237,24 @@
 					"iam:PermissionsBoundary": "arn:aws:iam::{{.AccountId}}:policy/workshop-boundary"
 				}
 			}
+		},
+		{
+			"Effect": "Allow",
+			"Action": [
+				"iam:DeleteRole",
+				"iam:PutRolePolicy",
+				"iam:DeleteRolePolicy",
+				"iam:AttachRolePolicy",
+				"iam:DetachRolePolicy",
+				"iam:UpdateAssumeRolePolicy"
+			],
+			"Resource": [
+				"arn:aws:iam::{{.AccountId}}:role/aiagent-kb-role",
+				"arn:aws:iam::{{.AccountId}}:role/aiagent-runtime-role",
+				"arn:aws:iam::{{.AccountId}}:role/mcp-gateway-role",
+				"arn:aws:iam::{{.AccountId}}:role/mcp-currency-role",
+				"arn:aws:iam::{{.AccountId}}:role/backoffice-role"
+			]
 		},
 		{
 			"Effect": "Deny",

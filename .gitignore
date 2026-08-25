@@ -37,6 +37,7 @@ build/
 
 ### Kiro ###
 .kiro/debug/
+semantic-review/
 
 ### Other
 

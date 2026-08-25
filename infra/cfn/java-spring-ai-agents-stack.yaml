@@ -969,7 +969,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1787598673018"
+      ContentHash: "1787660052113"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -1075,12 +1075,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: java-spring-ai-agents
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: feat/holmes-remediation
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-spring-ai-agents
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -3196,7 +3196,9 @@ Resources:
               - arn:aws:apigateway:*::/apis/*
               - arn:aws:apigateway:*::/restapis/*
               - arn:aws:s3:::aiagent-*
+              - arn:aws:s3:::aiagent-*/*
               - arn:aws:s3:::workshop-*
+              - arn:aws:s3:::workshop-*/*
               - Fn::Join:
                   - ""
                   - - "arn:aws:cloudfront::"
@@ -3366,14 +3368,7 @@ Resources:
                   - runtime-identity.bedrock-agentcore.amazonaws.com
             Effect: Allow
             Resource: arn:aws:iam::*:role/aws-service-role/*
-          - Action:
-              - iam:AttachRolePolicy
-              - iam:CreateRole
-              - iam:DeleteRole
-              - iam:DeleteRolePolicy
-              - iam:DetachRolePolicy
-              - iam:PutRolePolicy
-              - iam:UpdateAssumeRolePolicy
+          - Action: iam:CreateRole
             Condition:
               StringEquals:
                 iam:PermissionsBoundary:
@@ -3399,6 +3394,40 @@ Resources:
                   - - "arn:aws:iam::"
                     - Ref: AWS::AccountId
                     - :role/mcp*
+          - Action:
+              - iam:AttachRolePolicy
+              - iam:DeleteRole
+              - iam:DeleteRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:UpdateAssumeRolePolicy
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/aiagent-kb-role
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/aiagent-runtime-role
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/backoffice-role
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/mcp-currency-role
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/mcp-gateway-role
           - Action: ec2:RunInstances
             Condition:
               StringLike:
@@ -3454,6 +3483,12 @@ Resources:
                     - Ref: AWS::AccountId
                     - :*
             Sid: BedrockRuntime
+          - Action:
+              - aws-marketplace:Subscribe
+              - aws-marketplace:ViewSubscriptions
+            Effect: Allow
+            Resource: "*"
+            Sid: BedrockMarketplaceModelAccess
           - Action: bedrock-agentcore:*
             Effect: Allow
             Resource:
@@ -3496,7 +3531,9 @@ Resources:
             Effect: Allow
             Resource:
               - arn:aws:s3:::aiagent-kb-data-*
+              - arn:aws:s3:::aiagent-kb-data-*/*
               - arn:aws:s3:::workshop-*
+              - arn:aws:s3:::workshop-*/*
               - Fn::Join:
                   - ""
                   - - "arn:aws:dynamodb:*:"
@@ -3532,6 +3569,16 @@ Resources:
                   - - "arn:aws:logs:*:"
                     - Ref: AWS::AccountId
                     - :log-group:/aws/bedrock-agentcore/*:*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:logs:*:"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/lambda/mcp-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:logs:*:"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/lambda/mcp-*:*
               - Fn::Join:
                   - ""
                   - - "arn:aws:s3vectors:*:"
@@ -3626,7 +3673,7 @@ Resources:
         Fn::GetAtt:
           - PlaceholderImageBuildRole66BA72FE
           - Arn
-      ContentHash: "1787598673208"
+      ContentHash: "1787660052266"
       ProjectName:
         Ref: PlaceholderImageBuildProjectC08F4D66
       ServiceToken:
@@ -5109,7 +5156,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260824211113"
+            - "-20260825141412"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -5193,7 +5240,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260824211113"
+            - "-20260825141412"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

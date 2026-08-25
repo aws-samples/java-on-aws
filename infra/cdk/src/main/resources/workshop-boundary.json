@@ -11,6 +11,15 @@
 			]
 		},
 		{
+			"Sid": "BedrockMarketplaceModelAccess",
+			"Effect": "Allow",
+			"Action": [
+				"aws-marketplace:Subscribe",
+				"aws-marketplace:ViewSubscriptions"
+			],
+			"Resource": "*"
+		},
+		{
 			"Sid": "AgentCoreRuntime",
 			"Effect": "Allow",
 			"Action": "bedrock-agentcore:*",
@@ -67,8 +76,12 @@
 				"arn:aws:lambda:*:{{.AccountId}}:function:mcp-*",
 				"arn:aws:logs:*:{{.AccountId}}:log-group:/aws/bedrock-agentcore/*",
 				"arn:aws:logs:*:{{.AccountId}}:log-group:/aws/bedrock-agentcore/*:*",
+				"arn:aws:logs:*:{{.AccountId}}:log-group:/aws/lambda/mcp-*",
+				"arn:aws:logs:*:{{.AccountId}}:log-group:/aws/lambda/mcp-*:*",
 				"arn:aws:s3:::workshop-*",
+				"arn:aws:s3:::workshop-*/*",
 				"arn:aws:s3:::aiagent-kb-data-*",
+				"arn:aws:s3:::aiagent-kb-data-*/*",
 				"arn:aws:s3vectors:*:{{.AccountId}}:bucket/aiagent-*",
 				"arn:aws:secretsmanager:*:{{.AccountId}}:secret:workshop-*",
 				"arn:aws:secretsmanager:*:{{.AccountId}}:secret:aiagent-*",

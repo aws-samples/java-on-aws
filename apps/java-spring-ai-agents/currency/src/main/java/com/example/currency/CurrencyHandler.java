@@ -18,7 +18,7 @@ import java.util.Map;
  */
 public class CurrencyHandler implements RequestHandler<Map<String, Object>, Map<String, Object>> {
 
-    private static final String FRANKFURTER_API = "https://api.frankfurter.app";
+    private static final String FRANKFURTER_API = "https://api.frankfurter.dev/v1";
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();

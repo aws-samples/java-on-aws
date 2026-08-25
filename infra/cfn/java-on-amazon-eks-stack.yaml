@@ -533,7 +533,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1787492839985"
+      ContentHash: "1787660048585"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2753,7 +2753,9 @@ Resources:
               - arn:aws:apigateway:*::/apis/*
               - arn:aws:apigateway:*::/restapis/*
               - arn:aws:s3:::aiagent-*
+              - arn:aws:s3:::aiagent-*/*
               - arn:aws:s3:::workshop-*
+              - arn:aws:s3:::workshop-*/*
               - Fn::Join:
                   - ""
                   - - "arn:aws:cloudfront::"
@@ -2923,14 +2925,7 @@ Resources:
                   - runtime-identity.bedrock-agentcore.amazonaws.com
             Effect: Allow
             Resource: arn:aws:iam::*:role/aws-service-role/*
-          - Action:
-              - iam:AttachRolePolicy
-              - iam:CreateRole
-              - iam:DeleteRole
-              - iam:DeleteRolePolicy
-              - iam:DetachRolePolicy
-              - iam:PutRolePolicy
-              - iam:UpdateAssumeRolePolicy
+          - Action: iam:CreateRole
             Condition:
               StringEquals:
                 iam:PermissionsBoundary:
@@ -2956,6 +2951,40 @@ Resources:
                   - - "arn:aws:iam::"
                     - Ref: AWS::AccountId
                     - :role/mcp*
+          - Action:
+              - iam:AttachRolePolicy
+              - iam:DeleteRole
+              - iam:DeleteRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:UpdateAssumeRolePolicy
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/aiagent-kb-role
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/aiagent-runtime-role
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/backoffice-role
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/mcp-currency-role
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/mcp-gateway-role
           - Action: ec2:RunInstances
             Condition:
               StringLike:
@@ -3011,6 +3040,12 @@ Resources:
                     - Ref: AWS::AccountId
                     - :*
             Sid: BedrockRuntime
+          - Action:
+              - aws-marketplace:Subscribe
+              - aws-marketplace:ViewSubscriptions
+            Effect: Allow
+            Resource: "*"
+            Sid: BedrockMarketplaceModelAccess
           - Action: bedrock-agentcore:*
             Effect: Allow
             Resource:
@@ -3020,6 +3055,28 @@ Resources:
                   - Ref: AWS::AccountId
                   - :*
             Sid: AgentCoreRuntime
+          - Action:
+              - bedrock-agentcore:ConnectBrowserAutomationStream
+              - bedrock-agentcore:ConnectBrowserLiveViewStream
+            Effect: Allow
+            Resource: "*"
+            Sid: AgentCoreManagedBrowserStreams
+          - Action:
+              - bedrock-agentcore:GetBrowserSession
+              - bedrock-agentcore:StartBrowserSession
+              - bedrock-agentcore:StopBrowserSession
+              - bedrock-agentcore:UpdateBrowserStream
+            Effect: Allow
+            Resource: arn:aws:bedrock-agentcore:*:aws:browser/aws.browser.v1
+            Sid: AgentCoreManagedBrowser
+          - Action:
+              - bedrock-agentcore:GetCodeInterpreterSession
+              - bedrock-agentcore:InvokeCodeInterpreter
+              - bedrock-agentcore:StartCodeInterpreterSession
+              - bedrock-agentcore:StopCodeInterpreterSession
+            Effect: Allow
+            Resource: arn:aws:bedrock-agentcore:*:aws:code-interpreter/aws.codeinterpreter.v1
+            Sid: AgentCoreManagedCodeInterpreter
           - Action:
               - dynamodb:*
               - ecr:*
@@ -3031,7 +3088,9 @@ Resources:
             Effect: Allow
             Resource:
               - arn:aws:s3:::aiagent-kb-data-*
+              - arn:aws:s3:::aiagent-kb-data-*/*
               - arn:aws:s3:::workshop-*
+              - arn:aws:s3:::workshop-*/*
               - Fn::Join:
                   - ""
                   - - "arn:aws:dynamodb:*:"
@@ -3069,6 +3128,16 @@ Resources:
                     - :log-group:/aws/bedrock-agentcore/*:*
               - Fn::Join:
                   - ""
+                  - - "arn:aws:logs:*:"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/lambda/mcp-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:logs:*:"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/lambda/mcp-*:*
+              - Fn::Join:
+                  - ""
                   - - "arn:aws:s3vectors:*:"
                     - Ref: AWS::AccountId
                     - :bucket/aiagent-*
@@ -3077,6 +3146,11 @@ Resources:
                   - - "arn:aws:secretsmanager:*:"
                     - Ref: AWS::AccountId
                     - :secret:aiagent-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:secretsmanager:*:"
+                    - Ref: AWS::AccountId
+                    - :secret:bedrock-agentcore-identity!*
               - Fn::Join:
                   - ""
                   - - "arn:aws:secretsmanager:*:"
@@ -4723,7 +4797,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260823154719"
+            - "-20260825141408"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -4807,7 +4881,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260823154719"
+            - "-20260825141408"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
