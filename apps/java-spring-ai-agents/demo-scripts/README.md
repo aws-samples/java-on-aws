@@ -73,7 +73,7 @@ Follow **STYLE.md** for all content formatting decisions.
 ## Technology Stack
 
 - Spring Boot 4.1.0, Java 25
-- Spring AI 2.0.0
+- Spring AI 2.0.1
 - Amazon Bedrock (Claude Sonnet 4.6, Claude Opus 4.6, Nova 2 Lite)
 - Amazon Bedrock AgentCore (Runtime, Memory, Browser, Code Interpreter, Gateway)
 - Amazon Cognito (JWT authentication)

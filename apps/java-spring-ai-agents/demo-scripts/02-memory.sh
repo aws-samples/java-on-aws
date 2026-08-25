@@ -28,6 +28,17 @@ if ! grep -q "spring-ai-agentcore-memory" pom.xml; then
     }' pom.xml
 fi
 
+# AgentCore Memory 2.1.0 and Spring AI 2.0.1 otherwise resolve
+# incompatible AWS SDK modules (2.49.4 and 2.51.2 respectively).
+# Use the same coherent AWS SDK version as the full deployed application.
+if ! grep -A2 '<groupId>software.amazon.awssdk</groupId>' pom.xml \
+    | grep -q '<artifactId>bom</artifactId>'; then
+    sed -i '/<artifactId>spring-ai-agentcore-bom<\/artifactId>/,/<\/dependency>/{
+        /<\/dependency>/a \
+\t\t\t<dependency>\n\t\t\t\t<groupId>software.amazon.awssdk</groupId>\n\t\t\t\t<artifactId>bom</artifactId>\n\t\t\t\t<version>2.46.20</version>\n\t\t\t\t<type>pom</type>\n\t\t\t\t<scope>import</scope>\n\t\t\t</dependency>
+    }' pom.xml
+fi
+
 # --- Add memory properties ---
 
 if ! grep -q "agentcore.memory.memory-id" src/main/resources/application.properties; then

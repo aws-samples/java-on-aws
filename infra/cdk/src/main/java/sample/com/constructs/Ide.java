@@ -8,6 +8,7 @@ import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Fn;
 import software.amazon.awscdk.RemovalPolicy;
+import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.services.cloudfront.AllowedMethods;
 import software.amazon.awscdk.services.cloudfront.BehaviorOptions;
 import software.amazon.awscdk.services.cloudfront.CachePolicy;
@@ -93,6 +94,7 @@ public class Ide extends Construct {
         private int bootstrapTimeoutMinutes = 30;
         private String gitBranch = "main";
         private String templateType = "base";
+        private String workshopId = "base";
         private Role ideRole;
 
         // Architecture-specific instance type lists
@@ -118,6 +120,7 @@ public class Ide extends Construct {
             public Builder bootstrapTimeoutMinutes(int bootstrapTimeoutMinutes) { props.bootstrapTimeoutMinutes = bootstrapTimeoutMinutes; return this; }
             public Builder gitBranch(String gitBranch) { props.gitBranch = gitBranch; return this; }
             public Builder templateType(String templateType) { props.templateType = templateType; return this; }
+            public Builder workshopId(String workshopId) { props.workshopId = workshopId; return this; }
             public Builder ideRole(Role ideRole) { props.ideRole = ideRole; return this; }
             public IdeProps build() { return props; }
         }
@@ -149,6 +152,7 @@ public class Ide extends Construct {
         public int getBootstrapTimeoutMinutes() { return bootstrapTimeoutMinutes; }
         public String getGitBranch() { return gitBranch; }
         public String getTemplateType() { return templateType; }
+        public String getWorkshopId() { return workshopId; }
         public Role getIdeRole() { return ideRole; }
     }
 
@@ -179,30 +183,54 @@ public class Ide extends Construct {
         }
         this.ideRole = props.getIdeRole();
 
-        // Add CloudFormation signaling permissions
-        PolicyStatement cfnSignalPermissions = PolicyStatement.Builder.create()
-            .effect(Effect.ALLOW)
-            .actions(List.of(
-                "cloudformation:SignalResource"
-            ))
-            .resources(List.of("*"))
-            .build();
-
-        this.ideRole.addToPolicy(cfnSignalPermissions);
-
         // Load IAM policy: base template uses AdministratorAccess, others use iam-policy.json
         if ("base".equals(props.getTemplateType())) {
             this.ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
         } else {
-            String policyDocumentJson = loadFile("/iam-policy.json");
+            String policyDocumentJson = loadFile("/iam-policy.json")
+                .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
             var policyDocument = PolicyDocument.fromJson(new JSONObject(policyDocumentJson).toMap());
             var policy = ManagedPolicy.Builder.create(this, "UserPolicy")
                 .document(policyDocument)
                 .build();
             this.ideRole.addManagedPolicy(policy);
 
+            String roleManagementPolicyJson = loadFile("/iam-role-management-policy.json")
+                .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
+            var roleManagementPolicyDocument = PolicyDocument.fromJson(
+                new JSONObject(roleManagementPolicyJson).toMap());
+            var roleManagementPolicy = ManagedPolicy.Builder.create(this, "RoleManagementPolicy")
+                .document(roleManagementPolicyDocument)
+                .build();
+            this.ideRole.addManagedPolicy(roleManagementPolicy);
+
+            if ("java-spring-ai-agents".equals(props.getTemplateType())
+                || "java-ai-agents".equals(props.getTemplateType())
+                || "java-ai-agents-advanced".equals(props.getTemplateType())) {
+                String agentCoreManagedToolsPolicyJson = loadFile("/agentcore-managed-tools-policy.json");
+                var agentCoreManagedToolsPolicyDocument = PolicyDocument.fromJson(
+                    new JSONObject(agentCoreManagedToolsPolicyJson).toMap());
+                var agentCoreManagedToolsPolicy = ManagedPolicy.Builder.create(this, "AgentCoreManagedToolsPolicy")
+                    .document(agentCoreManagedToolsPolicyDocument)
+                    .build();
+                this.ideRole.addManagedPolicy(agentCoreManagedToolsPolicy);
+            }
+
+            if ("java-ai-agents".equals(props.getTemplateType())
+                || "java-ai-agents-advanced".equals(props.getTemplateType())) {
+                String agentCoreIdentityPolicyJson = loadFile("/agentcore-identity-policy.json")
+                    .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
+                var agentCoreIdentityPolicyDocument = PolicyDocument.fromJson(
+                    new JSONObject(agentCoreIdentityPolicyJson).toMap());
+                var agentCoreIdentityPolicy = ManagedPolicy.Builder.create(this, "AgentCoreIdentityPolicy")
+                    .document(agentCoreIdentityPolicyDocument)
+                    .build();
+                this.ideRole.addManagedPolicy(agentCoreIdentityPolicy);
+            }
+
             // Create permissions boundary for roles created by workshop scripts
-            String boundaryJson = loadFile("/workshop-boundary.json");
+            String boundaryJson = loadFile("/workshop-boundary.json")
+                .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
             var boundaryDocument = PolicyDocument.fromJson(new JSONObject(boundaryJson).toMap());
             ManagedPolicy.Builder.create(this, "WorkshopBoundary")
                 .managedPolicyName("workshop-boundary")
@@ -219,27 +247,55 @@ public class Ide extends Construct {
             .build();
 
         // Add specific permissions for Lambda functions
-        PolicyStatement lambdaPermissions = PolicyStatement.Builder.create()
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
             .actions(List.of(
                 "ec2:DescribeManagedPrefixLists",
-                "ec2:RunInstances",
-                "ec2:TerminateInstances",
-                "ec2:CreateTags",
                 "ec2:DescribeInstances",
                 "ec2:DescribeInstanceStatus",
-                "ec2:DescribeSubnets",
-                "iam:PassRole",
-                "ssm:DescribeInstanceInformation",
-                "ssm:SendCommand",
-                "ssm:GetCommandInvocation",
-                "secretsmanager:GetSecretValue",
-                "secretsmanager:DescribeSecret"
+                "ec2:DescribeSubnets"
             ))
             .resources(List.of("*"))
-            .build();
+            .build());
 
-        lambdaRole.addToPolicy(lambdaPermissions);
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("ec2:RunInstances"))
+            .resources(List.of(
+                "arn:aws:ec2:*::image/*",
+                "arn:aws:ec2:*:*:instance/*",
+                "arn:aws:ec2:*:*:network-interface/*",
+                "arn:aws:ec2:*:*:security-group/*",
+                "arn:aws:ec2:*:*:subnet/*",
+                "arn:aws:ec2:*:*:volume/*"
+            ))
+            .build());
+
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("ec2:CreateTags"))
+            .resources(List.of("arn:aws:ec2:*:*:instance/*"))
+            .conditions(Map.of(
+                "StringEquals", Map.of(
+                    "ec2:CreateAction", "RunInstances",
+                    "aws:RequestTag/Workshop", "true"
+                )
+            ))
+            .build());
+
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("ec2:TerminateInstances"))
+            .resources(List.of("arn:aws:ec2:*:*:instance/*"))
+            .conditions(Map.of("StringEquals", Map.of("ec2:ResourceTag/Workshop", "true")))
+            .build());
+
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("iam:PassRole"))
+            .resources(List.of(this.ideRole.getRoleArn()))
+            .conditions(Map.of("StringEquals", Map.of("iam:PassedToService", "ec2.amazonaws.com")))
+            .build());
 
         // Set up wait condition handle for bootstrap completion (needed for User Data)
         var waitHandle = CfnWaitConditionHandle.Builder.create(this, "WaitConditionHandle")
@@ -340,6 +396,9 @@ public class Ide extends Construct {
             .replace("${GIT_BRANCH}", gitBranch)
             .replace("${AWS_REGION}", Aws.REGION)
             .replace("${TEMPLATE_TYPE}", templateType)
+            .replace("${WORKSHOP_ID}", props.getWorkshopId())
+            .replace("${WORKSHOP_STACK_NAME}", Aws.STACK_NAME)
+            .replace("${WORKSHOP_DEPLOYMENT_ID}", Stack.of(this).getStackId())
             .replace("${ARCH}", props.getIdeArch().getUnameValue())
             .replace("${IDE_TYPE}", props.getIdeType().getScriptName())
             .replace("${WAIT_CONDITION_HANDLE_URL}", waitHandle.getRef())

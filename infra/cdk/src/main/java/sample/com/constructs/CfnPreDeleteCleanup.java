@@ -1,12 +1,15 @@
 package sample.com.constructs;
 
+import software.amazon.awscdk.ArnComponents;
 import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.services.ec2.IVpc;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
+import software.amazon.awscdk.services.s3.IBucket;
 import software.constructs.Construct;
 
 import java.io.IOException;
@@ -26,6 +29,7 @@ public class CfnPreDeleteCleanup extends Construct {
     public static class CfnPreDeleteCleanupProps {
         private String prefix = "workshop";
         private IVpc vpc;
+        private List<IBucket> buckets = List.of();
 
         public static Builder builder() { return new Builder(); }
 
@@ -34,11 +38,13 @@ public class CfnPreDeleteCleanup extends Construct {
 
             public Builder prefix(String prefix) { props.prefix = prefix; return this; }
             public Builder vpc(IVpc vpc) { props.vpc = vpc; return this; }
+            public Builder buckets(List<IBucket> buckets) { props.buckets = List.copyOf(buckets); return this; }
             public CfnPreDeleteCleanupProps build() { return props; }
         }
 
         public String getPrefix() { return prefix; }
         public IVpc getVpc() { return vpc; }
+        public List<IBucket> getBuckets() { return buckets; }
     }
 
     public CfnPreDeleteCleanup(final Construct scope, final String id, final CfnPreDeleteCleanupProps props) {
@@ -59,25 +65,52 @@ public class CfnPreDeleteCleanup extends Construct {
             .effect(Effect.ALLOW)
             .actions(List.of(
                 "ec2:DescribeVpcEndpoints",
-                "ec2:DeleteVpcEndpoints",
-                "ec2:DescribeSecurityGroups",
-                "ec2:DeleteSecurityGroup"
+                "ec2:DescribeSecurityGroups"
             ))
             .resources(List.of("*"))
             .build());
 
-        // Add S3 permissions for bucket cleanup
+        String vpcArn = Stack.of(this).formatArn(ArnComponents.builder()
+            .service("ec2")
+            .resource("vpc")
+            .resourceName(props.getVpc().getVpcId())
+            .build());
+
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
-            .actions(List.of(
-                "s3:ListAllMyBuckets",
-                "s3:ListBucket",
-                "s3:ListBucketVersions",
-                "s3:DeleteObject",
-                "s3:DeleteObjectVersion"
-            ))
-            .resources(List.of("*"))
+            .actions(List.of("ec2:DeleteVpcEndpoints"))
+            .resources(List.of(Stack.of(this).formatArn(ArnComponents.builder()
+                .service("ec2")
+                .resource("vpc-endpoint")
+                .resourceName("*")
+                .build())))
+            .conditions(Map.of("StringEquals", Map.of("ec2:Vpc", vpcArn)))
             .build());
+
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("ec2:DeleteSecurityGroup"))
+            .resources(List.of(Stack.of(this).formatArn(ArnComponents.builder()
+                .service("ec2")
+                .resource("security-group")
+                .resourceName("*")
+                .build())))
+            .conditions(Map.of("StringEquals", Map.of("ec2:Vpc", vpcArn)))
+            .build());
+
+        // Add S3 permissions for bucket cleanup
+        for (IBucket bucket : props.getBuckets()) {
+            lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+                .effect(Effect.ALLOW)
+                .actions(List.of("s3:DeleteBucket", "s3:ListBucket", "s3:ListBucketVersions"))
+                .resources(List.of(bucket.getBucketArn()))
+                .build());
+            lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+                .effect(Effect.ALLOW)
+                .actions(List.of("s3:DeleteObject", "s3:DeleteObjectVersion"))
+                .resources(List.of(bucket.arnForObjects("*")))
+                .build());
+        }
 
         // Create cleanup Lambda function
         Function cleanupFunction = Function.Builder.create(this, "Function")
@@ -94,7 +127,8 @@ public class CfnPreDeleteCleanup extends Construct {
         CustomResource.Builder.create(this, "Resource")
             .serviceToken(cleanupFunction.getFunctionArn())
             .properties(Map.of(
-                "VpcId", props.getVpc().getVpcId()
+                "VpcId", props.getVpc().getVpcId(),
+                "BucketNames", props.getBuckets().stream().map(IBucket::getBucketName).toList()
             ))
             .build();
     }

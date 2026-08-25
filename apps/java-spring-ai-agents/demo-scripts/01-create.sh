@@ -46,7 +46,7 @@ cd ~/environment/aiagent
 if ! grep -q "spring-ai-agentcore-bom" pom.xml; then
     sed -i '/<artifactId>spring-ai-bom<\/artifactId>/,/<\/dependency>/{
         /<\/dependency>/a \
-\t\t\t<dependency>\n\t\t\t\t<groupId>org.springaicommunity</groupId>\n\t\t\t\t<artifactId>spring-ai-agentcore-bom</artifactId>\n\t\t\t\t<version>1.0.0</version>\n\t\t\t\t<type>pom</type>\n\t\t\t\t<scope>import</scope>\n\t\t\t</dependency>
+\t\t\t<dependency>\n\t\t\t\t<groupId>org.springaicommunity</groupId>\n\t\t\t\t<artifactId>spring-ai-agentcore-bom</artifactId>\n\t\t\t\t<version>2.1.0</version>\n\t\t\t\t<type>pom</type>\n\t\t\t\t<scope>import</scope>\n\t\t\t</dependency>
     }' pom.xml
 fi
 

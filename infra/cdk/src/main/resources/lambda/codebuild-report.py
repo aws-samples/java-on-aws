@@ -1,50 +1,102 @@
-import boto3
 import json
+import os
+import urllib.request
 
-codebuild = boto3.client('codebuild')
+import boto3
+
+codebuild = boto3.client("codebuild")
+table = boto3.resource("dynamodb").Table(os.environ["PENDING_TABLE_NAME"])
+
+FAILURE_STATUSES = {"FAILED", "FAULT", "STOPPED", "TIMED_OUT"}
+
+
+def normalized_build_id(value):
+    if ":build/" in value:
+        return value.split(":build/", 1)[1]
+    return value
+
+
+def send_response(event, context, status, data, physical_id, reason=None):
+    body = json.dumps(
+        {
+            "Status": status,
+            "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+            "PhysicalResourceId": physical_id,
+            "StackId": event["StackId"],
+            "RequestId": event["RequestId"],
+            "LogicalResourceId": event["LogicalResourceId"],
+            "NoEcho": False,
+            "Data": data,
+        }
+    ).encode("utf-8")
+    request = urllib.request.Request(
+        event["ResponseURL"],
+        data=body,
+        method="PUT",
+        headers={"content-type": "", "content-length": str(len(body))},
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        if response.status >= 300:
+            raise RuntimeError(f"CloudFormation response failed with HTTP {response.status}")
+
+
+def failure_details(build):
+    details = []
+    for phase in build.get("phases", []):
+        contexts = "; ".join(
+            context.get("message", "") for context in phase.get("contexts", [])
+        )
+        if phase.get("phaseStatus") in FAILURE_STATUSES or contexts:
+            details.append(
+                f"{phase.get('phaseType')}={phase.get('phaseStatus')}: {contexts}".strip()
+            )
+    logs = build.get("logs", {})
+    if logs.get("deepLink"):
+        details.append(f"logs={logs['deepLink']}")
+    return " | ".join(details) or "No phase failure details were returned"
+
 
 def lambda_handler(event, context):
-    print(f'Build status event: {event}')
+    detail = event["detail"]
+    event_build_id = detail["build-id"]
+    build_id = normalized_build_id(event_build_id)
+    print(f"Terminal CodeBuild event for {event_build_id}: {detail['build-status']}")
 
-    try:
-        # Extract build information from EventBridge event
-        detail = event['detail']
-        build_status = detail['build-status']
-        project_name = detail['project-name']
-        build_id = detail['build-id']
+    item = table.get_item(Key={"BuildId": build_id}, ConsistentRead=True).get("Item")
+    if not item:
+        raise RuntimeError(f"Pending CloudFormation callback not found for {build_id}")
 
-        print(f'Build {build_id} for project {project_name} finished with status: {build_status}')
+    build_response = codebuild.batch_get_builds(ids=[item.get("BuildArn", event_build_id)])
+    builds = build_response.get("builds", [])
+    if len(builds) != 1:
+        raise RuntimeError(f"CodeBuild build not found: {event_build_id}")
 
-        if build_status == 'SUCCEEDED':
-            print('✅ CodeBuild setup completed successfully')
-        elif build_status == 'FAILED':
-            print('❌ CodeBuild setup failed')
+    build = builds[0]
+    status = build["buildStatus"]
+    original_event = json.loads(item["CloudFormationEvent"])
+    data = {
+        "BuildId": build["id"],
+        "BuildArn": build["arn"],
+        "ProjectName": item["ProjectName"],
+        "BuildStatus": status,
+    }
 
-            # Get build details for error information
-            response = codebuild.batch_get_builds(ids=[build_id])
-            if response['builds']:
-                build = response['builds'][0]
-                if 'logs' in build and 'cloudWatchLogs' in build['logs']:
-                    log_group = build['logs']['cloudWatchLogs'].get('groupName')
-                    log_stream = build['logs']['cloudWatchLogs'].get('streamName')
-                    print(f'Check logs at: {log_group}/{log_stream}')
-        elif build_status == 'STOPPED':
-            print('⏹️ CodeBuild setup was stopped')
+    if status == "SUCCEEDED":
+        response_status = "SUCCESS"
+        reason = None
+    elif status in FAILURE_STATUSES:
+        response_status = "FAILED"
+        reason = f"CodeBuild finished with {status}: {failure_details(build)}"
+    else:
+        raise RuntimeError(f"Received non-terminal CodeBuild status {status}")
 
-        return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'message': f'Processed build status: {build_status}',
-                'buildId': build_id,
-                'projectName': project_name
-            })
-        }
-
-    except Exception as e:
-        print(f'Error processing build status: {str(e)}')
-        return {
-            'statusCode': 500,
-            'body': json.dumps({
-                'error': str(e)
-            })
-        }
+    send_response(
+        original_event,
+        context,
+        response_status,
+        data,
+        item["PhysicalResourceId"],
+        reason,
+    )
+    table.delete_item(Key={"BuildId": build_id})
+    print(f"Sent {response_status} to CloudFormation for {build_id}")

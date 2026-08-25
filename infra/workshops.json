@@ -1,0 +1,35 @@
+{
+  "testDefaults": {
+    "blockTimeoutSeconds": 600,
+    "delayBetweenBlocksSeconds": 5,
+    "environmentFiles": [
+      "/etc/profile.d/workshop.sh"
+    ]
+  },
+  "workshops": [
+    {
+      "template": "java-on-aws",
+      "repository": "java-on-aws-immersion-day",
+      "test": {
+        "enabled": true,
+        "title": "Java on AWS - Containers"
+      }
+    },
+    {
+      "template": "java-on-amazon-eks",
+      "repository": "java-on-amazon-eks"
+    },
+    {
+      "template": "java-spring-ai-agents",
+      "repository": "java-spring-ai-agents"
+    },
+    {
+      "template": "java-ai-agents",
+      "repository": "java-ai-agents"
+    },
+    {
+      "template": "java-ai-agents-advanced",
+      "repository": "java-ai-agents-advanced"
+    }
+  ]
+}

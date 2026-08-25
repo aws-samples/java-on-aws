@@ -2,31 +2,117 @@
 	"Version": "2012-10-17",
 	"Statement": [
 		{
-			"Sid": "AllowedServicesForRoles",
+			"Sid": "BedrockRuntime",
+			"Effect": "Allow",
+			"Action": "bedrock:*",
+			"Resource": [
+				"arn:aws:bedrock:*::foundation-model/*",
+				"arn:aws:bedrock:*:{{.AccountId}}:*"
+			]
+		},
+		{
+			"Sid": "BedrockMarketplaceModelAccess",
 			"Effect": "Allow",
 			"Action": [
 				"aws-marketplace:Subscribe",
-				"aws-marketplace:Unsubscribe",
-				"aws-marketplace:ViewSubscriptions",
-				"bedrock:*",
-				"bedrock-agentcore:*",
-				"cognito-idp:*",
-				"cloudfront:*",
-				"cloudwatch:*",
+				"aws-marketplace:ViewSubscriptions"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "AgentCoreRuntime",
+			"Effect": "Allow",
+			"Action": "bedrock-agentcore:*",
+			"Resource": "arn:aws:bedrock-agentcore:*:{{.AccountId}}:*"
+		},
+		{
+			"Sid": "AgentCoreManagedBrowserStreams",
+			"Effect": "Allow",
+			"Action": [
+				"bedrock-agentcore:ConnectBrowserAutomationStream",
+				"bedrock-agentcore:ConnectBrowserLiveViewStream"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "AgentCoreManagedBrowser",
+			"Effect": "Allow",
+			"Action": [
+				"bedrock-agentcore:GetBrowserSession",
+				"bedrock-agentcore:StartBrowserSession",
+				"bedrock-agentcore:StopBrowserSession",
+				"bedrock-agentcore:UpdateBrowserStream"
+			],
+			"Resource": "arn:aws:bedrock-agentcore:*:aws:browser/aws.browser.v1"
+		},
+		{
+			"Sid": "AgentCoreManagedCodeInterpreter",
+			"Effect": "Allow",
+			"Action": [
+				"bedrock-agentcore:GetCodeInterpreterSession",
+				"bedrock-agentcore:InvokeCodeInterpreter",
+				"bedrock-agentcore:StartCodeInterpreterSession",
+				"bedrock-agentcore:StopCodeInterpreterSession"
+			],
+			"Resource": "arn:aws:bedrock-agentcore:*:aws:code-interpreter/aws.codeinterpreter.v1"
+		},
+		{
+			"Sid": "WorkshopData",
+			"Effect": "Allow",
+			"Action": [
 				"dynamodb:*",
-				"ec2:CreateNetworkInterface",
-				"ec2:DeleteNetworkInterface",
-				"ec2:DescribeNetworkInterfaces",
-				"ec2:DescribeSecurityGroups",
-				"ec2:DescribeSubnets",
-				"ec2:DescribeVpcs",
 				"ecr:*",
 				"lambda:InvokeFunction",
 				"logs:*",
 				"s3:*",
 				"s3vectors:*",
-				"secretsmanager:GetSecretValue",
-				"xray:*"
+				"secretsmanager:GetSecretValue"
+			],
+			"Resource": [
+				"arn:aws:dynamodb:*:{{.AccountId}}:table/backoffice-*",
+				"arn:aws:dynamodb:*:{{.AccountId}}:table/backoffice-*/*",
+				"arn:aws:ecr:*:{{.AccountId}}:repository/aiagent*",
+				"arn:aws:ecr:*:{{.AccountId}}:repository/backoffice*",
+				"arn:aws:lambda:*:{{.AccountId}}:function:mcp-*",
+				"arn:aws:logs:*:{{.AccountId}}:log-group:/aws/bedrock-agentcore/*",
+				"arn:aws:logs:*:{{.AccountId}}:log-group:/aws/bedrock-agentcore/*:*",
+				"arn:aws:logs:*:{{.AccountId}}:log-group:/aws/lambda/mcp-*",
+				"arn:aws:logs:*:{{.AccountId}}:log-group:/aws/lambda/mcp-*:*",
+				"arn:aws:s3:::workshop-*",
+				"arn:aws:s3:::workshop-*/*",
+				"arn:aws:s3:::aiagent-kb-data-*",
+				"arn:aws:s3:::aiagent-kb-data-*/*",
+				"arn:aws:s3vectors:*:{{.AccountId}}:bucket/aiagent-*",
+				"arn:aws:secretsmanager:*:{{.AccountId}}:secret:workshop-*",
+				"arn:aws:secretsmanager:*:{{.AccountId}}:secret:aiagent-*",
+				"arn:aws:secretsmanager:*:{{.AccountId}}:secret:mcp-*",
+				"arn:aws:secretsmanager:*:{{.AccountId}}:secret:bedrock-agentcore-identity!*"
+			]
+		},
+		{
+			"Sid": "RuntimeNetworkInterfaces",
+			"Effect": "Allow",
+			"Action": [
+				"ec2:CreateNetworkInterface",
+				"ec2:DeleteNetworkInterface"
+			],
+			"Resource": "arn:aws:ec2:*:{{.AccountId}}:network-interface/*"
+		},
+		{
+			"Sid": "RuntimeReadAndTelemetry",
+			"Effect": "Allow",
+			"Action": [
+				"cloudwatch:PutMetricData",
+				"ec2:DescribeNetworkInterfaces",
+				"ec2:DescribeSecurityGroups",
+				"ec2:DescribeSubnets",
+				"ec2:DescribeVpcs",
+				"ecr:GetAuthorizationToken",
+				"logs:DescribeLogGroups",
+				"xray:GetSamplingRules",
+				"xray:GetSamplingTargets",
+				"xray:PutTelemetryRecords",
+				"xray:PutTraceSegments"
 			],
 			"Resource": "*"
 		},

@@ -77,13 +77,13 @@ FOLDER_UID=$(echo "$SHARED_FOLDER" | jq -r '.uid')
 FOLDER_ID=$(echo "$SHARED_FOLDER" | jq -r '.id')
 log_info "Using folder: $FOLDER_UID"
 
-# Get Lambda Function URL for thread dump Lambda
-FUNCTION_URL=$(aws lambda get-function-url-config --function-name "$LAMBDA_FUNCTION_NAME" --query "FunctionUrl" --output text 2>/dev/null || echo "")
+# Get authenticated thread analysis endpoint
+FUNCTION_URL=$(aws ssm get-parameter --name "${PREFIX}-thread-analysis-url" --query "Parameter.Value" --output text 2>/dev/null || echo "")
 if [[ -z "$FUNCTION_URL" ]]; then
-    log_error "Lambda Function URL not found. Ensure CDK stack is deployed."
+    log_error "Thread analysis endpoint not found. Ensure CDK stack is deployed."
     exit 1
 fi
-log_info "Using Lambda Function URL: $FUNCTION_URL"
+log_info "Using thread analysis endpoint: $FUNCTION_URL"
 
 
 # =============================================================================
@@ -265,33 +265,38 @@ if [[ -n "$OLD_CONTACT_UID" ]]; then
   curl -s -X DELETE -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/v1/provisioning/contact-points/$OLD_CONTACT_UID"
 fi
 
-EXISTING_THREAD_CONTACT=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/v1/provisioning/contact-points" | jq -r ".[] | select(.name == \"$THREAD_CONTACT_POINT\") | .name // empty")
+EXISTING_THREAD_CONTACT_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/v1/provisioning/contact-points" | jq -r ".[] | select(.name == \"$THREAD_CONTACT_POINT\") | .uid // empty")
 
-if [[ -z "$EXISTING_THREAD_CONTACT" ]]; then
-  CONTACT_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
-    -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
-    -d "{
-      \"name\": \"$THREAD_CONTACT_POINT\",
-      \"type\": \"webhook\",
-      \"settings\": {
-        \"url\": \"$FUNCTION_URL\",
-        \"httpMethod\": \"POST\",
-        \"username\": \"$WEBHOOK_USER\",
-        \"password\": \"$GRAFANA_PASSWORD\",
-        \"authorization_scheme\": \"basic\"
-      },
-      \"disableResolveMessage\": false
-    }" \
-    "$GRAFANA_URL/api/v1/provisioning/contact-points")
+CONTACT_METHOD="POST"
+CONTACT_URL="$GRAFANA_URL/api/v1/provisioning/contact-points"
+CONTACT_ACTION="created"
+if [[ -n "$EXISTING_THREAD_CONTACT_UID" ]]; then
+  CONTACT_METHOD="PUT"
+  CONTACT_URL="$CONTACT_URL/$EXISTING_THREAD_CONTACT_UID"
+  CONTACT_ACTION="updated"
+fi
 
-  if echo "$CONTACT_RESPONSE" | jq -e '.name' > /dev/null 2>&1; then
-    log_success "Thread analysis contact point created"
-  else
-    log_error "Thread analysis contact point creation failed:"
-    echo "$CONTACT_RESPONSE" | jq .
-  fi
+CONTACT_RESPONSE=$(curl -s -X "$CONTACT_METHOD" -H "Content-Type: application/json" \
+  -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+  -d "{
+    \"name\": \"$THREAD_CONTACT_POINT\",
+    \"type\": \"webhook\",
+    \"settings\": {
+      \"url\": \"$FUNCTION_URL\",
+      \"httpMethod\": \"POST\",
+      \"username\": \"$WEBHOOK_USER\",
+      \"password\": \"$GRAFANA_PASSWORD\",
+      \"authorization_scheme\": \"basic\"
+    },
+    \"disableResolveMessage\": false
+  }" \
+  "$CONTACT_URL")
+
+if echo "$CONTACT_RESPONSE" | jq -e '.name' > /dev/null 2>&1; then
+  log_success "Thread analysis contact point $CONTACT_ACTION"
 else
-  log_success "Thread analysis contact point already exists"
+  log_error "Thread analysis contact point update failed:"
+  echo "$CONTACT_RESPONSE" | jq .
 fi
 
 # Create thread analysis alert rule
@@ -362,7 +367,7 @@ log_info "Testing Bedrock model access..."
 if aws bedrock-runtime invoke-model \
   --model-id "global.anthropic.claude-sonnet-4-20250514-v1:0" \
   --body "$(echo '{"anthropic_version": "bedrock-2023-05-31", "max_tokens": 10, "messages": [{"role": "user", "content": "Test"}]}' | base64)" \
-  --region us-east-1 \
+  --region "$AWS_REGION" \
   /tmp/bedrock-test.json 2>/dev/null; then
   log_success "Bedrock model access verified"
   rm -f /tmp/bedrock-test.json

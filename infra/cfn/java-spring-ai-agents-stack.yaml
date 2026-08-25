@@ -13,10 +13,14 @@ Metadata:
         reason: API Gateway access logging not needed for workshop
       - id: AwsSolutions-COG4
         reason: Workshop environment does not require Cognito User Pool authorization
-      - id: AwsSolutions-IAM4
-        reason: AWS Managed policies are acceptable for workshop
-      - id: AwsSolutions-IAM5
-        reason: Wildcard permissions acceptable for workshop parallel resource creation
+      - applies_to:
+          - regex: /^Policy::.*$/g
+        id: AwsSolutions-IAM4
+        reason: AWS managed policies are acceptable for the ephemeral workshop environment
+      - applies_to:
+          - regex: /^(Action|Resource)::.*$/g
+        id: AwsSolutions-IAM5
+        reason: Wildcard permissions are acceptable for the ephemeral workshop environment
       - id: AwsSolutions-RDS2
         reason: Workshop non-sensitive test database does not need encryption at rest
       - id: AwsSolutions-RDS3
@@ -99,6 +103,14 @@ Resources:
   AiAgentEcsCluster79AA4F07:
     Properties:
       ClusterName: aiagent
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::ECS::Cluster
   AiAgentEksRole773CEF68:
     Properties:
@@ -119,6 +131,14 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonBedrockFullAccess
       RoleName: aiagent-eks-pod-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   AiAgentEksRoleDefaultPolicy98379356:
     Properties:
@@ -216,6 +236,14 @@ Resources:
         MaxTaskCount: 4
         MinTaskCount: 1
       ServiceName: aiagent
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       TaskRoleArn:
         Fn::GetAtt:
           - AiAgentTaskRole77A94BF0
@@ -239,6 +267,14 @@ Resources:
               - :iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices
       Path: /service-role/
       RoleName: aiagent-ecs-infrastructure-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   AiAgentLambdaRoleDefaultPolicy499E8DB7:
     Properties:
@@ -299,12 +335,28 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonBedrockFullAccess
       RoleName: aiagent-lambda-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   AiAgentLogGroup9D1D96C1:
     DeletionPolicy: Delete
     Properties:
       LogGroupName: /aws/ecs/aiagent
       RetentionInDays: 731
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::Logs::LogGroup
     UpdateReplacePolicy: Delete
   AiAgentRuntimeRole4D8E9BEA:
@@ -334,20 +386,108 @@ Resources:
         - PolicyDocument:
             Statement:
               - Action:
-                  - aws-marketplace:Subscribe
-                  - aws-marketplace:Unsubscribe
-                  - aws-marketplace:ViewSubscriptions
-                  - bedrock-agentcore:*
-                  - bedrock:*
-                  - cloudwatch:*
-                  - ecr:*
-                  - logs:*
-                  - xray:*
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Effect: Allow
+                Resource:
+                  - arn:aws:bedrock:*::foundation-model/*
+                  - Fn::Join:
+                      - ""
+                      - - "arn:aws:bedrock:*:"
+                        - Ref: AWS::AccountId
+                        - :inference-profile/*
+              - Action:
+                  - bedrock:Retrieve
+                  - bedrock:RetrieveAndGenerate
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:aws:bedrock:*:"
+                      - Ref: AWS::AccountId
+                      - :knowledge-base/*
+              - Action:
+                  - bedrock-agentcore:CreateEvent
+                  - bedrock-agentcore:GetEvent
+                  - bedrock-agentcore:GetWorkloadAccessToken
+                  - bedrock-agentcore:GetWorkloadAccessTokenForJWT
+                  - bedrock-agentcore:GetWorkloadAccessTokenForUserId
+                  - bedrock-agentcore:InvokeAgentRuntime
+                  - bedrock-agentcore:InvokeGateway
+                  - bedrock-agentcore:ListEvents
+                  - bedrock-agentcore:RetrieveMemoryRecords
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:aws:bedrock-agentcore:*:"
+                      - Ref: AWS::AccountId
+                      - :*
+              - Action:
+                  - bedrock-agentcore:ConnectBrowserAutomationStream
+                  - bedrock-agentcore:ConnectBrowserLiveViewStream
+                  - ecr:GetAuthorizationToken
+                  - logs:DescribeLogGroups
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                  - xray:PutTelemetryRecords
+                  - xray:PutTraceSegments
+                Effect: Allow
+                Resource: "*"
+              - Action:
+                  - bedrock-agentcore:GetBrowserSession
+                  - bedrock-agentcore:StartBrowserSession
+                  - bedrock-agentcore:StopBrowserSession
+                  - bedrock-agentcore:UpdateBrowserStream
+                Effect: Allow
+                Resource: arn:aws:bedrock-agentcore:*:aws:browser/aws.browser.v1
+              - Action:
+                  - bedrock-agentcore:GetCodeInterpreterSession
+                  - bedrock-agentcore:InvokeCodeInterpreter
+                  - bedrock-agentcore:StartCodeInterpreterSession
+                  - bedrock-agentcore:StopCodeInterpreterSession
+                Effect: Allow
+                Resource: arn:aws:bedrock-agentcore:*:aws:code-interpreter/aws.codeinterpreter.v1
+              - Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:aws:ecr:*:"
+                      - Ref: AWS::AccountId
+                      - :repository/aiagent
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                  - logs:PutResourcePolicy
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:aws:logs:*:"
+                      - Ref: AWS::AccountId
+                      - :log-group:/aws/bedrock-agentcore/runtimes/*
+              - Action: cloudwatch:PutMetricData
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: bedrock-agentcore
                 Effect: Allow
                 Resource: "*"
             Version: "2012-10-17"
           PolicyName: AgentCoreExecutionPolicy
       RoleName: aiagent-agentcore-runtime-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   AiAgentTaskExecutionRoleDB6B93A6:
     Properties:
@@ -367,6 +507,14 @@ Resources:
               - :iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       Path: /service-role/
       RoleName: aiagent-ecs-task-execution-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   AiAgentTaskExecutionRoleDefaultPolicy1E8C5A54:
     Properties:
@@ -374,7 +522,7 @@ Resources:
         Statement:
           - Action: logs:CreateLogGroup
             Effect: Allow
-            Resource: "*"
+            Resource: arn:aws:logs:*:*:log-group:/aws/ecs/aiagent*
           - Action:
               - secretsmanager:DescribeSecret
               - secretsmanager:GetSecretValue
@@ -431,6 +579,14 @@ Resources:
               - :iam::aws:policy/AmazonBedrockFullAccess
       Path: /service-role/
       RoleName: aiagent-ecs-task-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   BedrockLoggingRole71F633EF:
     Properties:
@@ -473,10 +629,21 @@ Resources:
             Version: "2012-10-17"
           PolicyName: BedrockLogging
       RoleName: workshop-bedrock-logging-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   CfnPreDeleteCleanupFA953B95:
     DeletionPolicy: Delete
     Properties:
+      BucketNames:
+        - Ref: WorkshopBucketFD5BC43F
+        - Ref: WorkshopBucketAccessLogs476BAB88
       ServiceToken:
         Fn::GetAtt:
           - CfnPreDeleteCleanupFunction580FB700
@@ -505,13 +672,14 @@ Resources:
               Custom Resource handler to cleanup resources before stack deletion.
               - GuardDuty VPC endpoints that block VPC deletion
               - GuardDuty managed security groups
-              - S3 bucket contents for workshop- buckets
+              - S3 buckets supplied by the stack
               Note: CloudWatch logs are kept for debugging/analysis
               """
               print(f"Event: {event}")
 
               request_type = event['RequestType']
               vpc_id = event['ResourceProperties'].get('VpcId', '')
+              bucket_names = event['ResourceProperties'].get('BucketNames', [])
 
               try:
                   if request_type == 'Delete':
@@ -519,7 +687,7 @@ Resources:
                       endpoint_ids = start_guardduty_endpoint_deletion(vpc_id)
 
                       # While endpoints are deleting, clean up S3
-                      cleanup_s3_buckets()
+                      cleanup_s3_buckets(bucket_names)
 
                       # Wait for VPC endpoint deletion to complete
                       if endpoint_ids:
@@ -606,17 +774,16 @@ Resources:
 
               print("GuardDuty security group cleanup completed")
 
-          def cleanup_s3_buckets():
-              """Empty S3 buckets with workshop- prefix."""
-              try:
-                  response = s3.list_buckets()
-                  for bucket in response.get('Buckets', []):
-                      bucket_name = bucket['Name']
-                      if bucket_name.startswith('workshop-'):
-                          print(f"Emptying S3 bucket: {bucket_name}")
-                          empty_bucket(bucket_name)
-              except Exception as e:
-                  print(f"Error listing S3 buckets: {e}")
+          def cleanup_s3_buckets(bucket_names):
+              """Delete only the S3 buckets supplied by the stack."""
+              for bucket_name in bucket_names:
+                  print(f"Deleting S3 bucket: {bucket_name}")
+                  empty_bucket(bucket_name)
+                  try:
+                      s3.delete_bucket(Bucket=bucket_name)
+                      print(f"Deleted bucket: {bucket_name}")
+                  except Exception as e:
+                      print(f"Error deleting bucket {bucket_name}: {e}")
 
               print("S3 bucket cleanup completed")
 
@@ -664,6 +831,14 @@ Resources:
           - CfnPreDeleteCleanupRole2BF62B3D
           - Arn
       Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Timeout: 600
     Type: AWS::Lambda::Function
   CfnPreDeleteCleanupRole2BF62B3D:
@@ -681,23 +856,103 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   CfnPreDeleteCleanupRoleDefaultPolicy7B910EB7:
     Properties:
       PolicyDocument:
         Statement:
           - Action:
-              - ec2:DeleteSecurityGroup
-              - ec2:DeleteVpcEndpoints
               - ec2:DescribeSecurityGroups
               - ec2:DescribeVpcEndpoints
-              - s3:DeleteObject
-              - s3:DeleteObjectVersion
-              - s3:ListAllMyBuckets
+            Effect: Allow
+            Resource: "*"
+          - Action: ec2:DeleteVpcEndpoints
+            Condition:
+              StringEquals:
+                ec2:Vpc:
+                  Fn::Join:
+                    - ""
+                    - - "arn:"
+                      - Ref: AWS::Partition
+                      - ":ec2:"
+                      - Ref: AWS::Region
+                      - ":"
+                      - Ref: AWS::AccountId
+                      - :vpc/
+                      - Ref: VpcC3027511
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ec2:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :vpc-endpoint/*
+          - Action: ec2:DeleteSecurityGroup
+            Condition:
+              StringEquals:
+                ec2:Vpc:
+                  Fn::Join:
+                    - ""
+                    - - "arn:"
+                      - Ref: AWS::Partition
+                      - ":ec2:"
+                      - Ref: AWS::Region
+                      - ":"
+                      - Ref: AWS::AccountId
+                      - :vpc/
+                      - Ref: VpcC3027511
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ec2:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :security-group/*
+          - Action:
+              - s3:DeleteBucket
               - s3:ListBucket
               - s3:ListBucketVersions
             Effect: Allow
-            Resource: "*"
+            Resource:
+              - Fn::GetAtt:
+                  - WorkshopBucketAccessLogs476BAB88
+                  - Arn
+              - Fn::GetAtt:
+                  - WorkshopBucketFD5BC43F
+                  - Arn
+          - Action:
+              - s3:DeleteObject
+              - s3:DeleteObjectVersion
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - WorkshopBucketAccessLogs476BAB88
+                        - Arn
+                    - /*
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - WorkshopBucketFD5BC43F
+                        - Arn
+                    - /*
         Version: "2012-10-17"
       PolicyName: CfnPreDeleteCleanupRoleDefaultPolicy7B910EB7
       Roles:
@@ -708,13 +963,14 @@ Resources:
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
+      - CodeBuildPendingBuilds19869454
+      - CodeBuildProjectPolicyDocument567377F5
+      - CodeBuildProjectA0FF5539
+      - CodeBuildProjectSecurityGroup7CE557B3
       - CodeBuildReportLambdaFunctionA3C396F7
+      - CodeBuildStartLambdaFunction8349284F
     Properties:
-      CodeBuildIamRoleArn:
-        Fn::GetAtt:
-          - CodeBuildRoleE9A44575
-          - Arn
-      ContentHash: "1769326880641"
+      ContentHash: "1787668856875"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -744,7 +1000,9 @@ Resources:
           build-status:
             - SUCCEEDED
             - FAILED
+            - FAULT
             - STOPPED
+            - TIMED_OUT
           project-name:
             - Ref: CodeBuildProjectA0FF5539
         detail-type:
@@ -752,6 +1010,14 @@ Resources:
         source:
           - aws.codebuild
       State: ENABLED
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Targets:
         - Arn:
             Fn::GetAtt:
@@ -774,6 +1040,14 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   CodeBuildLambdaRoleDefaultPolicyFB35F0AF:
     Properties:
@@ -783,12 +1057,72 @@ Resources:
               - codebuild:BatchGetBuilds
               - codebuild:StartBuild
             Effect: Allow
-            Resource: "*"
+            Resource:
+              Fn::GetAtt:
+                - CodeBuildProjectA0FF5539
+                - Arn
+          - Action:
+              - dynamodb:BatchWriteItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - CodeBuildPendingBuilds19869454
+                - Arn
+          - Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:ConditionCheckItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+              - dynamodb:GetItem
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - CodeBuildPendingBuilds19869454
+                - Arn
         Version: "2012-10-17"
       PolicyName: CodeBuildLambdaRoleDefaultPolicyFB35F0AF
       Roles:
         - Ref: CodeBuildLambdaRole655C06B4
     Type: AWS::IAM::Policy
+  CodeBuildPendingBuilds19869454:
+    DeletionPolicy: Delete
+    Metadata:
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-DDB3
+            reason: The table stores short-lived CloudFormation callback state and does not require point-in-time recovery
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: BuildId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: BuildId
+          KeyType: HASH
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
+      TimeToLiveSpecification:
+        AttributeName: ExpiresAt
+        Enabled: true
+    Type: AWS::DynamoDB::Table
+    UpdateReplacePolicy: Delete
   CodeBuildProjectA0FF5539:
     DependsOn:
       - CodeBuildProjectPolicyDocument567377F5
@@ -806,7 +1140,7 @@ Resources:
             Value: java-spring-ai-agents
           - Name: GIT_BRANCH
             Type: PLAINTEXT
-            Value: main
+            Value: feat/holmes-remediation
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -838,6 +1172,14 @@ Resources:
                   aws iam create-service-linked-role --aws-service-name network.bedrock-agentcore.amazonaws.com 2>/dev/null || true
                   aws iam create-service-linked-role --aws-service-name runtime-identity.bedrock-agentcore.amazonaws.com 2>/dev/null || true
         Type: NO_SOURCE
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       TimeoutInMinutes: 30
       VpcConfig:
         SecurityGroupIds:
@@ -851,12 +1193,102 @@ Resources:
           Ref: VpcC3027511
     Type: AWS::CodeBuild::Project
   CodeBuildProjectPolicyDocument567377F5:
+    Metadata:
+      checkov:
+        skip:
+          - comment: CodeBuild requires ec2:DeleteNetworkInterface on wildcard resources because the API authorizes deletion against arn:aws:ec2:region:account:*/*.
+            id: CKV_AWS_111
     Properties:
       PolicyDocument:
         Statement:
           - Action:
               - ec2:CreateNetworkInterface
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":ec2:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :subnet/
+                    - Ref: VpcPrivateSubnet1Subnet67A4DBCB
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":ec2:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :subnet/
+                    - Ref: VpcPrivateSubnet2SubnetC8EB537D
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":ec2:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :security-group/
+                    - Fn::GetAtt:
+                        - CodeBuildProjectSecurityGroup7CE557B3
+                        - GroupId
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":ec2:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :network-interface/*
+          - Action:
+              - ec2:CreateNetworkInterfacePermission
+            Condition:
+              ArnEquals:
+                ec2:Subnet:
+                  - Fn::Join:
+                      - ""
+                      - - "arn:"
+                        - Ref: AWS::Partition
+                        - ":ec2:"
+                        - Ref: AWS::Region
+                        - ":"
+                        - Ref: AWS::AccountId
+                        - :subnet/
+                        - Ref: VpcPrivateSubnet1Subnet67A4DBCB
+                  - Fn::Join:
+                      - ""
+                      - - "arn:"
+                        - Ref: AWS::Partition
+                        - ":ec2:"
+                        - Ref: AWS::Region
+                        - ":"
+                        - Ref: AWS::AccountId
+                        - :subnet/
+                        - Ref: VpcPrivateSubnet2SubnetC8EB537D
+              StringEquals:
+                ec2:AuthorizedService: codebuild.amazonaws.com
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ec2:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :network-interface/*
+          - Action:
               - ec2:DeleteNetworkInterface
+            Effect: Allow
+            Resource: "*"
+          - Action:
               - ec2:DescribeDhcpOptions
               - ec2:DescribeNetworkInterfaces
               - ec2:DescribeSecurityGroups
@@ -876,6 +1308,14 @@ Resources:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::SecurityGroup
@@ -885,57 +1325,113 @@ Resources:
       - CodeBuildLambdaRole655C06B4
     Properties:
       Code:
-        ZipFile: |-
-          import boto3
+        ZipFile: |
           import json
+          import os
+          import urllib.request
 
-          codebuild = boto3.client('codebuild')
+          import boto3
+
+          codebuild = boto3.client("codebuild")
+          table = boto3.resource("dynamodb").Table(os.environ["PENDING_TABLE_NAME"])
+
+          FAILURE_STATUSES = {"FAILED", "FAULT", "STOPPED", "TIMED_OUT"}
+
+
+          def normalized_build_id(value):
+              if ":build/" in value:
+                  return value.split(":build/", 1)[1]
+              return value
+
+
+          def send_response(event, context, status, data, physical_id, reason=None):
+              body = json.dumps(
+                  {
+                      "Status": status,
+                      "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+                      "PhysicalResourceId": physical_id,
+                      "StackId": event["StackId"],
+                      "RequestId": event["RequestId"],
+                      "LogicalResourceId": event["LogicalResourceId"],
+                      "NoEcho": False,
+                      "Data": data,
+                  }
+              ).encode("utf-8")
+              request = urllib.request.Request(
+                  event["ResponseURL"],
+                  data=body,
+                  method="PUT",
+                  headers={"content-type": "", "content-length": str(len(body))},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  if response.status >= 300:
+                      raise RuntimeError(f"CloudFormation response failed with HTTP {response.status}")
+
+
+          def failure_details(build):
+              details = []
+              for phase in build.get("phases", []):
+                  contexts = "; ".join(
+                      context.get("message", "") for context in phase.get("contexts", [])
+                  )
+                  if phase.get("phaseStatus") in FAILURE_STATUSES or contexts:
+                      details.append(
+                          f"{phase.get('phaseType')}={phase.get('phaseStatus')}: {contexts}".strip()
+                      )
+              logs = build.get("logs", {})
+              if logs.get("deepLink"):
+                  details.append(f"logs={logs['deepLink']}")
+              return " | ".join(details) or "No phase failure details were returned"
+
 
           def lambda_handler(event, context):
-              print(f'Build status event: {event}')
+              detail = event["detail"]
+              event_build_id = detail["build-id"]
+              build_id = normalized_build_id(event_build_id)
+              print(f"Terminal CodeBuild event for {event_build_id}: {detail['build-status']}")
 
-              try:
-                  # Extract build information from EventBridge event
-                  detail = event['detail']
-                  build_status = detail['build-status']
-                  project_name = detail['project-name']
-                  build_id = detail['build-id']
+              item = table.get_item(Key={"BuildId": build_id}, ConsistentRead=True).get("Item")
+              if not item:
+                  raise RuntimeError(f"Pending CloudFormation callback not found for {build_id}")
 
-                  print(f'Build {build_id} for project {project_name} finished with status: {build_status}')
+              build_response = codebuild.batch_get_builds(ids=[item.get("BuildArn", event_build_id)])
+              builds = build_response.get("builds", [])
+              if len(builds) != 1:
+                  raise RuntimeError(f"CodeBuild build not found: {event_build_id}")
 
-                  if build_status == 'SUCCEEDED':
-                      print('✅ CodeBuild setup completed successfully')
-                  elif build_status == 'FAILED':
-                      print('❌ CodeBuild setup failed')
+              build = builds[0]
+              status = build["buildStatus"]
+              original_event = json.loads(item["CloudFormationEvent"])
+              data = {
+                  "BuildId": build["id"],
+                  "BuildArn": build["arn"],
+                  "ProjectName": item["ProjectName"],
+                  "BuildStatus": status,
+              }
 
-                      # Get build details for error information
-                      response = codebuild.batch_get_builds(ids=[build_id])
-                      if response['builds']:
-                          build = response['builds'][0]
-                          if 'logs' in build and 'cloudWatchLogs' in build['logs']:
-                              log_group = build['logs']['cloudWatchLogs'].get('groupName')
-                              log_stream = build['logs']['cloudWatchLogs'].get('streamName')
-                              print(f'Check logs at: {log_group}/{log_stream}')
-                  elif build_status == 'STOPPED':
-                      print('⏹️ CodeBuild setup was stopped')
+              if status == "SUCCEEDED":
+                  response_status = "SUCCESS"
+                  reason = None
+              elif status in FAILURE_STATUSES:
+                  response_status = "FAILED"
+                  reason = f"CodeBuild finished with {status}: {failure_details(build)}"
+              else:
+                  raise RuntimeError(f"Received non-terminal CodeBuild status {status}")
 
-                  return {
-                      'statusCode': 200,
-                      'body': json.dumps({
-                          'message': f'Processed build status: {build_status}',
-                          'buildId': build_id,
-                          'projectName': project_name
-                      })
-                  }
-
-              except Exception as e:
-                  print(f'Error processing build status: {str(e)}')
-                  return {
-                      'statusCode': 500,
-                      'body': json.dumps({
-                          'error': str(e)
-                      })
-                  }
+              send_response(
+                  original_event,
+                  context,
+                  response_status,
+                  data,
+                  item["PhysicalResourceId"],
+                  reason,
+              )
+              table.delete_item(Key={"BuildId": build_id})
+              print(f"Sent {response_status} to CloudFormation for {build_id}")
+      Environment:
+        Variables:
+          PENDING_TABLE_NAME:
+            Ref: CodeBuildPendingBuilds19869454
       FunctionName: workshop-setup-report
       Handler: index.lambda_handler
       Role:
@@ -943,12 +1439,30 @@ Resources:
           - CodeBuildLambdaRole655C06B4
           - Arn
       Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Timeout: 120
     Type: AWS::Lambda::Function
   CodeBuildRoleDefaultPolicy196BAF24:
     Properties:
       PolicyDocument:
         Statement:
+          - Action: iam:CreateServiceLinkedRole
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - ecs.amazonaws.com
+                  - elasticloadbalancing.amazonaws.com
+                  - network.bedrock-agentcore.amazonaws.com
+                  - runtime-identity.bedrock-agentcore.amazonaws.com
+            Effect: Allow
+            Resource: arn:aws:iam::*:role/aws-service-role/*
           - Action: ec2:CreateNetworkInterfacePermission
             Condition:
               StringEquals:
@@ -1045,12 +1559,14 @@ Resources:
             Principal:
               Service: codebuild.amazonaws.com
         Version: "2012-10-17"
-      ManagedPolicyArns:
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/PowerUserAccess
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   CodeBuildStartLambdaFunction8349284F:
     DependsOn:
@@ -1058,62 +1574,78 @@ Resources:
       - CodeBuildLambdaRole655C06B4
     Properties:
       Code:
-        ZipFile: |-
-          import boto3
+        ZipFile: |
           import json
-          import traceback
-          import cfnresponse
+          import os
+          import time
+          import urllib.request
 
-          codebuild = boto3.client('codebuild')
+          import boto3
+
+          codebuild = boto3.client("codebuild")
+          table = boto3.resource("dynamodb").Table(os.environ["PENDING_TABLE_NAME"])
+
+
+          def send_response(event, context, status, data, physical_id, reason=None):
+              body = json.dumps(
+                  {
+                      "Status": status,
+                      "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+                      "PhysicalResourceId": physical_id,
+                      "StackId": event["StackId"],
+                      "RequestId": event["RequestId"],
+                      "LogicalResourceId": event["LogicalResourceId"],
+                      "NoEcho": False,
+                      "Data": data,
+                  }
+              ).encode("utf-8")
+              request = urllib.request.Request(
+                  event["ResponseURL"],
+                  data=body,
+                  method="PUT",
+                  headers={"content-type": "", "content-length": str(len(body))},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  if response.status >= 300:
+                      raise RuntimeError(f"CloudFormation response failed with HTTP {response.status}")
+
 
           def lambda_handler(event, context):
-              print(f'Event: {event}')
-              responseData = {}
-              status = cfnresponse.SUCCESS
-              physical_id = event.get('PhysicalResourceId', 'CodeBuildSetup')
+              print(f"RequestType={event['RequestType']} LogicalResourceId={event['LogicalResourceId']}")
+              project_name = event["ResourceProperties"]["ProjectName"]
+              physical_id = event.get("PhysicalResourceId", project_name)
+
+              if event["RequestType"] == "Delete":
+                  send_response(event, context, "SUCCESS", {"ProjectName": project_name}, physical_id)
+                  return
 
               try:
-                  if event['RequestType'] == 'Delete':
-                      # Nothing to clean up for CodeBuild
-                      responseData = {'Message': 'CodeBuild setup deleted'}
-                      cfnresponse.send(event, context, status, responseData, physical_id)
-                      return
-
-                  if event['RequestType'] == 'Update':
-                      # For updates, trigger a new build
-                      pass
-
-                  # Start CodeBuild project
-                  props = event['ResourceProperties']
-                  project_name = props['ProjectName']
-
-                  print(f'Starting CodeBuild project: {project_name}')
-
-                  response = codebuild.start_build(
-                      projectName=project_name
+                  build = codebuild.start_build(projectName=project_name)["build"]
+                  table.put_item(
+                      Item={
+                          "BuildId": build["id"],
+                          "BuildArn": build["arn"],
+                          "ProjectName": project_name,
+                          "PhysicalResourceId": project_name,
+                          "CloudFormationEvent": json.dumps(event),
+                          "ExpiresAt": int(time.time()) + 7200,
+                      }
                   )
-
-                  build_id = response['build']['id']
-                  build_arn = response['build']['arn']
-
-                  print(f'Started build: {build_id}')
-
-                  responseData = {
-                      'BuildId': build_id,
-                      'BuildArn': build_arn,
-                      'ProjectName': project_name
-                  }
-
-                  # Use build ID as physical resource ID for tracking
-                  physical_id = build_id
-
-              except Exception as e:
-                  status = cfnresponse.FAILED
-                  tb_err = traceback.format_exc()
-                  print(tb_err)
-                  responseData = {'Error': tb_err}
-
-              cfnresponse.send(event, context, status, responseData, physical_id)
+                  print(f"Started CodeBuild project {project_name}: {build['id']}")
+              except Exception as error:
+                  print(f"Failed to start or persist CodeBuild callback: {error}")
+                  send_response(
+                      event,
+                      context,
+                      "FAILED",
+                      {"ProjectName": project_name},
+                      physical_id,
+                      str(error),
+                  )
+      Environment:
+        Variables:
+          PENDING_TABLE_NAME:
+            Ref: CodeBuildPendingBuilds19869454
       FunctionName: workshop-setup-start
       Handler: index.lambda_handler
       Role:
@@ -1121,6 +1653,14 @@ Resources:
           - CodeBuildLambdaRole655C06B4
           - Arn
       Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Timeout: 120
     Type: AWS::Lambda::Function
   DatabaseCluster5B53A178:
@@ -1133,8 +1673,9 @@ Resources:
         Ref: DatabaseClusterSubnets5540150D
       DatabaseName: workshop
       EnableHttpEndpoint: true
+      EnableIAMDatabaseAuthentication: true
       Engine: aurora-postgresql
-      EngineVersion: "16.13
+      EngineVersion: "16.13"
       MasterUserPassword:
         Fn::Join:
           - ""
@@ -1151,6 +1692,14 @@ Resources:
       ServerlessV2ScalingConfiguration:
         MaxCapacity: 4
         MinCapacity: 0.5
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcSecurityGroupIds:
         - Fn::GetAtt:
             - DatabaseSG562817C8
@@ -1173,6 +1722,14 @@ Resources:
       Engine: aurora-postgresql
       PromotionTier: 0
       PubliclyAccessible: false
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::RDS::DBInstance
     UpdateReplacePolicy: Delete
   DatabaseClusterSubnets5540150D:
@@ -1181,12 +1738,25 @@ Resources:
       SubnetIds:
         - Ref: VpcPrivateSubnet1Subnet67A4DBCB
         - Ref: VpcPrivateSubnet2SubnetC8EB537D
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::RDS::DBSubnetGroup
   DatabaseConnectionString52D1E98E:
     Properties:
       AllowedPattern: .*
       Description: Database Connection String
       Name: workshop-db-connection-string
+      Tags:
+        WorkshopDeploymentId:
+          Ref: AWS::StackId
+        WorkshopId: java-spring-ai-agents
+        WorkshopOwner: cloudformation
       Tier: Standard
       Type: String
       Value:
@@ -1212,6 +1782,14 @@ Resources:
           FromPort: 5432
           IpProtocol: tcp
           ToPort: 5432
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::SecurityGroup
@@ -1229,6 +1807,14 @@ Resources:
         PasswordLength: 30
         SecretStringTemplate: '{"username":"postgres"}'
       Name: workshop-db-secret
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::SecretsManager::Secret
     UpdateReplacePolicy: Delete
   DatabaseSecretAttachmentE5D1B020:
@@ -1287,6 +1873,13 @@ Resources:
           Value: workshop
         - Key: ManagedBy
           Value: ecr-create-on-push
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopOwner
+          Value: workshop-run
     Type: AWS::ECR::RepositoryCreationTemplate
   EcrRegistryTemplateRole9295BC5C:
     Properties:
@@ -1298,6 +1891,14 @@ Resources:
               Service: ecr.amazonaws.com
         Version: "2012-10-17"
       RoleName: workshop-ecr-template-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   EcrRegistryTemplateRoleDefaultPolicy760EC63A:
     Properties:
@@ -1308,7 +1909,25 @@ Resources:
               - ecr:PutLifecyclePolicy
               - ecr:TagResource
             Effect: Allow
-            Resource: "*"
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":ecr:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :repository/aiagent
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":ecr:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :repository/mcpserver
         Version: "2012-10-17"
       PolicyName: EcrRegistryTemplateRoleDefaultPolicy760EC63A
       Roles:
@@ -1338,6 +1957,14 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/AWSXrayWriteOnlyAccess
       RoleName: workshop-eks-cloudwatch-agent-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   EksClusterB2BDED5B:
     DependsOn:
@@ -1398,6 +2025,14 @@ Resources:
       StorageConfig:
         BlockStorage:
           Enabled: true
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Version: "1.34"
     Type: AWS::EKS::Cluster
   EksClusterClusternodePoolRoleE206FBFC:
@@ -1420,6 +2055,14 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   EksClusterKubectlReadyBarrierA32D1E84:
     DependsOn:
@@ -1465,6 +2108,14 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonEKSNetworkingPolicy
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   EksInstanceAccessEntry1D317291:
     Properties:
@@ -1483,6 +2134,14 @@ Resources:
         Fn::GetAtt:
           - IdeRole4650E22E
           - Arn
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Type: STANDARD
     Type: AWS::EKS::AccessEntry
   EksMountpointS3DriverB7062BF9:
@@ -1490,6 +2149,14 @@ Resources:
       AddonName: aws-mountpoint-s3-csi-driver
       ClusterName:
         Ref: EksClusterB2BDED5B
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EKS::Addon
   EksParticipantAccessEntryCBA5D5C0:
     Properties:
@@ -1510,6 +2177,14 @@ Resources:
           - - "arn:aws:iam::"
             - Ref: AWS::AccountId
             - :role/WSParticipantRole
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Type: STANDARD
     Type: AWS::EKS::AccessEntry
   EksPodIdentityAgent31D8BD3D:
@@ -1517,13 +2192,59 @@ Resources:
       AddonName: eks-pod-identity-agent
       ClusterName:
         Ref: EksClusterB2BDED5B
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EKS::Addon
   EksSecretsStoreDriverA84665C0:
     Properties:
       AddonName: aws-secrets-store-csi-driver-provider
       ClusterName:
         Ref: EksClusterB2BDED5B
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EKS::Addon
+  IdeAgentCoreManagedToolsPolicy33EC19D9:
+    Properties:
+      Description: ""
+      Path: /
+      PolicyDocument:
+        Statement:
+          - Action:
+              - bedrock-agentcore:ConnectBrowserAutomationStream
+              - bedrock-agentcore:ConnectBrowserLiveViewStream
+            Effect: Allow
+            Resource: "*"
+            Sid: AgentCoreManagedBrowserStreams
+          - Action:
+              - bedrock-agentcore:GetBrowserSession
+              - bedrock-agentcore:StartBrowserSession
+              - bedrock-agentcore:StopBrowserSession
+              - bedrock-agentcore:UpdateBrowserStream
+            Effect: Allow
+            Resource: arn:aws:bedrock-agentcore:*:aws:browser/aws.browser.v1
+            Sid: AgentCoreManagedBrowser
+          - Action:
+              - bedrock-agentcore:GetCodeInterpreterSession
+              - bedrock-agentcore:InvokeCodeInterpreter
+              - bedrock-agentcore:StartCodeInterpreterSession
+              - bedrock-agentcore:StopCodeInterpreterSession
+            Effect: Allow
+            Resource: arn:aws:bedrock-agentcore:*:aws:code-interpreter/aws.codeinterpreter.v1
+            Sid: AgentCoreManagedCodeInterpreter
+        Version: "2012-10-17"
+    Type: AWS::IAM::ManagedPolicy
   IdeDistribution042A6660:
     DeletionPolicy: Delete
     DependsOn:
@@ -1590,6 +2311,14 @@ Resources:
                               - PublicIp
                   - .compute-1.amazonaws.com
             Id: WorkshopStackIdeDistributionOrigin10FECA386
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::CloudFront::Distribution
     UpdateReplacePolicy: Delete
   IdeEC2InstanceResource438B3605:
@@ -1636,12 +2365,21 @@ Resources:
                 # This keeps UserData under size limits while allowing unlimited bootstrap size
 
                 # Configuration from CDK
-                export GIT_BRANCH="main"
+                export GIT_BRANCH="feat/holmes-remediation"
                 export AWS_REGION="
               - Ref: AWS::Region
               - |-
                 "
                 export TEMPLATE_TYPE="java-spring-ai-agents"
+                export WORKSHOP_ID="java-spring-ai-agents"
+                export WORKSHOP_STACK_NAME="
+              - Ref: AWS::StackName
+              - |-
+                "
+                export WORKSHOP_DEPLOYMENT_ID="
+              - Ref: AWS::StackId
+              - |-
+                "
                 export ARCH="x86_64"
                 export IDE_TYPE="code-editor"
                 export WAIT_CONDITION_HANDLE_URL="
@@ -1776,6 +2514,14 @@ Resources:
   IdeElasticIP3327A0B5:
     Properties:
       Domain: vpc
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EC2::EIP
   IdeInstanceLauncherFunction803C5A2A:
     DependsOn:
@@ -1920,6 +2666,14 @@ Resources:
           - IdeLambdaRole82392143
           - Arn
       Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Timeout: 300
     Type: AWS::Lambda::Function
   IdeInstanceProfile61B92038:
@@ -1932,6 +2686,14 @@ Resources:
     Properties:
       GroupDescription: IDE internal security group
       GroupName: workshop-ide-internal-sg
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::SecurityGroup
@@ -1976,27 +2738,57 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   IdeLambdaRoleDefaultPolicy099093D2:
     Properties:
       PolicyDocument:
         Statement:
           - Action:
-              - ec2:CreateTags
               - ec2:DescribeInstanceStatus
               - ec2:DescribeInstances
               - ec2:DescribeManagedPrefixLists
               - ec2:DescribeSubnets
-              - ec2:RunInstances
-              - ec2:TerminateInstances
-              - iam:PassRole
-              - secretsmanager:DescribeSecret
-              - secretsmanager:GetSecretValue
-              - ssm:DescribeInstanceInformation
-              - ssm:GetCommandInvocation
-              - ssm:SendCommand
             Effect: Allow
             Resource: "*"
+          - Action: ec2:RunInstances
+            Effect: Allow
+            Resource:
+              - arn:aws:ec2:*:*:instance/*
+              - arn:aws:ec2:*:*:network-interface/*
+              - arn:aws:ec2:*:*:security-group/*
+              - arn:aws:ec2:*:*:subnet/*
+              - arn:aws:ec2:*:*:volume/*
+              - arn:aws:ec2:*::image/*
+          - Action: ec2:CreateTags
+            Condition:
+              StringEquals:
+                aws:RequestTag/Workshop: "true"
+                ec2:CreateAction: RunInstances
+            Effect: Allow
+            Resource: arn:aws:ec2:*:*:instance/*
+          - Action: ec2:TerminateInstances
+            Condition:
+              StringEquals:
+                ec2:ResourceTag/Workshop: "true"
+            Effect: Allow
+            Resource: arn:aws:ec2:*:*:instance/*
+          - Action: iam:PassRole
+            Condition:
+              StringEquals:
+                iam:PassedToService: ec2.amazonaws.com
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - IdeRole4650E22E
+                - Arn
         Version: "2012-10-17"
       PolicyName: IdeLambdaRoleDefaultPolicy099093D2
       Roles:
@@ -2060,6 +2852,14 @@ Resources:
           - IdePasswordFunctionServiceRole971421B6
           - Arn
       Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Timeout: 180
     Type: AWS::Lambda::Function
   IdePasswordFunctionServiceRole971421B6:
@@ -2077,6 +2877,14 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   IdePasswordFunctionServiceRoleDefaultPolicy282A360C:
     Properties:
@@ -2143,6 +2951,14 @@ Resources:
         PasswordLength: 32
         SecretStringTemplate: '{"password":""}'
       Name: workshop-ide-password
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::SecretsManager::Secret
     UpdateReplacePolicy: Delete
   IdePrefixListLookupFunction9E5A63DE:
@@ -2194,6 +3010,14 @@ Resources:
           - IdeLambdaRole82392143
           - Arn
       Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Timeout: 180
     Type: AWS::Lambda::Function
   IdePrefixListResourceD2EAC007:
@@ -2231,15 +3055,22 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/CloudWatchAgentServerPolicy
         - Ref: IdeUserPolicy2460FC7D
+        - Ref: IdeRoleManagementPolicyFE7F8500
+        - Ref: IdeAgentCoreManagedToolsPolicy33EC19D9
       RoleName: workshop-ide-user
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   IdeRoleDefaultPolicyFD4BDE67:
     Properties:
       PolicyDocument:
         Statement:
-          - Action: cloudformation:SignalResource
-            Effect: Allow
-            Resource: "*"
           - Action:
               - secretsmanager:DescribeSecret
               - secretsmanager:GetSecretValue
@@ -2251,6 +3082,155 @@ Resources:
       Roles:
         - Ref: IdeRole4650E22E
     Type: AWS::IAM::Policy
+  IdeRoleManagementPolicyFE7F8500:
+    Properties:
+      Description: ""
+      Path: /
+      PolicyDocument:
+        Statement:
+          - Action: iam:PassRole
+            Condition:
+              StringEquals:
+                iam:PassedToService:
+                  - bedrock.amazonaws.com
+                  - bedrock-agentcore.amazonaws.com
+                  - codebuild.amazonaws.com
+                  - ec2.amazonaws.com
+                  - ecs.amazonaws.com
+                  - ecs-tasks.amazonaws.com
+                  - lambda.amazonaws.com
+                  - pods.eks.amazonaws.com
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/ai-jvm-analyzer*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/aiagent*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/backoffice*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/grafana*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/mcp*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/perf-analyzer*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/perf-collector*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/pyroscope*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/service-role/unicorn*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/unicorn*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/workshop*
+          - Action: iam:CreateServiceLinkedRole
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - application-signals.cloudwatch.amazonaws.com
+                  - cloudtrail.amazonaws.com
+                  - ecs.amazonaws.com
+                  - elasticloadbalancing.amazonaws.com
+                  - network.bedrock-agentcore.amazonaws.com
+                  - runtime-identity.bedrock-agentcore.amazonaws.com
+            Effect: Allow
+            Resource: arn:aws:iam::*:role/aws-service-role/*
+          - Action: iam:CreateRole
+            Condition:
+              StringEquals:
+                iam:PermissionsBoundary:
+                  Fn::Join:
+                    - ""
+                    - - "arn:aws:iam::"
+                      - Ref: AWS::AccountId
+                      - :policy/workshop-boundary
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/aiagent*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/backoffice*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/mcp*
+          - Action:
+              - iam:AttachRolePolicy
+              - iam:DeleteRole
+              - iam:DeleteRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:UpdateAssumeRolePolicy
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/aiagent-kb-role
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/aiagent-runtime-role
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/backoffice-role
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/mcp-currency-role
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/mcp-gateway-role
+        Version: "2012-10-17"
+    Type: AWS::IAM::ManagedPolicy
   IdeSecurityGroup73B02454:
     Properties:
       GroupDescription: IDE security group
@@ -2259,6 +3239,14 @@ Resources:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::SecurityGroup
@@ -2287,71 +3275,294 @@ Resources:
             Condition:
               ForAllValues:StringEquals:
                 aws-marketplace:ProductId:
-                  - prod-jhuafngbly644
+                  - prod-xdkflymybwmvi
                   - prod-mxcfnwvpd6kb4
-                  - prod-4pmewlybdftbs
+                  - prod-jhuafngbly644
+                  - prod-5ukwuglpt66kg
+                  - prod-ffvjxvh4ltq64
               "Null":
                 aws-marketplace:ProductId: "false"
             Effect: Allow
             Resource: "*"
-            Sid: MarketplaceSubscribeClaude45Opus45Sonnet4Sonnet
           - Action:
               - acm:*
-              - apigateway:*
               - application-autoscaling:*
               - application-signals:*
-              - aws-marketplace:Unsubscribe
-              - aws-marketplace:ViewSubscriptions
               - bedrock-agentcore:*
               - bedrock:*
               - cloudformation:*
-              - cloudfront:*
               - cloudtrail:*
               - cloudwatch:*
-              - codewhisperer:*
               - cognito-idp:*
               - ec2:*
               - ecr:*
-              - ecs:*
               - eks:*
               - elasticloadbalancing:*
               - events:*
               - lambda:*
               - logs:*
-              - q:*
+              - rds-data:*
               - rds:*
-              - s3:*
               - s3vectors:*
               - secretsmanager:*
               - ssm:*
-              - sts:*
-              - tag:*
               - xray:*
             Effect: Allow
-            Resource: "*"
-            Sid: AllowedServices
-          - Action: iam:PassRole
-            Effect: Allow
             Resource:
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/ai-jvm-analyzer*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/aiagent*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/mcpserver*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/unicorn*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/unicorn*
-              - !Sub arn:aws:iam::${AWS::AccountId}:role/workshop*
-            Sid: PassRole
-          - Action: iam:CreateServiceLinkedRole
-            Effect: Allow
-            Resource:
-              - arn:aws:iam::*:role/aws-service-role/application-signals.cloudwatch.amazonaws.com/*
-              - arn:aws:iam::*:role/aws-service-role/cloudtrail.amazonaws.com/*
-            Sid: CreateServiceLinkedRole
+              - arn:aws:bedrock:*::foundation-model/*
+              - arn:aws:ec2:*::image/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:acm:*:"
+                    - Ref: AWS::AccountId
+                    - :certificate/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:application-autoscaling:*:"
+                    - Ref: AWS::AccountId
+                    - :scal*/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:application-signals:*:"
+                    - Ref: AWS::AccountId
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:bedrock-agentcore:*:"
+                    - Ref: AWS::AccountId
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:bedrock:*:"
+                    - Ref: AWS::AccountId
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:cloudformation:*:"
+                    - Ref: AWS::AccountId
+                    - :stack/workshop-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:cloudtrail:*:"
+                    - Ref: AWS::AccountId
+                    - :trail/workshop-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:cloudwatch:*:"
+                    - Ref: AWS::AccountId
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:cognito-idp:*:"
+                    - Ref: AWS::AccountId
+                    - :userpool/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ec2:*:"
+                    - Ref: AWS::AccountId
+                    - :*/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecr:*:"
+                    - Ref: AWS::AccountId
+                    - :repository/ai*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecr:*:"
+                    - Ref: AWS::AccountId
+                    - :repository/backoffice*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecr:*:"
+                    - Ref: AWS::AccountId
+                    - :repository/mcp*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecr:*:"
+                    - Ref: AWS::AccountId
+                    - :repository/perf-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecr:*:"
+                    - Ref: AWS::AccountId
+                    - :repository/unicorn*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:eks:*:"
+                    - Ref: AWS::AccountId
+                    - :cluster/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:elasticloadbalancing:*:"
+                    - Ref: AWS::AccountId
+                    - :*/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:events:*:"
+                    - Ref: AWS::AccountId
+                    - :rule/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:lambda:*:"
+                    - Ref: AWS::AccountId
+                    - :function:*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:logs:*:"
+                    - Ref: AWS::AccountId
+                    - :log-group:*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:rds:*:"
+                    - Ref: AWS::AccountId
+                    - :*:*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:s3vectors:*:"
+                    - Ref: AWS::AccountId
+                    - :bucket/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:secretsmanager:*:"
+                    - Ref: AWS::AccountId
+                    - :secret:aiagent-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:secretsmanager:*:"
+                    - Ref: AWS::AccountId
+                    - :secret:mcp-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:secretsmanager:*:"
+                    - Ref: AWS::AccountId
+                    - :secret:workshop-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ssm:*:"
+                    - Ref: AWS::AccountId
+                    - :parameter/workshop-*
           - Action:
-              - iam:GetRole
-              - iam:ListRoles
+              - aws-marketplace:Unsubscribe
+              - aws-marketplace:ViewSubscriptions
+            Condition:
+              ForAllValues:StringEquals:
+                aws-marketplace:ProductId:
+                  - prod-xdkflymybwmvi
+                  - prod-mxcfnwvpd6kb4
+                  - prod-jhuafngbly644
+                  - prod-5ukwuglpt66kg
+                  - prod-ffvjxvh4ltq64
             Effect: Allow
             Resource: "*"
-            Sid: GetRole
+          - Action:
+              - cloudfront:CreateCloudFrontOriginAccessIdentity
+              - cloudfront:CreateDistribution
+            Condition:
+              StringEquals:
+                aws:PrincipalAccount:
+                  Ref: AWS::AccountId
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - apigateway:*
+              - cloudfront:*
+              - dynamodb:*
+              - ecs:*
+              - s3:*
+            Effect: Allow
+            Resource:
+              - arn:aws:apigateway:*::/apis/*
+              - arn:aws:apigateway:*::/restapis/*
+              - arn:aws:s3:::aiagent-*
+              - arn:aws:s3:::workshop-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:cloudfront::"
+                    - Ref: AWS::AccountId
+                    - :distribution/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:cloudfront::"
+                    - Ref: AWS::AccountId
+                    - :origin-access-identity/cloudfront/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:dynamodb:*:"
+                    - Ref: AWS::AccountId
+                    - :table/backoffice-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecs:*:"
+                    - Ref: AWS::AccountId
+                    - :cluster/aiagent*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecs:*:"
+                    - Ref: AWS::AccountId
+                    - :cluster/unicorn*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecs:*:"
+                    - Ref: AWS::AccountId
+                    - :service/*/aiagent*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecs:*:"
+                    - Ref: AWS::AccountId
+                    - :service/*/unicorn*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecs:*:"
+                    - Ref: AWS::AccountId
+                    - :task-definition/aiagent*:*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecs:*:"
+                    - Ref: AWS::AccountId
+                    - :task-definition/unicorn*:*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecs:*:"
+                    - Ref: AWS::AccountId
+                    - :task/*/*
+          - Action:
+              - acm:ListCertificates
+              - apigateway:GET
+              - bedrock-agentcore:List*
+              - bedrock:List*
+              - cloudformation:List*
+              - cloudfront:Get*
+              - cloudfront:List*
+              - cognito-idp:CreateUserPool
+              - cognito-idp:ListUserPools
+              - ec2:Describe*
+              - ecr:CreateRepositoryCreationTemplate
+              - ecr:Describe*
+              - ecr:GetAuthorizationToken
+              - ecs:Describe*
+              - ecs:List*
+              - ecs:RegisterTaskDefinition
+              - eks:CreateCluster
+              - eks:Describe*
+              - eks:List*
+              - elasticloadbalancing:Describe*
+              - iam:GetRole
+              - iam:GetRolePolicy
+              - iam:ListAttachedRolePolicies
+              - iam:ListRolePolicies
+              - iam:ListRoles
+              - lambda:List*
+              - logs:Describe*
+              - rds:Describe*
+              - s3:ListAllMyBuckets
+              - s3vectors:CreateVectorBucket
+              - s3vectors:ListVectorBuckets
+              - secretsmanager:ListSecrets
+              - ssm:DescribeParameters
+              - sts:GetCallerIdentity
+              - tag:GetResources
+            Effect: Allow
+            Resource: "*"
           - Action: ec2:RunInstances
             Condition:
               StringLike:
@@ -2362,16 +3573,12 @@ Resources:
                   - "*9xlarge"
                   - "*10xlarge"
                   - "*12xlarge"
-                  - "*16xlarge"
-                  - "*18xlarge"
-                  - "*24xlarge"
                   - f1*
                   - x1*
                   - z1*
                   - "*metal"
             Effect: Deny
             Resource: arn:aws:ec2:*:*:instance/*
-            Sid: DenyXXLInstances
           - Action:
               - dynamodb:PurchaseReservedCapacityOfferings
               - ec2:ModifyReservedInstances
@@ -2381,7 +3588,6 @@ Resources:
               - rds:PurchaseReservedDBInstancesOffering
             Effect: Deny
             Resource: "*"
-            Sid: DenyReservations
         Version: "2012-10-17"
     Type: AWS::IAM::ManagedPolicy
   IdeWaitConditionCC35C186:
@@ -2395,13 +3601,192 @@ Resources:
     Type: AWS::CloudFormation::WaitCondition
   IdeWaitConditionHandleE8345861:
     Type: AWS::CloudFormation::WaitConditionHandle
+  IdeWorkshopBoundaryDEE72AD4:
+    Properties:
+      Description: ""
+      ManagedPolicyName: workshop-boundary
+      Path: /
+      PolicyDocument:
+        Statement:
+          - Action: bedrock:*
+            Effect: Allow
+            Resource:
+              - arn:aws:bedrock:*::foundation-model/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:bedrock:*:"
+                    - Ref: AWS::AccountId
+                    - :*
+            Sid: BedrockRuntime
+          - Action:
+              - aws-marketplace:Subscribe
+              - aws-marketplace:ViewSubscriptions
+            Effect: Allow
+            Resource: "*"
+            Sid: BedrockMarketplaceModelAccess
+          - Action: bedrock-agentcore:*
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:bedrock-agentcore:*:"
+                  - Ref: AWS::AccountId
+                  - :*
+            Sid: AgentCoreRuntime
+          - Action:
+              - bedrock-agentcore:ConnectBrowserAutomationStream
+              - bedrock-agentcore:ConnectBrowserLiveViewStream
+            Effect: Allow
+            Resource: "*"
+            Sid: AgentCoreManagedBrowserStreams
+          - Action:
+              - bedrock-agentcore:GetBrowserSession
+              - bedrock-agentcore:StartBrowserSession
+              - bedrock-agentcore:StopBrowserSession
+              - bedrock-agentcore:UpdateBrowserStream
+            Effect: Allow
+            Resource: arn:aws:bedrock-agentcore:*:aws:browser/aws.browser.v1
+            Sid: AgentCoreManagedBrowser
+          - Action:
+              - bedrock-agentcore:GetCodeInterpreterSession
+              - bedrock-agentcore:InvokeCodeInterpreter
+              - bedrock-agentcore:StartCodeInterpreterSession
+              - bedrock-agentcore:StopCodeInterpreterSession
+            Effect: Allow
+            Resource: arn:aws:bedrock-agentcore:*:aws:code-interpreter/aws.codeinterpreter.v1
+            Sid: AgentCoreManagedCodeInterpreter
+          - Action:
+              - dynamodb:*
+              - ecr:*
+              - lambda:InvokeFunction
+              - logs:*
+              - s3:*
+              - s3vectors:*
+              - secretsmanager:GetSecretValue
+            Effect: Allow
+            Resource:
+              - arn:aws:s3:::aiagent-kb-data-*
+              - arn:aws:s3:::aiagent-kb-data-*/*
+              - arn:aws:s3:::workshop-*
+              - arn:aws:s3:::workshop-*/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:dynamodb:*:"
+                    - Ref: AWS::AccountId
+                    - :table/backoffice-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:dynamodb:*:"
+                    - Ref: AWS::AccountId
+                    - :table/backoffice-*/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecr:*:"
+                    - Ref: AWS::AccountId
+                    - :repository/aiagent*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecr:*:"
+                    - Ref: AWS::AccountId
+                    - :repository/backoffice*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:lambda:*:"
+                    - Ref: AWS::AccountId
+                    - :function:mcp-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:logs:*:"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/bedrock-agentcore/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:logs:*:"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/bedrock-agentcore/*:*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:logs:*:"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/lambda/mcp-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:logs:*:"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/lambda/mcp-*:*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:s3vectors:*:"
+                    - Ref: AWS::AccountId
+                    - :bucket/aiagent-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:secretsmanager:*:"
+                    - Ref: AWS::AccountId
+                    - :secret:aiagent-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:secretsmanager:*:"
+                    - Ref: AWS::AccountId
+                    - :secret:bedrock-agentcore-identity!*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:secretsmanager:*:"
+                    - Ref: AWS::AccountId
+                    - :secret:mcp-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:secretsmanager:*:"
+                    - Ref: AWS::AccountId
+                    - :secret:workshop-*
+            Sid: WorkshopData
+          - Action:
+              - ec2:CreateNetworkInterface
+              - ec2:DeleteNetworkInterface
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:ec2:*:"
+                  - Ref: AWS::AccountId
+                  - :network-interface/*
+            Sid: RuntimeNetworkInterfaces
+          - Action:
+              - cloudwatch:PutMetricData
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeSubnets
+              - ec2:DescribeVpcs
+              - ecr:GetAuthorizationToken
+              - logs:DescribeLogGroups
+              - xray:GetSamplingRules
+              - xray:GetSamplingTargets
+              - xray:PutTelemetryRecords
+              - xray:PutTraceSegments
+            Effect: Allow
+            Resource: "*"
+            Sid: RuntimeReadAndTelemetry
+          - Action:
+              - account:*
+              - iam:*
+              - organizations:*
+            Effect: Deny
+            Resource: "*"
+            Sid: DenyIAM
+        Version: "2012-10-17"
+    Type: AWS::IAM::ManagedPolicy
   PlaceholderImageBuild084DA641:
     DeletionPolicy: Delete
     DependsOn:
       - EcrRegistryTemplateD54113AB
       - PlaceholderImageBuildCompleteRuleAllowEventRuleWorkshopStackPlaceholderImageBuildReportLambdaFunction17D5E0E6696B4706
       - PlaceholderImageBuildCompleteRuleD3DA254B
+      - PlaceholderImageBuildPendingBuilds86736129
+      - PlaceholderImageBuildProjectPolicyDocument31093CFB
+      - PlaceholderImageBuildProjectC08F4D66
+      - PlaceholderImageBuildProjectSecurityGroupA7FE7BBC
       - PlaceholderImageBuildReportLambdaFunctionD1A0B620
+      - PlaceholderImageBuildStartLambdaFunctionF132A6DF
       - VpcIGW488B0FEB
       - VpcPrivateSubnet1DefaultRouteF704DE9F
       - VpcPrivateSubnet1RouteTable901BAEEE
@@ -2424,11 +3809,7 @@ Resources:
       - VpcC3027511
       - VpcVPCGW42EC8516
     Properties:
-      CodeBuildIamRoleArn:
-        Fn::GetAtt:
-          - PlaceholderImageBuildRole66BA72FE
-          - Arn
-      ContentHash: "1769326881001"
+      ContentHash: "1787668857026"
       ProjectName:
         Ref: PlaceholderImageBuildProjectC08F4D66
       ServiceToken:
@@ -2458,7 +3839,9 @@ Resources:
           build-status:
             - SUCCEEDED
             - FAILED
+            - FAULT
             - STOPPED
+            - TIMED_OUT
           project-name:
             - Ref: PlaceholderImageBuildProjectC08F4D66
         detail-type:
@@ -2466,6 +3849,14 @@ Resources:
         source:
           - aws.codebuild
       State: ENABLED
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Targets:
         - Arn:
             Fn::GetAtt:
@@ -2488,6 +3879,14 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   PlaceholderImageBuildLambdaRoleDefaultPolicy59DD48E5:
     Properties:
@@ -2497,12 +3896,72 @@ Resources:
               - codebuild:BatchGetBuilds
               - codebuild:StartBuild
             Effect: Allow
-            Resource: "*"
+            Resource:
+              Fn::GetAtt:
+                - PlaceholderImageBuildProjectC08F4D66
+                - Arn
+          - Action:
+              - dynamodb:BatchWriteItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - PlaceholderImageBuildPendingBuilds86736129
+                - Arn
+          - Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:ConditionCheckItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+              - dynamodb:GetItem
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - PlaceholderImageBuildPendingBuilds86736129
+                - Arn
         Version: "2012-10-17"
       PolicyName: PlaceholderImageBuildLambdaRoleDefaultPolicy59DD48E5
       Roles:
         - Ref: PlaceholderImageBuildLambdaRole8EDC67D7
     Type: AWS::IAM::Policy
+  PlaceholderImageBuildPendingBuilds86736129:
+    DeletionPolicy: Delete
+    Metadata:
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-DDB3
+            reason: The table stores short-lived CloudFormation callback state and does not require point-in-time recovery
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: BuildId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: BuildId
+          KeyType: HASH
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
+      TimeToLiveSpecification:
+        AttributeName: ExpiresAt
+        Enabled: true
+    Type: AWS::DynamoDB::Table
+    UpdateReplacePolicy: Delete
   PlaceholderImageBuildProjectC08F4D66:
     DependsOn:
       - PlaceholderImageBuildProjectPolicyDocument31093CFB
@@ -2568,6 +4027,14 @@ Resources:
                   docker tag placeholder $ECR_REGISTRY/aiagent:latest
                   docker push $ECR_REGISTRY/aiagent:latest
         Type: NO_SOURCE
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       TimeoutInMinutes: 30
       VpcConfig:
         SecurityGroupIds:
@@ -2581,12 +4048,102 @@ Resources:
           Ref: VpcC3027511
     Type: AWS::CodeBuild::Project
   PlaceholderImageBuildProjectPolicyDocument31093CFB:
+    Metadata:
+      checkov:
+        skip:
+          - comment: CodeBuild requires ec2:DeleteNetworkInterface on wildcard resources because the API authorizes deletion against arn:aws:ec2:region:account:*/*.
+            id: CKV_AWS_111
     Properties:
       PolicyDocument:
         Statement:
           - Action:
               - ec2:CreateNetworkInterface
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":ec2:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :subnet/
+                    - Ref: VpcPrivateSubnet1Subnet67A4DBCB
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":ec2:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :subnet/
+                    - Ref: VpcPrivateSubnet2SubnetC8EB537D
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":ec2:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :security-group/
+                    - Fn::GetAtt:
+                        - PlaceholderImageBuildProjectSecurityGroupA7FE7BBC
+                        - GroupId
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":ec2:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :network-interface/*
+          - Action:
+              - ec2:CreateNetworkInterfacePermission
+            Condition:
+              ArnEquals:
+                ec2:Subnet:
+                  - Fn::Join:
+                      - ""
+                      - - "arn:"
+                        - Ref: AWS::Partition
+                        - ":ec2:"
+                        - Ref: AWS::Region
+                        - ":"
+                        - Ref: AWS::AccountId
+                        - :subnet/
+                        - Ref: VpcPrivateSubnet1Subnet67A4DBCB
+                  - Fn::Join:
+                      - ""
+                      - - "arn:"
+                        - Ref: AWS::Partition
+                        - ":ec2:"
+                        - Ref: AWS::Region
+                        - ":"
+                        - Ref: AWS::AccountId
+                        - :subnet/
+                        - Ref: VpcPrivateSubnet2SubnetC8EB537D
+              StringEquals:
+                ec2:AuthorizedService: codebuild.amazonaws.com
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ec2:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :network-interface/*
+          - Action:
               - ec2:DeleteNetworkInterface
+            Effect: Allow
+            Resource: "*"
+          - Action:
               - ec2:DescribeDhcpOptions
               - ec2:DescribeNetworkInterfaces
               - ec2:DescribeSecurityGroups
@@ -2606,6 +4163,14 @@ Resources:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::SecurityGroup
@@ -2615,57 +4180,113 @@ Resources:
       - PlaceholderImageBuildLambdaRole8EDC67D7
     Properties:
       Code:
-        ZipFile: |-
-          import boto3
+        ZipFile: |
           import json
+          import os
+          import urllib.request
 
-          codebuild = boto3.client('codebuild')
+          import boto3
+
+          codebuild = boto3.client("codebuild")
+          table = boto3.resource("dynamodb").Table(os.environ["PENDING_TABLE_NAME"])
+
+          FAILURE_STATUSES = {"FAILED", "FAULT", "STOPPED", "TIMED_OUT"}
+
+
+          def normalized_build_id(value):
+              if ":build/" in value:
+                  return value.split(":build/", 1)[1]
+              return value
+
+
+          def send_response(event, context, status, data, physical_id, reason=None):
+              body = json.dumps(
+                  {
+                      "Status": status,
+                      "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+                      "PhysicalResourceId": physical_id,
+                      "StackId": event["StackId"],
+                      "RequestId": event["RequestId"],
+                      "LogicalResourceId": event["LogicalResourceId"],
+                      "NoEcho": False,
+                      "Data": data,
+                  }
+              ).encode("utf-8")
+              request = urllib.request.Request(
+                  event["ResponseURL"],
+                  data=body,
+                  method="PUT",
+                  headers={"content-type": "", "content-length": str(len(body))},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  if response.status >= 300:
+                      raise RuntimeError(f"CloudFormation response failed with HTTP {response.status}")
+
+
+          def failure_details(build):
+              details = []
+              for phase in build.get("phases", []):
+                  contexts = "; ".join(
+                      context.get("message", "") for context in phase.get("contexts", [])
+                  )
+                  if phase.get("phaseStatus") in FAILURE_STATUSES or contexts:
+                      details.append(
+                          f"{phase.get('phaseType')}={phase.get('phaseStatus')}: {contexts}".strip()
+                      )
+              logs = build.get("logs", {})
+              if logs.get("deepLink"):
+                  details.append(f"logs={logs['deepLink']}")
+              return " | ".join(details) or "No phase failure details were returned"
+
 
           def lambda_handler(event, context):
-              print(f'Build status event: {event}')
+              detail = event["detail"]
+              event_build_id = detail["build-id"]
+              build_id = normalized_build_id(event_build_id)
+              print(f"Terminal CodeBuild event for {event_build_id}: {detail['build-status']}")
 
-              try:
-                  # Extract build information from EventBridge event
-                  detail = event['detail']
-                  build_status = detail['build-status']
-                  project_name = detail['project-name']
-                  build_id = detail['build-id']
+              item = table.get_item(Key={"BuildId": build_id}, ConsistentRead=True).get("Item")
+              if not item:
+                  raise RuntimeError(f"Pending CloudFormation callback not found for {build_id}")
 
-                  print(f'Build {build_id} for project {project_name} finished with status: {build_status}')
+              build_response = codebuild.batch_get_builds(ids=[item.get("BuildArn", event_build_id)])
+              builds = build_response.get("builds", [])
+              if len(builds) != 1:
+                  raise RuntimeError(f"CodeBuild build not found: {event_build_id}")
 
-                  if build_status == 'SUCCEEDED':
-                      print('✅ CodeBuild setup completed successfully')
-                  elif build_status == 'FAILED':
-                      print('❌ CodeBuild setup failed')
+              build = builds[0]
+              status = build["buildStatus"]
+              original_event = json.loads(item["CloudFormationEvent"])
+              data = {
+                  "BuildId": build["id"],
+                  "BuildArn": build["arn"],
+                  "ProjectName": item["ProjectName"],
+                  "BuildStatus": status,
+              }
 
-                      # Get build details for error information
-                      response = codebuild.batch_get_builds(ids=[build_id])
-                      if response['builds']:
-                          build = response['builds'][0]
-                          if 'logs' in build and 'cloudWatchLogs' in build['logs']:
-                              log_group = build['logs']['cloudWatchLogs'].get('groupName')
-                              log_stream = build['logs']['cloudWatchLogs'].get('streamName')
-                              print(f'Check logs at: {log_group}/{log_stream}')
-                  elif build_status == 'STOPPED':
-                      print('⏹️ CodeBuild setup was stopped')
+              if status == "SUCCEEDED":
+                  response_status = "SUCCESS"
+                  reason = None
+              elif status in FAILURE_STATUSES:
+                  response_status = "FAILED"
+                  reason = f"CodeBuild finished with {status}: {failure_details(build)}"
+              else:
+                  raise RuntimeError(f"Received non-terminal CodeBuild status {status}")
 
-                  return {
-                      'statusCode': 200,
-                      'body': json.dumps({
-                          'message': f'Processed build status: {build_status}',
-                          'buildId': build_id,
-                          'projectName': project_name
-                      })
-                  }
-
-              except Exception as e:
-                  print(f'Error processing build status: {str(e)}')
-                  return {
-                      'statusCode': 500,
-                      'body': json.dumps({
-                          'error': str(e)
-                      })
-                  }
+              send_response(
+                  original_event,
+                  context,
+                  response_status,
+                  data,
+                  item["PhysicalResourceId"],
+                  reason,
+              )
+              table.delete_item(Key={"BuildId": build_id})
+              print(f"Sent {response_status} to CloudFormation for {build_id}")
+      Environment:
+        Variables:
+          PENDING_TABLE_NAME:
+            Ref: PlaceholderImageBuildPendingBuilds86736129
       FunctionName: workshop-placeholder-images-report
       Handler: index.lambda_handler
       Role:
@@ -2673,6 +4294,14 @@ Resources:
           - PlaceholderImageBuildLambdaRole8EDC67D7
           - Arn
       Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Timeout: 120
     Type: AWS::Lambda::Function
   PlaceholderImageBuildRole66BA72FE:
@@ -2684,17 +4313,40 @@ Resources:
             Principal:
               Service: codebuild.amazonaws.com
         Version: "2012-10-17"
-      ManagedPolicyArns:
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/PowerUserAccess
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   PlaceholderImageBuildRoleDefaultPolicy6FEC4468:
     Properties:
       PolicyDocument:
         Statement:
+          - Action:
+              - ecr:GetAuthorizationToken
+              - sts:GetCallerIdentity
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - ecr:BatchCheckLayerAvailability
+              - ecr:CompleteLayerUpload
+              - ecr:GetDownloadUrlForLayer
+              - ecr:InitiateLayerUpload
+              - ecr:PutImage
+              - ecr:UploadLayerPart
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:ecr:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :repository/aiagent
           - Action: ec2:CreateNetworkInterfacePermission
             Condition:
               StringEquals:
@@ -2788,62 +4440,78 @@ Resources:
       - PlaceholderImageBuildLambdaRole8EDC67D7
     Properties:
       Code:
-        ZipFile: |-
-          import boto3
+        ZipFile: |
           import json
-          import traceback
-          import cfnresponse
+          import os
+          import time
+          import urllib.request
 
-          codebuild = boto3.client('codebuild')
+          import boto3
+
+          codebuild = boto3.client("codebuild")
+          table = boto3.resource("dynamodb").Table(os.environ["PENDING_TABLE_NAME"])
+
+
+          def send_response(event, context, status, data, physical_id, reason=None):
+              body = json.dumps(
+                  {
+                      "Status": status,
+                      "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+                      "PhysicalResourceId": physical_id,
+                      "StackId": event["StackId"],
+                      "RequestId": event["RequestId"],
+                      "LogicalResourceId": event["LogicalResourceId"],
+                      "NoEcho": False,
+                      "Data": data,
+                  }
+              ).encode("utf-8")
+              request = urllib.request.Request(
+                  event["ResponseURL"],
+                  data=body,
+                  method="PUT",
+                  headers={"content-type": "", "content-length": str(len(body))},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  if response.status >= 300:
+                      raise RuntimeError(f"CloudFormation response failed with HTTP {response.status}")
+
 
           def lambda_handler(event, context):
-              print(f'Event: {event}')
-              responseData = {}
-              status = cfnresponse.SUCCESS
-              physical_id = event.get('PhysicalResourceId', 'CodeBuildSetup')
+              print(f"RequestType={event['RequestType']} LogicalResourceId={event['LogicalResourceId']}")
+              project_name = event["ResourceProperties"]["ProjectName"]
+              physical_id = event.get("PhysicalResourceId", project_name)
+
+              if event["RequestType"] == "Delete":
+                  send_response(event, context, "SUCCESS", {"ProjectName": project_name}, physical_id)
+                  return
 
               try:
-                  if event['RequestType'] == 'Delete':
-                      # Nothing to clean up for CodeBuild
-                      responseData = {'Message': 'CodeBuild setup deleted'}
-                      cfnresponse.send(event, context, status, responseData, physical_id)
-                      return
-
-                  if event['RequestType'] == 'Update':
-                      # For updates, trigger a new build
-                      pass
-
-                  # Start CodeBuild project
-                  props = event['ResourceProperties']
-                  project_name = props['ProjectName']
-
-                  print(f'Starting CodeBuild project: {project_name}')
-
-                  response = codebuild.start_build(
-                      projectName=project_name
+                  build = codebuild.start_build(projectName=project_name)["build"]
+                  table.put_item(
+                      Item={
+                          "BuildId": build["id"],
+                          "BuildArn": build["arn"],
+                          "ProjectName": project_name,
+                          "PhysicalResourceId": project_name,
+                          "CloudFormationEvent": json.dumps(event),
+                          "ExpiresAt": int(time.time()) + 7200,
+                      }
                   )
-
-                  build_id = response['build']['id']
-                  build_arn = response['build']['arn']
-
-                  print(f'Started build: {build_id}')
-
-                  responseData = {
-                      'BuildId': build_id,
-                      'BuildArn': build_arn,
-                      'ProjectName': project_name
-                  }
-
-                  # Use build ID as physical resource ID for tracking
-                  physical_id = build_id
-
-              except Exception as e:
-                  status = cfnresponse.FAILED
-                  tb_err = traceback.format_exc()
-                  print(tb_err)
-                  responseData = {'Error': tb_err}
-
-              cfnresponse.send(event, context, status, responseData, physical_id)
+                  print(f"Started CodeBuild project {project_name}: {build['id']}")
+              except Exception as error:
+                  print(f"Failed to start or persist CodeBuild callback: {error}")
+                  send_response(
+                      event,
+                      context,
+                      "FAILED",
+                      {"ProjectName": project_name},
+                      physical_id,
+                      str(error),
+                  )
+      Environment:
+        Variables:
+          PENDING_TABLE_NAME:
+            Ref: PlaceholderImageBuildPendingBuilds86736129
       FunctionName: workshop-placeholder-images-start
       Handler: index.lambda_handler
       Role:
@@ -2851,11 +4519,27 @@ Resources:
           - PlaceholderImageBuildLambdaRole8EDC67D7
           - Arn
       Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Timeout: 120
     Type: AWS::Lambda::Function
   UnicornUnicornEventBusB728845C:
     Properties:
       Name: unicorns
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::Events::EventBus
   UnicornUnicornStoreDatabaseSetupFunction04E12F8B:
     DependsOn:
@@ -3027,6 +4711,14 @@ Resources:
           - UnicornUnicornStoreDatabaseSetupFunctionServiceRole61942171
           - Arn
       Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       Timeout: 180
       VpcConfig:
         SecurityGroupIds:
@@ -3062,6 +4754,14 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   UnicornUnicornStoreDatabaseSetupFunctionServiceRoleDefaultPolicy00D62509:
     DependsOn:
@@ -3166,6 +4866,14 @@ Resources:
               - :iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices
       Path: /service-role/
       RoleName: unicornstore-ecs-infrastructure-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   UnicornUnicornStoreEcsTaskExecutionRoleC2148AE8:
     Properties:
@@ -3185,6 +4893,14 @@ Resources:
               - :iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       Path: /service-role/
       RoleName: unicornstore-ecs-task-execution-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   UnicornUnicornStoreEcsTaskExecutionRoleDefaultPolicy3FC9EFEE:
     Properties:
@@ -3192,7 +4908,9 @@ Resources:
         Statement:
           - Action: logs:CreateLogGroup
             Effect: Allow
-            Resource: "*"
+            Resource:
+              - arn:aws:logs:*:*:log-group:/aws/ecs/*
+              - arn:aws:logs:*:*:log-group:/ecs/*
           - Action:
               - secretsmanager:DescribeSecret
               - secretsmanager:GetSecretValue
@@ -3244,6 +4962,14 @@ Resources:
               - :iam::aws:policy/AWSXrayWriteOnlyAccess
       Path: /service-role/
       RoleName: unicornstore-ecs-task-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   UnicornUnicornStoreEcsTaskRoleDefaultPolicy477138EA:
     Properties:
@@ -3279,6 +5005,14 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/CloudWatchAgentServerPolicy
       RoleName: unicornstore-eks-pod-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   UnicornUnicornStoreEksPodRoleDefaultPolicy0D527B93:
     Properties:
@@ -3345,12 +5079,26 @@ Resources:
       Tags:
         - Key: Name
           Value: workshop-vpc
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EC2::VPC
   VpcIGW488B0FEB:
     Properties:
       Tags:
         - Key: Name
           Value: workshop-vpc
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EC2::InternetGateway
   VpcPrivateSubnet1DefaultRouteF704DE9F:
     Properties:
@@ -3367,6 +5115,13 @@ Resources:
           Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PrivateSubnet1
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::RouteTable
@@ -3394,6 +5149,13 @@ Resources:
           Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PrivateSubnet1
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::Subnet
@@ -3412,6 +5174,13 @@ Resources:
           Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PrivateSubnet2
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::RouteTable
@@ -3439,6 +5208,13 @@ Resources:
           Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PrivateSubnet2
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::Subnet
@@ -3460,6 +5236,13 @@ Resources:
           Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EC2::EIP
   VpcPublicSubnet1NATGateway8185E366:
     DependsOn:
@@ -3477,6 +5260,13 @@ Resources:
           Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EC2::NatGateway
   VpcPublicSubnet1RouteTable431DD755:
     Properties:
@@ -3485,6 +5275,13 @@ Resources:
           Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::RouteTable
@@ -3512,6 +5309,13 @@ Resources:
           Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::Subnet
@@ -3532,6 +5336,13 @@ Resources:
           Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet2
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::RouteTable
@@ -3559,6 +5370,13 @@ Resources:
           Value: "1"
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet2
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::Subnet
@@ -3573,14 +5391,104 @@ Resources:
     Properties:
       Description: Workshop VPC ID for cross-stack reference
       Name: workshop-vpc-id
+      Tags:
+        WorkshopDeploymentId:
+          Ref: AWS::StackId
+        WorkshopId: java-spring-ai-agents
+        WorkshopOwner: cloudformation
       Type: String
       Value:
         Ref: VpcC3027511
     Type: AWS::SSM::Parameter
+  WorkshopBucketAccessLogs476BAB88:
+    DeletionPolicy: Delete
+    Metadata:
+      checkov:
+        skip:
+          - comment: Dedicated access-log target; recursive logging is intentionally disabled.
+            id: CKV_AWS_18
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      BucketName:
+        Fn::Join:
+          - ""
+          - - workshop-access-logs-
+            - Ref: AWS::AccountId
+            - "-"
+            - Ref: AWS::Region
+            - "-20260825164056"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::S3::Bucket
+    UpdateReplacePolicy: Delete
+  WorkshopBucketAccessLogsPolicy37DFEA4E:
+    Properties:
+      Bucket:
+        Ref: WorkshopBucketAccessLogs476BAB88
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+            Effect: Deny
+            Principal:
+              AWS: "*"
+            Resource:
+              - Fn::GetAtt:
+                  - WorkshopBucketAccessLogs476BAB88
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - WorkshopBucketAccessLogs476BAB88
+                        - Arn
+                    - /*
+          - Action: s3:PutObject
+            Condition:
+              ArnLike:
+                aws:SourceArn:
+                  Fn::GetAtt:
+                    - WorkshopBucketFD5BC43F
+                    - Arn
+              StringEquals:
+                aws:SourceAccount:
+                  Ref: AWS::AccountId
+            Effect: Allow
+            Principal:
+              Service: logging.s3.amazonaws.com
+            Resource:
+              Fn::Join:
+                - ""
+                - - Fn::GetAtt:
+                      - WorkshopBucketAccessLogs476BAB88
+                      - Arn
+                  - /workshop-data/*
+        Version: "2012-10-17"
+    Type: AWS::S3::BucketPolicy
   WorkshopBucketBucketNameParameterCEE58012:
     Properties:
       Description: Workshop bucket name for thread dumps and profiling data
       Name: workshop-bucket-name
+      Tags:
+        WorkshopDeploymentId:
+          Ref: AWS::StackId
+        WorkshopId: java-spring-ai-agents
+        WorkshopOwner: cloudformation
       Type: String
       Value:
         Ref: WorkshopBucketFD5BC43F
@@ -3595,12 +5503,24 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260125084120"
+            - "-20260825164056"
+      LoggingConfiguration:
+        DestinationBucketName:
+          Ref: WorkshopBucketAccessLogs476BAB88
+        LogFilePrefix: workshop-data/
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-spring-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::S3::Bucket
     UpdateReplacePolicy: Delete
   WorkshopBucketPolicyA21947CB:

@@ -37,10 +37,12 @@ build/
 
 ### Kiro ###
 .kiro/debug/
+semantic-review/
 
 ### Other
 
 infrastructure/cdk/output*
 dependency-reduced-pom.xml
+infra/scripts/ws-test/reports/
 
 .env

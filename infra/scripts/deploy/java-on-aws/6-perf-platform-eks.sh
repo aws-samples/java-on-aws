@@ -4,7 +4,7 @@
 # onboard the workload, create the latency alert rule, and drive the regression.
 #
 # Mirrors the workshop content, EKS path only:
-#   java-on-aws-immersion-day/content/analysis/perf-platform/
+#   content/analysis/perf-platform/
 #     collector/  -> build + deploy the perf-collector DaemonSet
 #     analyzer/   -> build + deploy the perf-analyzer Service
 #     on-demand/  -> onboard unicorn-store-spring (label + annotations)

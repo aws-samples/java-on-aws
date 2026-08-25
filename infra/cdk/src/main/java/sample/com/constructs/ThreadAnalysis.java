@@ -2,6 +2,12 @@ package sample.com.constructs;
 
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.RemovalPolicy;
+import software.amazon.awscdk.aws_apigatewayv2_authorizers.HttpLambdaAuthorizer;
+import software.amazon.awscdk.aws_apigatewayv2_authorizers.HttpLambdaResponseType;
+import software.amazon.awscdk.aws_apigatewayv2_integrations.HttpLambdaIntegration;
+import software.amazon.awscdk.services.apigatewayv2.AddRoutesOptions;
+import software.amazon.awscdk.services.apigatewayv2.HttpApi;
+import software.amazon.awscdk.services.apigatewayv2.HttpMethod;
 import software.amazon.awscdk.services.ec2.*;
 import software.amazon.awscdk.services.eks_v2.AccessEntry;
 import software.amazon.awscdk.services.eks_v2.AccessEntryType;
@@ -13,13 +19,11 @@ import software.amazon.awscdk.services.eks_v2.IAccessPolicy;
 import software.amazon.awscdk.services.iam.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
-import software.amazon.awscdk.services.lambda.FunctionUrl;
-import software.amazon.awscdk.services.lambda.FunctionUrlAuthType;
-import software.amazon.awscdk.services.lambda.FunctionUrlOptions;
 import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.s3.Bucket;
+import software.amazon.awscdk.services.ssm.StringParameter;
 import software.constructs.Construct;
 
 import java.io.IOException;
@@ -30,14 +34,13 @@ import java.util.Map;
 
 /**
  * ThreadAnalysis construct for thread dump analysis.
- * Creates Lambda function with Function URL for thread dump collection and AI analysis.
+ * Creates Lambda function with authenticated HTTP endpoint for thread dump collection and AI analysis.
  * Uses async self-invocation pattern for fast webhook response.
  */
 public class ThreadAnalysis extends Construct {
 
     private final SecurityGroup lambdaSecurityGroup;
     private final Function threadDumpLambda;
-    private final FunctionUrl functionUrl;
     private final Role lambdaRole;
 
     public static class ThreadAnalysisProps {
@@ -71,6 +74,7 @@ public class ThreadAnalysis extends Construct {
         super(scope, id);
 
         String prefix = props.getPrefix();
+        String eksClusterName = props.getEksClusterName() != null ? props.getEksClusterName() : prefix + "-eks";
 
         // Create Lambda role with Bedrock, EKS, and ECS access
         this.lambdaRole = Role.Builder.create(this, "LambdaRole")
@@ -108,10 +112,13 @@ public class ThreadAnalysis extends Construct {
             .effect(Effect.ALLOW)
             .actions(List.of(
                 "eks:DescribeCluster",
-                "eks:AccessKubernetesApi",
-                "eks:ListClusters",
-                "sts:GetCallerIdentity"
+                "eks:AccessKubernetesApi"
             ))
+            .resources(List.of("arn:aws:eks:*:*:cluster/" + eksClusterName))
+            .build());
+        lambdaRole.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("eks:ListClusters", "sts:GetCallerIdentity"))
             .resources(List.of("*"))
             .build());
 
@@ -125,7 +132,11 @@ public class ThreadAnalysis extends Construct {
                 "ecs:ListTasks",
                 "ecs:ExecuteCommand"
             ))
-            .resources(List.of("*"))
+            .resources(List.of(
+                "arn:aws:ecs:*:*:cluster/unicorn-store-spring",
+                "arn:aws:ecs:*:*:service/unicorn-store-spring/*",
+                "arn:aws:ecs:*:*:task/unicorn-store-spring/*"
+            ))
             .build());
 
         // Add S3 permissions for thread dumps
@@ -149,7 +160,6 @@ public class ThreadAnalysis extends Construct {
             .build();
 
         // Create Thread Dump Lambda function
-        String eksClusterName = props.getEksClusterName() != null ? props.getEksClusterName() : prefix + "-eks";
         String bucketName = props.getWorkshopBucket() != null ? props.getWorkshopBucket().getBucketName() : "";
 
         this.threadDumpLambda = Function.Builder.create(this, "Lambda")
@@ -184,11 +194,45 @@ public class ThreadAnalysis extends Construct {
             .resources(List.of(lambdaArn))
             .build());
 
-        // Create Function URL (replaces API Gateway + VPC Endpoint)
-        // Auth is handled by Lambda code via basic auth against Secrets Manager
-        this.functionUrl = threadDumpLambda.addFunctionUrl(FunctionUrlOptions.builder()
-            .authType(FunctionUrlAuthType.NONE)
+        // Authenticate the existing Grafana Basic-auth webhook before invoking analysis
+        Function authorizerFunction = Function.Builder.create(this, "AuthorizerLambda")
+            .functionName(prefix + "-thread-analysis-authorizer")
+            .runtime(Runtime.PYTHON_3_13)
+            .handler("index.lambda_handler")
+            .code(Code.fromInline(loadFile("/lambda/thread-analysis-authorizer.py")))
+            .timeout(Duration.seconds(10))
+            .environment(Map.of("SECRET_NAME", prefix + "-ide-password"))
+            .build();
+        authorizerFunction.addToRolePolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("secretsmanager:GetSecretValue"))
+            .resources(List.of("arn:aws:secretsmanager:*:*:secret:" + prefix + "-ide-password*"))
             .build());
+
+        HttpLambdaAuthorizer authorizer = HttpLambdaAuthorizer.Builder.create(
+                "ThreadAnalysisAuthorizer", authorizerFunction)
+            .authorizerName(prefix + "-thread-analysis-authorizer")
+            .identitySource(List.of("$request.header.Authorization"))
+            .responseTypes(List.of(HttpLambdaResponseType.SIMPLE))
+            .resultsCacheTtl(Duration.seconds(0))
+            .build();
+
+        HttpApi httpApi = HttpApi.Builder.create(this, "HttpApi")
+            .apiName(prefix + "-thread-analysis")
+            .createDefaultStage(true)
+            .build();
+        httpApi.addRoutes(AddRoutesOptions.builder()
+            .path("/")
+            .methods(List.of(HttpMethod.POST))
+            .authorizer(authorizer)
+            .integration(HttpLambdaIntegration.Builder.create(
+                "ThreadAnalysisIntegration", threadDumpLambda).build())
+            .build());
+
+        StringParameter.Builder.create(this, "EndpointParameter")
+            .parameterName(prefix + "-thread-analysis-url")
+            .stringValue(httpApi.getApiEndpoint())
+            .build();
 
         // Create EKS Access Entry for Lambda role (if EKS cluster provided)
         if (props.getEksCluster() != null) {
@@ -256,10 +300,6 @@ public class ThreadAnalysis extends Construct {
 
     public Function getThreadDumpLambda() {
         return threadDumpLambda;
-    }
-
-    public FunctionUrl getFunctionUrl() {
-        return functionUrl;
     }
 
     public Role getLambdaRole() {
