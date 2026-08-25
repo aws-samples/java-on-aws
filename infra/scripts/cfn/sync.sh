@@ -10,6 +10,7 @@ REPO_ROOT="$(cd "$INFRA_DIR/.." && pwd)"
 WORKSPACE_ROOT="$(dirname "$REPO_ROOT")"
 CONFIG_FILE="$INFRA_DIR/workshops.json"
 SHARED_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/iam-policy.json"
+ROLE_MANAGEMENT_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/iam-role-management-policy.json"
 AGENTCORE_IDENTITY_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/agentcore-identity-policy.json"
 AGENTCORE_MANAGED_TOOLS_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/agentcore-managed-tools-policy.json"
 
@@ -19,6 +20,10 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
 fi
 if [[ ! -f "$SHARED_POLICY_FILE" ]]; then
     log_error "Shared policy file not found: $SHARED_POLICY_FILE"
+    exit 1
+fi
+if [[ ! -f "$ROLE_MANAGEMENT_POLICY_FILE" ]]; then
+    log_error "Role management policy file not found: $ROLE_MANAGEMENT_POLICY_FILE"
     exit 1
 fi
 if [[ ! -f "$AGENTCORE_IDENTITY_POLICY_FILE" ]]; then
@@ -90,6 +95,12 @@ for index in "${selected_indexes[@]}"; do
         exit 1
     }
     log_success "Synced $SHARED_POLICY_FILE to $repository/static/iam-policy.json"
+
+    cp "$ROLE_MANAGEMENT_POLICY_FILE" "$target_dir/iam-role-management-policy.json" || {
+        log_error "Failed to copy role management policy for $template"
+        exit 1
+    }
+    log_success "Synced $ROLE_MANAGEMENT_POLICY_FILE to $repository/static/iam-role-management-policy.json"
 
     if [[ "$template" == "java-spring-ai-agents" || "$template" == "java-ai-agents" || "$template" == "java-ai-agents-advanced" ]]; then
         cp "$AGENTCORE_MANAGED_TOOLS_POLICY_FILE" "$target_dir/agentcore-managed-tools-policy.json" || {

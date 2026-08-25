@@ -195,6 +195,15 @@ public class Ide extends Construct {
                 .build();
             this.ideRole.addManagedPolicy(policy);
 
+            String roleManagementPolicyJson = loadFile("/iam-role-management-policy.json")
+                .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
+            var roleManagementPolicyDocument = PolicyDocument.fromJson(
+                new JSONObject(roleManagementPolicyJson).toMap());
+            var roleManagementPolicy = ManagedPolicy.Builder.create(this, "RoleManagementPolicy")
+                .document(roleManagementPolicyDocument)
+                .build();
+            this.ideRole.addManagedPolicy(roleManagementPolicy);
+
             if ("java-spring-ai-agents".equals(props.getTemplateType())
                 || "java-ai-agents".equals(props.getTemplateType())
                 || "java-ai-agents-advanced".equals(props.getTemplateType())) {
