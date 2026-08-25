@@ -970,7 +970,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1787678673080"
+      ContentHash: "1787685838316"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -1135,12 +1135,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: main
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-spring-ai-agents
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: main
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -3072,6 +3072,13 @@ Resources:
       PolicyDocument:
         Statement:
           - Action:
+              - bedrock:DeleteModelInvocationLoggingConfiguration
+              - bedrock:GetModelInvocationLoggingConfiguration
+              - bedrock:PutModelInvocationLoggingConfiguration
+            Effect: Allow
+            Resource: "*"
+            Sid: BedrockModelInvocationLoggingConfiguration
+          - Action:
               - secretsmanager:DescribeSecret
               - secretsmanager:GetSecretValue
             Effect: Allow
@@ -3809,7 +3816,7 @@ Resources:
       - VpcC3027511
       - VpcVPCGW42EC8516
     Properties:
-      ContentHash: "1787678673230"
+      ContentHash: "1787685838470"
       ProjectName:
         Ref: PlaceholderImageBuildProjectC08F4D66
       ServiceToken:
@@ -5419,7 +5426,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260825192433"
+            - "-20260825212358"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -5503,7 +5510,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260825192433"
+            - "-20260825212358"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

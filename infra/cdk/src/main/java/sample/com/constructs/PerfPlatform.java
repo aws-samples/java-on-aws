@@ -137,10 +137,11 @@ public class PerfPlatform extends Construct {
      * Grafana CloudWatch pod role.
      * Trusts pods.eks.amazonaws.com (Pod Identity).
      * Grants the Grafana ServiceAccount in the monitoring namespace read-only
-     * access to CloudWatch metrics so the perf-platform alert rule and the
-     * Latency Metrics dashboard can query ALB TargetResponseTime, RequestCount,
-     * and HTTPCode_Target_5XX_Count for whichever ALB(s) participants deploy
-     * during the workshop.
+     * access to CloudWatch metrics and log group discovery so the perf-platform
+     * alert rule, Latency Metrics dashboard, and Grafana datasource health
+     * check can query AWS successfully. The dashboard reads ALB
+     * TargetResponseTime, RequestCount, and HTTPCode_Target_5XX_Count for
+     * whichever ALB(s) participants deploy during the workshop.
      */
     private Role createGrafanaEksPodRole() {
         ServicePrincipal podsPrincipal = ServicePrincipal.Builder.create("pods.eks.amazonaws.com").build();
@@ -152,7 +153,8 @@ public class PerfPlatform extends Construct {
             .build();
 
         addTagSession(role);
-        // Standard CloudWatch read-only set used by Grafana's CloudWatch datasource.
+        // Standard CloudWatch read-only set used by Grafana's CloudWatch datasource,
+        // including log group discovery required by the datasource health check.
         role.addToPolicy(PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
             .actions(List.of(
@@ -162,6 +164,7 @@ public class PerfPlatform extends Construct {
                 "cloudwatch:DescribeAlarmsForMetric",
                 "cloudwatch:DescribeAlarmHistory",
                 "cloudwatch:DescribeAlarms",
+                "logs:DescribeLogGroups",
                 "tag:GetResources",
                 "ec2:DescribeRegions",
                 "ec2:DescribeTags"

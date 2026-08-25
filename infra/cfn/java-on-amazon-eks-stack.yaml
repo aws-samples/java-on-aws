@@ -534,7 +534,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1787678669719"
+      ContentHash: "1787685834866"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -3470,6 +3470,7 @@ Resources:
               - cloudwatch:ListMetrics
               - ec2:DescribeRegions
               - ec2:DescribeTags
+              - logs:DescribeLogGroups
               - tag:GetResources
             Effect: Allow
             Resource: "*"
@@ -4932,7 +4933,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260825192429"
+            - "-20260825212354"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -5016,7 +5017,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260825192429"
+            - "-20260825212354"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

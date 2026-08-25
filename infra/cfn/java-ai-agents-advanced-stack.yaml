@@ -482,7 +482,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1787678679442"
+      ContentHash: "1787685844988"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -647,12 +647,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: java-ai-agents-advanced
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: main
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-ai-agents-advanced
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -3194,7 +3194,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260825192439"
+            - "-20260825212404"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3278,7 +3278,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260825192439"
+            - "-20260825212404"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
