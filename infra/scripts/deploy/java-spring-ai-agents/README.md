@@ -4,13 +4,19 @@ This suite deploys and verifies the Unicorn Rentals Spring AI workshop. It repla
 
 ## Order and targets
 
-Run the complete flow with exactly one deployment target:
+Run the complete flow for all deployment targets:
+
+```bash
+./00-deploy-all.sh
+```
+
+To deploy and test one target only:
 
 ```bash
 ./00-deploy-all.sh --target eks|ecs|lambda|agentcore
 ```
 
-The orchestrator runs `01`–`05`, one of `10`–`13`, `20`, and `30`. Cleanup is never automatic. Every stage can also run independently and prints its prerequisites.
+`--target all` is equivalent to omitting `--target`. The orchestrator runs `01`–`05`, every selected script from `10`–`13`, `20`, and `30` once for each deployed target. Cleanup is never automatic. Every stage can also run independently and prints its prerequisites.
 
 Use `01-setup.sh --force` only to refresh existing `~/environment/aiagent` or `~/environment/mcpserver` source trees. `05-security.sh --rotate-passwords` is the only mode that changes passwords for existing workshop users.
 

@@ -72,5 +72,6 @@ wait_for_http_status "ECS AI-agent health" "${AIAGENT_ENDPOINT}/actuator/health"
 state_set ECS_SERVICE_ARN "${SERVICE_ARN}"
 state_set ECS_IMAGE_URI "${IMAGE_URI}"
 state_set ACTIVE_TARGET ecs
+state_set ECS_ENDPOINT "${AIAGENT_ENDPOINT}"
 state_set AIAGENT_ENDPOINT "${AIAGENT_ENDPOINT}"
 log "AI agent updated on the precreated ECS service: ${AIAGENT_ENDPOINT}. The service is never deleted by this suite."

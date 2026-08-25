@@ -17,6 +17,8 @@ set +e
 
 printf '\n== Suite state ==\n'
 printf 'State file: %s\nActive target: %s\nEndpoint: %s\n' "${STATE_FILE}" "${ACTIVE_TARGET:-not set}" "${AIAGENT_ENDPOINT:-not set}"
+printf 'Target endpoints: EKS=%s ECS=%s Lambda=%s AgentCore=%s\n' \
+  "${EKS_ENDPOINT:-not set}" "${ECS_ENDPOINT:-not set}" "${LAMBDA_ENDPOINT:-not set}" "${AGENTCORE_ENDPOINT:-not set}"
 printf 'MCP endpoint: %s\nCognito pool: %s\n' "${MCP_URL:-not set}" "${COGNITO_USER_POOL_ID:-not set}"
 
 printf '\n== Prerequisites ==\n'

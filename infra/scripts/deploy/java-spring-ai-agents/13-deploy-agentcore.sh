@@ -247,6 +247,7 @@ CF_DOMAIN=$(aws_cli cloudfront get-distribution --id "${DIST_ID}" --query Distri
 wait_for_http_status "AgentCore UI" "https://${CF_DOMAIN}" '^(200)$' 20 10
 state_set AGENTCORE_UI_ENDPOINT "https://${CF_DOMAIN}"
 state_set ACTIVE_TARGET agentcore
+state_set AGENTCORE_ENDPOINT "${AIAGENT_ENDPOINT}"
 state_set AIAGENT_ENDPOINT "${AIAGENT_ENDPOINT}"
 log "AgentCore Runtime created or updated: ${RUNTIME_ID}"
 log "AgentCore UI created or updated: https://${CF_DOMAIN}"

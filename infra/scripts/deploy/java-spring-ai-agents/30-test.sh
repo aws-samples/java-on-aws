@@ -17,8 +17,19 @@ init_context
 load_state
 TARGET="${TARGET:-${ACTIVE_TARGET:-}}"
 [[ "${TARGET}" =~ ^(eks|ecs|lambda|agentcore)$ ]] || die "No valid target selected"
-[[ "${ACTIVE_TARGET:-}" == "${TARGET}" ]] || die "State endpoint belongs to ${ACTIVE_TARGET:-none}, not ${TARGET}"
-require_state AIAGENT_ENDPOINT COGNITO_CLIENT_ID COGNITO_USER_POOL_ID MCP_SAMPLE_NAME
+case "${TARGET}" in
+  eks) endpoint_key="EKS_ENDPOINT" ;;
+  ecs) endpoint_key="ECS_ENDPOINT" ;;
+  lambda) endpoint_key="LAMBDA_ENDPOINT" ;;
+  agentcore) endpoint_key="AGENTCORE_ENDPOINT" ;;
+esac
+TARGET_ENDPOINT="${!endpoint_key:-}"
+if [[ -z "${TARGET_ENDPOINT}" && "${ACTIVE_TARGET:-}" == "${TARGET}" ]]; then
+  TARGET_ENDPOINT="${AIAGENT_ENDPOINT:-}"
+fi
+[[ -n "${TARGET_ENDPOINT}" ]] || die "No endpoint is recorded for ${TARGET}. Run its deployment stage first."
+AIAGENT_ENDPOINT="${TARGET_ENDPOINT}"
+require_state COGNITO_CLIENT_ID COGNITO_USER_POOL_ID MCP_SAMPLE_NAME
 [[ -n "${IDE_PASSWORD:-}" ]] || die "IDE_PASSWORD is required to authenticate test user alice"
 require_cmd curl
 

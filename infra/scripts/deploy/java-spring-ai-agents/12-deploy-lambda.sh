@@ -123,5 +123,6 @@ fi
 AIAGENT_ENDPOINT=$(aws_cli lambda get-function-url-config --function-name aiagent --query FunctionUrl --output text)
 wait_for_http_status "Lambda AI-agent" "${AIAGENT_ENDPOINT}" '^(200)$' 30 10
 state_set ACTIVE_TARGET lambda
+state_set LAMBDA_ENDPOINT "${AIAGENT_ENDPOINT%/}"
 state_set AIAGENT_ENDPOINT "${AIAGENT_ENDPOINT%/}"
 log "AI agent created or updated on Lambda using s3://${WORKSHOP_BUCKET}/${S3_KEY}: ${AIAGENT_ENDPOINT}"

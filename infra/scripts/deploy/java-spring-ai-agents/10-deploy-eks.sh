@@ -140,5 +140,6 @@ AIAGENT_ENDPOINT="http://${INGRESS_HOST}"
 wait_for_dns "AI-agent ingress" "${INGRESS_HOST}" 30 10
 wait_for_http_status "EKS AI-agent HTTP readiness" "${AIAGENT_ENDPOINT}/actuator/health" '^(200)$' 30 10
 state_set ACTIVE_TARGET eks
+state_set EKS_ENDPOINT "${AIAGENT_ENDPOINT}"
 state_set AIAGENT_ENDPOINT "${AIAGENT_ENDPOINT}"
 log "AI agent reconciled on EKS: ${AIAGENT_ENDPOINT}"

@@ -19,7 +19,7 @@ load_state
 print_plan() {
   cat <<EOF
 Cleanup plan for account ${ACCOUNT_ID}, Region ${AWS_REGION}:
-- Restore or remove the selected AI-agent target resources tracked in ${STATE_FILE}.
+- Restore or remove the deployed AI-agent target resources tracked in ${STATE_FILE}.
 - Remove suite-owned EKS AI-agent and MCP manifests; namespaces and Pod Identity associations only when the suite created them.
 - Restore the precreated ECS service configuration; never delete the ECS service or cluster.
 - Restore a preexisting Lambda from its published backup, or delete the function only if this suite created it.
