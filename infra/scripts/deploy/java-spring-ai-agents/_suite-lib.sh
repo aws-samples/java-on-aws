@@ -175,22 +175,70 @@ wait_for_command() {
 }
 
 http_status() {
-  curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 30 "$1" || true
+  curl -s -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 30 "$1" 2>/dev/null || true
+}
+
+dns_resolves() {
+  local hostname="$1"
+  if command -v getent >/dev/null 2>&1; then
+    getent ahosts "${hostname}" >/dev/null 2>&1
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import socket, sys; socket.getaddrinfo(sys.argv[1], None)' "${hostname}" >/dev/null 2>&1
+  else
+    die "DNS readiness checks require getent or python3"
+  fi
+}
+
+wait_for_ingress_hostname() {
+  local description="$1" namespace="$2" ingress="$3" attempts="${4:-40}" interval="${5:-15}"
+  local i
+  INGRESS_HOST=""
+  printf '[%s] Waiting for %s' "${SUITE_NAME}" "${description}"
+  for ((i=1; i<=attempts; i++)); do
+    INGRESS_HOST=$(kubectl get ingress "${ingress}" -n "${namespace}" \
+      -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+    if [[ -n "${INGRESS_HOST}" ]]; then
+      printf ' READY\n'
+      return 0
+    fi
+    printf '.'
+    ((i == attempts)) || sleep "${interval}"
+  done
+  printf '\n'
+  die "Timed out waiting for ${description} after $((attempts * interval)) seconds"
+}
+
+wait_for_dns() {
+  local description="$1" hostname="$2" attempts="${3:-30}" interval="${4:-10}"
+  local i
+  printf '[%s] Waiting for %s DNS' "${SUITE_NAME}" "${description}"
+  for ((i=1; i<=attempts; i++)); do
+    if dns_resolves "${hostname}"; then
+      printf ' READY\n'
+      return 0
+    fi
+    printf '.'
+    ((i == attempts)) || sleep "${interval}"
+  done
+  printf '\n'
+  die "Timed out waiting for ${description} DNS after $((attempts * interval)) seconds"
 }
 
 wait_for_http_status() {
   local description="$1" url="$2" expected_regex="$3" attempts="${4:-40}" interval="${5:-15}"
-  local i status
+  local i http_code=""
+  printf '[%s] Waiting for %s' "${SUITE_NAME}" "${description}"
   for ((i=1; i<=attempts; i++)); do
-    status=$(http_status "${url}")
-    if [[ "${status}" =~ ${expected_regex} ]]; then
-      log "${description}: HTTP ${status}"
+    http_code=$(http_status "${url}")
+    if [[ "${http_code}" =~ ${expected_regex} ]]; then
+      printf ' HTTP %s\n' "${http_code}"
       return 0
     fi
-    log "${description}: HTTP ${status:-000} (${i}/${attempts})"
+    printf '.'
     ((i == attempts)) || sleep "${interval}"
   done
-  die "Timed out waiting for ${description}"
+  printf '\n'
+  die "Timed out waiting for ${description}; last HTTP status was ${http_code:-000}"
 }
 
 require_workshop_role() {

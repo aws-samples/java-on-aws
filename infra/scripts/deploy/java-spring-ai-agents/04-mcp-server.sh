@@ -140,15 +140,10 @@ kubectl apply -f "${MCPSERVER_DIR}/k8s/service.yaml"
 kubectl apply -f "${MCPSERVER_DIR}/k8s/ingress.yaml"
 kubectl rollout status deployment/mcpserver -n mcpserver --timeout=300s
 
-MCP_URL=""
-for i in {1..40}; do
-  MCP_URL=$(get_mcp_url || true)
-  [[ -n "${MCP_URL}" ]] && break
-  log "Waiting for MCP ingress hostname (${i}/40)"
-  ((i == 40)) || sleep 15
-done
-[[ -n "${MCP_URL}" ]] || die "MCP ingress did not receive a hostname"
-wait_for_http_status "MCP server" "${MCP_URL}/actuator/health" '^(200)$' 30 10
+wait_for_ingress_hostname "MCP ingress hostname" mcpserver mcpserver 40 15
+MCP_URL="http://${INGRESS_HOST}"
+wait_for_dns "MCP ingress" "${INGRESS_HOST}" 30 10
+wait_for_http_status "MCP server HTTP readiness" "${MCP_URL}/actuator/health" '^(200)$' 30 10
 state_set MCP_URL "${MCP_URL}"
 
 SAMPLE_NAME="suite-unicorn-classic-small"

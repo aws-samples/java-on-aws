@@ -135,16 +135,10 @@ kubectl apply -f "${AIAGENT_DIR}/k8s/service.yaml"
 kubectl apply -f "${AIAGENT_DIR}/k8s/ingress.yaml"
 kubectl rollout status deployment/aiagent -n aiagent --timeout=300s
 
-host=""
-for i in {1..40}; do
-  host=$(kubectl get ingress aiagent -n aiagent -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
-  [[ -n "${host}" ]] && break
-  log "Waiting for AI-agent ingress hostname (${i}/40)"
-  ((i == 40)) || sleep 15
-done
-[[ -n "${host}" ]] || die "AI-agent ingress did not receive a hostname"
-AIAGENT_ENDPOINT="http://${host}"
-wait_for_http_status "EKS AI-agent health" "${AIAGENT_ENDPOINT}/actuator/health" '^(200)$' 30 10
+wait_for_ingress_hostname "AI-agent ingress hostname" aiagent aiagent 40 15
+AIAGENT_ENDPOINT="http://${INGRESS_HOST}"
+wait_for_dns "AI-agent ingress" "${INGRESS_HOST}" 30 10
+wait_for_http_status "EKS AI-agent HTTP readiness" "${AIAGENT_ENDPOINT}/actuator/health" '^(200)$' 30 10
 state_set ACTIVE_TARGET eks
 state_set AIAGENT_ENDPOINT "${AIAGENT_ENDPOINT}"
 log "AI agent reconciled on EKS: ${AIAGENT_ENDPOINT}"
