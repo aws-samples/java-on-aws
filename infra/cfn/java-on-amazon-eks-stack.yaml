@@ -534,7 +534,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1787666966801"
+      ContentHash: "1787668853203"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -757,6 +757,11 @@ Resources:
           Ref: VpcC3027511
     Type: AWS::CodeBuild::Project
   CodeBuildProjectPolicyDocument567377F5:
+    Metadata:
+      checkov:
+        skip:
+          - comment: CodeBuild requires ec2:DeleteNetworkInterface on wildcard resources because the API authorizes deletion against arn:aws:ec2:region:account:*/*.
+            id: CKV_AWS_111
     Properties:
       PolicyDocument:
         Statement:
@@ -4927,7 +4932,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260825160926"
+            - "-20260825164053"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -5011,7 +5016,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260825160926"
+            - "-20260825164053"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

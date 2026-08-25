@@ -182,6 +182,12 @@ public class CodeBuild extends Construct {
                 "Resource", "*"
             )
         ));
+        vpcPolicy.addMetadata("checkov", Map.of(
+            "skip", List.of(Map.of(
+                "id", "CKV_AWS_111",
+                "comment", "CodeBuild requires ec2:DeleteNetworkInterface on wildcard resources because the API authorizes deletion against arn:aws:ec2:region:account:*/*."
+            ))
+        ));
 
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
