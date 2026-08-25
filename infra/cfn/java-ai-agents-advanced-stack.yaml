@@ -482,7 +482,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1787668864122"
+      ContentHash: "1787678679442"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -652,7 +652,7 @@ Resources:
             Value: java-ai-agents-advanced
           - Name: GIT_BRANCH
             Type: PLAINTEXT
-            Value: feat/holmes-remediation
+            Value: main
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1454,7 +1454,7 @@ Resources:
                 # This keeps UserData under size limits while allowing unlimited bootstrap size
 
                 # Configuration from CDK
-                export GIT_BRANCH="feat/holmes-remediation"
+                export GIT_BRANCH="main"
                 export AWS_REGION="
               - Ref: AWS::Region
               - |-
@@ -3194,7 +3194,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260825164104"
+            - "-20260825192439"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3278,7 +3278,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260825164104"
+            - "-20260825192439"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
