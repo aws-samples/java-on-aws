@@ -481,7 +481,7 @@ Resources:
         Fn::GetAtt:
           - CodeBuildRoleE9A44575
           - Arn
-      ContentHash: "1787491873386"
+      ContentHash: "1787598686641"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -1174,6 +1174,36 @@ Resources:
                   - Ref: AWS::AccountId
                   - :secret:bedrock-agentcore-identity!*
             Sid: AgentCoreIdentityCredentialSecrets
+        Version: "2012-10-17"
+    Type: AWS::IAM::ManagedPolicy
+  IdeAgentCoreManagedToolsPolicy33EC19D9:
+    Properties:
+      Description: ""
+      Path: /
+      PolicyDocument:
+        Statement:
+          - Action:
+              - bedrock-agentcore:ConnectBrowserAutomationStream
+              - bedrock-agentcore:ConnectBrowserLiveViewStream
+            Effect: Allow
+            Resource: "*"
+            Sid: AgentCoreManagedBrowserStreams
+          - Action:
+              - bedrock-agentcore:GetBrowserSession
+              - bedrock-agentcore:StartBrowserSession
+              - bedrock-agentcore:StopBrowserSession
+              - bedrock-agentcore:UpdateBrowserStream
+            Effect: Allow
+            Resource: arn:aws:bedrock-agentcore:*:aws:browser/aws.browser.v1
+            Sid: AgentCoreManagedBrowser
+          - Action:
+              - bedrock-agentcore:GetCodeInterpreterSession
+              - bedrock-agentcore:InvokeCodeInterpreter
+              - bedrock-agentcore:StartCodeInterpreterSession
+              - bedrock-agentcore:StopCodeInterpreterSession
+            Effect: Allow
+            Resource: arn:aws:bedrock-agentcore:*:aws:code-interpreter/aws.codeinterpreter.v1
+            Sid: AgentCoreManagedCodeInterpreter
         Version: "2012-10-17"
     Type: AWS::IAM::ManagedPolicy
   IdeDistribution042A6660:
@@ -1986,6 +2016,7 @@ Resources:
               - Ref: AWS::Partition
               - :iam::aws:policy/CloudWatchAgentServerPolicy
         - Ref: IdeUserPolicy2460FC7D
+        - Ref: IdeAgentCoreManagedToolsPolicy33EC19D9
         - Ref: IdeAgentCoreIdentityPolicy5C973EFA
       RoleName: workshop-ide-user
       Tags:
@@ -2523,6 +2554,28 @@ Resources:
                   - :*
             Sid: AgentCoreRuntime
           - Action:
+              - bedrock-agentcore:ConnectBrowserAutomationStream
+              - bedrock-agentcore:ConnectBrowserLiveViewStream
+            Effect: Allow
+            Resource: "*"
+            Sid: AgentCoreManagedBrowserStreams
+          - Action:
+              - bedrock-agentcore:GetBrowserSession
+              - bedrock-agentcore:StartBrowserSession
+              - bedrock-agentcore:StopBrowserSession
+              - bedrock-agentcore:UpdateBrowserStream
+            Effect: Allow
+            Resource: arn:aws:bedrock-agentcore:*:aws:browser/aws.browser.v1
+            Sid: AgentCoreManagedBrowser
+          - Action:
+              - bedrock-agentcore:GetCodeInterpreterSession
+              - bedrock-agentcore:InvokeCodeInterpreter
+              - bedrock-agentcore:StartCodeInterpreterSession
+              - bedrock-agentcore:StopCodeInterpreterSession
+            Effect: Allow
+            Resource: arn:aws:bedrock-agentcore:*:aws:code-interpreter/aws.codeinterpreter.v1
+            Sid: AgentCoreManagedCodeInterpreter
+          - Action:
               - dynamodb:*
               - ecr:*
               - lambda:InvokeFunction
@@ -2959,7 +3012,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260823153113"
+            - "-20260824211126"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3043,7 +3096,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260823153113"
+            - "-20260824211126"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

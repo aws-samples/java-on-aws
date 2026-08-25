@@ -11,6 +11,7 @@ WORKSPACE_ROOT="$(dirname "$REPO_ROOT")"
 CONFIG_FILE="$INFRA_DIR/workshops.json"
 SHARED_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/iam-policy.json"
 AGENTCORE_IDENTITY_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/agentcore-identity-policy.json"
+AGENTCORE_MANAGED_TOOLS_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/agentcore-managed-tools-policy.json"
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
     log_error "Workshop registry not found: $CONFIG_FILE"
@@ -22,6 +23,10 @@ if [[ ! -f "$SHARED_POLICY_FILE" ]]; then
 fi
 if [[ ! -f "$AGENTCORE_IDENTITY_POLICY_FILE" ]]; then
     log_error "AgentCore Identity policy file not found: $AGENTCORE_IDENTITY_POLICY_FILE"
+    exit 1
+fi
+if [[ ! -f "$AGENTCORE_MANAGED_TOOLS_POLICY_FILE" ]]; then
+    log_error "AgentCore managed tools policy file not found: $AGENTCORE_MANAGED_TOOLS_POLICY_FILE"
     exit 1
 fi
 
@@ -85,6 +90,14 @@ for index in "${selected_indexes[@]}"; do
         exit 1
     }
     log_success "Synced $SHARED_POLICY_FILE to $repository/static/iam-policy.json"
+
+    if [[ "$template" == "java-spring-ai-agents" || "$template" == "java-ai-agents" || "$template" == "java-ai-agents-advanced" ]]; then
+        cp "$AGENTCORE_MANAGED_TOOLS_POLICY_FILE" "$target_dir/agentcore-managed-tools-policy.json" || {
+            log_error "Failed to copy AgentCore managed tools policy for $template"
+            exit 1
+        }
+        log_success "Synced $AGENTCORE_MANAGED_TOOLS_POLICY_FILE to $repository/static/agentcore-managed-tools-policy.json"
+    fi
 
     if [[ "$template" == "java-ai-agents" || "$template" == "java-ai-agents-advanced" ]]; then
         cp "$AGENTCORE_IDENTITY_POLICY_FILE" "$target_dir/agentcore-identity-policy.json" || {

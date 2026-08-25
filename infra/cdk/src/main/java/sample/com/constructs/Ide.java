@@ -195,6 +195,18 @@ public class Ide extends Construct {
                 .build();
             this.ideRole.addManagedPolicy(policy);
 
+            if ("java-spring-ai-agents".equals(props.getTemplateType())
+                || "java-ai-agents".equals(props.getTemplateType())
+                || "java-ai-agents-advanced".equals(props.getTemplateType())) {
+                String agentCoreManagedToolsPolicyJson = loadFile("/agentcore-managed-tools-policy.json");
+                var agentCoreManagedToolsPolicyDocument = PolicyDocument.fromJson(
+                    new JSONObject(agentCoreManagedToolsPolicyJson).toMap());
+                var agentCoreManagedToolsPolicy = ManagedPolicy.Builder.create(this, "AgentCoreManagedToolsPolicy")
+                    .document(agentCoreManagedToolsPolicyDocument)
+                    .build();
+                this.ideRole.addManagedPolicy(agentCoreManagedToolsPolicy);
+            }
+
             if ("java-ai-agents".equals(props.getTemplateType())
                 || "java-ai-agents-advanced".equals(props.getTemplateType())) {
                 String agentCoreIdentityPolicyJson = loadFile("/agentcore-identity-policy.json")

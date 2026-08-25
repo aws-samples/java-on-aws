@@ -17,6 +17,37 @@
 			"Resource": "arn:aws:bedrock-agentcore:*:{{.AccountId}}:*"
 		},
 		{
+			"Sid": "AgentCoreManagedBrowserStreams",
+			"Effect": "Allow",
+			"Action": [
+				"bedrock-agentcore:ConnectBrowserAutomationStream",
+				"bedrock-agentcore:ConnectBrowserLiveViewStream"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "AgentCoreManagedBrowser",
+			"Effect": "Allow",
+			"Action": [
+				"bedrock-agentcore:GetBrowserSession",
+				"bedrock-agentcore:StartBrowserSession",
+				"bedrock-agentcore:StopBrowserSession",
+				"bedrock-agentcore:UpdateBrowserStream"
+			],
+			"Resource": "arn:aws:bedrock-agentcore:*:aws:browser/aws.browser.v1"
+		},
+		{
+			"Sid": "AgentCoreManagedCodeInterpreter",
+			"Effect": "Allow",
+			"Action": [
+				"bedrock-agentcore:GetCodeInterpreterSession",
+				"bedrock-agentcore:InvokeCodeInterpreter",
+				"bedrock-agentcore:StartCodeInterpreterSession",
+				"bedrock-agentcore:StopCodeInterpreterSession"
+			],
+			"Resource": "arn:aws:bedrock-agentcore:*:aws:code-interpreter/aws.codeinterpreter.v1"
+		},
+		{
 			"Sid": "WorkshopData",
 			"Effect": "Allow",
 			"Action": [

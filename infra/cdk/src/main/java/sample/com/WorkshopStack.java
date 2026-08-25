@@ -255,17 +255,37 @@ public class WorkshopStack extends Stack {
                                         "bedrock-agentcore:GetWorkloadAccessTokenForJWT",
                                         "bedrock-agentcore:GetWorkloadAccessTokenForUserId",
                                         "bedrock-agentcore:InvokeAgentRuntime",
-                                        "bedrock-agentcore:InvokeGateway",
-                                        "bedrock-agentcore:StartBrowserSession",
-                                        "bedrock-agentcore:GetBrowserSession",
-                                        "bedrock-agentcore:StopBrowserSession",
-                                        "bedrock-agentcore:UpdateBrowserStream",
-                                        "bedrock-agentcore:StartCodeInterpreterSession",
-                                        "bedrock-agentcore:GetCodeInterpreterSession",
-                                        "bedrock-agentcore:InvokeCodeInterpreter",
-                                        "bedrock-agentcore:StopCodeInterpreterSession"
+                                        "bedrock-agentcore:InvokeGateway"
                                     ))
                                     .resources(java.util.List.of("arn:aws:bedrock-agentcore:*:" + this.getAccount() + ":*"))
+                                    .build(),
+                                software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                                    .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                                    .actions(java.util.List.of(
+                                        "bedrock-agentcore:ConnectBrowserAutomationStream",
+                                        "bedrock-agentcore:ConnectBrowserLiveViewStream"
+                                    ))
+                                    .resources(java.util.List.of("*"))
+                                    .build(),
+                                software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                                    .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                                    .actions(java.util.List.of(
+                                        "bedrock-agentcore:GetBrowserSession",
+                                        "bedrock-agentcore:StartBrowserSession",
+                                        "bedrock-agentcore:StopBrowserSession",
+                                        "bedrock-agentcore:UpdateBrowserStream"
+                                    ))
+                                    .resources(java.util.List.of("arn:aws:bedrock-agentcore:*:aws:browser/aws.browser.v1"))
+                                    .build(),
+                                software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
+                                    .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
+                                    .actions(java.util.List.of(
+                                        "bedrock-agentcore:GetCodeInterpreterSession",
+                                        "bedrock-agentcore:InvokeCodeInterpreter",
+                                        "bedrock-agentcore:StartCodeInterpreterSession",
+                                        "bedrock-agentcore:StopCodeInterpreterSession"
+                                    ))
+                                    .resources(java.util.List.of("arn:aws:bedrock-agentcore:*:aws:code-interpreter/aws.codeinterpreter.v1"))
                                     .build(),
                                 software.amazon.awscdk.services.iam.PolicyStatement.Builder.create()
                                     .effect(software.amazon.awscdk.services.iam.Effect.ALLOW)
