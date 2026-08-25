@@ -475,13 +475,14 @@ Resources:
     DependsOn:
       - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
       - CodeBuildCompleteRuleEE9277E8
+      - CodeBuildPendingBuilds19869454
+      - CodeBuildProjectPolicyDocument567377F5
+      - CodeBuildProjectA0FF5539
+      - CodeBuildProjectSecurityGroup7CE557B3
       - CodeBuildReportLambdaFunctionA3C396F7
+      - CodeBuildStartLambdaFunction8349284F
     Properties:
-      CodeBuildIamRoleArn:
-        Fn::GetAtt:
-          - CodeBuildRoleE9A44575
-          - Arn
-      ContentHash: "1787662084758"
+      ContentHash: "1787666977653"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -511,7 +512,9 @@ Resources:
           build-status:
             - SUCCEEDED
             - FAILED
+            - FAULT
             - STOPPED
+            - TIMED_OUT
           project-name:
             - Ref: CodeBuildProjectA0FF5539
         detail-type:
@@ -570,11 +573,68 @@ Resources:
               Fn::GetAtt:
                 - CodeBuildProjectA0FF5539
                 - Arn
+          - Action:
+              - dynamodb:BatchWriteItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - CodeBuildPendingBuilds19869454
+                - Arn
+          - Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:ConditionCheckItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+              - dynamodb:GetItem
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - CodeBuildPendingBuilds19869454
+                - Arn
         Version: "2012-10-17"
       PolicyName: CodeBuildLambdaRoleDefaultPolicyFB35F0AF
       Roles:
         - Ref: CodeBuildLambdaRole655C06B4
     Type: AWS::IAM::Policy
+  CodeBuildPendingBuilds19869454:
+    DeletionPolicy: Delete
+    Metadata:
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-DDB3
+            reason: The table stores short-lived CloudFormation callback state and does not require point-in-time recovery
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: BuildId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: BuildId
+          KeyType: HASH
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-ai-agents-advanced
+        - Key: WorkshopOwner
+          Value: cloudformation
+      TimeToLiveSpecification:
+        AttributeName: ExpiresAt
+        Enabled: true
+    Type: AWS::DynamoDB::Table
+    UpdateReplacePolicy: Delete
   CodeBuildProjectA0FF5539:
     DependsOn:
       - CodeBuildProjectPolicyDocument567377F5
@@ -587,12 +647,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: feat/holmes-remediation
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-ai-agents-advanced
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: feat/holmes-remediation
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -734,16 +794,7 @@ Resources:
           - Action:
               - ec2:DeleteNetworkInterface
             Effect: Allow
-            Resource:
-              Fn::Join:
-                - ""
-                - - "arn:"
-                  - Ref: AWS::Partition
-                  - ":ec2:"
-                  - Ref: AWS::Region
-                  - ":"
-                  - Ref: AWS::AccountId
-                  - :network-interface/*
+            Resource: "*"
           - Action:
               - ec2:DescribeDhcpOptions
               - ec2:DescribeNetworkInterfaces
@@ -781,57 +832,113 @@ Resources:
       - CodeBuildLambdaRole655C06B4
     Properties:
       Code:
-        ZipFile: |-
-          import boto3
+        ZipFile: |
           import json
+          import os
+          import urllib.request
 
-          codebuild = boto3.client('codebuild')
+          import boto3
+
+          codebuild = boto3.client("codebuild")
+          table = boto3.resource("dynamodb").Table(os.environ["PENDING_TABLE_NAME"])
+
+          FAILURE_STATUSES = {"FAILED", "FAULT", "STOPPED", "TIMED_OUT"}
+
+
+          def normalized_build_id(value):
+              if ":build/" in value:
+                  return value.split(":build/", 1)[1]
+              return value
+
+
+          def send_response(event, context, status, data, physical_id, reason=None):
+              body = json.dumps(
+                  {
+                      "Status": status,
+                      "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+                      "PhysicalResourceId": physical_id,
+                      "StackId": event["StackId"],
+                      "RequestId": event["RequestId"],
+                      "LogicalResourceId": event["LogicalResourceId"],
+                      "NoEcho": False,
+                      "Data": data,
+                  }
+              ).encode("utf-8")
+              request = urllib.request.Request(
+                  event["ResponseURL"],
+                  data=body,
+                  method="PUT",
+                  headers={"content-type": "", "content-length": str(len(body))},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  if response.status >= 300:
+                      raise RuntimeError(f"CloudFormation response failed with HTTP {response.status}")
+
+
+          def failure_details(build):
+              details = []
+              for phase in build.get("phases", []):
+                  contexts = "; ".join(
+                      context.get("message", "") for context in phase.get("contexts", [])
+                  )
+                  if phase.get("phaseStatus") in FAILURE_STATUSES or contexts:
+                      details.append(
+                          f"{phase.get('phaseType')}={phase.get('phaseStatus')}: {contexts}".strip()
+                      )
+              logs = build.get("logs", {})
+              if logs.get("deepLink"):
+                  details.append(f"logs={logs['deepLink']}")
+              return " | ".join(details) or "No phase failure details were returned"
+
 
           def lambda_handler(event, context):
-              print(f'Build status event: {event}')
+              detail = event["detail"]
+              event_build_id = detail["build-id"]
+              build_id = normalized_build_id(event_build_id)
+              print(f"Terminal CodeBuild event for {event_build_id}: {detail['build-status']}")
 
-              try:
-                  # Extract build information from EventBridge event
-                  detail = event['detail']
-                  build_status = detail['build-status']
-                  project_name = detail['project-name']
-                  build_id = detail['build-id']
+              item = table.get_item(Key={"BuildId": build_id}, ConsistentRead=True).get("Item")
+              if not item:
+                  raise RuntimeError(f"Pending CloudFormation callback not found for {build_id}")
 
-                  print(f'Build {build_id} for project {project_name} finished with status: {build_status}')
+              build_response = codebuild.batch_get_builds(ids=[item.get("BuildArn", event_build_id)])
+              builds = build_response.get("builds", [])
+              if len(builds) != 1:
+                  raise RuntimeError(f"CodeBuild build not found: {event_build_id}")
 
-                  if build_status == 'SUCCEEDED':
-                      print('✅ CodeBuild setup completed successfully')
-                  elif build_status == 'FAILED':
-                      print('❌ CodeBuild setup failed')
+              build = builds[0]
+              status = build["buildStatus"]
+              original_event = json.loads(item["CloudFormationEvent"])
+              data = {
+                  "BuildId": build["id"],
+                  "BuildArn": build["arn"],
+                  "ProjectName": item["ProjectName"],
+                  "BuildStatus": status,
+              }
 
-                      # Get build details for error information
-                      response = codebuild.batch_get_builds(ids=[build_id])
-                      if response['builds']:
-                          build = response['builds'][0]
-                          if 'logs' in build and 'cloudWatchLogs' in build['logs']:
-                              log_group = build['logs']['cloudWatchLogs'].get('groupName')
-                              log_stream = build['logs']['cloudWatchLogs'].get('streamName')
-                              print(f'Check logs at: {log_group}/{log_stream}')
-                  elif build_status == 'STOPPED':
-                      print('⏹️ CodeBuild setup was stopped')
+              if status == "SUCCEEDED":
+                  response_status = "SUCCESS"
+                  reason = None
+              elif status in FAILURE_STATUSES:
+                  response_status = "FAILED"
+                  reason = f"CodeBuild finished with {status}: {failure_details(build)}"
+              else:
+                  raise RuntimeError(f"Received non-terminal CodeBuild status {status}")
 
-                  return {
-                      'statusCode': 200,
-                      'body': json.dumps({
-                          'message': f'Processed build status: {build_status}',
-                          'buildId': build_id,
-                          'projectName': project_name
-                      })
-                  }
-
-              except Exception as e:
-                  print(f'Error processing build status: {str(e)}')
-                  return {
-                      'statusCode': 500,
-                      'body': json.dumps({
-                          'error': str(e)
-                      })
-                  }
+              send_response(
+                  original_event,
+                  context,
+                  response_status,
+                  data,
+                  item["PhysicalResourceId"],
+                  reason,
+              )
+              table.delete_item(Key={"BuildId": build_id})
+              print(f"Sent {response_status} to CloudFormation for {build_id}")
+      Environment:
+        Variables:
+          PENDING_TABLE_NAME:
+            Ref: CodeBuildPendingBuilds19869454
       FunctionName: workshop-setup-report
       Handler: index.lambda_handler
       Role:
@@ -974,62 +1081,78 @@ Resources:
       - CodeBuildLambdaRole655C06B4
     Properties:
       Code:
-        ZipFile: |-
-          import boto3
+        ZipFile: |
           import json
-          import traceback
-          import cfnresponse
+          import os
+          import time
+          import urllib.request
 
-          codebuild = boto3.client('codebuild')
+          import boto3
+
+          codebuild = boto3.client("codebuild")
+          table = boto3.resource("dynamodb").Table(os.environ["PENDING_TABLE_NAME"])
+
+
+          def send_response(event, context, status, data, physical_id, reason=None):
+              body = json.dumps(
+                  {
+                      "Status": status,
+                      "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+                      "PhysicalResourceId": physical_id,
+                      "StackId": event["StackId"],
+                      "RequestId": event["RequestId"],
+                      "LogicalResourceId": event["LogicalResourceId"],
+                      "NoEcho": False,
+                      "Data": data,
+                  }
+              ).encode("utf-8")
+              request = urllib.request.Request(
+                  event["ResponseURL"],
+                  data=body,
+                  method="PUT",
+                  headers={"content-type": "", "content-length": str(len(body))},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  if response.status >= 300:
+                      raise RuntimeError(f"CloudFormation response failed with HTTP {response.status}")
+
 
           def lambda_handler(event, context):
-              print(f'Event: {event}')
-              responseData = {}
-              status = cfnresponse.SUCCESS
-              physical_id = event.get('PhysicalResourceId', 'CodeBuildSetup')
+              print(f"RequestType={event['RequestType']} LogicalResourceId={event['LogicalResourceId']}")
+              project_name = event["ResourceProperties"]["ProjectName"]
+              physical_id = event.get("PhysicalResourceId", project_name)
+
+              if event["RequestType"] == "Delete":
+                  send_response(event, context, "SUCCESS", {"ProjectName": project_name}, physical_id)
+                  return
 
               try:
-                  if event['RequestType'] == 'Delete':
-                      # Nothing to clean up for CodeBuild
-                      responseData = {'Message': 'CodeBuild setup deleted'}
-                      cfnresponse.send(event, context, status, responseData, physical_id)
-                      return
-
-                  if event['RequestType'] == 'Update':
-                      # For updates, trigger a new build
-                      pass
-
-                  # Start CodeBuild project
-                  props = event['ResourceProperties']
-                  project_name = props['ProjectName']
-
-                  print(f'Starting CodeBuild project: {project_name}')
-
-                  response = codebuild.start_build(
-                      projectName=project_name
+                  build = codebuild.start_build(projectName=project_name)["build"]
+                  table.put_item(
+                      Item={
+                          "BuildId": build["id"],
+                          "BuildArn": build["arn"],
+                          "ProjectName": project_name,
+                          "PhysicalResourceId": project_name,
+                          "CloudFormationEvent": json.dumps(event),
+                          "ExpiresAt": int(time.time()) + 7200,
+                      }
                   )
-
-                  build_id = response['build']['id']
-                  build_arn = response['build']['arn']
-
-                  print(f'Started build: {build_id}')
-
-                  responseData = {
-                      'BuildId': build_id,
-                      'BuildArn': build_arn,
-                      'ProjectName': project_name
-                  }
-
-                  # Use build ID as physical resource ID for tracking
-                  physical_id = build_id
-
-              except Exception as e:
-                  status = cfnresponse.FAILED
-                  tb_err = traceback.format_exc()
-                  print(tb_err)
-                  responseData = {'Error': tb_err}
-
-              cfnresponse.send(event, context, status, responseData, physical_id)
+                  print(f"Started CodeBuild project {project_name}: {build['id']}")
+              except Exception as error:
+                  print(f"Failed to start or persist CodeBuild callback: {error}")
+                  send_response(
+                      event,
+                      context,
+                      "FAILED",
+                      {"ProjectName": project_name},
+                      physical_id,
+                      str(error),
+                  )
+      Environment:
+        Variables:
+          PENDING_TABLE_NAME:
+            Ref: CodeBuildPendingBuilds19869454
       FunctionName: workshop-setup-start
       Handler: index.lambda_handler
       Role:
@@ -3066,7 +3189,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260825144804"
+            - "-20260825160937"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3150,7 +3273,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260825144804"
+            - "-20260825160937"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

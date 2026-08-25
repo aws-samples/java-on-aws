@@ -1,10 +1,14 @@
 package sample.com.constructs;
 
+import io.github.cdklabs.cdknag.NagPackSuppression;
+import io.github.cdklabs.cdknag.NagSuppressions;
 import software.amazon.awscdk.ArnComponents;
 import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.services.codebuild.*;
+import software.amazon.awscdk.services.dynamodb.*;
 import software.amazon.awscdk.services.events.*;
 import software.amazon.awscdk.services.events.targets.LambdaFunction;
 import software.amazon.awscdk.services.iam.*;
@@ -17,7 +21,6 @@ import software.constructs.Construct;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
-import java.util.Arrays;
 import org.yaml.snakeyaml.Yaml;
 
 public class CodeBuild extends Construct {
@@ -165,7 +168,7 @@ public class CodeBuild extends Construct {
             Map.of(
                 "Effect", "Allow",
                 "Action", List.of("ec2:DeleteNetworkInterface"),
-                "Resource", networkInterfaceArn
+                "Resource", "*"
             ),
             Map.of(
                 "Effect", "Allow",
@@ -191,36 +194,61 @@ public class CodeBuild extends Construct {
             "/lambda/codebuild-start.py", props.getProjectName() + "-start", Duration.minutes(2), lambdaRole);
         Function startBuildFunction = startLambda.getFunction();
 
-        // Create report build Lambda function
-        var reportLambda = new Lambda(this, "ReportLambda",
-            "/lambda/codebuild-report.py", props.getProjectName() + "-report", Duration.minutes(2), lambdaRole);
-        Function reportBuildFunction = reportLambda.getFunction();
+        // Persist the CloudFormation callback while CodeBuild runs. The start Lambda
+        // intentionally does not answer Create/Update requests; the report Lambda
+        // sends the response only after a terminal CodeBuild event.
+        Table pendingBuilds = Table.Builder.create(this, "PendingBuilds")
+            .partitionKey(Attribute.builder()
+                .name("BuildId")
+                .type(AttributeType.STRING)
+                .build())
+            .billingMode(BillingMode.PAY_PER_REQUEST)
+            .timeToLiveAttribute("ExpiresAt")
+            .removalPolicy(RemovalPolicy.DESTROY)
+            .build();
+        NagSuppressions.addResourceSuppressions(pendingBuilds, List.of(
+            new NagPackSuppression.Builder()
+                .id("AwsSolutions-DDB3")
+                .reason("The table stores short-lived CloudFormation callback state and does not require point-in-time recovery")
+                .build()
+        ));
 
-        // Create EventBridge rule for build completion
+        startBuildFunction.addEnvironment("PENDING_TABLE_NAME", pendingBuilds.getTableName());
+        pendingBuilds.grantWriteData(startBuildFunction);
+
+        var reportLambda = new Lambda(this, "ReportLambda",
+            "/lambda/codebuild-report.py", props.getProjectName() + "-report",
+            Duration.minutes(2), lambdaRole);
+        Function reportBuildFunction = reportLambda.getFunction();
+        reportBuildFunction.addEnvironment("PENDING_TABLE_NAME", pendingBuilds.getTableName());
+        pendingBuilds.grantReadWriteData(reportBuildFunction);
+
         Rule buildCompleteRule = Rule.Builder.create(this, "CompleteRule")
             .description(props.getProjectName() + " build complete")
             .eventPattern(EventPattern.builder()
-                .source(Arrays.asList("aws.codebuild"))
-                .detailType(Arrays.asList("CodeBuild Build State Change"))
+                .source(List.of("aws.codebuild"))
+                .detailType(List.of("CodeBuild Build State Change"))
                 .detail(Map.of(
-                    "build-status", Arrays.asList("SUCCEEDED", "FAILED", "STOPPED"),
-                    "project-name", Arrays.asList(this.codebuildProject.getProjectName())
+                    "build-status", List.of("SUCCEEDED", "FAILED", "FAULT", "STOPPED", "TIMED_OUT"),
+                    "project-name", List.of(this.codebuildProject.getProjectName())
                 ))
                 .build())
-            .targets(Arrays.asList(new LambdaFunction(reportBuildFunction)))
+            .targets(List.of(new LambdaFunction(reportBuildFunction)))
             .build();
 
-        // Create custom resource to trigger the build
         this.customResource = CustomResource.Builder.create(this, "Resource")
             .serviceToken(startBuildFunction.getFunctionArn())
             .properties(Map.of(
                 "ProjectName", this.codebuildProject.getProjectName(),
-                "CodeBuildIamRoleArn", this.codebuildProject.getRole().getRoleArn(),
                 "ContentHash", String.valueOf(System.currentTimeMillis())
             ))
             .build();
 
+        this.customResource.getNode().addDependency(this.codebuildProject);
+        this.customResource.getNode().addDependency(vpcPolicy);
+        this.customResource.getNode().addDependency(pendingBuilds);
         this.customResource.getNode().addDependency(buildCompleteRule);
+        this.customResource.getNode().addDependency(startBuildFunction);
         this.customResource.getNode().addDependency(reportBuildFunction);
 
         // Add external dependencies (e.g., NAT Gateway, ECR Registry)

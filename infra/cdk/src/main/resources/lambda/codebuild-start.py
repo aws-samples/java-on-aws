@@ -1,55 +1,67 @@
-import boto3
 import json
-import traceback
-import cfnresponse
+import os
+import time
+import urllib.request
 
-codebuild = boto3.client('codebuild')
+import boto3
+
+codebuild = boto3.client("codebuild")
+table = boto3.resource("dynamodb").Table(os.environ["PENDING_TABLE_NAME"])
+
+
+def send_response(event, context, status, data, physical_id, reason=None):
+    body = json.dumps(
+        {
+            "Status": status,
+            "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+            "PhysicalResourceId": physical_id,
+            "StackId": event["StackId"],
+            "RequestId": event["RequestId"],
+            "LogicalResourceId": event["LogicalResourceId"],
+            "NoEcho": False,
+            "Data": data,
+        }
+    ).encode("utf-8")
+    request = urllib.request.Request(
+        event["ResponseURL"],
+        data=body,
+        method="PUT",
+        headers={"content-type": "", "content-length": str(len(body))},
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        if response.status >= 300:
+            raise RuntimeError(f"CloudFormation response failed with HTTP {response.status}")
+
 
 def lambda_handler(event, context):
-    print(f'Event: {event}')
-    responseData = {}
-    status = cfnresponse.SUCCESS
-    physical_id = event.get('PhysicalResourceId', 'CodeBuildSetup')
+    print(f"RequestType={event['RequestType']} LogicalResourceId={event['LogicalResourceId']}")
+    project_name = event["ResourceProperties"]["ProjectName"]
+    physical_id = event.get("PhysicalResourceId", project_name)
+
+    if event["RequestType"] == "Delete":
+        send_response(event, context, "SUCCESS", {"ProjectName": project_name}, physical_id)
+        return
 
     try:
-        if event['RequestType'] == 'Delete':
-            # Nothing to clean up for CodeBuild
-            responseData = {'Message': 'CodeBuild setup deleted'}
-            cfnresponse.send(event, context, status, responseData, physical_id)
-            return
-
-        if event['RequestType'] == 'Update':
-            # For updates, trigger a new build
-            pass
-
-        # Start CodeBuild project
-        props = event['ResourceProperties']
-        project_name = props['ProjectName']
-
-        print(f'Starting CodeBuild project: {project_name}')
-
-        response = codebuild.start_build(
-            projectName=project_name
+        build = codebuild.start_build(projectName=project_name)["build"]
+        table.put_item(
+            Item={
+                "BuildId": build["id"],
+                "BuildArn": build["arn"],
+                "ProjectName": project_name,
+                "PhysicalResourceId": project_name,
+                "CloudFormationEvent": json.dumps(event),
+                "ExpiresAt": int(time.time()) + 7200,
+            }
         )
-
-        build_id = response['build']['id']
-        build_arn = response['build']['arn']
-
-        print(f'Started build: {build_id}')
-
-        responseData = {
-            'BuildId': build_id,
-            'BuildArn': build_arn,
-            'ProjectName': project_name
-        }
-
-        # Use build ID as physical resource ID for tracking
-        physical_id = build_id
-
-    except Exception as e:
-        status = cfnresponse.FAILED
-        tb_err = traceback.format_exc()
-        print(tb_err)
-        responseData = {'Error': tb_err}
-
-    cfnresponse.send(event, context, status, responseData, physical_id)
+        print(f"Started CodeBuild project {project_name}: {build['id']}")
+    except Exception as error:
+        print(f"Failed to start or persist CodeBuild callback: {error}")
+        send_response(
+            event,
+            context,
+            "FAILED",
+            {"ProjectName": project_name},
+            physical_id,
+            str(error),
+        )
