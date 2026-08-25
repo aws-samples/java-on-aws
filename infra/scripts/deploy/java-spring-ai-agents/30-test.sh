@@ -49,7 +49,8 @@ log "Health and authentication checks passed"
 tmp_dir=$(mktemp -d "${WORK_DIR}/tests.XXXXXX")
 trap 'rm -rf "${tmp_dir}"' EXIT
 invoke() {
-  local name="$1" prompt="$2" output="${tmp_dir}/${name}.txt"
+  local name="$1" prompt="$2" output
+  output="${tmp_dir}/${name}.txt"
   curl --fail-with-body -sS -N --connect-timeout 10 --max-time 180 -X POST "${INVOKE_URL}" \
     -H 'Content-Type: application/json' -H "Authorization: Bearer ${TOKEN}" \
     --data "$(jq -nc --arg prompt "${prompt}" '{prompt:$prompt}')" > "${output}"
