@@ -105,6 +105,19 @@ assert_matches() {
     die "${description} response lacked expected capability evidence"
   fi
 }
+contains_text_ignoring_whitespace() {
+  local file="$1" expected="$2" compact
+  compact=$(tr -d '[:space:]' < "${file}")
+  grep -Fqi -- "${expected}" <<<"${compact}"
+}
+assert_contains_ignoring_whitespace() {
+  local file="$1" expected="$2" description="$3" response_preview
+  if ! contains_text_ignoring_whitespace "${file}" "${expected}"; then
+    response_preview=$(tr '\n' ' ' < "${file}" | cut -c1-500)
+    warn "${description} response: ${response_preview}"
+    die "${description} response lacked expected capability evidence"
+  fi
+}
 
 log "Testing persona: Who are you?"
 file=$(invoke persona "Who are you?")
@@ -120,7 +133,7 @@ log "Conversation memory check passed"
 log "Testing PgVector RAG"
 RAG_MARKER="rag-${SUITE_OWNER}-${ACCOUNT_ID}-${AWS_REGION}-v1"
 file=$(invoke rag_existing "According to the Unicorn Rentals verification archive, what exact archive marker is associated with unicorn origins?")
-if ! grep -Fqi -- "${RAG_MARKER}" "${file}"; then
+if ! contains_text_ignoring_whitespace "${file}" "${RAG_MARKER}"; then
   RAG_DOCUMENT="Unicorn Rentals verification archive marker ${RAG_MARKER}: unicorn traditions include Chinese Qilin, Indian seals, and Greek accounts."
   curl --fail-with-body -sS -N --connect-timeout 10 --max-time 180 -X POST "${INVOKE_URL}" \
     -H 'Content-Type: application/json' -H "Authorization: Bearer ${ADMIN_TOKEN}" \
@@ -129,13 +142,13 @@ if ! grep -Fqi -- "${RAG_MARKER}" "${file}"; then
       '{prompt:$prompt,verificationDocument:$document}')" >/dev/null
   for attempt in {1..6}; do
     file=$(invoke "rag_${attempt}" "According to the Unicorn Rentals verification archive, what exact archive marker is associated with unicorn origins?")
-    grep -Fqi -- "${RAG_MARKER}" "${file}" && break
+    contains_text_ignoring_whitespace "${file}" "${RAG_MARKER}" && break
     ((attempt == 6)) || sleep 5
   done
 else
   log "Stable RAG verification marker is already retrievable; skipping document insertion."
 fi
-assert_matches "${file}" "${RAG_MARKER}" "PgVector RAG"
+assert_contains_ignoring_whitespace "${file}" "${RAG_MARKER}" "PgVector RAG"
 log "PgVector RAG check passed"
 
 log "Testing date/time tool"
