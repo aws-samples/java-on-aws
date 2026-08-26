@@ -118,6 +118,15 @@ assert_contains_ignoring_whitespace() {
     die "${description} response lacked expected capability evidence"
   fi
 }
+assert_matches_ignoring_whitespace() {
+  local file="$1" regex="$2" description="$3" response_preview compact
+  compact=$(tr -d '[:space:]' < "${file}")
+  if ! grep -Eiq "${regex}" <<<"${compact}"; then
+    response_preview=$(tr '\n' ' ' < "${file}" | cut -c1-500)
+    warn "${description} response: ${response_preview}"
+    die "${description} response lacked expected capability evidence"
+  fi
+}
 
 log "Testing persona: Who are you?"
 file=$(invoke persona "Who are you?")
@@ -155,7 +164,7 @@ log "Testing date/time tool"
 utc_before=$(date -u +%Y-%m-%dT%H:%M)
 file=$(invoke tools "Use the date and time tool to report the current UTC timestamp. Reply with an ISO 8601 timestamp in YYYY-MM-DDTHH:MM:SSZ form.")
 utc_after=$(date -u +%Y-%m-%dT%H:%M)
-assert_matches "${file}" "(${utc_before}|${utc_after}):[0-5][0-9]Z" "Date/time tool"
+assert_matches_ignoring_whitespace "${file}" "(${utc_before}|${utc_after}):[0-5][0-9]Z" "Date/time tool"
 log "Date/time tool check passed"
 
 log "Testing MCP Unicorn inventory"
