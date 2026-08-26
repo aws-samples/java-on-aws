@@ -90,7 +90,6 @@ public class WorkshopStack extends Stack {
         new CodeBuild(this, "CodeBuild",
             CodeBuild.CodeBuildProps.builder()
                 .projectName(prefix + "-setup")
-                .vpc(vpc.getVpc())
                 .environmentVariables(Map.of(
                     "TEMPLATE_TYPE", templateType,
                     "GIT_BRANCH", gitBranch))
@@ -411,7 +410,6 @@ public class WorkshopStack extends Stack {
                 CodeBuild placeholderImageBuild = new CodeBuild(this, "PlaceholderImageBuild",
                     CodeBuild.CodeBuildProps.builder()
                         .projectName(prefix + "-placeholder-images")
-                        .vpc(vpc.getVpc())
                         .privilegedMode(true)
                         .environmentVariables(Map.of(
                             "TEMPLATE_TYPE", templateType))
@@ -436,7 +434,6 @@ public class WorkshopStack extends Stack {
                         ))
                         .buildSpec(placeholderBuildSpec)
                         .dependencies(java.util.List.of(
-                            vpc.getConcreteVpc(),  // Ensures NAT Gateway is ready
                             ecrRegistry.getRepositoryCreationTemplate()  // Ensures ECR create-on-push is configured
                         ))
                         .build());
