@@ -47,7 +47,20 @@ else
   TOKEN=$(jq -r '.IdToken // empty' <<<"${AUTH}")
   ADMIN_TOKEN=$(jq -r '.IdToken // empty' <<<"${ADMIN_AUTH}")
   INVOKE_URL="${AIAGENT_ENDPOINT%/}/invocations"
-  HEALTH=$(curl --fail-with-body -sS --connect-timeout 10 --max-time 30 "${AIAGENT_ENDPOINT%/}/actuator/health")
+  health_attempts=1
+  [[ "${TARGET}" == lambda ]] && health_attempts=3
+  for ((attempt=1; attempt<=health_attempts; attempt++)); do
+    if HEALTH=$(curl --fail-with-body -sS --connect-timeout 10 --max-time 30 \
+        "${AIAGENT_ENDPOINT%/}/actuator/health"); then
+      break
+    else
+      curl_status=$?
+    fi
+    ((curl_status == 28)) || exit "${curl_status}"
+    ((attempt < health_attempts)) || die "Lambda health check timed out after ${health_attempts} attempts"
+    warn "Lambda health check timed out (${attempt}/${health_attempts}); retrying in 5 seconds"
+    sleep 5
+  done
   [[ "$(jq -r '.status // empty' <<<"${HEALTH}")" == UP ]] || die "Health endpoint did not report UP"
 fi
 [[ -n "${TOKEN}" && -n "${ADMIN_TOKEN}" ]] || die "Cognito authentication returned no user or administrator token"
