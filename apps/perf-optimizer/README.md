@@ -14,12 +14,14 @@ No collector dependency (queries Pyroscope directly), no auth (POC).
 
 ## Build + deploy (on the amd64 "ide" instance)
 
-Delivered via S3 (see `deploy-optimizer.sh`):
-
 ```bash
-aws s3 cp s3://<workshop-bucket>/perf-scenario/deploy-optimizer.sh ~/deploy-optimizer.sh
-bash ~/deploy-optimizer.sh
+bash infra/scripts/deploy/java-on-amazon-eks/perf-optimizer.sh
 ```
+
+Builds + pushes the image (jib), provisions the Bedrock Knowledge Base (S3
+Vectors) from the IDE role — passing the CDK-created `perf-optimizer-kb-role`,
+no admin, no SSM — and deploys the MCP server. If KB provisioning is unavailable
+the agent still runs, grounded on the bundled `kb/*.md` docs.
 
 ## Connect Claude Code
 
@@ -29,9 +31,15 @@ claude mcp add --transport sse perf-optimizer http://localhost:8080/sse
 # then: "use perf-optimizer to optimize unicorn-store-spring-eks"
 ```
 
-## Next phases (not in this slice)
-- Emit **applyable artifacts** (right-sized deployment patch + AOT/CRaC Dockerfile).
+## Grounding
+
+Two paths, both wired in `OptimizerTools`:
+- **Bundled docs** (default, zero perms): `kb/*.md` baked into the image and
+  injected into every prompt — guarantees copy-paste-correct artifacts.
+- **Managed Bedrock KB** (S3 Vectors) via `spring-ai-starter-vector-store-bedrock-knowledgebase`
+  + `QuestionAnswerAdvisor`, enabled when `SPRING_AI_VECTORSTORE_BEDROCK_KNOWLEDGE_BASE_KNOWLEDGE_BASE_ID`
+  is set — the deploy script provisions the KB and wires it.
+
+## Possible extensions
 - Add **JFR** heap/GC/container signals (via sidecar `/dump` or exec), not just Pyroscope.
-- **KB grounding** (`spring-ai-starter-vector-store-bedrock-knowledgebase` +
-  `QuestionAnswerAdvisor`) seeded with golden Dockerfiles + the right-sizing playbook.
 - Prod auth (SigV4/Cognito) — see `java-spring-ai-agents` `SigV4McpConfig`.

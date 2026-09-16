@@ -1,0 +1,76 @@
+# Privilege-free profiler-sidecar injection (Kyverno MutatingPolicy, CEL API).
+#
+# Opt a workload in with the pod-template label `perf-profile/sidecar: "true"`
+# and a `kubectl rollout restart` — the one restart both injects the sidecar and
+# gives a fresh baseline. No Deployment edit, no privileged/hostPID container: the
+# sidecar uses only SYS_PTRACE + shareProcessNamespace and attaches async-profiler
+# (ctimer + wall) across the shared PID namespace, pushing JFR to Pyroscope. The
+# app image is untouched. Proven on Bottlerocket EKS Auto (K8s 1.34).
+#
+# The profiler is a BAKED image (Amazon Corretto 25 + async-profiler, built from
+# apps/perf-profiler) — no runtime download and no init container. The image URI
+# placeholder below is substituted by deploy/java-on-amazon-eks/perf-profiler.sh
+# at apply time (account/region vary per participant).
+#
+# CEL authoring notes (both verified on-cluster):
+#   1. patchType: ApplyConfiguration CANNOT set atomic fields (env.valueFrom.fieldRef,
+#      securityContext.capabilities.add) -> use JSONPatch.
+#   2. CEL will not widen heterogeneous map/list literals in a JSONPatch value
+#      (it unifies value types eagerly) -> every value is wrapped in dyn(...).
+#
+# Prereq: Kyverno installed cluster-wide (by perf-profiler.sh / the bootstrap).
+# failurePolicy: Ignore so a Kyverno outage never blocks app pods from scheduling.
+apiVersion: policies.kyverno.io/v1beta1
+kind: MutatingPolicy
+metadata:
+  name: inject-perf-profiler
+spec:
+  failurePolicy: Ignore
+  # Only mutate Pods directly. Disable pod-controller autogen: our JSONPatch paths
+  # are Pod-level (/spec/...), and autogen would also rerun them against Deployment
+  # objects at /spec/template/spec/... and fail. Injection happens at Pod admission
+  # (label + rollout restart), which is what we want.
+  autogen:
+    podControllers:
+      controllers: ["none"]
+  evaluation:
+    admission:
+      enabled: true
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+        operations: ["CREATE"]
+  matchConditions:
+    - name: opted-in
+      expression: >-
+        has(object.metadata.labels) &&
+        'perf-profile/sidecar' in object.metadata.labels &&
+        object.metadata.labels['perf-profile/sidecar'] == 'true'
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          [
+            JSONPatch{op: "add", path: "/spec/shareProcessNamespace", value: true},
+            JSONPatch{op: "add", path: "/spec/containers/-", value: dyn({
+              "name": dyn("perf-profiler"),
+              "image": dyn("__PERF_PROFILER_IMAGE__"),
+              "securityContext": dyn({
+                "runAsUser": dyn(0),
+                "runAsNonRoot": dyn(false),
+                "capabilities": dyn({"add": dyn(["SYS_PTRACE"])})
+              }),
+              "env": dyn([
+                dyn({"name": dyn("PROFILE_SERVICE"), "valueFrom": dyn({"fieldRef": dyn({"fieldPath": dyn("metadata.labels['app']")})})}),
+                dyn({"name": dyn("PYROSCOPE_URL"), "value": dyn("http://pyroscope.monitoring:4040")})
+              ]),
+              "resources": dyn({
+                "requests": dyn({"cpu": dyn("100m"), "memory": dyn("128Mi")}),
+                "limits": dyn({"memory": dyn("256Mi")})
+              })
+            })}
+          ]

@@ -10,6 +10,8 @@
         "arn:aws:iam::{{.AccountId}}:role/ai-jvm-analyzer*",
         "arn:aws:iam::{{.AccountId}}:role/perf-analyzer*",
         "arn:aws:iam::{{.AccountId}}:role/perf-collector*",
+        "arn:aws:iam::{{.AccountId}}:role/perf-optimizer*",
+        "arn:aws:iam::{{.AccountId}}:role/perf-profiler*",
         "arn:aws:iam::{{.AccountId}}:role/pyroscope*",
         "arn:aws:iam::{{.AccountId}}:role/grafana*",
         "arn:aws:iam::{{.AccountId}}:role/workshop*",

@@ -24,8 +24,19 @@ PREFIX="${PREFIX:-workshop}"
 NAMESPACE="monitoring"
 GRAFANA_USER="admin"
 
-CONTACT_POINT_NAME="perf-analyzer-webhook"
-ANALYZER_WEBHOOK_URL="http://perf-analyzer.${NAMESPACE}.svc.cluster.local:8080/api/v1/grafana-webhook"
+# CON405 (java-on-amazon-eks) is EKS-only and drives optimization from the
+# perf-optimizer MCP agent (via Claude Code), not the perf-analyzer/perf-collector
+# incident modules. Under that template (WORKSHOP_ID is exported by
+# /etc/profile.d/workshop.sh and equals the template type) we skip the ECS-only
+# internal NLB and the perf-collector RBAC, and name the alert wiring after perf-optimizer.
+if [[ "${WORKSHOP_ID:-}" == "java-on-amazon-eks" ]]; then
+    CONTACT_POINT_NAME="perf-optimizer-webhook"
+    # On-alert (Lab 4) receiver; the exact perf-optimizer endpoint is finalized in the lab.
+    ANALYZER_WEBHOOK_URL="http://perf-optimizer.${NAMESPACE}.svc.cluster.local:8080/api/v1/grafana-webhook"
+else
+    CONTACT_POINT_NAME="perf-analyzer-webhook"
+    ANALYZER_WEBHOOK_URL="http://perf-analyzer.${NAMESPACE}.svc.cluster.local:8080/api/v1/grafana-webhook"
+fi
 
 # Working files (cleaned up on exit)
 WORK=$(mktemp -d)
@@ -152,7 +163,9 @@ log_success "Pyroscope installed"
 # RBAC for perf-analyzer and perf-collector
 # =============================================================================
 
-log_info "Applying RBAC for perf-analyzer and perf-collector..."
+# perf-analyzer SA + RBAC: always created. On CON405 the perf-optimizer agent
+# reuses this ServiceAccount (bound to perf-analyzer-eks-pod-role via Pod Identity).
+log_info "Applying RBAC for perf-analyzer/perf-optimizer..."
 
 kubectl apply -f - <<EOF
 apiVersion: v1
@@ -182,7 +195,12 @@ subjects:
   - kind: ServiceAccount
     name: perf-analyzer
     namespace: ${NAMESPACE}
----
+EOF
+
+# perf-collector RBAC backs the privileged DaemonSet collector, which CON405
+# (EKS-only) replaces with the Kyverno-injected profiler sidecar. Skip it there.
+if [[ "${WORKSHOP_ID:-}" != "java-on-amazon-eks" ]]; then
+kubectl apply -f - <<EOF
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -211,6 +229,7 @@ subjects:
     name: perf-collector
     namespace: ${NAMESPACE}
 EOF
+fi
 
 log_success "RBAC applied"
 
@@ -218,6 +237,10 @@ log_success "RBAC applied"
 # Internal NLB (two annotated LoadBalancer Services sharing one NLB)
 # =============================================================================
 
+if [[ "${WORKSHOP_ID:-}" == "java-on-amazon-eks" ]]; then
+    log_info "Skipping internal NLB (EKS-only template; the profiler sidecar reaches Pyroscope via cluster DNS)"
+    NLB_DNS="(skipped — EKS-only)"
+else
 log_info "Provisioning internal NLB for ECS Fargate reachability..."
 # Single NLB fronts Pyroscope. ECS Fargate collectors use it to reach
 # Pyroscope from outside the cluster. The analyzer is never called from
@@ -267,6 +290,7 @@ fi
 #   kubectl get svc pyroscope-nlb -n monitoring \
 #     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 log_success "Internal NLB ready: ${NLB_DNS}"
+fi
 
 # =============================================================================
 # Grafana Pyroscope datasource + Profiles Drilldown plugin
@@ -749,14 +773,19 @@ fi
 log_info ""
 log_info "Agentic performance platform ready."
 log_info "  Pyroscope:          http://pyroscope.${NAMESPACE}.svc.cluster.local:4040  (S3-backed, prefix s3://${WORKSHOP_BUCKET}/pyroscope/)"
-log_info "  Internal NLB DNS:   ${NLB_DNS}  (kubectl get svc pyroscope-nlb -n monitoring)"
+[[ "${WORKSHOP_ID:-}" != "java-on-amazon-eks" ]] && log_info "  Internal NLB DNS:   ${NLB_DNS}  (kubectl get svc pyroscope-nlb -n monitoring)"
 log_info "  Analyzer webhook:   ${ANALYZER_WEBHOOK_URL}"
 log_info "  Grafana datasource: CloudWatch (read-only via grafana-eks-pod-role)"
 log_info "  Grafana dashboard:  Workshop Dashboards / Latency Metrics"
 log_info "  Grafana contact pt: ${CONTACT_POINT_NAME}"
 log_info "  Profiles Drilldown: installed in Grafana"
 log_info ""
-log_info "Next: participants deploy perf-analyzer (module S1) and perf-collector (module S2),"
-log_info "      then create the ServiceLatency alert rule pointed at their ALB (module S4)."
+if [[ "${WORKSHOP_ID:-}" == "java-on-amazon-eks" ]]; then
+    log_info "Next: deploy the Kyverno-injected profiler (Phase 7) and perf-optimizer (Phase 8),"
+    log_info "      then create the ServiceLatency alert rule pointed at the ALB (Lab 4)."
+else
+    log_info "Next: participants deploy perf-analyzer (module S1) and perf-collector (module S2),"
+    log_info "      then create the ServiceLatency alert rule pointed at their ALB (module S4)."
+fi
 
 echo "✅ Success: Perf Platform (Pyroscope S3 + NLB + CloudWatch + Grafana wiring)"
