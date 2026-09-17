@@ -26,12 +26,13 @@
   # findings are BLOCKED and this surfaces as OPEN advice. (Uptime is the reliable
   # signal here: the JIT/C2 CPU share is ~8% both warm and cold on this workload,
   # so it can't discriminate — profile.jitShare stays as evidence only.)
-  detector: "uptime > 120 && samples > 100"
+  detector: "uptime > 240 && samples > 100"
   requires: [uptime]
   reason: >-
-    The app (re)started less than ~2 minutes ago, so the window still includes JVM
-    warm-up (JIT/class-loading). Sizing findings are blocked until a warm,
-    steady-state window is captured — re-run analyze after a short warm-up + load.
+    The app (re)started less than ~4 minutes ago, so the window still includes JVM
+    warm-up (JIT/class-loading) and an unsettled working set. Sizing findings are
+    blocked until a warm, steady-state window is captured — re-run analyze after a
+    short warm-up + load.
   evidence: [uptime, profile.jitShare, profile.futexWallShare, samples]
   learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers
 
