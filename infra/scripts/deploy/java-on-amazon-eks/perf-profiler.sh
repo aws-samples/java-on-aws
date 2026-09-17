@@ -36,13 +36,13 @@ log_success "perf-profiler image pushed: ${ECR_URI}:latest"
 # -----------------------------------------------------------------------------
 # 2. Install Kyverno (provides the CEL MutatingPolicy API used by the inject policy)
 #    MutatingPolicy (policies.kyverno.io/v1beta1) requires a recent Kyverno.
-#    TODO: pin the validated chart version after the first live dry-run.
+#    Pinned to chart 3.9.1 (Kyverno v1.19.1) — validated on EKS Auto 2026-09-16.
 # -----------------------------------------------------------------------------
 log_info "Installing Kyverno..."
 helm repo add kyverno https://kyverno.github.io/kyverno/ >/dev/null 2>&1 || true
 helm repo update >/dev/null
 helm upgrade --install kyverno kyverno/kyverno \
-  --namespace kyverno --create-namespace \
+  --namespace kyverno --create-namespace --version 3.9.1 \
   --wait --timeout 10m
 log_success "Kyverno installed"
 

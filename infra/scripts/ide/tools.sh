@@ -175,6 +175,38 @@ install_kiro_cli() {
     fi
 }
 
+install_claude_code() {
+    log_info "Installing Claude Code..."
+    retry_optional "Claude Code" \
+        "curl -fsSL https://claude.ai/install.sh -o /tmp/claude_install.sh && bash /tmp/claude_install.sh"
+
+    if $HOME/.local/bin/claude --version >/dev/null 2>&1; then
+        local version=$($HOME/.local/bin/claude --version 2>/dev/null | head -1)
+        echo "✅ Success: Claude Code $version"
+    else
+        echo "⚠️  Warning: Claude Code installation could not be verified"
+    fi
+
+    # Default config for ALL workshops (not workshop-specific): route Claude Code to
+    # Amazon Bedrock, pin the model aliases, and default to Sonnet (better rate limits
+    # than Opus). Participants can still switch models with /model.
+    log_info "Configuring Claude Code defaults (Bedrock, default model sonnet)..."
+    mkdir -p "$HOME/.claude"
+    cat > "$HOME/.claude/settings.json" <<EOF
+{
+  "theme": "dark",
+  "model": "sonnet",
+  "env": {
+    "CLAUDE_CODE_USE_BEDROCK": "1",
+    "AWS_REGION": "${AWS_REGION}",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-4-6",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "us.anthropic.claude-opus-4-6-v1",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+  }
+}
+EOF
+}
+
 install_java
 install_nodejs
 install_maven
@@ -187,6 +219,7 @@ source /etc/profile.d/workshop.sh
 aws configure set default.region ${AWS_REGION}
 
 install_kiro_cli
+install_claude_code
 
 if [ -f "${SCRIPT_DIR}/shell.sh" ]; then
     log_info "Setting up shell environment..."
