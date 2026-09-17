@@ -23,7 +23,8 @@
     "gcName": "SerialGC",
     "effectiveCpuCount": 1,
     "startupSeconds": 13.0,
-    "restarts": 1
+    "restarts": 1,
+    "uptimeSeconds": 30.0
   },
   "profile": {
     "topCpu": [

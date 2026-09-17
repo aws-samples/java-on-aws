@@ -21,15 +21,18 @@
   severity: MEDIUM
   effort: LOW
   guard: true
-  # Fires-true when the window is warm AND has enough samples. Fires-false ->
-  # dependent sizing findings are BLOCKED and this surfaces as OPEN advice.
-  detector: "!profile.warmupWindow && samples > 100"
-  requires: [profile.warmupWindow]
+  # Fires-true when the app has run long enough to be past JVM warm-up AND the
+  # window has samples. Fires-false right after a (re)start -> dependent sizing
+  # findings are BLOCKED and this surfaces as OPEN advice. (Uptime is the reliable
+  # signal here: the JIT/C2 CPU share is ~8% both warm and cold on this workload,
+  # so it can't discriminate — profile.jitShare stays as evidence only.)
+  detector: "uptime > 120 && samples > 100"
+  requires: [uptime]
   reason: >-
-    Profiling window looks like a JIT/C2 warm-up storm or has too few samples.
-    Sizing findings are blocked until a warm, steady-state window is captured —
-    re-run analyze after a short warm-up + load.
-  evidence: [profile.jitShare, profile.futexWallShare, samples]
+    The app (re)started less than ~2 minutes ago, so the window still includes JVM
+    warm-up (JIT/class-loading). Sizing findings are blocked until a warm,
+    steady-state window is captured — re-run analyze after a short warm-up + load.
+  evidence: [uptime, profile.jitShare, profile.futexWallShare, samples]
   learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers
 
 - id: memory-over-provisioned

@@ -23,7 +23,8 @@
     "gcName": "SerialGC",
     "effectiveCpuCount": 1,
     "startupSeconds": 12.7,
-    "restarts": 0
+    "restarts": 0,
+    "uptimeSeconds": 3600.0
   },
   "profile": {
     "topCpu": [{"name": "com/unicorn/store/service/UnicornService.createUnicorn", "selfPct": 6.0}],

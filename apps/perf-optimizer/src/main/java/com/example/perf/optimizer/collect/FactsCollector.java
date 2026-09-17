@@ -62,7 +62,7 @@ public class FactsCollector {
             heap == null ? null : heap.heapUsedMi(),
             heap == null ? null : heap.heapCommittedMi(),
             heap == null ? null : heap.gcName(),
-            effectiveCpu, startup, snap.restarts());
+            effectiveCpu, startup, snap.restarts(), snap.uptimeSeconds());
 
         ProfileFacts profile = pyroscope.collect(service, from.toString(), to.toString(), 25);
         var threads = dump.threads(snap.appPodIP());

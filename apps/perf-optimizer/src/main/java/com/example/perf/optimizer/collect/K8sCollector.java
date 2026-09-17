@@ -30,7 +30,8 @@ public class K8sCollector {
     private static final double MIB = 1024.0 * 1024.0;
 
     /** Workload facts plus the extras the other collectors need. */
-    public record Snapshot(WorkloadFacts workload, Integer restarts, String appPodIP, String appContainer) {}
+    public record Snapshot(WorkloadFacts workload, Integer restarts, String appPodIP,
+                           String appContainer, Double uptimeSeconds) {}
 
     private final CoreV1Api core;
     private final AppsV1Api apps;
@@ -79,16 +80,25 @@ public class K8sCollector {
             List<String> sidecars = new ArrayList<>();
             Integer restarts = null;
             String podIP = null;
+            Double uptimeSeconds = null;
             var pods = core.listNamespacedPod(namespace).labelSelector("app=" + deployment).execute();
             if (pods.getItems() != null && !pods.getItems().isEmpty()) {
                 V1Pod pod = pods.getItems().getFirst();
                 if (pod.getStatus() != null) {
                     podIP = pod.getStatus().getPodIP();
                     if (pod.getStatus().getContainerStatuses() != null) {
-                        restarts = pod.getStatus().getContainerStatuses().stream()
+                        var appStatus = pod.getStatus().getContainerStatuses().stream()
                             .filter(cs -> deployment.equals(cs.getName()))
-                            .map(cs -> cs.getRestartCount())
                             .findFirst().orElse(null);
+                        if (appStatus != null) {
+                            restarts = appStatus.getRestartCount();
+                            if (appStatus.getState() != null && appStatus.getState().getRunning() != null
+                                && appStatus.getState().getRunning().getStartedAt() != null) {
+                                var startedAt = appStatus.getState().getRunning().getStartedAt();
+                                uptimeSeconds = (double) java.time.Duration
+                                    .between(startedAt.toInstant(), java.time.Instant.now()).getSeconds();
+                            }
+                        }
                     }
                 }
                 if (pod.getSpec() != null && pod.getSpec().getContainers() != null) {
@@ -120,10 +130,10 @@ public class K8sCollector {
                 app == null ? deployment : app.getName(), imageTag, replicas,
                 cpuReq, cpuLim, memReq, memLim, cpuResize, javaToolOptions,
                 sidecars, hpaPresent, hpaMetricType);
-            return new Snapshot(workload, restarts, podIP, workload.container());
+            return new Snapshot(workload, restarts, podIP, workload.container(), uptimeSeconds);
         } catch (Exception e) {
             logger.warn("K8s collect failed ns={} deploy={}: {}", namespace, deployment, e.getMessage());
-            return new Snapshot(null, null, null, null);
+            return new Snapshot(null, null, null, null, null);
         }
     }
 

@@ -209,6 +209,9 @@ public class Evaluator {
             if (path.equals("startup")) {
                 return "%.2f s".formatted(n.doubleValue());
             }
+            if (path.equals("uptime")) {
+                return "%.0f s".formatted(n.doubleValue());
+            }
             if (path.startsWith("cpu.") || path.endsWith(".cpu")) {
                 return path.equals("cpu.effective")
                     ? String.valueOf(n.intValue())

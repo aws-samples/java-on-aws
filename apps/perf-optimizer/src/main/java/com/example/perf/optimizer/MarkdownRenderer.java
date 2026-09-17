@@ -47,6 +47,7 @@ public class MarkdownRenderer {
             sb.append(kv("effective CPUs", rt.effectiveCpuCount()));
             sb.append(kv("startup", rt.startupSeconds() == null ? "n/a" : "%.2f s".formatted(rt.startupSeconds())));
             sb.append(kv("restarts", rt.restarts()));
+            sb.append(kv("uptime", rt.uptimeSeconds() == null ? "n/a" : "%.0f s".formatted(rt.uptimeSeconds())));
         }
         appendProfile(sb, f);
         return sb.toString();

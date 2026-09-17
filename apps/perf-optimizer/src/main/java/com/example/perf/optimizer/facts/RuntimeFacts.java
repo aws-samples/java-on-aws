@@ -16,6 +16,7 @@ package com.example.perf.optimizer.facts;
  * @param effectiveCpuCount JVM's effective processor count in the container
  * @param startupSeconds    measured startup (application.ready.time), seconds
  * @param restarts          restartCount of the app container
+ * @param uptimeSeconds     seconds since the app container last (re)started (K8s), or null
  */
 public record RuntimeFacts(
     Double rssFloorMi,
@@ -25,5 +26,6 @@ public record RuntimeFacts(
     String gcName,
     Integer effectiveCpuCount,
     Double startupSeconds,
-    Integer restarts
+    Integer restarts,
+    Double uptimeSeconds
 ) {}
