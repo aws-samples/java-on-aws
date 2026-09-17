@@ -16,7 +16,17 @@ set -uo pipefail
 
 AP_HOME="${AP_HOME:-/opt/async-profiler}"
 PYROSCOPE_URL="${PYROSCOPE_URL:-http://pyroscope.monitoring:4040}"
-SVC="${PROFILE_SERVICE:-unknown}-eks"
+
+# Service identity: the Pyroscope service_name IS the Kubernetes Deployment name
+# (no platform suffix) so it matches the workload 1:1 across tools. The platform
+# / cluster / namespace are carried as LABELS (below), not baked into the name —
+# this is what makes the same service addressable in a central, multi-cluster
+# observability backend. (CLUSTER_NAME + POD_NAMESPACE are injected by the
+# sidecar policy; PLATFORM defaults to eks.)
+SVC="${PROFILE_SERVICE:-unknown}"
+CLUSTER="${CLUSTER_NAME:-unknown}"
+NS="${POD_NAMESPACE:-unknown}"
+PLATFORM="${PLATFORM:-eks}"
 
 # async-profiler engine / cadence (overridable via env for teaching).
 AP_EVENT="${AP_EVENT:-ctimer}"      # ctimer = privilege-free CPU engine
@@ -24,8 +34,10 @@ AP_WALL="${AP_WALL:-10ms}"          # wall-clock sampling for off-CPU/blocked ti
 AP_INTERVAL="${AP_INTERVAL:-10ms}"
 AP_LOOP="${AP_LOOP:-15s}"           # rotate a new JFR file every AP_LOOP
 
-# Pyroscope stream name: <service>{pod=<pod>,platform=eks-sidecar}, URL-encoded.
-ENC=$(printf '%s{pod=%s,platform=eks-sidecar}' "$SVC" "$HOSTNAME" \
+# Pyroscope stream: <service>{cluster,namespace,platform,pod}, URL-encoded.
+# service_name = SVC (the Deployment name); the rest are pivot/scoping labels.
+ENC=$(printf '%s{cluster=%s,namespace=%s,platform=%s,pod=%s}' \
+      "$SVC" "$CLUSTER" "$NS" "$PLATFORM" "$HOSTNAME" \
     | sed -e 's/{/%7B/g' -e 's/}/%7D/g' -e 's/=/%3D/g' -e 's/,/%2C/g')
 
 echo "[perf-profiler] service=$SVC; waiting for target JVM in the shared namespace..."

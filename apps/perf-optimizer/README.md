@@ -36,7 +36,7 @@ claude mcp add -s user --transport sse perf-optimizer http://localhost:8080/sse
 
 cd unicorn-store-spring        # app folder: Dockerfile + k8s/deployment.yaml
 claude
-# then: "use perf-optimizer to optimize unicorn-store-spring-eks, then apply the plan"
+# then: "use perf-optimizer to optimize unicorn-store-spring, then apply the plan"
 ```
 
 ## Grounding

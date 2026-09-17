@@ -66,6 +66,8 @@ spec:
               }),
               "env": dyn([
                 dyn({"name": dyn("PROFILE_SERVICE"), "valueFrom": dyn({"fieldRef": dyn({"fieldPath": dyn("metadata.labels['app']")})})}),
+                dyn({"name": dyn("POD_NAMESPACE"), "valueFrom": dyn({"fieldRef": dyn({"fieldPath": dyn("metadata.namespace")})})}),
+                dyn({"name": dyn("CLUSTER_NAME"), "value": dyn("__CLUSTER_NAME__")}),
                 dyn({"name": dyn("PYROSCOPE_URL"), "value": dyn("http://pyroscope.monitoring:4040")})
               ]),
               "resources": dyn({

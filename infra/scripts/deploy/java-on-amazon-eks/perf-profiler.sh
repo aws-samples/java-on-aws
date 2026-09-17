@@ -19,6 +19,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 APP_DIR="${REPO_ROOT}/apps/perf-profiler"
 ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 ECR_URI="${ECR_REGISTRY}/perf-profiler"
+CLUSTER_NAME="${PREFIX:-workshop}-eks"   # stamped into the sidecar as a Pyroscope label
 
 # -----------------------------------------------------------------------------
 # 1. Build + push the baked profiler image
@@ -62,7 +63,8 @@ log_success "metrics-server installed"
 # 4. Apply the sidecar-injection MutatingPolicy (image URI substituted in).
 # -----------------------------------------------------------------------------
 log_info "Applying inject-perf-profiler MutatingPolicy..."
-sed "s|__PERF_PROFILER_IMAGE__|${ECR_URI}:latest|g" \
+sed -e "s|__PERF_PROFILER_IMAGE__|${ECR_URI}:latest|g" \
+    -e "s|__CLUSTER_NAME__|${CLUSTER_NAME}|g" \
   "${APP_DIR}/k8s/sidecar-inject-policy.yaml" | kubectl apply -f -
 log_success "MutatingPolicy inject-perf-profiler applied"
 

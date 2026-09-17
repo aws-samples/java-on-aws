@@ -171,11 +171,12 @@ public class OptimizerTools {
         optimization plan: right-sized CPU/memory requests & limits, GC choice,
         heap sizing, and startup levers (AOT / CRaC / in-place CPU boost).
         Grounded in LIVE measurements: Pyroscope CPU + wall profiles, the
-        container's measured memory (Prometheus), and measured startup (Pod log).
-        The 'service' is the Pyroscope service_name, e.g. 'unicorn-store-spring-eks'.
+        container's measured memory (Prometheus), and measured startup (Micrometer).
+        The 'service' is the Pyroscope service_name, which equals the Kubernetes
+        Deployment name, e.g. 'unicorn-store-spring'.
         """)
     public String optimizeService(
-        @ToolParam(description = "Pyroscope service_name, e.g. unicorn-store-spring-eks")
+        @ToolParam(description = "Pyroscope service_name = Kubernetes Deployment name, e.g. unicorn-store-spring")
         String service,
         @ToolParam(description = "Look-back window in minutes (default 30 if <= 0)", required = false)
         Integer windowMinutes
@@ -188,11 +189,11 @@ public class OptimizerTools {
         var cpu = pyroscope.topFunctions(service, "cpu", from.toString(), to.toString(), 20);
         var wall = pyroscope.topFunctions(service, "wall", from.toString(), to.toString(), 20);
 
-        // Live measurement (all via Prometheus). The app K8s workload is the
-        // service_name minus the "-eks" platform suffix the profiler adds
-        // (e.g. unicorn-store-spring-eks -> unicorn-store-spring), which is also
-        // the namespace and container name for this workshop's service.
-        var app = service.replaceAll("-eks$", "");
+        // Live measurement (all via Prometheus). The Pyroscope service_name now
+        // equals the K8s Deployment name (platform/cluster/namespace are labels,
+        // not a name suffix), which for this workshop's service is also the
+        // namespace and container name.
+        var app = service;
         var startup = prometheus.startupSummary(app);
         var mem = prometheus.memorySummary(app, app, mins);
         var measured = new StringBuilder();

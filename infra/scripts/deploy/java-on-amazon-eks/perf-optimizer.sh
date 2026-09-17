@@ -188,4 +188,4 @@ log_info "Connect Claude Code (this instance) over MCP/SSE — register at user 
 log_info "  kubectl -n ${NS} port-forward svc/perf-optimizer 8080:8080 &"
 log_info "  claude mcp add -s user --transport sse perf-optimizer http://localhost:8080/sse"
 log_info "  cd unicorn-store-spring && claude   # app folder: Dockerfile + k8s/deployment.yaml"
-log_info "Then ask Claude Code: \"use perf-optimizer to optimize unicorn-store-spring-eks, then apply the plan\""
+log_info "Then ask Claude Code: \"use perf-optimizer to optimize unicorn-store-spring, then apply the plan\""
