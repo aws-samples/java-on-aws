@@ -1,0 +1,24 @@
+# perf-optimizer: cut startup with an in-place CPU boost (no image/code change).
+# Boot at {{boot.cpu}} vCPU (roughly halves startup), then resize CPU down to
+# {{steady.cpu}} vCPU once the pod is Ready — 0 restarts.
+#
+# 1) In k8s/deployment.yaml, declare a CPU resizePolicy on the app container so
+#    CPU changes need no restart, and set the boot CPU:
+        resizePolicy:
+          - resourceName: cpu
+            restartPolicy: NotRequired
+        resources:
+          requests:
+            cpu: "{{boot.cpu}}"
+            memory: "{{current.requests.memory}}"
+          limits:
+            cpu: "{{boot.cpu}}"
+            memory: "{{current.limits.memory}}"
+#
+# 2) kubectl -n {{namespace}} apply -f k8s/deployment.yaml   # rolls once to add the resizePolicy
+#
+# 3) After the new pod is Ready, resize CPU IN PLACE to steady (send the FULL
+#    resources map — cpu AND memory — or the API rejects it):
+#    POD=$(kubectl -n {{namespace}} get pod -l app={{deployment}} -o jsonpath='{.items[0].metadata.name}')
+#    kubectl -n {{namespace}} patch pod "$POD" --subresource resize --type merge -p \
+#      '{"spec":{"containers":[{"name":"{{container}}","resources":{"requests":{"cpu":"{{steady.cpu}}","memory":"{{current.requests.memory}}"},"limits":{"cpu":"{{steady.cpu}}","memory":"{{current.limits.memory}}"}}}]}}'

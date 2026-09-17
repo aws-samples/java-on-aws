@@ -1,0 +1,17 @@
+# perf-optimizer: right-size {{deployment}} off the MEASURED container working-set
+# (requests near the idle floor, limits at the load peak + headroom). Keep SerialGC
+# on 1 vCPU / small heap. Apply under spec.template.spec.containers[0] in
+# k8s/deployment.yaml, then re-apply and rollout restart (memory shrink needs a restart).
+        resources:
+          requests:
+            cpu: "{{requests.cpu}}"
+            memory: "{{requests.memory}}"
+          limits:
+            cpu: "{{limits.cpu}}"
+            memory: "{{limits.memory}}"
+        env:
+          - name: JAVA_TOOL_OPTIONS
+            value: >-
+              -XX:+Use{{jvm.gc}}
+              -XX:MaxRAMPercentage={{jvm.maxRamPercentage}}
+              -XX:InitialRAMPercentage=50

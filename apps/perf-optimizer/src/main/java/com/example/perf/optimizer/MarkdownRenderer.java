@@ -4,6 +4,7 @@ import com.example.perf.optimizer.OptimizerService.AnalyzeResult;
 import com.example.perf.optimizer.OptimizerService.MeasureResult;
 import com.example.perf.optimizer.catalog.Finding;
 import com.example.perf.optimizer.catalog.FindingStatus;
+import com.example.perf.optimizer.explain.Explanation;
 import com.example.perf.optimizer.facts.Facts;
 import org.springframework.stereotype.Component;
 
@@ -71,6 +72,27 @@ public class MarkdownRenderer {
         }
         sb.append("_No LLM was used to produce this analysis. "
             + "Call `explain <service> <findingId>` for a rationale + ready-to-apply artifact._\n");
+        return sb.toString();
+    }
+
+    public String explanation(Explanation e) {
+        if (e == null) {
+            return "Finding not found. Run `analyze` first, then `explain <service> <findingId>`.";
+        }
+        var sb = new StringBuilder();
+        sb.append("# explain — `%s`\n\n".formatted(e.findingId()));
+        sb.append("## Rationale\n%s\n\n".formatted(e.rationale()));
+        if (e.evidenceLines() != null && !e.evidenceLines().isEmpty()) {
+            sb.append("## Evidence & computed values\n");
+            e.evidenceLines().forEach(l -> sb.append("- %s\n".formatted(l)));
+            sb.append("\n");
+        }
+        sb.append("## Artifact (apply verbatim — computed by code)\n```\n%s\n```\n\n".formatted(e.artifact()));
+        sb.append("## Apply\n```bash\n%s\n```\n\n".formatted(e.applyCommand()));
+        if (e.expectedOutcome() != null && !e.expectedOutcome().isBlank()) {
+            sb.append("## Expected outcome\n%s\n\n".formatted(e.expectedOutcome()));
+        }
+        sb.append("Learn more: %s\n".formatted(e.learnMore()));
         return sb.toString();
     }
 

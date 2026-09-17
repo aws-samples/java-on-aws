@@ -4,6 +4,8 @@ import com.example.perf.optimizer.catalog.Evaluator;
 import com.example.perf.optimizer.catalog.Finding;
 import com.example.perf.optimizer.catalog.FindingStatus;
 import com.example.perf.optimizer.collect.FactsCollector;
+import com.example.perf.optimizer.explain.Explainer;
+import com.example.perf.optimizer.explain.Explanation;
 import com.example.perf.optimizer.facts.Facts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,7 @@ public class OptimizerService {
 
     private final FactsCollector collector;
     private final Evaluator evaluator;
+    private final Explainer explainer;
     private final Map<String, PriorState> priorByService = new ConcurrentHashMap<>();
 
     private record PriorState(Set<String> openIds, Facts facts, Map<String, Finding> byId) {}
@@ -43,9 +46,10 @@ public class OptimizerService {
     /** Ranked findings for a service (analyze) — no LLM unless {@code explanations} is set elsewhere. */
     public record AnalyzeResult(String service, int windowMinutes, Facts facts, List<Finding> findings) {}
 
-    public OptimizerService(FactsCollector collector, Evaluator evaluator) {
+    public OptimizerService(FactsCollector collector, Evaluator evaluator, Explainer explainer) {
         this.collector = collector;
         this.evaluator = evaluator;
+        this.explainer = explainer;
     }
 
     public MeasureResult measure(String service, int windowMinutes) {
@@ -79,6 +83,24 @@ public class OptimizerService {
 
         logger.info("analyze service={} open={} findings={}", service, openIds, findings.size());
         return new AnalyzeResult(service, windowMinutes <= 0 ? 15 : windowMinutes, facts, List.copyOf(findings));
+    }
+
+    /**
+     * Explain a single finding (the only LLM path). Runs an analyze first if the
+     * service has not been analyzed yet, so explain is usable standalone. Returns
+     * null if the finding id is unknown. The artifact and computed values in the
+     * result are Java-rendered and identical across runs; only the prose varies.
+     */
+    public Explanation explain(String service, String findingId) {
+        var finding = latestFinding(service, findingId);
+        if (finding == null) {
+            analyze(service, 15);
+            finding = latestFinding(service, findingId);
+        }
+        if (finding == null) {
+            return null;
+        }
+        return explainer.explain(service, finding, latestFacts(service));
     }
 
     /** Lookup a single finding from the latest analyze (used by the explainer). */

@@ -3,6 +3,7 @@ package com.example.perf.optimizer.api;
 import com.example.perf.optimizer.OptimizerService;
 import com.example.perf.optimizer.OptimizerService.AnalyzeResult;
 import com.example.perf.optimizer.OptimizerService.MeasureResult;
+import com.example.perf.optimizer.explain.Explanation;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,5 +38,11 @@ public class OptimizerController {
     public AnalyzeResult analyze(@PathVariable String service,
                                  @RequestParam(defaultValue = "15") int windowMinutes) {
         return optimizer.analyze(service, windowMinutes);
+    }
+
+    /** The only LLM path: explain one finding (artifact + values are Java-computed). */
+    @GetMapping("/explain/{service}/{findingId}")
+    public Explanation explain(@PathVariable String service, @PathVariable String findingId) {
+        return optimizer.explain(service, findingId);
     }
 }
