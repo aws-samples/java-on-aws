@@ -200,32 +200,47 @@ EOF
 kubectl create configmap prometheus-datasource --from-file="$DATASOURCE_FILE" -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 kubectl label configmap prometheus-datasource -n "$NAMESPACE" grafana_datasource=1 --overwrite
 
-# Wait for Grafana health
+# Wait for Grafana health. A freshly provisioned LoadBalancer can take several
+# minutes to start accepting traffic, so poll up to ~5 min with per-request
+# timeouts (so a not-yet-ready endpoint fails fast instead of hanging), and gate:
+# abort clearly if Grafana never comes up rather than pressing on into a hang.
 GRAFANA_URL="http://$GRAFANA_LB"
-for i in {1..20}; do
-  STATUS=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/health" | jq -r .database 2>/dev/null || true)
+STATUS=""
+for i in {1..60}; do
+  STATUS=$(curl -s --connect-timeout 5 --max-time 10 -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/health" | jq -r .database 2>/dev/null || true)
   if [[ "$STATUS" == "ok" ]]; then
     break
   fi
-  log_info "Waiting for Grafana... ($i/20)"
+  log_info "Waiting for Grafana... ($i/60)"
   sleep 5
 done
+if [[ "$STATUS" != "ok" ]]; then
+  log_error "Grafana API not reachable at $GRAFANA_URL after ~5 minutes"
+  exit 1
+fi
 
 # Shared "Workshop Dashboards" Grafana folder. All analysis modules
 # (analysis.sh, perf-platform.sh) drop their dashboards and alert rules
 # here. Created once, here, so each downstream script can simply look
-# up the UID by title — no SSM, no env file.
+# up the UID by title — no SSM, no env file. Retried with per-request timeouts
+# so a transient LB/API hiccup doesn't abort the bootstrap.
 log_info "Creating shared Grafana folder 'Workshop Dashboards'..."
-FOLDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
-  -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
-  -d '{"title": "Workshop Dashboards"}' \
-  "$GRAFANA_URL/api/folders")
-FOLDER_UID=$(echo "$FOLDER_RESPONSE" | jq -r '.uid // empty')
-if [[ -z "$FOLDER_UID" ]]; then
-  # Already exists (409). Look it up by title.
-  FOLDER_UID=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/folders" \
-    | jq -r '.[] | select(.title == "Workshop Dashboards") | .uid')
-fi
+FOLDER_UID=""
+for i in {1..12}; do
+  FOLDER_RESPONSE=$(curl -s --connect-timeout 5 --max-time 15 -X POST -H "Content-Type: application/json" \
+    -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+    -d '{"title": "Workshop Dashboards"}' \
+    "$GRAFANA_URL/api/folders" || true)
+  FOLDER_UID=$(echo "$FOLDER_RESPONSE" | jq -r '.uid // empty' 2>/dev/null)
+  if [[ -z "$FOLDER_UID" ]]; then
+    # Already exists (409) or transient — look it up by title.
+    FOLDER_UID=$(curl -s --connect-timeout 5 --max-time 15 -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/folders" 2>/dev/null \
+      | jq -r '.[] | select(.title == "Workshop Dashboards") | .uid' 2>/dev/null || true)
+  fi
+  [[ -n "$FOLDER_UID" ]] && break
+  log_info "Grafana folder not ready, retrying... ($i/12)"
+  sleep 5
+done
 if [[ -z "$FOLDER_UID" ]]; then
   log_error "Failed to create or look up 'Workshop Dashboards' folder"
   exit 1
