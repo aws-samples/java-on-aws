@@ -48,11 +48,16 @@ ENC=$(printf '%s{cluster=%s,namespace=%s,platform=%s,pod=%s}' \
     | sed -e 's/{/%7B/g' -e 's/}/%7D/g' -e 's/=/%3D/g' -e 's/,/%2C/g')
 
 echo "[perf-profiler] service=$SVC; waiting for target JVM in the shared namespace..."
+# Pick the APP jvm: the lowest-numbered `java` process that is NOT this sidecar's
+# own /dump server JVM (DumpServer.java). The app starts first so it holds the
+# lowest pid; iterate in numeric order and skip the DumpServer.
 PID=""
 while [ -z "$PID" ]; do
-  for d in /proc/[0-9]*; do
-    [ -r "$d/comm" ] || continue
-    if [ "$(cat "$d/comm" 2>/dev/null)" = "java" ]; then PID="${d#/proc/}"; break; fi
+  for p in $(ls /proc 2>/dev/null | grep -E '^[0-9]+$' | sort -n); do
+    [ -r "/proc/$p/comm" ] || continue
+    [ "$(cat "/proc/$p/comm" 2>/dev/null)" = "java" ] || continue
+    tr '\0' ' ' < "/proc/$p/cmdline" 2>/dev/null | grep -q "DumpServer" && continue
+    PID="$p"; break
   done
   [ -z "$PID" ] && sleep 3
 done
