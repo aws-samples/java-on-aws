@@ -24,6 +24,8 @@ RUN curl -sSL -o /tmp/ap.tgz \
   && test -f /opt/async-profiler/lib/libasyncProfiler.so
 
 COPY profile-loop.sh /usr/local/bin/profile-loop.sh
+# On-demand /dump endpoint (JDK 25 single-file source mode; jcmd ships in Corretto).
+COPY DumpServer.java /usr/local/bin/DumpServer.java
 RUN chmod +x /usr/local/bin/profile-loop.sh
 
 ENV AP_HOME=/opt/async-profiler

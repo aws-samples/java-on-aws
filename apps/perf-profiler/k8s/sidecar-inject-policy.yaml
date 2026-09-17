@@ -59,6 +59,7 @@ spec:
             JSONPatch{op: "add", path: "/spec/containers/-", value: dyn({
               "name": dyn("perf-profiler"),
               "image": dyn("__PERF_PROFILER_IMAGE__"),
+              "ports": dyn([dyn({"name": dyn("dump"), "containerPort": dyn(9100)})]),
               "securityContext": dyn({
                 "runAsUser": dyn(0),
                 "runAsNonRoot": dyn(false),
@@ -72,7 +73,7 @@ spec:
               ]),
               "resources": dyn({
                 "requests": dyn({"cpu": dyn("100m"), "memory": dyn("128Mi")}),
-                "limits": dyn({"memory": dyn("256Mi")})
+                "limits": dyn({"memory": dyn("384Mi")})
               })
             })}
           ]

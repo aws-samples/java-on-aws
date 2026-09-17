@@ -19,6 +19,20 @@ shared PID namespace, attaches async-profiler's `ctimer` (privilege-free CPU) +
 never modified — you opt in with one declarative label on the workload's pod
 template.
 
+## On-demand `/dump` endpoint
+
+The sidecar also runs a tiny HTTP server (`DumpServer.java`, JDK 25 single-file
+source mode) on **port 9100** (exposed as `containerPort` by the inject policy):
+
+- `GET /dump?kind=threads` → `jcmd <pid> Thread.print -e`
+- `GET /dump?kind=heap` → `jcmd <pid> GC.heap_info` + `VM.flags`
+- `GET /dump?kind=jfr` → `jcmd <pid> JFR.dump` (best-effort)
+
+`jcmd` targets the app JVM across the shared PID namespace (root + `SYS_PTRACE`),
+with `JAVA_TOOL_OPTIONS` nulled per call so the app's flags don't contaminate the
+output. `perf-optimizer` reads this via the pod IP to build ThreadFacts/heap — no
+collector, no `kubectl exec`.
+
 ## Deploy
 
 `infra/scripts/deploy/java-on-amazon-eks/perf-profiler.sh` builds + pushes the

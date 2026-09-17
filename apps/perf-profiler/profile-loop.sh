@@ -16,6 +16,13 @@ set -uo pipefail
 
 AP_HOME="${AP_HOME:-/opt/async-profiler}"
 PYROSCOPE_URL="${PYROSCOPE_URL:-http://pyroscope.monitoring:4040}"
+DUMP_PORT="${DUMP_PORT:-9100}"
+
+# Start the on-demand /dump HTTP server in the background (thread dump + heap info
+# via jcmd across the shared PID namespace). Independent of the profiling loop, so a
+# failure here never stops profiling. The optimizer reaches it at pod-IP:$DUMP_PORT.
+java /usr/local/bin/DumpServer.java "$DUMP_PORT" >/tmp/dump-server.log 2>&1 &
+echo "[perf-profiler] /dump server starting on :$DUMP_PORT (pid $!)"
 
 # Service identity: the Pyroscope service_name IS the Kubernetes Deployment name
 # (no platform suffix) so it matches the workload 1:1 across tools. The platform
