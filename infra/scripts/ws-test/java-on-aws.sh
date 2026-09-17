@@ -260,6 +260,10 @@ spec:
     metadata:
       labels:
         app: unicorn-store-spring
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8080"
     spec:
       serviceAccountName: unicorn-store-spring
       nodeSelector:

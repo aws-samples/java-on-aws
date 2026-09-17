@@ -60,6 +60,34 @@ public class PrometheusTool {
         }
     }
 
+    /**
+     * MEASURED startup for the app from Micrometer's canonical
+     * {@code application.ready.time} / {@code application.started.time} gauges
+     * (scraped from the app's /actuator/prometheus). Set once at startup, so the
+     * value is constant; on a fresh deploy it appears after ~1 scrape interval.
+     * null if the app is not scraped yet.
+     */
+    public String startupSummary(String app) {
+        try {
+            Double ready = scalar("application_ready_time_seconds{application=\"" + app + "\"}");
+            Double started = scalar("application_started_time_seconds{application=\"" + app + "\"}");
+            var primary = (ready != null) ? ready : started;
+            if (primary == null) {
+                return null;
+            }
+            var sb = new StringBuilder();
+            sb.append("- startup (Micrometer application.ready.time): **%.2f s**".formatted(primary));
+            if (ready != null && started != null && Math.abs(ready - started) > 0.01) {
+                sb.append(" (started at %.2f s)".formatted(started));
+            }
+            sb.append("\n");
+            return sb.toString();
+        } catch (Exception e) {
+            logger.warn("PrometheusTool.startupSummary failed app={}: {}", app, e.getMessage());
+            return null;
+        }
+    }
+
     /** Run an instant PromQL query and return the first sample's value, or null. */
     private Double scalar(String query) {
         try {

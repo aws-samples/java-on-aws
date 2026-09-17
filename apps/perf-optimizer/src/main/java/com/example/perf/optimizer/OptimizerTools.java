@@ -20,10 +20,11 @@ import java.time.Instant;
 /**
  * The MCP-exposed optimization tool. One tool for the thin slice:
  * {@link #optimizeService}. It pulls LIVE signals for the service — Pyroscope
- * CPU + wall profiles, the container's measured memory (Prometheus), and the
- * measured startup time (Pod log) — and asks Amazon Bedrock (grounded by an
- * optimization system prompt + KB heuristics/Dockerfiles) for a right-size / GC
- * / startup plan, returned to the MCP client (Claude Code) to implement.
+ * CPU + wall profiles, and (from Prometheus) the container's measured memory
+ * plus the app's measured startup (Micrometer application.ready.time) — and
+ * asks Amazon Bedrock (grounded by an optimization system prompt + KB
+ * heuristics/Dockerfiles) for a right-size / GC / startup plan, returned to the
+ * MCP client (Claude Code) to implement.
  *
  * Measurement discipline: the model may only cite numbers that were MEASURED
  * here (fed in under "Measured now"); projected outcomes of a not-yet-applied
@@ -104,7 +105,6 @@ public class OptimizerTools {
     private final ChatClient.Builder chatClientBuilder;
     private final PyroscopeTool pyroscope;
     private final PrometheusTool prometheus;
-    private final KubeTool kube;
     private final ObjectProvider<VectorStore> vectorStoreProvider;
     private final String referenceDocs;
     private volatile ChatClient chatClient;
@@ -118,12 +118,10 @@ public class OptimizerTools {
     public OptimizerTools(@Lazy ChatClient.Builder chatClientBuilder,
                           PyroscopeTool pyroscope,
                           PrometheusTool prometheus,
-                          KubeTool kube,
                           ObjectProvider<VectorStore> vectorStoreProvider) {
         this.chatClientBuilder = chatClientBuilder;
         this.pyroscope = pyroscope;
         this.prometheus = prometheus;
-        this.kube = kube;
         this.vectorStoreProvider = vectorStoreProvider;
         this.referenceDocs = loadReferenceDocs();
     }
@@ -190,21 +188,19 @@ public class OptimizerTools {
         var cpu = pyroscope.topFunctions(service, "cpu", from.toString(), to.toString(), 20);
         var wall = pyroscope.topFunctions(service, "wall", from.toString(), to.toString(), 20);
 
-        // Live measurement: the app K8s workload is the service_name minus the
-        // "-eks" platform suffix the profiler adds (e.g. unicorn-store-spring-eks
-        // -> unicorn-store-spring, matching the Deployment's app= label).
+        // Live measurement (all via Prometheus). The app K8s workload is the
+        // service_name minus the "-eks" platform suffix the profiler adds
+        // (e.g. unicorn-store-spring-eks -> unicorn-store-spring), which is also
+        // the namespace and container name for this workshop's service.
         var app = service.replaceAll("-eks$", "");
-        var pod = kube.findAppPod(app);
-        var startup = kube.measuredStartup(pod);
-        var mem = (pod == null) ? null : prometheus.memorySummary(pod.namespace(), pod.container(), mins);
+        var startup = prometheus.startupSummary(app);
+        var mem = prometheus.memorySummary(app, app, mins);
         var measured = new StringBuilder();
-        measured.append(startup != null ? "- " + startup + "\n"
-            : "- startup: NOT MEASURABLE now (no 'Started'/'Restored' line in the current pod log)\n");
+        measured.append(startup != null ? startup
+            : "- startup: NOT MEASURABLE yet (app's application.ready.time not scraped — retry in ~1 min after deploy)\n");
         measured.append(mem != null ? mem
-            : "- container memory: NOT MEASURABLE now (Prometheus has no series for this container)\n");
-        logger.info("measured: app={} pod={} startup={} memory={}",
-            app, pod == null ? "none" : pod.namespace() + "/" + pod.name(),
-            startup != null, mem != null);
+            : "- container memory: NOT MEASURABLE now (Prometheus has no working-set series for this container)\n");
+        logger.info("measured: app={} startup={} memory={}", app, startup != null, mem != null);
 
         var userPrompt = """
             ## Target
