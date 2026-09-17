@@ -78,7 +78,7 @@ public record Facts(
     }
 
     @SuppressWarnings("unchecked")
-    static Object resolve(Map<String, Object> ctx, String path) {
+    public static Object resolve(Map<String, Object> ctx, String path) {
         Object cur = ctx;
         for (var seg : path.split("\\.")) {
             if (!(cur instanceof Map<?, ?> m)) {

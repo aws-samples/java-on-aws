@@ -1,0 +1,130 @@
+# =============================================================================
+# perf-optimizer finding catalog.
+#
+# Each entry is a deterministic rule the Evaluator applies to measured Facts.
+#   detector : SpEL boolean over facts (nested maps: limits.memory, rss.peak, ...)
+#   requires : fact paths that must be non-null, else the finding is NOT_EVALUABLE
+#   prereqs  : guard ids that must be satisfied, else the finding is BLOCKED
+#   compute  : name -> SpEL producing a value (shown as evidence, used by templates)
+#   evidence : measured fact paths rendered (with units) as evidence lines
+#   gain     : SpEL string (may reference computed['<name>'])
+#   fix      : kind (manifest-patch|dockerfile|source-patch|advice), template, files
+#
+# Memory facts/values are MiB, CPU is cores, startup is seconds — so detectors
+# read as plain arithmetic. Helpers: #roundUpMi(mi, stepMi) -> "<n>Mi";
+# #pct(from, to) -> whole-number % reduction. Java computes; the model only explains.
+# See README.md "Adding a finding".
+# =============================================================================
+
+- id: profile-window-is-warm
+  title: Profiling window is warm (steady state), not a JIT warm-up storm
+  severity: MEDIUM
+  effort: LOW
+  guard: true
+  # Fires-true when the window is warm AND has enough samples. Fires-false ->
+  # dependent sizing findings are BLOCKED and this surfaces as OPEN advice.
+  detector: "!profile.warmupWindow && samples > 100"
+  requires: [profile.warmupWindow]
+  reason: >-
+    Profiling window looks like a JIT/C2 warm-up storm or has too few samples.
+    Sizing findings are blocked until a warm, steady-state window is captured —
+    re-run analyze after a short warm-up + load.
+  evidence: [profile.jitShare, profile.futexWallShare, samples]
+  learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers
+
+- id: memory-over-provisioned
+  title: Memory limit far above measured working set
+  severity: HIGH
+  effort: LOW
+  detector: "limits.memory / rss.peak > 2.0"
+  requires: [rss.floor, rss.peak, limits.memory]
+  prereqs: [profile-window-is-warm]
+  compute:
+    requests.memory: "#roundUpMi(rss.floor * 1.25, 64)"
+    limits.memory: "#roundUpMi(rss.peak * 1.40, 64)"
+    requests.cpu: "'250m'"
+    limits.cpu: "'1'"
+    jvm.maxRamPercentage: "75"
+    jvm.gc: "cpu.limit <= 1 ? 'SerialGC' : 'G1GC'"
+  evidence: [rss.floor, rss.peak, heap.committed, limits.memory, cpu.effective]
+  gain: "'memory -' + #pct(limits.memory, computed['limits.memory']) + '%'"
+  fix:
+    kind: manifest-patch
+    template: templates/deployment-resources.yaml.hbs
+    files: [k8s/deployment.yaml]
+  learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers/pod-resize
+
+- id: startup-cpu-bound
+  title: Slow startup on a 1 vCPU container with no in-place CPU boost
+  severity: HIGH
+  effort: LOW
+  detector: "startup > 5 && cpu.limit <= 1 && !resizePolicy"
+  requires: [startup, cpu.limit, resizePolicy]
+  prereqs: [profile-window-is-warm]
+  compute:
+    boot.cpu: "'2'"
+    steady.cpu: "'1'"
+    resizePolicy: "'cpu: NotRequired (in-place resize, no restart)'"
+  evidence: [startup, cpu.limit, resizePolicy]
+  gain: "'startup ~halved by 2 vCPU boot, then resize to 1 vCPU with 0 restarts'"
+  fix:
+    kind: manifest-patch
+    template: templates/deployment-cpu-boost.yaml.hbs
+    files: [k8s/deployment.yaml]
+  learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers/pod-resize
+
+- id: startup-checkpointable
+  title: Startup can be cut with a checkpoint/AOT image (CRaC or AOT cache)
+  severity: HIGH
+  effort: MEDIUM
+  detector: "startup > 2 && image != 'crac' && image != 'aot'"
+  requires: [startup, image]
+  compute:
+    technique.primary: "'CRaC (Azul Zulu 25 + Warp engine)'"
+    technique.alternative: "'AOT cache (JDK 25, zero code change)'"
+  evidence: [startup, image]
+  gain: "'startup -> sub-second (CRaC) or a few seconds (AOT); CRaC also lowers RSS'"
+  fix:
+    kind: dockerfile
+    template: templates/Dockerfile.crac
+    files: [Dockerfile, src/main/java/com/unicorn/store/data/UnicornPublisher.java]
+  learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers/crac
+
+- id: hpa-metric-with-sidecar
+  title: HPA uses a pod-level Resource metric while a sidecar is present
+  severity: MEDIUM
+  effort: LOW
+  detector: "hpa.present && hpa.metricType == 'Resource' && sidecars.present"
+  requires: [hpa.present, sidecars.present]
+  compute:
+    metric.type: "'ContainerResource'"
+    metric.container: "deployment"
+  evidence: [hpa.present, hpa.metricType, sidecars.present]
+  gain: "'HPA scales on the app container CPU, not the app+sidecar sum'"
+  fix:
+    kind: manifest-patch
+    template: templates/hpa-containerresource.yaml.hbs
+    files: [k8s/hpa.yaml]
+  learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers
+
+- id: blocking-call-in-request-path
+  title: Blocking call stalls request threads (Future.get + single-connection pool)
+  severity: CRITICAL
+  effort: HIGH
+  detector: >-
+    profile.futexWallShare > 50 &&
+    (threads.futureGetOnRequestPath == true ||
+     (threads.poolWaitCarriers != null && threads.poolWaitCarriers > 0))
+  requires: [profile.futexWallShare]
+  compute:
+    fix.publish: "'make publishUnicornEvent non-blocking: drop .get(); publish after commit (@TransactionalEventListener AFTER_COMMIT)'"
+    fix.hikari: "'raise spring.datasource.hikari.maximum-pool-size above 1'"
+  evidence: [profile.futexWallShare, threads.poolWaitCarriers, threads.futureGetOnRequestPath]
+  gain: "'removes request-thread stall on EventBridge publish + connection-pool contention'"
+  fix:
+    kind: source-patch
+    template: templates/blocking-call.patch.hbs
+    files:
+      - src/main/java/com/unicorn/store/service/UnicornService.java
+      - src/main/resources/application.yaml
+  learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers
