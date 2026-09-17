@@ -1,19 +1,19 @@
-# Java-on-EKS startup optimization (measured) + golden Dockerfiles
+# Java-on-EKS startup optimization (techniques) + golden Dockerfiles
 
-Measured startup for `unicorn-store-spring` (Corretto JDK 25) at 1 vCPU / 2Gi baseline, and the exact, working Dockerfiles. Use these Dockerfiles VERBATIM — do not invent flags, tags, or a `sleep + jcmd JDK.checkpoint` checkpoint step.
+How to cut startup for `unicorn-store-spring` (Corretto / Azul Zulu JDK 25) at ~1 vCPU, and the exact, working Dockerfiles. Use these Dockerfiles VERBATIM — do not invent flags, tags, or a `sleep + jcmd JDK.checkpoint` step. The actual startup seconds are MEASURED live — baseline before, and again after applying a technique — so do NOT hard-code them here; state expected outcomes qualitatively and let the measurement prove them.
 
-## Measured results
+## Techniques (relative; fastest-startup last)
 
-| Technique | Startup | RSS | Notes |
+| Technique | Startup (relative) | RSS (relative) | Notes |
 |---|---|---|---|
-| Baseline (1 vCPU) | ~13 s | ~370 Mi | plain JVM, SerialGC |
-| In-place CPU boost (2→1 vCPU) | ~6 s | — | no code/image change; 0 restarts |
-| AOT cache (JDK 25) | ~4.8 s | ~348 Mi | zero code change |
-| CRaC (Azul Zulu 25 + Warp) | **~0.194 s** | **~190 Mi** | fastest + leanest; userspace, no privilege |
+| Baseline (1 vCPU) | slowest | baseline | plain JVM, SerialGC |
+| In-place CPU boost (2→1 vCPU) | ~half of baseline | unchanged | no code/image change; 0 restarts |
+| AOT cache (JDK 25) | a few seconds | ~baseline | zero code change |
+| CRaC (Azul Zulu 25 + Warp) | **sub-second (fastest)** | **lowest** | fastest AND leanest; userspace, no privilege |
 
-CRaC is fastest AND lowest RSS. Warp is a **userspace** engine: **no CRIU, no `privileged`, no `CHECKPOINT_RESTORE`/`SYS_PTRACE` capability** needed. The checkpoint is taken at image-build time via `-Dspring.context.checkpoint=onRefresh` (fires after the Spring context refreshes, before the HTTP port opens) — NOT via a `sleep` + `jcmd JDK.checkpoint` hack.
+CRaC is fastest AND lowest RSS. Warp is a **userspace** engine: **no CRIU, no `privileged`, no `CHECKPOINT_RESTORE`/`SYS_PTRACE` capability** needed. The checkpoint is taken at image-build time via `-Dspring.context.checkpoint=onRefresh` (fires after the Spring context refreshes, before the HTTP port opens) — NOT via a `sleep` + `jcmd JDK.checkpoint` hack. Measure the real restore time by re-running the optimizer after deploying the CRaC image.
 
-## Golden AOT Dockerfile (JDK 25 AOT cache, zero code change) → ~4.8 s
+## Golden AOT Dockerfile (JDK 25 AOT cache, zero code change)
 
 ```dockerfile
 FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
@@ -84,7 +84,7 @@ EXPOSE 8080
 ENTRYPOINT ["sh", "-c", "exec java -XX:AOTCache=/opt/app/app.aot -Dserver.port=8080 -cp /opt/app/training/classes.jar:$(cat /opt/app/lib-cp.txt) com.unicorn.store.StoreApplication"]
 ```
 
-## Golden CRaC Dockerfile (Azul Zulu 25 + Warp) → ~0.194 s, ~190 Mi
+## Golden CRaC Dockerfile (Azul Zulu 25 + Warp)
 
 ```dockerfile
 FROM azul/zulu-openjdk:25-jdk-crac-latest AS builder

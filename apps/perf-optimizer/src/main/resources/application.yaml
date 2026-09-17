@@ -29,6 +29,10 @@ spring:
 # Pyroscope endpoint the tool queries for CPU + wall signals (no collector).
 PYROSCOPE_URL: ${PYROSCOPE_URL:http://pyroscope.monitoring:4040}
 
+# Prometheus endpoint the tool queries for the app container's MEASURED memory
+# (working-set floor + peak) — replaces canned RSS numbers with live values.
+PROMETHEUS_URL: ${PROMETHEUS_URL:http://prometheus-server.monitoring}
+
 server:
   port: 8080
   shutdown: graceful

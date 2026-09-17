@@ -154,6 +154,7 @@ spec:
         env:
         - {name: AWS_REGION, value: "${REGION}"}
         - {name: PYROSCOPE_URL, value: "http://pyroscope.monitoring:4040"}
+        - {name: PROMETHEUS_URL, value: "http://prometheus-server.monitoring"}
         - {name: SPRING_AI_BEDROCK_CONVERSE_CHAT_OPTIONS_MODEL, value: "${MODEL}"}
 ${KB_ENV}
         readinessProbe: {httpGet: {path: /actuator/health, port: 8080}, initialDelaySeconds: 20, periodSeconds: 10}

@@ -9,7 +9,8 @@
 # all async-profiler's ctimer engine needs to attach to a sibling process.
 #
 # Injected into a workload by the Kyverno `inject-perf-profiler` MutatingPolicy
-# (label perf-profile/sidecar=true + rollout restart). The app image is untouched.
+# (add the `perf-profile/sidecar: "true"` label to the workload's pod template
+# and apply — the policy matches Pods on CREATE). The app image is untouched.
 # =============================================================================
 set -uo pipefail
 

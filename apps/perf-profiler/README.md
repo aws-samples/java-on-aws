@@ -16,17 +16,29 @@ watches for Pods labelled `perf-profile/sidecar: "true"`. On admission it:
 The sidecar (`profile-loop.sh`, the image ENTRYPOINT) finds the app JVM in the
 shared PID namespace, attaches async-profiler's `ctimer` (privilege-free CPU) +
 `wall` engines, and pushes rotated JFR recordings to Pyroscope. The app image is
-never modified — you opt in with a label and one `rollout restart`.
+never modified — you opt in with one declarative label on the workload's pod
+template.
 
 ## Deploy
 
 `infra/scripts/deploy/java-on-amazon-eks/perf-profiler.sh` builds + pushes the
 image, installs Kyverno and metrics-server, and applies the policy (substituting
-the ECR image URI). Then, per workload:
+the ECR image URI). Then opt a workload in by adding the label to its pod
+template (`spec.template.metadata.labels`) in the deployment manifest and
+re-applying — declarative, so it survives redeploys and GitOps reconciliation:
+
+```yaml
+# unicorn-store-spring/k8s/deployment.yaml
+spec:
+  template:
+    metadata:
+      labels:
+        app: unicorn-store-spring
+        perf-profile/sidecar: "true"   # opt in
+```
 
 ```bash
-kubectl label deploy/unicorn-store-spring -n unicorn-store-spring perf-profile/sidecar=true --overwrite
-kubectl rollout restart deploy/unicorn-store-spring -n unicorn-store-spring
+kubectl apply -f unicorn-store-spring/k8s/deployment.yaml   # template change rolls the pods; sidecar injects on the new Pods
 ```
 
 ## Notes

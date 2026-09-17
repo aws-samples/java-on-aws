@@ -67,6 +67,6 @@ sed "s|__PERF_PROFILER_IMAGE__|${ECR_URI}:latest|g" \
 log_success "MutatingPolicy inject-perf-profiler applied"
 
 echo "✅ Success: perf-profiler (image ${ECR_URI}:latest; Kyverno + metrics-server + inject policy)"
-log_info "Opt a workload in:"
-log_info "  kubectl label deploy/<name> -n <ns> perf-profile/sidecar=true --overwrite"
-log_info "  kubectl rollout restart deploy/<name> -n <ns>"
+log_info "Opt a workload in (declarative — survives redeploy/GitOps):"
+log_info "  add 'perf-profile/sidecar: \"true\"' under spec.template.metadata.labels in the deployment manifest, then:"
+log_info "  kubectl apply -f <deployment>.yaml   # pod-template change rolls the pods; sidecar injects"
