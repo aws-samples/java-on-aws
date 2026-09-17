@@ -22,6 +22,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-ai.version>2.0.0</spring-ai.version>
         <aws-sdk.version>2.46.20</aws-sdk.version>
+        <kubernetes-client.version>27.0.0</kubernetes-client.version>
     </properties>
 
     <dependencyManagement>
@@ -88,6 +89,15 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Kubernetes API client (read-only): WorkloadFacts from deployments,
+             pods, and HPAs, and sidecar /dump discovery via pod IP. Same client
+             and version perf-analyzer uses. -->
+        <dependency>
+            <groupId>io.kubernetes</groupId>
+            <artifactId>client-java</artifactId>
+            <version>${kubernetes-client.version}</version>
         </dependency>
 
         <!-- S3 for persisting emitted artifacts (later phase) -->
