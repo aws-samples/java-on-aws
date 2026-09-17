@@ -91,7 +91,7 @@ public class Ide extends Construct {
         private IdeArch ideArch = IdeArch.X86_64_AMD;
         private IdeType ideType = IdeType.CODE_EDITOR;
         private List<ISecurityGroup> additionalSecurityGroups = new ArrayList<>();
-        private int bootstrapTimeoutMinutes = 30;
+        private int bootstrapTimeoutMinutes = 45;
         private String gitBranch = "main";
         private String templateType = "base";
         private String workshopId = "base";
