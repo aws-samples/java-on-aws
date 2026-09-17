@@ -25,10 +25,18 @@ the agent still runs, grounded on the bundled `kb/*.md` docs.
 
 ## Connect Claude Code
 
+Register the MCP server at **user scope** (`-s user`) so it's available in any
+directory, then run Claude Code **from the app source folder** (e.g.
+`unicorn-store-spring/`, which holds the `Dockerfile` and `k8s/deployment.yaml`)
+so Claude can find, edit, and apply the real Deployment when implementing the plan.
+
 ```bash
 kubectl -n monitoring port-forward svc/perf-optimizer 8080:8080 &
-claude mcp add --transport sse perf-optimizer http://localhost:8080/sse
-# then: "use perf-optimizer to optimize unicorn-store-spring-eks"
+claude mcp add -s user --transport sse perf-optimizer http://localhost:8080/sse
+
+cd unicorn-store-spring        # app folder: Dockerfile + k8s/deployment.yaml
+claude
+# then: "use perf-optimizer to optimize unicorn-store-spring-eks, then apply the plan"
 ```
 
 ## Grounding
