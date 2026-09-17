@@ -126,6 +126,43 @@ if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
 fi
 
 # -----------------------------------------------------------------------------
+# 3b. Read-only ClusterRole for the optimizer's K8s fact collection (deployments,
+#     pods, HPAs) + sidecar /dump pod-IP discovery. NO write verbs — the optimizer
+#     never mutates the cluster (acceptance criterion 5). Bound to the reused
+#     perf-analyzer SA.
+# -----------------------------------------------------------------------------
+cat <<EOF | kubectl apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: perf-optimizer
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: perf-optimizer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: perf-optimizer
+subjects:
+  - kind: ServiceAccount
+    name: perf-analyzer
+    namespace: ${NS}
+EOF
+log_success "perf-optimizer read-only ClusterRole applied (get/list/watch only)"
+
+# -----------------------------------------------------------------------------
 # 4. Deploy the MCP server. Wire the KB id when provisioned; otherwise the agent
 #    grounds on the bundled kb/*.md docs.
 # -----------------------------------------------------------------------------

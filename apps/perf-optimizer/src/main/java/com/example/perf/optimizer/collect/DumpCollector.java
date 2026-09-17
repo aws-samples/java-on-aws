@@ -3,6 +3,7 @@ package com.example.perf.optimizer.collect;
 import com.example.perf.optimizer.facts.ThreadFacts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -28,10 +29,9 @@ public class DumpCollector {
     static final int DUMP_PORT = 9100;
 
     private static final Pattern STATE = Pattern.compile("java\\.lang\\.Thread\\.State:\\s*(\\w+)");
-    // Blocking Future.get()/join() on a request-handling thread.
+    // Blocking Future.get()/join() (the planted defect in publishUnicornEvent).
     private static final Pattern BLOCKING_GET = Pattern.compile("CompletableFuture\\.(get|join)|Future\\.get");
-    private static final String[] REQUEST_MARKERS = {"http-nio", "tomcat", "servlet", "unicorn", "DispatcherServlet"};
-    private static final String[] POOL_WAIT_MARKERS = {"HikariPool", "ConcurrentBag", "getConnection"};
+    private static final String[] POOL_WAIT_MARKERS = {"ConcurrentBag", "getConnection", "HikariPool"};
 
     /** Heap/runtime facts scraped from GC.heap_info; fields null when not parseable. */
     public record HeapInfo(Double heapUsedMi, Double heapCommittedMi, String gcName) {
@@ -41,8 +41,14 @@ public class DumpCollector {
     }
 
     private final RestClient http;
+    // A stack is "request path" if it runs the app's request package (works for
+    // virtual threads / ForkJoin carriers too) or is a Tomcat http-nio worker.
+    // Idle infra threads (e.g. the HikariCP keepalive) are NOT request path, so
+    // an idle pool wait does not count as contention.
+    private final String requestPackage;
 
-    public DumpCollector() {
+    public DumpCollector(@Value("${OPTIMIZER_REQUEST_PACKAGE:com.unicorn.store}") String requestPackage) {
+        this.requestPackage = requestPackage;
         var factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(2));
         factory.setReadTimeout(Duration.ofSeconds(10));
@@ -62,9 +68,10 @@ public class DumpCollector {
         boolean blockingOnRequest = false;
         int poolWaiters = 0;
         for (var block : body.split("(?m)^(?=\")")) {
-            var lower = block.toLowerCase();
-            boolean isRequest = containsAny(lower, REQUEST_MARKERS);
-            if (isRequest && BLOCKING_GET.matcher(block).find()) {
+            if (!isRequestPath(block)) {
+                continue;
+            }
+            if (BLOCKING_GET.matcher(block).find()) {
                 blockingOnRequest = true;
             }
             if (containsAny(block, POOL_WAIT_MARKERS)
@@ -73,6 +80,10 @@ public class DumpCollector {
             }
         }
         return new ThreadFacts(byState, poolWaiters, blockingOnRequest);
+    }
+
+    private boolean isRequestPath(String threadBlock) {
+        return threadBlock.contains(requestPackage) || threadBlock.contains("http-nio");
     }
 
     public HeapInfo heap(String podIP) {
