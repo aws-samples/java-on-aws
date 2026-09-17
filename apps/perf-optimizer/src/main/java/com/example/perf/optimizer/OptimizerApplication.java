@@ -30,11 +30,15 @@ public class OptimizerApplication {
         return S3Client.builder().region(Region.of(region)).build();
     }
 
-    /** Register OptimizerTools' @Tool methods as MCP server tools. */
+    /**
+     * Register the MCP server tools: the finding-driven measure/analyze/explain
+     * ({@link OptimizerMcpTools}) plus the legacy single-shot {@code optimizeService}
+     * ({@link OptimizerTools}, kept for backward compatibility — see README).
+     */
     @Bean
-    ToolCallbackProvider optimizerToolCallbacks(OptimizerTools optimizerTools) {
+    ToolCallbackProvider optimizerToolCallbacks(OptimizerMcpTools mcpTools, OptimizerTools legacyTools) {
         return MethodToolCallbackProvider.builder()
-            .toolObjects(optimizerTools)
+            .toolObjects(mcpTools, legacyTools)
             .build();
     }
 }
