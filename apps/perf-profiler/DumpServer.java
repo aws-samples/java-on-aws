@@ -46,7 +46,7 @@ public class DumpServer {
         }
         String body;
         switch (kind) {
-            case "threads" -> body = jcmd(pid, "Thread.print", "-e");
+            case "threads" -> body = threadDumpJson(pid);
             case "heap" -> body = jcmd(pid, "GC.heap_info") + "\n" + jcmd(pid, "VM.flags");
             case "jfr" -> body = jcmd(pid, "JFR.dump", "filename=/tmp/ondemand-" + pid + ".jfr");
             default -> {
@@ -84,6 +84,31 @@ public class DumpServer {
         } catch (IOException e) {
             return false;
         }
+    }
+
+    /**
+     * Full JSON thread dump (jcmd Thread.dump_to_file -format=json) — enumerates
+     * VIRTUAL threads and their stacks, unlike Thread.print. jcmd writes the file in
+     * the TARGET's filesystem; we read it back across the shared mount namespace at
+     * /proc/&lt;pid&gt;/root/&lt;path&gt;. Falls back to Thread.print if anything fails.
+     */
+    private static String threadDumpJson(long pid) {
+        String path = "/tmp/po-threads-" + pid + ".json";
+        String out = jcmd(pid, "Thread.dump_to_file", "-overwrite", "-format=json", path);
+        try {
+            var onSidecar = Path.of("/proc/" + pid + "/root" + path);
+            if (Files.isReadable(onSidecar)) {
+                return Files.readString(onSidecar);
+            }
+        } catch (Exception e) {
+            // fall through
+        }
+        // Fallback: platform-thread text dump (jcmd output + a marker).
+        return "{\"fallback\":\"Thread.print\",\"note\":" + jsonString(out) + "}\n" + jcmd(pid, "Thread.print", "-e");
+    }
+
+    private static String jsonString(String s) {
+        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").trim() + "\"";
     }
 
     /** Run jcmd against the target with JAVA_TOOL_OPTIONS nulled (per the gotcha). */
