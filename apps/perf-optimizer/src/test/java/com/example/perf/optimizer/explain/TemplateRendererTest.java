@@ -40,7 +40,7 @@ class TemplateRendererTest {
         assertThat(artifact)
             .contains("memory: \"512Mi\"")
             .contains("memory: \"768Mi\"")
-            .contains("cpu: \"250m\"")
+            .contains("cpu: \"1\"")   // current CPU preserved (composes with the cpu-boost patch)
             .contains("-XX:+UseSerialGC")
             .contains("-XX:MaxRAMPercentage=75");
         assertThat(artifact).doesNotContain("{{");
@@ -73,6 +73,12 @@ class TemplateRendererTest {
             .doesNotContain("amazoncorretto:25-crac")
             .doesNotContain("jcmd")
             .doesNotContain("JDK.checkpoint");
+        // Includes the CRaC readiness hook for UnicornPublisher (item 8):
+        assertThat(artifact)
+            .contains("org.crac.Resource")
+            .contains("beforeCheckpoint")
+            .contains("afterRestore")
+            .contains("UnicornPublisher");
     }
 
     @Test

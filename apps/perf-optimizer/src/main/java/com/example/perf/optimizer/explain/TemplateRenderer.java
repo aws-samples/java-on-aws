@@ -34,7 +34,11 @@ public class TemplateRenderer {
         }
         String template = load(fix.template());
         if (Fix.DOCKERFILE.equals(fix.kind())) {
-            return template; // verbatim golden Dockerfile
+            // Verbatim golden Dockerfile + the app's CRaC readiness hook when the fix
+            // touches UnicornPublisher (a CRaC image will not restore without it).
+            boolean needsHook = fix.files() != null
+                && fix.files().stream().anyMatch(f -> f.contains("UnicornPublisher"));
+            return needsHook ? template + "\n\n" + optionalLoad("templates/crac-resource-hook.md") : template;
         }
         return substitute(template, substitutions(finding, facts));
     }
@@ -72,6 +76,15 @@ public class TemplateRenderer {
             return new ClassPathResource(resourcePath).getContentAsString(StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw new IllegalStateException("Cannot load template " + resourcePath, e);
+        }
+    }
+
+    /** Load a template if present; empty string if missing (best-effort appendix). */
+    private String optionalLoad(String resourcePath) {
+        try {
+            return new ClassPathResource(resourcePath).getContentAsString(StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return "";
         }
     }
 
