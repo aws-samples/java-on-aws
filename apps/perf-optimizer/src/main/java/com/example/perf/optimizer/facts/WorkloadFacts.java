@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * Desired-state facts read from the Kubernetes API (read-only): the Deployment
- * and its Pods/HPA. Memory is in MiB and CPU in whole cores so the catalog SpEL
+ * and its Pods. Memory is in MiB and CPU in whole cores so the catalog SpEL
  * reads naturally (e.g. {@code limits.memory / rss.peak}). Any field may be null
  * when the source is unavailable — the evaluator gates on {@code requires}.
  *
@@ -20,8 +20,6 @@ import java.util.List;
  * @param cpuResizePolicy true when the container declares a CPU resizePolicy (in-place resize enabled)
  * @param javaToolOptions value of the JAVA_TOOL_OPTIONS env var, or null if unset
  * @param sidecars        names of non-app containers in the pod (e.g. "perf-profiler")
- * @param hpaPresent      whether an HPA targets this Deployment
- * @param hpaMetricType   the HPA metric source type ("Resource" | "ContainerResource" | ...), or null
  */
 public record WorkloadFacts(
     String namespace,
@@ -35,9 +33,7 @@ public record WorkloadFacts(
     Double memLimitMi,
     boolean cpuResizePolicy,
     String javaToolOptions,
-    List<String> sidecars,
-    boolean hpaPresent,
-    String hpaMetricType
+    List<String> sidecars
 ) {
     /** True when at least one non-app (sidecar) container is present in the pod. */
     public boolean sidecarsPresent() {

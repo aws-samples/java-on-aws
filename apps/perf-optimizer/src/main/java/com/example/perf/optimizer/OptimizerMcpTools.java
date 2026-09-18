@@ -27,7 +27,7 @@ public class OptimizerMcpTools {
 
     @Tool(description = """
         Measure a Java service on EKS: its Kubernetes desired-state (image, replicas,
-        requests/limits, resizePolicy, JAVA_TOOL_OPTIONS, sidecars, HPA) and measured
+        requests/limits, resizePolicy, JAVA_TOOL_OPTIONS, sidecars) and measured
         runtime (working-set floor/peak, heap, GC, effective CPUs, startup, restarts)
         plus a CPU/wall profile summary. No LLM — just facts. 'service' is the
         Pyroscope service_name = Kubernetes Deployment name, e.g. 'unicorn-store-spring'.

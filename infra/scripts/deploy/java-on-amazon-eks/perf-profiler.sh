@@ -48,7 +48,7 @@ helm upgrade --install kyverno kyverno/kyverno \
 log_success "Kyverno installed"
 
 # -----------------------------------------------------------------------------
-# 3. Install metrics-server (needed for HPA + eks-node-viewer utilization).
+# 3. Install metrics-server (needed for kubectl top + eks-node-viewer utilization).
 #    Installs cleanly on EKS Auto; no --kubelet-insecure-tls needed.
 # -----------------------------------------------------------------------------
 log_info "Installing metrics-server..."

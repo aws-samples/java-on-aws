@@ -121,24 +121,6 @@
   kb: startup-optimization.md
   learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers/crac
 
-- id: hpa-metric-with-sidecar
-  title: HPA uses a pod-level Resource metric while a sidecar is present
-  severity: MEDIUM
-  effort: LOW
-  detector: "hpa.present && hpa.metricType == 'Resource' && sidecars.present"
-  requires: [hpa.present, sidecars.present]
-  compute:
-    metric.type: "'ContainerResource'"
-    metric.container: "deployment"
-  evidence: [hpa.present, hpa.metricType, sidecars.present]
-  gain: "'HPA scales on the app container CPU, not the app+sidecar sum'"
-  fix:
-    kind: manifest-patch
-    template: templates/hpa-containerresource.yaml.hbs
-    files: [k8s/hpa.yaml]
-  kb: right-sizing-playbook.md
-  learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers
-
 - id: blocking-call-in-request-path
   title: Blocking call stalls request threads (Future.get + single-connection pool)
   severity: CRITICAL

@@ -11,9 +11,7 @@
     "memLimitMi": 256.0,
     "cpuResizePolicy": true,
     "javaToolOptions": null,
-    "sidecars": ["perf-profiler"],
-    "hpaPresent": false,
-    "hpaMetricType": null
+    "sidecars": ["perf-profiler"]
   },
   "runtime": {
     "rssFloorMi": 190.0,

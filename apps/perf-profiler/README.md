@@ -57,8 +57,8 @@ kubectl apply -f unicorn-store-spring/k8s/deployment.yaml   # template change ro
 
 ## Notes
 
-- **HPA:** the injected sidecar carries a CPU request (`100m`) so a pod-level
-  Resource HPA can still compute utilization for the app container.
+- **Resources:** the injected sidecar carries its own CPU/memory requests (`100m`/`128Mi`)
+  so pod scheduling and utilization views account for it.
 - **Arch:** built for linux/amd64 (matches the workshop nodes). Bump
   `ASYNC_PROFILER_VERSION` (Docker build arg) to upgrade async-profiler.
 - Replaces the retired privileged `perf-collector` DaemonSet.

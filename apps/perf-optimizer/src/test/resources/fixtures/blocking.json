@@ -11,9 +11,7 @@
     "memLimitMi": 768.0,
     "cpuResizePolicy": true,
     "javaToolOptions": "-XX:+UseSerialGC -XX:MaxRAMPercentage=75",
-    "sidecars": ["perf-profiler"],
-    "hpaPresent": false,
-    "hpaMetricType": null
+    "sidecars": ["perf-profiler"]
   },
   "runtime": {
     "rssFloorMi": 400.0,

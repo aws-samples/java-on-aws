@@ -3,7 +3,6 @@ package com.example.perf.optimizer.collect;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.Configuration;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
-import io.kubernetes.client.openapi.apis.AutoscalingV2Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.util.ClientBuilder;
 import org.slf4j.Logger;
@@ -13,7 +12,7 @@ import org.springframework.context.annotation.Bean;
 /**
  * Read-only Kubernetes API client wiring. Uses the in-cluster service-account
  * token when running as a pod (the {@code perf-optimizer} ClusterRole grants
- * get/list on deployments, pods, and HPAs — no write verbs). Falls back to a
+ * get/list on deployments and pods — no write verbs). Falls back to a
  * default (unconnected) {@link ApiClient} outside a cluster so the Spring context
  * still starts; collectors degrade to null facts when the API is unreachable.
  */
@@ -44,8 +43,4 @@ public class K8sClientConfig {
         return new AppsV1Api(client);
     }
 
-    @Bean
-    AutoscalingV2Api autoscalingV2Api(ApiClient client) {
-        return new AutoscalingV2Api(client);
-    }
 }

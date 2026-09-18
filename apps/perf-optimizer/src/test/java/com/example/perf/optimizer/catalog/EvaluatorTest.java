@@ -42,7 +42,6 @@ class EvaluatorTest {
         assertThat(f.get("memory-over-provisioned").status()).isEqualTo(FindingStatus.OPEN);
         assertThat(f.get("startup-cpu-bound").status()).isEqualTo(FindingStatus.OPEN);
         assertThat(f.get("startup-checkpointable").status()).isEqualTo(FindingStatus.OPEN);
-        assertThat(f.get("hpa-metric-with-sidecar").status()).isEqualTo(FindingStatus.NOT_APPLICABLE);
         assertThat(f.get("blocking-call-in-request-path").status()).isEqualTo(FindingStatus.NOT_APPLICABLE);
 
         // Computed sizing lands inside the acceptance ranges (384–576Mi / 640–896Mi, SerialGC).
@@ -116,13 +115,6 @@ class EvaluatorTest {
         var f = byId(evaluator.evaluate(fixture("blocking")));
         assertThat(f.get("blocking-call-in-request-path").status()).isEqualTo(FindingStatus.OPEN);
         assertThat(f.get("blocking-call-in-request-path").severity()).isEqualTo(Severity.CRITICAL);
-    }
-
-    @Test
-    void hpaResourceWithSidecar_opens() throws IOException {
-        var f = byId(evaluator.evaluate(fixture("hpa-resource")));
-        assertThat(f.get("hpa-metric-with-sidecar").status()).isEqualTo(FindingStatus.OPEN);
-        assertThat(f.get("hpa-metric-with-sidecar").computed().get("metric.type")).isEqualTo("ContainerResource");
     }
 
     @Test

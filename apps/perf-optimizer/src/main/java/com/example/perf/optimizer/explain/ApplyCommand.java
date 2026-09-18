@@ -50,10 +50,6 @@ final class ApplyCommand {
                 kubectl -n %s set image deploy/%s %s="$IMG"
                 kubectl -n %s rollout restart deploy/%s"""
                 .formatted(ns, dep, cont, ns, dep);
-            case "hpa-metric-with-sidecar" -> """
-                # Edit k8s/hpa.yaml per the artifact, then:
-                kubectl -n %s apply -f k8s/hpa.yaml"""
-                .formatted(ns);
             default -> finding.fix() != null && Fix.ADVICE.equals(finding.fix().kind())
                 ? "# Advice only — no artifact to apply."
                 : "# Apply the artifact to the listed files, then re-run analyze.";

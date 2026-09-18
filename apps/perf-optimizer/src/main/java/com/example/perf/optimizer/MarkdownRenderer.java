@@ -34,7 +34,6 @@ public class MarkdownRenderer {
             sb.append(kv("cpu resizePolicy", w.cpuResizePolicy() ? "present" : "absent"));
             sb.append(kv("JAVA_TOOL_OPTIONS", w.javaToolOptions() == null ? "(unset)" : w.javaToolOptions()));
             sb.append(kv("sidecars", w.sidecars().isEmpty() ? "(none)" : String.join(", ", w.sidecars())));
-            sb.append(kv("HPA", w.hpaPresent() ? "present (%s)".formatted(w.hpaMetricType()) : "absent"));
         }
         sb.append("\n## Runtime (measured)\n");
         if (f.runtime() == null) {

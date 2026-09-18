@@ -3,7 +3,6 @@ package com.example.perf.optimizer.collect;
 import com.example.perf.optimizer.facts.WorkloadFacts;
 import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
-import io.kubernetes.client.openapi.apis.AutoscalingV2Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.models.V1Container;
 import io.kubernetes.client.openapi.models.V1Deployment;
@@ -19,7 +18,7 @@ import java.util.Map;
 /**
  * Reads desired-state {@link WorkloadFacts} from the Kubernetes API (read-only):
  * the Deployment (resources, env, resizePolicy, image, replicas), a running Pod
- * (sidecars, restartCount, pod IP for {@code /dump}), and any HPA targeting the
+ * (sidecars, restartCount, pod IP for {@code /dump}).
  * Deployment. Degrades gracefully — returns a {@link Snapshot} of nulls when the
  * API is unreachable.
  */
@@ -35,12 +34,10 @@ public class K8sCollector {
 
     private final CoreV1Api core;
     private final AppsV1Api apps;
-    private final AutoscalingV2Api autoscaling;
 
-    public K8sCollector(CoreV1Api core, AppsV1Api apps, AutoscalingV2Api autoscaling) {
+    public K8sCollector(CoreV1Api core, AppsV1Api apps) {
         this.core = core;
         this.apps = apps;
-        this.autoscaling = autoscaling;
     }
 
     public Snapshot collect(String namespace, String deployment) {
@@ -109,27 +106,10 @@ public class K8sCollector {
                 }
             }
 
-            // HPA targeting this Deployment.
-            boolean hpaPresent = false;
-            String hpaMetricType = null;
-            var hpas = autoscaling.listNamespacedHorizontalPodAutoscaler(namespace).execute();
-            if (hpas.getItems() != null) {
-                for (var hpa : hpas.getItems()) {
-                    var ref = hpa.getSpec() == null ? null : hpa.getSpec().getScaleTargetRef();
-                    if (ref != null && deployment.equals(ref.getName())) {
-                        hpaPresent = true;
-                        if (hpa.getSpec().getMetrics() != null && !hpa.getSpec().getMetrics().isEmpty()) {
-                            hpaMetricType = hpa.getSpec().getMetrics().getFirst().getType();
-                        }
-                        break;
-                    }
-                }
-            }
-
             var workload = new WorkloadFacts(namespace, deployment,
                 app == null ? deployment : app.getName(), imageTag, replicas,
                 cpuReq, cpuLim, memReq, memLim, cpuResize, javaToolOptions,
-                sidecars, hpaPresent, hpaMetricType);
+                sidecars);
             return new Snapshot(workload, restarts, podIP, workload.container(), uptimeSeconds);
         } catch (Exception e) {
             logger.warn("K8s collect failed ns={} deploy={}: {}", namespace, deployment, e.getMessage());

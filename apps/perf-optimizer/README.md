@@ -25,7 +25,7 @@ K8s API (RO)┘                                                                 
   desired state), `RuntimeFacts` (measured memory/heap/GC/startup/uptime),
   `ProfileFacts` (CPU/wall shares), `ThreadFacts` (request-path blocking). `Facts`
   flattens to a nested map the catalog SpEL reads (memory in MiB, CPU in cores).
-- **Collectors** (`collect/`): `K8sCollector` (deployments/pods/HPA, read-only),
+- **Collectors** (`collect/`): `K8sCollector` (deployments/pods, read-only),
   `PrometheusTool` (working-set floor/peak, startup), `PyroscopeCollector`
   (JIT/GC/futex shares + warm-up), `DumpCollector` (sidecar `/dump`). Each degrades
   to null independently.
@@ -81,7 +81,7 @@ before→after delta (in-process cache; no persistence).
 Fact paths available to SpEL: `limits.memory|cpu`, `requests.memory|cpu`,
 `rss.floor|peak` (working-set MiB), `heap.used|committed`, `cpu.limit|effective`,
 `startup`, `uptime`, `gc`, `image`, `resizePolicy`, `replicas`, `restarts`,
-`hpa.present|metricType`, `sidecars.present`, `profile.warmupWindow|jitShare|gcShare|futexWallShare`,
+`sidecars.present`, `profile.warmupWindow|jitShare|gcShare|futexWallShare`,
 `samples`, `threads.futureGetOnRequestPath|poolWaitCarriers`.
 
 ### Adding a finding
@@ -101,7 +101,7 @@ bash infra/scripts/deploy/java-on-amazon-eks/perf-optimizer.sh
 ```
 
 Builds + pushes the image (jib), applies the read-only `perf-optimizer` ClusterRole
-(get/list/watch on deployments/pods/HPAs — **no write verbs**), optionally
+(get/list/watch on deployments/pods — **no write verbs**), optionally
 provisions a Bedrock KB, and deploys the MCP server into `monitoring`. Grounding
 falls back to the bundled `kb/*.md` when no KB is configured.
 

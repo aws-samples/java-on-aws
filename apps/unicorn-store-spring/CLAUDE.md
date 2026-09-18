@@ -12,7 +12,7 @@ asking the **perf-optimizer** MCP server for findings and applying them here.
 - `src/main/resources/application.yaml` — Spring config (datasource/Hikari, actuator)
 - `Dockerfile` — app image (plain JVM). Golden AOT/CRaC Dockerfiles come from the optimizer.
 - `k8s/deployment.yaml` — the Deployment (resources, env, probes). **This is what most fixes patch.**
-- `k8s/service.yaml`, `k8s/ingress.yaml`, `k8s/hpa.yaml` — networking / autoscaling (hpa if present)
+- `k8s/service.yaml`, `k8s/ingress.yaml` — networking
 
 ## The MCP server
 
@@ -39,7 +39,7 @@ IMG=$(./scripts/build.sh crac)        # or: aot | latest
 kubectl -n unicorn-store-spring set image deploy/unicorn-store-spring unicorn-store-spring="$IMG"
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring
 
-# Manifest changes (resources, resizePolicy, HPA):
+# Manifest changes (resources, resizePolicy):
 kubectl -n unicorn-store-spring apply -f k8s/deployment.yaml
 kubectl -n unicorn-store-spring rollout restart deploy/unicorn-store-spring   # apply of unchanged :latest is a no-op
 kubectl -n unicorn-store-spring rollout status  deploy/unicorn-store-spring

@@ -31,7 +31,6 @@ public record Facts(
             ctx.put("image", workload.imageTag());
             ctx.put("resizePolicy", workload.cpuResizePolicy());
             ctx.put("replicas", workload.replicas());
-            ctx.put("hpa", map("present", workload.hpaPresent(), "metricType", workload.hpaMetricType()));
             ctx.put("sidecars", map("present", workload.sidecarsPresent()));
             ctx.put("namespace", workload.namespace());
             ctx.put("deployment", workload.deployment());

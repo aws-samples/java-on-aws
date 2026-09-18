@@ -127,7 +127,7 @@ fi
 
 # -----------------------------------------------------------------------------
 # 3b. Read-only ClusterRole for the optimizer's K8s fact collection (deployments,
-#     pods, HPAs) + sidecar /dump pod-IP discovery. NO write verbs — the optimizer
+#     pods) + sidecar /dump pod-IP discovery. NO write verbs — the optimizer
 #     never mutates the cluster (acceptance criterion 5). Bound to the reused
 #     perf-analyzer SA.
 # -----------------------------------------------------------------------------
@@ -142,9 +142,6 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments", "replicasets"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["autoscaling"]
-    resources: ["horizontalpodautoscalers"]
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
