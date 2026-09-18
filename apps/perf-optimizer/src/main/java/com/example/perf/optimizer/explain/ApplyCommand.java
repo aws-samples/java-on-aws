@@ -35,19 +35,21 @@ final class ApplyCommand {
                 # ...then the in-place `kubectl patch --subresource resize` from the artifact"""
                 .formatted(ns);
             case "startup-checkpointable" -> """
-                # Build & deploy the CRaC image (the artifact IS the Dockerfile), or deploy a prebuilt :crac tag:
-                docker build -f Dockerfile -t <ECR_REPO>:crac .
-                docker push <ECR_REPO>:crac
-                kubectl -n %s set image deploy/%s %s=<ECR_REPO>:crac
+                # 1) Save the CRaC Dockerfile artifact above as Dockerfile.crac (next to pom.xml)
+                #    and apply the UnicornPublisher CRaC Resource hook from the artifact.
+                # 2) Build + push the CRaC image (scripts/build.sh resolves ECR + DB args from SSM/Secrets):
+                IMG=$(./scripts/build.sh crac)
+                # 3) Deploy and watch for a sub-second restore:
+                kubectl -n %s set image deploy/%s %s="$IMG"
                 kubectl -n %s rollout status deploy/%s
                 # expect 'Restored ... in <1 s' in the pod logs; re-run analyze to confirm RESOLVED"""
                 .formatted(ns, dep, cont, ns, dep);
             case "blocking-call-in-request-path" -> """
                 # Apply the source diff, then rebuild + redeploy the app image:
-                docker build -f Dockerfile -t <ECR_REPO>:latest .
-                docker push <ECR_REPO>:latest
+                IMG=$(./scripts/build.sh latest)
+                kubectl -n %s set image deploy/%s %s="$IMG"
                 kubectl -n %s rollout restart deploy/%s"""
-                .formatted(ns, dep);
+                .formatted(ns, dep, cont, ns, dep);
             case "hpa-metric-with-sidecar" -> """
                 # Edit k8s/hpa.yaml per the artifact, then:
                 kubectl -n %s apply -f k8s/hpa.yaml"""
