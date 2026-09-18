@@ -9,9 +9,10 @@ import java.util.List;
 
 /**
  * PerfPlatform construct for the agentic performance platform (perf-analyzer module).
- * Creates four IAM roles used by the platform components on Amazon EKS:
+ * Creates the IAM roles used by the platform components on Amazon EKS:
  *  - perf-analyzer-eks-pod-role     (perf-analyzer Spring Boot service)
  *  - perf-collector-eks-pod-role    (perf-collector DaemonSet)
+ *  - perf-optimizer-eks-pod-role    (perf-optimizer MCP server, CON405)
  *  - pyroscope-eks-pod-role         (Pyroscope server, for S3-backed storage)
  *  - grafana-eks-pod-role           (Grafana, to read ALB metrics from CloudWatch)
  *
@@ -29,6 +30,7 @@ public class PerfPlatform extends Construct {
 
     private final Role perfAnalyzerEksPodRole;
     private final Role perfCollectorEksPodRole;
+    private final Role perfOptimizerEksPodRole;
     private final Role pyroscopeEksPodRole;
     private final Role grafanaEksPodRole;
     private final Role perfOptimizerKbRole;
@@ -60,6 +62,7 @@ public class PerfPlatform extends Construct {
 
         this.perfAnalyzerEksPodRole = createAnalyzerEksPodRole(props);
         this.perfCollectorEksPodRole = createCollectorEksPodRole(props);
+        this.perfOptimizerEksPodRole = createOptimizerEksPodRole();
         this.pyroscopeEksPodRole = createPyroscopeEksPodRole(props);
         this.grafanaEksPodRole = createGrafanaEksPodRole();
         this.perfOptimizerKbRole = createKbExecRole(props);
@@ -88,15 +91,6 @@ public class PerfPlatform extends Construct {
         addWorkshopBucketReadWrite(role, props, "perf-platform/*");
         addEcsDescribeTasks(role);
 
-        // KB grounding: perf-optimizer reuses this role and queries the Bedrock
-        // Knowledge Base (S3 Vectors) via the Spring AI QuestionAnswerAdvisor.
-        role.addToPolicy(PolicyStatement.Builder.create()
-            .effect(Effect.ALLOW)
-            .actions(List.of("bedrock:Retrieve", "bedrock:RetrieveAndGenerate"))
-            .resources(List.of("arn:aws:bedrock:" + Stack.of(this).getRegion()
-                + ":" + Stack.of(this).getAccount() + ":knowledge-base/*"))
-            .build());
-
         return role;
     }
 
@@ -116,6 +110,39 @@ public class PerfPlatform extends Construct {
 
         addTagSession(role);
         addWorkshopBucketWrite(role, props, "perf-platform/profiling/*");
+
+        return role;
+    }
+
+    /**
+     * perf-optimizer EKS pod role (CON405 / java-on-amazon-eks).
+     * Trusts pods.eks.amazonaws.com (Pod Identity).
+     * Grants Bedrock model invocation (Converse) via AmazonBedrockLimitedAccess and
+     * Knowledge Base retrieval (bedrock:Retrieve / bedrock:RetrieveAndGenerate) so the
+     * perf-optimizer MCP server can explain findings and ground on the S3 Vectors KB.
+     * No S3 and no ECS: the optimizer stages nothing to S3 and never calls ECS.
+     * Read-only against the cluster is enforced by the Kubernetes ClusterRole
+     * (get/list/watch only, no write verbs), not by this IAM role.
+     */
+    private Role createOptimizerEksPodRole() {
+        ServicePrincipal podsPrincipal = ServicePrincipal.Builder.create("pods.eks.amazonaws.com").build();
+
+        Role role = Role.Builder.create(this, "OptimizerEksPodRole")
+            .roleName("perf-optimizer-eks-pod-role")
+            .assumedBy(podsPrincipal)
+            .description("Role for the perf-optimizer EKS pod to invoke Bedrock and retrieve from the Knowledge Base")
+            .managedPolicies(List.of(
+                ManagedPolicy.fromAwsManagedPolicyName("AmazonBedrockLimitedAccess")
+            ))
+            .build();
+
+        addTagSession(role);
+        role.addToPolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("bedrock:Retrieve", "bedrock:RetrieveAndGenerate"))
+            .resources(List.of("arn:aws:bedrock:" + Stack.of(this).getRegion()
+                + ":" + Stack.of(this).getAccount() + ":knowledge-base/*"))
+            .build());
 
         return role;
     }
@@ -384,6 +411,10 @@ public class PerfPlatform extends Construct {
 
     public Role getPerfCollectorEksPodRole() {
         return perfCollectorEksPodRole;
+    }
+
+    public Role getPerfOptimizerEksPodRole() {
+        return perfOptimizerEksPodRole;
     }
 
     public Role getPyroscopeEksPodRole() {
