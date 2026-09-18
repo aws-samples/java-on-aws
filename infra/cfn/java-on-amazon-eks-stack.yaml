@@ -532,7 +532,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1789623762541"
+      ContentHash: "1789743614523"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -695,12 +695,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: java-on-amazon-eks
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: riv26-cns405
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-on-amazon-eks
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -3239,18 +3239,6 @@ Resources:
               - ecs:ListTasks
             Effect: Allow
             Resource: "*"
-          - Action:
-              - bedrock:Retrieve
-              - bedrock:RetrieveAndGenerate
-            Effect: Allow
-            Resource:
-              Fn::Join:
-                - ""
-                - - "arn:aws:bedrock:"
-                  - Ref: AWS::Region
-                  - ":"
-                  - Ref: AWS::AccountId
-                  - :knowledge-base/*
         Version: "2012-10-17"
       PolicyName: PerfPlatformAnalyzerEksPodRoleDefaultPolicy4542BF86
       Roles:
@@ -3341,6 +3329,55 @@ Resources:
       PolicyName: PerfPlatformGrafanaEksPodRoleDefaultPolicyBFFD5487
       Roles:
         - Ref: PerfPlatformGrafanaEksPodRole8BAC861C
+    Type: AWS::IAM::Policy
+  PerfPlatformOptimizerEksPodRoleD978E93E:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+              - sts:TagSession
+            Effect: Allow
+            Principal:
+              Service: pods.eks.amazonaws.com
+        Version: "2012-10-17"
+      Description: Role for the perf-optimizer EKS pod to invoke Bedrock and retrieve from the Knowledge Base
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonBedrockLimitedAccess
+      RoleName: perf-optimizer-eks-pod-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-amazon-eks
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::IAM::Role
+  PerfPlatformOptimizerEksPodRoleDefaultPolicyFEFBD51F:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - bedrock:Retrieve
+              - bedrock:RetrieveAndGenerate
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:bedrock:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :knowledge-base/*
+        Version: "2012-10-17"
+      PolicyName: PerfPlatformOptimizerEksPodRoleDefaultPolicyFEFBD51F
+      Roles:
+        - Ref: PerfPlatformOptimizerEksPodRoleD978E93E
     Type: AWS::IAM::Policy
   PerfPlatformPerfOptimizerKbRole9BD45508:
     Properties:
@@ -4883,7 +4920,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260917074242"
+            - "-20260918170014"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -4967,7 +5004,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260917074242"
+            - "-20260918170014"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
