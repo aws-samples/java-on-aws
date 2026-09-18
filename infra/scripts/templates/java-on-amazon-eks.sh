@@ -99,6 +99,16 @@ else
     exit 1
 fi
 
+# Phase 8b: Prebuild the optimized app images (:crac, :aot) so the session deploys
+# them without waiting on a multi-minute CRaC/AOT build.
+log_info "Phase 8b: Prebuilding unicorn-store-spring:{crac,aot}..."
+if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/prebuild-images.sh"; then
+    log_success "Optimized images prebuilt"
+else
+    log_error "Prebuild of optimized images failed"
+    exit 1
+fi
+
 # Phase 9: Simplify p10k prompt (remove vcs, kubecontext, aws)
 log_info "Phase 9: Simplifying p10k prompt..."
 P10K_FILE="$HOME/.p10k.zsh"
