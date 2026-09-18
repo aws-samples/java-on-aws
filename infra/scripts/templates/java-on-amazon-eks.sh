@@ -69,19 +69,11 @@ log_info "Phase 5: Committing workshop starting point..."
     && log_success "Starting point committed" \
     || log_warning "Nothing to commit (starting point already committed)"
 
-# Phase 6: Agentic performance platform (Pyroscope S3-backed + Grafana wiring).
-# The profiler sidecar pushes JFR here; the optimizer reads it.
-log_info "Phase 6: Setting up agentic performance platform..."
-if bash "$SCRIPT_DIR/../setup/perf-platform.sh"; then
-    log_success "Agentic performance platform setup completed"
-else
-    log_error "Agentic performance platform setup failed"
-    exit 1
-fi
-
-# Phase 7: Privilege-free profiler (build/push image, install Kyverno + metrics-server,
-# apply the sidecar-injection MutatingPolicy).
-log_info "Phase 7: Deploying perf-profiler..."
+# Phase 6: Privilege-free profiler (build/push image, install Kyverno + metrics-server,
+# apply the sidecar-injection MutatingPolicy). Pyroscope + Grafana wiring already
+# came up in Phase 2 (monitoring.sh); CON405 does NOT run perf-platform.sh — it
+# has no ECS NLB / perf-collector, and the optimizer brings its own SA + dashboard.
+log_info "Phase 6: Deploying perf-profiler..."
 if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/perf-profiler.sh"; then
     log_success "perf-profiler deployed"
 else
@@ -89,9 +81,10 @@ else
     exit 1
 fi
 
-# Phase 8: Optimization agent (build/push image, create Bedrock KB via the IDE role
-# using the CDK-provisioned exec role, deploy the perf-optimizer MCP server).
-log_info "Phase 8: Deploying perf-optimizer..."
+# Phase 7: Optimization agent (build/push image, create Bedrock KB via the IDE role
+# using the CDK-provisioned exec role, deploy the perf-optimizer MCP server + its
+# own SA/Pod Identity, read-only ClusterRole, and the Optimization dashboard).
+log_info "Phase 7: Deploying perf-optimizer..."
 if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/perf-optimizer.sh"; then
     log_success "perf-optimizer deployed"
 else
@@ -99,9 +92,9 @@ else
     exit 1
 fi
 
-# Phase 8b: Prebuild the optimized app images (:crac, :aot) so the session deploys
+# Phase 7b: Prebuild the optimized app images (:crac, :aot) so the session deploys
 # them without waiting on a multi-minute CRaC/AOT build.
-log_info "Phase 8b: Prebuilding unicorn-store-spring:{crac,aot}..."
+log_info "Phase 7b: Prebuilding unicorn-store-spring:{crac,aot}..."
 if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/prebuild-images.sh"; then
     log_success "Optimized images prebuilt"
 else
@@ -109,8 +102,8 @@ else
     exit 1
 fi
 
-# Phase 9: Simplify p10k prompt (remove vcs, kubecontext, aws)
-log_info "Phase 9: Simplifying p10k prompt..."
+# Phase 8: Simplify p10k prompt (remove vcs, kubecontext, aws)
+log_info "Phase 8: Simplifying p10k prompt..."
 P10K_FILE="$HOME/.p10k.zsh"
 if [[ -f "$P10K_FILE" ]]; then
     # Remove vcs from left prompt
