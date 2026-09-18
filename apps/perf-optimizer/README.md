@@ -110,7 +110,7 @@ server into `monitoring`; and ships the **Optimization** dashboard as a ConfigMa
 folder. Grounding falls back to the bundled `kb/*.md` when no KB is configured.
 
 The optimizer has its own SA/role and does **not** depend on `perf-platform.sh`.
-Pyroscope, the Prometheus/Pyroscope/CloudWatch Grafana datasources, and the
+Pyroscope, the Prometheus/Pyroscope Grafana datasources, and the
 Profiles Drilldown plugin come up earlier in `setup/monitoring.sh` (shared by
 both workshops); the CON405 template (`java-on-amazon-eks.sh`) does not run
 `perf-platform.sh` at all.

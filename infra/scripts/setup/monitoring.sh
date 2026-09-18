@@ -255,7 +255,7 @@ fi
 log_success "Workshop Dashboards folder ready: $FOLDER_UID"
 
 # =============================================================================
-# Pyroscope (S3-backed) + Grafana profiling/CloudWatch wiring
+# Pyroscope (S3-backed) + Grafana profiling wiring
 # Shared by both workshops (java-on-aws and java-on-amazon-eks). Runs here, in
 # monitoring.sh, so the profiling backend and Grafana datasources come up with
 # the monitoring stack. Grafana is already up (checked above) before we install
@@ -406,108 +406,6 @@ kubectl label configmap monitoring-pyroscope-datasource \
     -n "${NAMESPACE}" grafana_datasource=1 --overwrite
 log_success "Grafana Pyroscope datasource provisioned"
 
-# -----------------------------------------------------------------------------
-# Grafana CloudWatch — Pod Identity for read-only metrics access + datasource.
-# Used by the perf-platform Latency Metrics dashboard and ServiceLatency alert
-# (immersion day); harmless for CON405 (its dashboards use Prometheus).
-# -----------------------------------------------------------------------------
-log_info "Binding Grafana ServiceAccount to grafana-eks-pod-role..."
-if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
-        --query "associations[?serviceAccount=='grafana' && namespace=='${NAMESPACE}']" \
-        --output text --no-cli-pager | grep -q .; then
-    aws eks create-pod-identity-association \
-        --cluster-name "${CLUSTER_NAME}" \
-        --namespace "${NAMESPACE}" \
-        --service-account grafana \
-        --role-arn "$(aws iam get-role --role-name grafana-eks-pod-role \
-            --query 'Role.Arn' --output text --no-cli-pager)" \
-        --no-cli-pager
-    log_success "Grafana CloudWatch pod identity association created"
-else
-    log_info "Grafana CloudWatch pod identity association already exists"
-fi
-
-# EKS Pod Identity associations are eventually consistent. Recreate Grafana until
-# the current Running/Ready pod has the injected credential endpoint. This also
-# repairs an existing pod that predates its association.
-GRAFANA_POD=""
-for i in {1..6}; do
-    if (( i > 1 )); then
-        log_info "Pod Identity credentials not injected yet; waiting before retry ${i}/6..."
-        sleep 10
-    fi
-    log_info "Restarting Grafana to pick up Pod Identity credentials (${i}/6)..."
-    kubectl rollout restart deployment/grafana -n "${NAMESPACE}"
-    kubectl rollout status deployment/grafana -n "${NAMESPACE}" --timeout=180s
-    GRAFANA_POD=$(kubectl get pods -n "${NAMESPACE}" \
-        -l app.kubernetes.io/name=grafana -o json \
-        | jq -r '[.items[]
-            | select(.metadata.deletionTimestamp == null and .status.phase == "Running")
-            | select([.status.containerStatuses[]?.ready] | all)
-            | select([.spec.containers[].env[]?.name]
-                | index("AWS_CONTAINER_CREDENTIALS_FULL_URI"))
-            | .metadata.name] | first // empty')
-    [[ -n "${GRAFANA_POD}" ]] && break
-done
-if [[ -z "${GRAFANA_POD}" ]]; then
-    log_error "Grafana did not receive EKS Pod Identity credentials after 6 restarts"
-    exit 1
-fi
-log_success "Grafana pod ${GRAFANA_POD} received EKS Pod Identity credentials"
-
-log_info "Waiting for Grafana API after pod restart..."
-for i in {1..40}; do
-    STATUS=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/health" \
-        | jq -r .database 2>/dev/null || true)
-    [[ "${STATUS}" == "ok" ]] && break
-    [[ $i -eq 40 ]] && { log_error "Grafana API not ready after 200s"; exit 1; }
-    sleep 5
-done
-
-log_info "Provisioning Grafana CloudWatch datasource..."
-cat > "${WORK}/cloudwatch-datasource.yaml" <<EOF
-apiVersion: 1
-datasources:
-  - uid: cloudwatch
-    name: CloudWatch
-    type: cloudwatch
-    access: proxy
-    isDefault: false
-    editable: true
-    jsonData:
-      authType: default
-      defaultRegion: ${AWS_REGION}
-EOF
-kubectl create configmap monitoring-cloudwatch-datasource \
-    --from-file="${WORK}/cloudwatch-datasource.yaml" -n "${NAMESPACE}" \
-    --dry-run=client -o yaml | kubectl apply -f -
-kubectl label configmap monitoring-cloudwatch-datasource \
-    -n "${NAMESPACE}" grafana_datasource=1 --overwrite
-
-log_info "Verifying Grafana CloudWatch datasource credentials..."
-for i in {1..12}; do
-    CLOUDWATCH_RESPONSE=$(curl -sS -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
-        -w $'\n%{http_code}' \
-        "${GRAFANA_URL}/api/datasources/uid/cloudwatch/health" 2>&1 || true)
-    CLOUDWATCH_HTTP_STATUS="${CLOUDWATCH_RESPONSE##*$'\n'}"
-    CLOUDWATCH_HEALTH="${CLOUDWATCH_RESPONSE%$'\n'*}"
-    if [[ "${CLOUDWATCH_HTTP_STATUS}" == "200" ]] \
-            && jq -e '
-                .status == "OK"
-                or ((.message // "")
-                    | contains("Successfully queried the CloudWatch metrics API."))
-            ' <<<"${CLOUDWATCH_HEALTH}" >/dev/null 2>&1; then
-        break
-    fi
-    [[ $i -eq 12 ]] && {
-        CLOUDWATCH_MESSAGE=$(jq -r '.message // empty' <<<"${CLOUDWATCH_HEALTH}" 2>/dev/null || true)
-        [[ -z "${CLOUDWATCH_MESSAGE}" ]] && CLOUDWATCH_MESSAGE="${CLOUDWATCH_HEALTH:-empty response}"
-        log_error "Grafana CloudWatch datasource is unhealthy (HTTP ${CLOUDWATCH_HTTP_STATUS}): ${CLOUDWATCH_MESSAGE}"
-        exit 1
-    }
-    sleep 5
-done
-log_success "Grafana CloudWatch metrics access verified"
 
 log_success "Monitoring stack deployed"
 log_info "Grafana: http://$GRAFANA_LB"
@@ -515,7 +413,7 @@ log_info "Username: $GRAFANA_USER"
 log_info "Password: $GRAFANA_PASSWORD"
 log_info "Prometheus: http://prometheus-server.monitoring.svc.cluster.local (internal)"
 log_info "Pyroscope: http://pyroscope.monitoring.svc.cluster.local:4040 (S3-backed, prefix s3://${WORKSHOP_BUCKET}/pyroscope/)"
-log_info "Grafana datasources: Prometheus (promds), Pyroscope, CloudWatch (via grafana-eks-pod-role)"
+log_info "Grafana datasources: Prometheus (promds), Pyroscope"
 
 # Emit for bootstrap summary
 echo "✅ Success: Monitoring (Prometheus + Grafana + Pyroscope)"

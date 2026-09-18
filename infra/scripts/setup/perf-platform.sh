@@ -200,13 +200,118 @@ for i in {1..40}; do
     sleep 5
 done
 
+CLUSTER_NAME="${PREFIX}-eks"
+
+# -----------------------------------------------------------------------------
+# Grafana CloudWatch — Pod Identity for read-only metrics access + datasource.
+# Module-specific (Latency Metrics dashboard + ServiceLatency alert read ALB
+# metrics from CloudWatch). Not part of the shared monitoring stack.
+# -----------------------------------------------------------------------------
+log_info "Binding Grafana ServiceAccount to grafana-eks-pod-role..."
+if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
+        --query "associations[?serviceAccount=='grafana' && namespace=='${NAMESPACE}']" \
+        --output text --no-cli-pager | grep -q .; then
+    aws eks create-pod-identity-association \
+        --cluster-name "${CLUSTER_NAME}" \
+        --namespace "${NAMESPACE}" \
+        --service-account grafana \
+        --role-arn "$(aws iam get-role --role-name grafana-eks-pod-role \
+            --query 'Role.Arn' --output text --no-cli-pager)" \
+        --no-cli-pager
+    log_success "Grafana CloudWatch pod identity association created"
+else
+    log_info "Grafana CloudWatch pod identity association already exists"
+fi
+
+# EKS Pod Identity associations are eventually consistent. Recreate Grafana until
+# the current Running/Ready pod has the injected credential endpoint. This also
+# repairs an existing pod that predates its association.
+GRAFANA_POD=""
+for i in {1..6}; do
+    if (( i > 1 )); then
+        log_info "Pod Identity credentials not injected yet; waiting before retry ${i}/6..."
+        sleep 10
+    fi
+    log_info "Restarting Grafana to pick up Pod Identity credentials (${i}/6)..."
+    kubectl rollout restart deployment/grafana -n "${NAMESPACE}"
+    kubectl rollout status deployment/grafana -n "${NAMESPACE}" --timeout=180s
+    GRAFANA_POD=$(kubectl get pods -n "${NAMESPACE}" \
+        -l app.kubernetes.io/name=grafana -o json \
+        | jq -r '[.items[]
+            | select(.metadata.deletionTimestamp == null and .status.phase == "Running")
+            | select([.status.containerStatuses[]?.ready] | all)
+            | select([.spec.containers[].env[]?.name]
+                | index("AWS_CONTAINER_CREDENTIALS_FULL_URI"))
+            | .metadata.name] | first // empty')
+    [[ -n "${GRAFANA_POD}" ]] && break
+done
+if [[ -z "${GRAFANA_POD}" ]]; then
+    log_error "Grafana did not receive EKS Pod Identity credentials after 6 restarts"
+    exit 1
+fi
+log_success "Grafana pod ${GRAFANA_POD} received EKS Pod Identity credentials"
+
+log_info "Waiting for Grafana API after pod restart..."
+for i in {1..40}; do
+    STATUS=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/health" \
+        | jq -r .database 2>/dev/null || true)
+    [[ "${STATUS}" == "ok" ]] && break
+    [[ $i -eq 40 ]] && { log_error "Grafana API not ready after 200s"; exit 1; }
+    sleep 5
+done
+
+log_info "Provisioning Grafana CloudWatch datasource..."
+cat > "${WORK}/cloudwatch-datasource.yaml" <<EOF
+apiVersion: 1
+datasources:
+  - uid: cloudwatch
+    name: CloudWatch
+    type: cloudwatch
+    access: proxy
+    isDefault: false
+    editable: true
+    jsonData:
+      authType: default
+      defaultRegion: ${AWS_REGION}
+EOF
+kubectl create configmap perf-platform-cloudwatch-datasource \
+    --from-file="${WORK}/cloudwatch-datasource.yaml" -n "${NAMESPACE}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+kubectl label configmap perf-platform-cloudwatch-datasource \
+    -n "${NAMESPACE}" grafana_datasource=1 --overwrite
+
+log_info "Verifying Grafana CloudWatch datasource credentials..."
+for i in {1..12}; do
+    CLOUDWATCH_RESPONSE=$(curl -sS -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
+        -w $'\n%{http_code}' \
+        "${GRAFANA_URL}/api/datasources/uid/cloudwatch/health" 2>&1 || true)
+    CLOUDWATCH_HTTP_STATUS="${CLOUDWATCH_RESPONSE##*$'\n'}"
+    CLOUDWATCH_HEALTH="${CLOUDWATCH_RESPONSE%$'\n'*}"
+    if [[ "${CLOUDWATCH_HTTP_STATUS}" == "200" ]] \
+            && jq -e '
+                .status == "OK"
+                or ((.message // "")
+                    | contains("Successfully queried the CloudWatch metrics API."))
+            ' <<<"${CLOUDWATCH_HEALTH}" >/dev/null 2>&1; then
+        break
+    fi
+    [[ $i -eq 12 ]] && {
+        CLOUDWATCH_MESSAGE=$(jq -r '.message // empty' <<<"${CLOUDWATCH_HEALTH}" 2>/dev/null || true)
+        [[ -z "${CLOUDWATCH_MESSAGE}" ]] && CLOUDWATCH_MESSAGE="${CLOUDWATCH_HEALTH:-empty response}"
+        log_error "Grafana CloudWatch datasource is unhealthy (HTTP ${CLOUDWATCH_HTTP_STATUS}): ${CLOUDWATCH_MESSAGE}"
+        exit 1
+    }
+    sleep 5
+done
+log_success "Grafana CloudWatch metrics access verified"
+
 # =============================================================================
 # Latency Metrics dashboard — two rows, five panels:
 #   Row 1 — Latency: ALB p99 TargetResponseTime time series + p99 stat
 #   Row 2 — Throughput and errors: RequestCount + 5xx counts (target + ELB)
 # Lives in the "Workshop Dashboards" folder alongside other workshop dashboards.
 # Picks up any ALB(s) the participant deploys later — no pre-baked LB names.
-# Reads via the CloudWatch datasource provisioned by monitoring.sh.
+# Reads via the CloudWatch datasource provisioned above.
 # =============================================================================
 
 log_info "Provisioning Latency Metrics dashboard..."
@@ -502,6 +607,7 @@ log_info ""
 log_info "Agentic performance platform ready."
 log_info "  Internal NLB DNS:   ${NLB_DNS}  (kubectl get svc pyroscope-nlb -n monitoring)"
 log_info "  Analyzer webhook:   ${ANALYZER_WEBHOOK_URL}"
+log_info "  Grafana datasource: CloudWatch (read-only via grafana-eks-pod-role)"
 log_info "  Grafana dashboard:  Workshop Dashboards / Latency Metrics"
 log_info "  Grafana contact pt: ${CONTACT_POINT_NAME}"
 log_info ""
