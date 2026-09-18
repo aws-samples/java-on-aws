@@ -24,7 +24,8 @@
     "effectiveCpuCount": 1,
     "startupSeconds": 0.194,
     "restarts": 0,
-    "uptimeSeconds": 3600.0
+    "uptimeSeconds": 3600.0,
+    "requestRatePerSec": 5
   },
   "profile": {
     "topCpu": [{"name": "com/unicorn/store/service/UnicornService.createUnicorn", "selfPct": 7.0}],

@@ -17,6 +17,7 @@ import java.util.Map;
  * @param evidence  rendered measured-evidence lines
  * @param computed  computed values (name → value) used as evidence and by templates
  * @param fix       how/where to fix
+ * @param kb        KB doc the explainer grounds this finding on
  * @param reason    explanation for BLOCKED / NOT_EVALUABLE / guard advice, else null
  * @param delta     realized before→after lines for RESOLVED findings, else null
  */
@@ -31,6 +32,7 @@ public record Finding(
     List<String> evidence,
     Map<String, Object> computed,
     Fix fix,
+    String kb,
     String reason,
     List<String> delta
 ) {

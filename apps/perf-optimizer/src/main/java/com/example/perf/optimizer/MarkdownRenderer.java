@@ -48,9 +48,25 @@ public class MarkdownRenderer {
             sb.append(kv("startup", rt.startupSeconds() == null ? "n/a" : "%.2f s".formatted(rt.startupSeconds())));
             sb.append(kv("restarts", rt.restarts()));
             sb.append(kv("uptime", rt.uptimeSeconds() == null ? "n/a" : "%.0f s".formatted(rt.uptimeSeconds())));
+            sb.append(kv("request rate", rt.requestRatePerSec() == null ? "n/a" : "%.1f req/s".formatted(rt.requestRatePerSec())));
         }
+        appendBaseline(sb, r);
         appendProfile(sb, f);
         return sb.toString();
+    }
+
+    /** baseline→now working-set (item 7: baseline is the first facts seen for the service). */
+    private void appendBaseline(StringBuilder sb, MeasureResult r) {
+        var b = r.baseline();
+        if (b == null || b.runtime() == null || r.facts().runtime() == null || b == r.facts()) {
+            return;
+        }
+        sb.append("\n## Baseline → now (working-set)\n");
+        sb.append(kv("floor", "%s → %s".formatted(mi(b.runtime().rssFloorMi()), mi(r.facts().runtime().rssFloorMi()))));
+        sb.append(kv("peak", "%s → %s".formatted(mi(b.runtime().rssPeakMi()), mi(r.facts().runtime().rssPeakMi()))));
+        if (b.workload() != null && r.facts().workload() != null) {
+            sb.append(kv("limits.memory", "%s → %s".formatted(mi(b.workload().memLimitMi()), mi(r.facts().workload().memLimitMi()))));
+        }
     }
 
     public String analyze(AnalyzeResult r) {

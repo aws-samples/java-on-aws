@@ -60,6 +60,15 @@ public class PrometheusTool {
         return ready != null ? ready : scalar("application_started_time_seconds{application=\"" + app + "\"}");
     }
 
+    /**
+     * HTTP request rate (req/s) over the window from Micrometer
+     * {@code http_server_requests_seconds_count}. Signals whether the window saw
+     * real traffic (so a memory peak reflects load). null if the metric is absent.
+     */
+    public Double requestRatePerSec(String app, int mins) {
+        return scalar("sum(rate(http_server_requests_seconds_count{application=\"" + app + "\"}[" + mins + "m]))");
+    }
+
     // --- markdown summaries (legacy optimizeService) ----------------------------
 
     /** Working-set floor + peak (and RSS peak) as a markdown block; null if no data. */

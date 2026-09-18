@@ -45,6 +45,7 @@ public record Facts(
             ctx.put("startup", runtime.startupSeconds());
             ctx.put("restarts", runtime.restarts());
             ctx.put("uptime", runtime.uptimeSeconds());
+            ctx.put("requestRate", runtime.requestRatePerSec());
             cpu.put("effective", runtime.effectiveCpuCount());
         }
         ctx.put("cpu", cpu);

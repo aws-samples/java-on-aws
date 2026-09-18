@@ -131,7 +131,7 @@ public class Evaluator {
                                    List<String> evidence, Map<String, Object> computed,
                                    String gain, List<String> delta) {
         return new Finding(e.id(), e.title(), e.severity(), status, e.effort(),
-            gain, e.learnMore(), evidence, computed, e.fix(), reason, delta);
+            gain, e.learnMore(), evidence, computed, e.fix(), e.kb(), reason, delta);
     }
 
     private static List<String> missing(Facts facts, CatalogEntry e) {
@@ -179,8 +179,10 @@ public class Evaluator {
         try {
             Method roundUp = SpelHelpers.class.getMethod("roundUpMi", Object.class, int.class);
             Method pct = SpelHelpers.class.getMethod("pct", Object.class, Object.class);
+            Method maxD = SpelHelpers.class.getMethod("maxD", Object.class, Object.class);
             ec.registerFunction("roundUpMi", roundUp);
             ec.registerFunction("pct", pct);
+            ec.registerFunction("maxD", maxD);
         } catch (NoSuchMethodException ex) {
             throw new IllegalStateException("SpEL helpers missing", ex);
         }

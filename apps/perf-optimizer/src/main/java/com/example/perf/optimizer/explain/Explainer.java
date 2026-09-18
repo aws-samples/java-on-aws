@@ -117,14 +117,16 @@ public class Explainer {
 
             ## Reference (use verbatim; do not invent tags/flags)
             %s
-            """.formatted(service, findingJson, String.join("\n", evidenceLines), artifact, kbSlice(finding.id()));
+            """.formatted(service, findingJson, String.join("\n", evidenceLines), artifact, kbSlice(finding.kb()));
     }
 
-    /** The KB doc most relevant to this finding, injected as grounding. */
-    private static String kbSlice(String findingId) {
-        var doc = findingId.startsWith("startup") ? "kb/startup-optimization.md" : "kb/right-sizing-playbook.md";
+    /** The KB doc this finding declares (catalog {@code kb:}), injected as grounding. */
+    private static String kbSlice(String kbDoc) {
+        if (kbDoc == null || kbDoc.isBlank()) {
+            return "";
+        }
         try {
-            return new ClassPathResource(doc).getContentAsString(StandardCharsets.UTF_8);
+            return new ClassPathResource("kb/" + kbDoc).getContentAsString(StandardCharsets.UTF_8);
         } catch (Exception e) {
             return "";
         }

@@ -28,5 +28,6 @@ public record CatalogEntry(
     List<String> evidence,
     String gain,
     Fix fix,
+    String kb,
     String learnMore
 ) {}

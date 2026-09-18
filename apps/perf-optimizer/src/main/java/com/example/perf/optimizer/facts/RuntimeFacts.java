@@ -17,6 +17,7 @@ package com.example.perf.optimizer.facts;
  * @param startupSeconds    measured startup (application.ready.time), seconds
  * @param restarts          restartCount of the app container
  * @param uptimeSeconds     seconds since the app container last (re)started (K8s), or null
+ * @param requestRatePerSec HTTP request rate over the window (Micrometer), 0 if idle, null if unscraped
  */
 public record RuntimeFacts(
     Double rssFloorMi,
@@ -27,5 +28,6 @@ public record RuntimeFacts(
     Integer effectiveCpuCount,
     Double startupSeconds,
     Integer restarts,
-    Double uptimeSeconds
+    Double uptimeSeconds,
+    Double requestRatePerSec
 ) {}

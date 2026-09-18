@@ -24,7 +24,8 @@
     "effectiveCpuCount": 1,
     "startupSeconds": 13.0,
     "restarts": 1,
-    "uptimeSeconds": 30.0
+    "uptimeSeconds": 30.0,
+    "requestRatePerSec": 40
   },
   "profile": {
     "topCpu": [

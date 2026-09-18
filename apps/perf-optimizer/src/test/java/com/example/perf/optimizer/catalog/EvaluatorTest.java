@@ -62,9 +62,31 @@ class EvaluatorTest {
         assertThat(f.get("profile-window-is-warm").reason()).contains("warm-up");
         assertThat(f.get("memory-over-provisioned").status()).isEqualTo(FindingStatus.BLOCKED);
         assertThat(f.get("memory-over-provisioned").reason()).contains("warm-up");
-        assertThat(f.get("startup-cpu-bound").status()).isEqualTo(FindingStatus.BLOCKED);
-        // Not gated on the warm window:
+        // startup-cpu-bound is NO LONGER gated on the warm window (startup is measured at boot):
+        assertThat(f.get("startup-cpu-bound").status()).isEqualTo(FindingStatus.OPEN);
         assertThat(f.get("startup-checkpointable").status()).isEqualTo(FindingStatus.OPEN);
+    }
+
+    @Test
+    void idleWindow_blocksMemorySizing_withLoadObservedReason() throws IOException {
+        var f = byId(evaluator.evaluate(fixture("idle")));
+        // Warm, but no load observed (flat working-set, request rate 0):
+        assertThat(f.get("load-observed").status()).isEqualTo(FindingStatus.OPEN);
+        assertThat(f.get("load-observed").reason()).contains("No load observed");
+        assertThat(f.get("memory-over-provisioned").status()).isEqualTo(FindingStatus.BLOCKED);
+        assertThat(f.get("memory-over-provisioned").reason()).contains("No load observed");
+        // startup-cpu-bound is independent of load:
+        assertThat(f.get("startup-cpu-bound").status()).isEqualTo(FindingStatus.OPEN);
+    }
+
+    @Test
+    void flatWindowUnderLoad_sizesLimitFromFloorSafetyTerm() throws IOException {
+        var f = byId(evaluator.evaluate(fixture("load-flat")));
+        // requestRate>1 satisfies load-observed even though the working-set is flat.
+        assertThat(f.get("load-observed").status()).isEqualTo(FindingStatus.NOT_APPLICABLE);
+        assertThat(f.get("memory-over-provisioned").status()).isEqualTo(FindingStatus.OPEN);
+        // limits = max(1.4*peak=574, 1.9*floor=760) -> 768Mi (floor term dominates, prevents under-size).
+        assertThat(f.get("memory-over-provisioned").computed().get("limits.memory")).isEqualTo("768Mi");
     }
 
     @Test

@@ -9,31 +9,52 @@
 #   evidence : measured fact paths rendered (with units) as evidence lines
 #   gain     : SpEL string (may reference computed['<name>'])
 #   fix      : kind (manifest-patch|dockerfile|source-patch|advice), template, files
+#   kb       : the KB doc the explainer grounds this finding on
 #
-# Memory facts/values are MiB, CPU is cores, startup is seconds — so detectors
-# read as plain arithmetic. Helpers: #roundUpMi(mi, stepMi) -> "<n>Mi";
-# #pct(from, to) -> whole-number % reduction. Java computes; the model only explains.
+# Memory facts/values are MiB, CPU is cores, startup/uptime are seconds. Helpers:
+# #roundUpMi(mi, stepMi) -> "<n>Mi"; #pct(from, to) -> whole-number % reduction;
+# #maxD(a, b) -> larger of two MiB values. Java computes; the model only explains.
 # See README.md "Adding a finding".
 # =============================================================================
 
 - id: profile-window-is-warm
-  title: Profiling window is warm (steady state), not a JIT warm-up storm
+  title: Profiling window is warm (steady state), not a JVM warm-up window
   severity: MEDIUM
   effort: LOW
   guard: true
   # Fires-true when the app has run long enough to be past JVM warm-up AND the
-  # window has samples. Fires-false right after a (re)start -> dependent sizing
-  # findings are BLOCKED and this surfaces as OPEN advice. (Uptime is the reliable
-  # signal here: the JIT/C2 CPU share is ~8% both warm and cold on this workload,
-  # so it can't discriminate — profile.jitShare stays as evidence only.)
-  detector: "uptime > 240 && samples > 100"
+  # window has samples. Fires-false right after a (re)start -> memory sizing is
+  # BLOCKED and this surfaces as OPEN advice. (Uptime is the reliable signal here:
+  # the JIT/C2 CPU share is ~8% both warm and cold on this workload, so it can't
+  # discriminate — profile.jitShare stays as evidence only.)
+  detector: "uptime > 180 && samples > 100"
   requires: [uptime]
   reason: >-
-    The app (re)started less than ~4 minutes ago, so the window still includes JVM
-    warm-up (JIT/class-loading) and an unsettled working set. Sizing findings are
+    The app (re)started less than ~3 minutes ago, so the window still includes JVM
+    warm-up (JIT/class-loading) and an unsettled working set. Memory sizing is
     blocked until a warm, steady-state window is captured — re-run analyze after a
     short warm-up + load.
   evidence: [uptime, profile.jitShare, profile.futexWallShare, samples]
+  kb: right-sizing-playbook.md
+  learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers
+
+- id: load-observed
+  title: Window includes real traffic (memory peak reflects load)
+  severity: MEDIUM
+  effort: LOW
+  guard: true
+  # Memory limits are sized off the working-set PEAK, which is only meaningful if
+  # the window saw load. Fires-true when request traffic was measured OR the
+  # working-set moved by > 64 MiB. Fires-false on an idle-only window -> memory
+  # sizing is BLOCKED so we never size a limit below the real load peak (OOM).
+  detector: "(requestRate != null && requestRate > 1) || (rss.peak - rss.floor > 64)"
+  requires: [rss.floor, rss.peak]
+  reason: >-
+    No load observed in the window — the working-set is flat and request rate is ~0.
+    Memory limits are sized off the load peak, so sizing needs a window with real
+    traffic. Run load (e.g. infra/scripts/test/benchmark.sh <url> 60 30) and re-analyze.
+  evidence: [requestRate, rss.floor, rss.peak]
+  kb: right-sizing-playbook.md
   learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers
 
 - id: memory-over-provisioned
@@ -42,12 +63,14 @@
   effort: LOW
   detector: "limits.memory / rss.peak > 2.0"
   requires: [rss.floor, rss.peak, limits.memory]
-  prereqs: [profile-window-is-warm]
+  prereqs: [profile-window-is-warm, load-observed]
+  # limits = max(peak + ~40% headroom, 1.9x the non-heap floor). The floor term is
+  # the safety net: the RSS floor is non-heap dominated and the load peak can be
+  # well above an idle window, so 1.9x floor keeps the limit safe even if the
+  # window under-observed the peak. requests near the measured floor.
   compute:
     requests.memory: "#roundUpMi(rss.floor * 1.25, 64)"
-    limits.memory: "#roundUpMi(rss.peak * 1.40, 64)"
-    requests.cpu: "'250m'"
-    limits.cpu: "'1'"
+    limits.memory: "#roundUpMi(#maxD(rss.peak * 1.40, rss.floor * 1.90), 64)"
     jvm.maxRamPercentage: "75"
     jvm.gc: "cpu.limit <= 1 ? 'SerialGC' : 'G1GC'"
   evidence: [rss.floor, rss.peak, heap.committed, limits.memory, cpu.effective]
@@ -56,15 +79,17 @@
     kind: manifest-patch
     template: templates/deployment-resources.yaml.hbs
     files: [k8s/deployment.yaml]
+  kb: right-sizing-playbook.md
   learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers/pod-resize
 
 - id: startup-cpu-bound
   title: Slow startup on a 1 vCPU container with no in-place CPU boost
   severity: HIGH
   effort: LOW
+  # Startup is measured at boot and is independent of the profiling window, so this
+  # is NOT gated on profile-window-is-warm.
   detector: "startup > 5 && cpu.limit <= 1 && !resizePolicy"
   requires: [startup, cpu.limit, resizePolicy]
-  prereqs: [profile-window-is-warm]
   compute:
     boot.cpu: "'2'"
     steady.cpu: "'1'"
@@ -75,6 +100,7 @@
     kind: manifest-patch
     template: templates/deployment-cpu-boost.yaml.hbs
     files: [k8s/deployment.yaml]
+  kb: startup-optimization.md
   learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers/pod-resize
 
 - id: startup-checkpointable
@@ -92,6 +118,7 @@
     kind: dockerfile
     template: templates/Dockerfile.crac
     files: [Dockerfile, src/main/java/com/unicorn/store/data/UnicornPublisher.java]
+  kb: startup-optimization.md
   learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers/crac
 
 - id: hpa-metric-with-sidecar
@@ -109,6 +136,7 @@
     kind: manifest-patch
     template: templates/hpa-containerresource.yaml.hbs
     files: [k8s/hpa.yaml]
+  kb: right-sizing-playbook.md
   learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers
 
 - id: blocking-call-in-request-path
@@ -131,4 +159,5 @@
     files:
       - src/main/java/com/unicorn/store/service/UnicornService.java
       - src/main/resources/application.yaml
+  kb: right-sizing-playbook.md
   learnMore: https://catalog.workshops.aws/java-on-aws/en-US/optimize-containers

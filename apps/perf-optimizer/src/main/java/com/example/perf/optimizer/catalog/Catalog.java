@@ -73,6 +73,7 @@ public class Catalog {
             strList(m.get("evidence")),
             str(m.get("gain")),
             fix,
+            str(m.get("kb")),
             str(m.get("learnMore")));
     }
 

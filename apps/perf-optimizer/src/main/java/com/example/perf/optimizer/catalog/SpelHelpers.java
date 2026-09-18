@@ -33,6 +33,11 @@ public final class SpelHelpers {
         return Math.round(100.0 * (f - t) / f);
     }
 
+    /** Larger of two MiB values (numbers or Kubernetes memory quantities). */
+    public static double maxD(Object a, Object b) {
+        return Math.max(toMi(a), toMi(b));
+    }
+
     /** Coerce a number or a Kubernetes memory quantity string to MiB. */
     static double toMi(Object o) {
         if (o == null) {
