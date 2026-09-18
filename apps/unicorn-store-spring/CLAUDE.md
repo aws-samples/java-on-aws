@@ -28,16 +28,26 @@ Tools: `measure <service>`, `analyze <service> [windowMinutes] [explain]`,
 
 ## Build & deploy (only when applying a fix)
 
+Image builds go through **`scripts/build.sh <tag> [dockerfile]`**, which resolves the
+ECR repo and the Aurora build-args (SSM `workshop-db-connection-string` + Secrets
+Manager `workshop-db-secret`) — no placeholders. It prints the pushed `repo:tag`.
+
 ```bash
-# App image (source changes / new Dockerfile):
-ECR=<account>.dkr.ecr.<region>.amazonaws.com/unicorn-store-spring
-docker build -f Dockerfile -t "$ECR:latest" . && docker push "$ECR:latest"
+# Image changes (new Dockerfile / source): save the explain artifact as
+# Dockerfile.crac (or Dockerfile.aot), then:
+IMG=$(./scripts/build.sh crac)        # or: aot | latest
+kubectl -n unicorn-store-spring set image deploy/unicorn-store-spring unicorn-store-spring="$IMG"
+kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring
 
 # Manifest changes (resources, resizePolicy, HPA):
 kubectl -n unicorn-store-spring apply -f k8s/deployment.yaml
 kubectl -n unicorn-store-spring rollout restart deploy/unicorn-store-spring   # apply of unchanged :latest is a no-op
 kubectl -n unicorn-store-spring rollout status  deploy/unicorn-store-spring
 ```
+
+The optimizer detects the applied technique from the **image tag** (`:crac` / `:aot`),
+so `set image` to a `:crac` tag is what flips `startup-checkpointable` to RESOLVED on
+re-analyze.
 
 ## Rules (follow exactly)
 

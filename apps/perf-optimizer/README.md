@@ -125,3 +125,17 @@ re-analyze and report the RESOLVED delta.
 - The sidecar `/dump` used for ThreadFacts/heap stays `SYS_PTRACE`-only (no
   privileged, no hostPID).
 - Out of scope (PoC): auth on MCP, Bedrock KB provisioning changes, UI.
+
+## Notes
+
+- **Image detection is tag-based.** The optimizer reads the app container's image
+  tag (`WorkloadFacts.imageTag`); `startup-checkpointable` fires unless the tag is
+  `crac`/`aot`, and flips to RESOLVED once a `:crac`/`:aot` image is deployed. Tag
+  images accordingly (see `unicorn-store-spring/scripts/build.sh`).
+- **`/dump` exposure.** The sidecar's `/dump` (port 9100) is reachable only in-cluster
+  via the pod IP (no Service, not exposed via Ingress); the optimizer calls it with a
+  short timeout and degrades to null ThreadFacts if it is absent. It runs `jcmd`
+  read-only against the app JVM across the shared PID namespace (SYS_PTRACE only).
+- **Virtual threads.** `/dump?kind=threads` uses `Thread.dump_to_file -format=json` so
+  blocked virtual threads (which unmount and vanish from `Thread.print`) are
+  enumerated — required for `blocking-call-in-request-path` to fire under load.
