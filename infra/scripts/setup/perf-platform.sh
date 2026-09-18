@@ -1,12 +1,19 @@
 #!/bin/bash
 
 # =============================================================================
-# Agentic Performance Platform Setup
-# Installs Pyroscope (with native recording rules), Kyverno JFR policy,
-# Grafana alert wiring, internal NLB, and RBAC used by the perf-analyzer module.
+# Agentic Performance Platform Setup (immersion day: java-on-aws only)
+# Provisions the perf-analyzer / perf-collector RBAC, the internal NLB that lets
+# ECS Fargate collectors reach Pyroscope, the Latency Metrics dashboard, and the
+# ServiceLatency alert wiring (contact point + notification policy).
 #
-# Runs in workshop bootstrap, after monitoring.sh (requires Prometheus+Grafana).
-# Does not modify existing scripts or modules.
+# Runs after monitoring.sh, which now installs Pyroscope and the Grafana
+# Pyroscope/CloudWatch datasources + pod identities (shared by both workshops).
+# This script consumes those (CloudWatch datasource for the Latency dashboard,
+# Pyroscope Service for the NLB) and does not install or configure them itself.
+#
+# The EKS-only CON405 template does NOT run this script — it drives optimization
+# from the perf-optimizer MCP agent, which brings its own SA, dashboard, and
+# read-only RBAC (see deploy/java-on-amazon-eks/perf-optimizer.sh).
 # =============================================================================
 
 set -eo pipefail
@@ -23,20 +30,8 @@ source /etc/profile.d/workshop.sh
 PREFIX="${PREFIX:-workshop}"
 NAMESPACE="monitoring"
 GRAFANA_USER="admin"
-
-# CON405 (java-on-amazon-eks) is EKS-only and drives optimization from the
-# perf-optimizer MCP agent (via Claude Code), not the perf-analyzer/perf-collector
-# incident modules. Under that template (WORKSHOP_ID is exported by
-# /etc/profile.d/workshop.sh and equals the template type) we skip the ECS-only
-# internal NLB and the perf-collector RBAC, and name the alert wiring after perf-optimizer.
-if [[ "${WORKSHOP_ID:-}" == "java-on-amazon-eks" ]]; then
-    CONTACT_POINT_NAME="perf-optimizer-webhook"
-    # On-alert (Lab 4) receiver; the exact perf-optimizer endpoint is finalized in the lab.
-    ANALYZER_WEBHOOK_URL="http://perf-optimizer.${NAMESPACE}.svc.cluster.local:8080/api/v1/grafana-webhook"
-else
-    CONTACT_POINT_NAME="perf-analyzer-webhook"
-    ANALYZER_WEBHOOK_URL="http://perf-analyzer.${NAMESPACE}.svc.cluster.local:8080/api/v1/grafana-webhook"
-fi
+CONTACT_POINT_NAME="perf-analyzer-webhook"
+ANALYZER_WEBHOOK_URL="http://perf-analyzer.${NAMESPACE}.svc.cluster.local:8080/api/v1/grafana-webhook"
 
 # Working files (cleaned up on exit)
 WORK=$(mktemp -d)
@@ -51,122 +46,11 @@ kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1 || {
     exit 1
 }
 
-helm repo add grafana https://grafana.github.io/helm-charts >/dev/null 2>&1 || true
-helm repo add grafana-community https://grafana-community.github.io/helm-charts >/dev/null 2>&1 || true
-helm repo update >/dev/null
-
-CLUSTER_NAME="${PREFIX}-eks"
-WORKSHOP_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name \
-    --query 'Parameter.Value' --output text --no-cli-pager)
-if [[ -z "${WORKSHOP_BUCKET}" || "${WORKSHOP_BUCKET}" == "None" ]]; then
-    log_error "SSM parameter workshop-bucket-name is not set. Aborting."
-    exit 1
-fi
-
-# =============================================================================
-# Pyroscope Pod Identity — bind the Pyroscope ServiceAccount to the CDK-managed
-# pyroscope-eks-pod-role BEFORE installing Pyroscope, so the very first pod
-# boot has S3 creds available. Pyroscope writes blocks to S3 from boot, so
-# it cannot follow the Grafana pattern (install first, attach identity, restart)
-# — it would fail health checks before the restart.
-# =============================================================================
-
-log_info "Binding Pyroscope ServiceAccount to pyroscope-eks-pod-role..."
-# Pre-create the ServiceAccount with Helm 3 adoption metadata so the
-# subsequent `helm install pyroscope` adopts it instead of erroring on
-# "invalid ownership metadata; missing key app.kubernetes.io/managed-by".
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: pyroscope
-  namespace: ${NAMESPACE}
-  labels:
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/managed-by: Helm
-  annotations:
-    meta.helm.sh/release-name: pyroscope
-    meta.helm.sh/release-namespace: ${NAMESPACE}
-EOF
-
-if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
-        --query "associations[?serviceAccount=='pyroscope' && namespace=='${NAMESPACE}']" \
-        --output text --no-cli-pager | grep -q .; then
-    aws eks create-pod-identity-association \
-        --cluster-name "${CLUSTER_NAME}" \
-        --namespace "${NAMESPACE}" \
-        --service-account pyroscope \
-        --role-arn "$(aws iam get-role --role-name pyroscope-eks-pod-role \
-            --query 'Role.Arn' --output text --no-cli-pager)" \
-        --no-cli-pager
-    log_success "Pyroscope pod identity association created"
-    sleep 10
-else
-    log_info "Pyroscope pod identity association already exists"
-fi
-
-# =============================================================================
-# Pyroscope (S3-backed single-binary, blocks under s3://<bucket>/pyroscope/)
-# =============================================================================
-
-log_info "Installing Pyroscope..."
-cat > "${WORK}/pyroscope-values.yaml" <<EOF
-pyroscope:
-  service:
-    type: ClusterIP
-    port: 4040
-    # Expose /metrics on the same port; prometheus.io annotations below.
-    annotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/port: "4040"
-      prometheus.io/path: /metrics
-  # PVC not needed — Pyroscope v2 writes blocks directly to S3.
-  persistence:
-    enabled: false
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: 1
-      memory: 2Gi
-  # structuredConfig uses Pyroscope 2.x top-level keys only.
-  # 1.x fields \`auth_enabled\` and \`recording_rules\` were removed in 2.x
-  # and cause CrashLoopBackOff if included.
-  structuredConfig:
-    storage:
-      backend: s3
-      # Isolate Pyroscope blocks inside the shared workshop bucket.
-      prefix: pyroscope
-      s3:
-        bucket_name: ${WORKSHOP_BUCKET}
-        region: ${AWS_REGION}
-        endpoint: s3.${AWS_REGION}.amazonaws.com
-        # AWS SDK default credential chain — picks up EKS Pod Identity creds.
-        native_aws_auth_enabled: true
-    limits:
-      retention_period: 168h
-EOF
-
-helm upgrade --install pyroscope grafana/pyroscope \
-    --namespace "${NAMESPACE}" \
-    --values "${WORK}/pyroscope-values.yaml" \
-    --wait --timeout 10m
-
-kubectl wait --for=condition=ready pod \
-    -l app.kubernetes.io/name=pyroscope \
-    -n "${NAMESPACE}" --timeout=600s
-
-log_success "Pyroscope installed"
-
 # =============================================================================
 # RBAC for perf-analyzer and perf-collector
 # =============================================================================
 
-# perf-analyzer SA + RBAC: always created. On CON405 the perf-optimizer agent
-# reuses this ServiceAccount (bound to perf-analyzer-eks-pod-role via Pod Identity).
-log_info "Applying RBAC for perf-analyzer/perf-optimizer..."
-
+log_info "Applying RBAC for perf-analyzer..."
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: ServiceAccount
@@ -197,9 +81,7 @@ subjects:
     namespace: ${NAMESPACE}
 EOF
 
-# perf-collector RBAC backs the privileged DaemonSet collector, which CON405
-# (EKS-only) replaces with the Kyverno-injected profiler sidecar. Skip it there.
-if [[ "${WORKSHOP_ID:-}" != "java-on-amazon-eks" ]]; then
+log_info "Applying RBAC for perf-collector..."
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: ServiceAccount
@@ -229,23 +111,18 @@ subjects:
     name: perf-collector
     namespace: ${NAMESPACE}
 EOF
-fi
 
 log_success "RBAC applied"
 
 # =============================================================================
-# Internal NLB (two annotated LoadBalancer Services sharing one NLB)
+# Internal NLB (fronts Pyroscope for ECS Fargate reachability)
 # =============================================================================
 
-if [[ "${WORKSHOP_ID:-}" == "java-on-amazon-eks" ]]; then
-    log_info "Skipping internal NLB (EKS-only template; the profiler sidecar reaches Pyroscope via cluster DNS)"
-    NLB_DNS="(skipped — EKS-only)"
-else
 log_info "Provisioning internal NLB for ECS Fargate reachability..."
-# Single NLB fronts Pyroscope. ECS Fargate collectors use it to reach
-# Pyroscope from outside the cluster. The analyzer is never called from
-# outside the cluster — developers invoke it via `kubectl run` + cluster
-# DNS, Grafana's webhook uses cluster DNS too, so it needs no NLB.
+# Single NLB fronts Pyroscope. ECS Fargate collectors use it to reach Pyroscope
+# from outside the cluster. The analyzer is never called from outside the
+# cluster — developers invoke it via `kubectl run` + cluster DNS, and Grafana's
+# webhook uses cluster DNS too, so it needs no NLB.
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Service
@@ -284,16 +161,16 @@ if [[ -z "${NLB_DNS}" ]]; then
     exit 1
 fi
 
-# NLB DNS is owned by the Service object. Consumers (the workshop content's
-# ECS Fargate sidecar setup, anything else that needs Pyroscope from outside
-# the cluster) look it up at the time of need:
+# NLB DNS is owned by the Service object. Consumers (the workshop content's ECS
+# Fargate sidecar setup, anything else that needs Pyroscope from outside the
+# cluster) look it up at the time of need:
 #   kubectl get svc pyroscope-nlb -n monitoring \
 #     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 log_success "Internal NLB ready: ${NLB_DNS}"
-fi
 
 # =============================================================================
-# Grafana Pyroscope datasource + Profiles Drilldown plugin
+# Grafana connection (Grafana + folder + CloudWatch datasource already provided
+# by monitoring.sh; this script only adds the dashboard, contact point, policy).
 # =============================================================================
 
 log_info "Configuring Grafana..."
@@ -311,23 +188,6 @@ if [[ -z "${GRAFANA_LB}" ]]; then
 fi
 GRAFANA_URL="http://${GRAFANA_LB}"
 
-# Install Profiles Drilldown plugin (idempotent).
-log_info "Installing Grafana Profiles Drilldown plugin..."
-# Pin grafana-pyroscope-app to 1.17.0. The workshop serves Grafana over plain
-# HTTP (not a browser secure context), and the 2.x plugin line calls
-# crypto.randomUUID() at load, which browsers only expose over HTTPS/localhost,
-# so 2.x fails with "crypto.randomUUID is not a function". 1.17.0 is the last
-# release whose entry bundle avoids that call. It targets React 18, so it
-# requires Grafana 12.x (see the image.tag pin in monitoring.sh); Grafana 13
-# ships React 19 and breaks the 1.x plugin.
-helm upgrade --install grafana grafana-community/grafana \
-    --namespace "${NAMESPACE}" \
-    --reuse-values \
-    --set "plugins={grafana-pyroscope-app@1.17.0}" \
-    --wait --timeout 10m
-log_success "Profiles Drilldown plugin installed"
-
-# Wait for Grafana API to be ready after the helm upgrade restarts the pod.
 log_info "Waiting for Grafana API to be ready..."
 for i in {1..40}; do
     STATUS=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/health" \
@@ -340,146 +200,13 @@ for i in {1..40}; do
     sleep 5
 done
 
-# Pyroscope datasource.
-log_info "Provisioning Grafana Pyroscope datasource..."
-cat > "${WORK}/pyroscope-datasource.yaml" <<EOF
-apiVersion: 1
-datasources:
-  - uid: pyroscope
-    name: Pyroscope
-    type: grafana-pyroscope-datasource
-    access: proxy
-    url: http://pyroscope.${NAMESPACE}.svc.cluster.local:4040
-    isDefault: false
-    editable: true
-EOF
-kubectl create configmap perf-platform-pyroscope-datasource \
-    --from-file="${WORK}/pyroscope-datasource.yaml" -n "${NAMESPACE}" \
-    --dry-run=client -o yaml | kubectl apply -f -
-kubectl label configmap perf-platform-pyroscope-datasource \
-    -n "${NAMESPACE}" grafana_datasource=1 --overwrite
-log_success "Grafana Pyroscope datasource provisioned"
-
-# =============================================================================
-# Grafana CloudWatch — pod identity for read-only metrics access, plus a
-# CloudWatch datasource and a "Latency Metrics" dashboard. Used by the Ch 4
-# alert rule (created in the workshop module) to fire on ALB p99
-# TargetResponseTime > 1s.
-# =============================================================================
-
-log_info "Binding Grafana ServiceAccount to grafana-eks-pod-role..."
-if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
-        --query "associations[?serviceAccount=='grafana' && namespace=='${NAMESPACE}']" \
-        --output text --no-cli-pager | grep -q .; then
-    aws eks create-pod-identity-association \
-        --cluster-name "${CLUSTER_NAME}" \
-        --namespace "${NAMESPACE}" \
-        --service-account grafana \
-        --role-arn "$(aws iam get-role --role-name grafana-eks-pod-role \
-            --query 'Role.Arn' --output text --no-cli-pager)" \
-        --no-cli-pager
-    log_success "Grafana CloudWatch pod identity association created"
-else
-    log_info "Grafana CloudWatch pod identity association already exists"
-fi
-
-# EKS Pod Identity associations are eventually consistent. Recreate Grafana
-# until the current Running/Ready pod has the injected credential endpoint.
-# This also repairs an existing pod that predates its association.
-GRAFANA_POD=""
-for i in {1..6}; do
-    if (( i > 1 )); then
-        log_info "Pod Identity credentials not injected yet; waiting before retry ${i}/6..."
-        sleep 10
-    fi
-
-    log_info "Restarting Grafana to pick up Pod Identity credentials (${i}/6)..."
-    kubectl rollout restart deployment/grafana -n "${NAMESPACE}"
-    kubectl rollout status deployment/grafana -n "${NAMESPACE}" --timeout=180s
-
-    GRAFANA_POD=$(kubectl get pods -n "${NAMESPACE}" \
-        -l app.kubernetes.io/name=grafana -o json \
-        | jq -r '[.items[]
-            | select(.metadata.deletionTimestamp == null and .status.phase == "Running")
-            | select([.status.containerStatuses[]?.ready] | all)
-            | select([.spec.containers[].env[]?.name]
-                | index("AWS_CONTAINER_CREDENTIALS_FULL_URI"))
-            | .metadata.name] | first // empty')
-    if [[ -n "${GRAFANA_POD}" ]]; then
-        break
-    fi
-
-done
-if [[ -z "${GRAFANA_POD}" ]]; then
-    log_error "Grafana did not receive EKS Pod Identity credentials after 6 restarts"
-    exit 1
-fi
-log_success "Grafana pod ${GRAFANA_POD} received EKS Pod Identity credentials"
-
-log_info "Waiting for Grafana API after pod restart..."
-for i in {1..40}; do
-    STATUS=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/health" \
-        | jq -r .database 2>/dev/null || true)
-    if [[ "${STATUS}" == "ok" ]]; then break; fi
-    [[ $i -eq 40 ]] && { log_error "Grafana API not ready after 200s"; exit 1; }
-    sleep 5
-done
-
-log_info "Provisioning Grafana CloudWatch datasource..."
-cat > "${WORK}/cloudwatch-datasource.yaml" <<EOF
-apiVersion: 1
-datasources:
-  - uid: cloudwatch
-    name: CloudWatch
-    type: cloudwatch
-    access: proxy
-    isDefault: false
-    editable: true
-    jsonData:
-      authType: default
-      defaultRegion: ${AWS_REGION}
-EOF
-kubectl create configmap perf-platform-cloudwatch-datasource \
-    --from-file="${WORK}/cloudwatch-datasource.yaml" -n "${NAMESPACE}" \
-    --dry-run=client -o yaml | kubectl apply -f -
-kubectl label configmap perf-platform-cloudwatch-datasource \
-    -n "${NAMESPACE}" grafana_datasource=1 --overwrite
-
-log_info "Verifying Grafana CloudWatch datasource credentials..."
-CLOUDWATCH_HEALTH=""
-CLOUDWATCH_HTTP_STATUS=""
-for i in {1..12}; do
-    CLOUDWATCH_RESPONSE=$(curl -sS -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
-        -w $'\n%{http_code}' \
-        "${GRAFANA_URL}/api/datasources/uid/cloudwatch/health" 2>&1 || true)
-    CLOUDWATCH_HTTP_STATUS="${CLOUDWATCH_RESPONSE##*$'\n'}"
-    CLOUDWATCH_HEALTH="${CLOUDWATCH_RESPONSE%$'\n'*}"
-    if [[ "${CLOUDWATCH_HTTP_STATUS}" == "200" ]] \
-            && jq -e '
-                .status == "OK"
-                or ((.message // "")
-                    | contains("Successfully queried the CloudWatch metrics API."))
-            ' <<<"${CLOUDWATCH_HEALTH}" >/dev/null 2>&1; then
-        break
-    fi
-    [[ $i -eq 12 ]] && {
-        CLOUDWATCH_MESSAGE=$(jq -r '.message // empty' <<<"${CLOUDWATCH_HEALTH}" 2>/dev/null || true)
-        if [[ -z "${CLOUDWATCH_MESSAGE}" ]]; then
-            CLOUDWATCH_MESSAGE="${CLOUDWATCH_HEALTH:-empty response}"
-        fi
-        log_error "Grafana CloudWatch datasource is unhealthy (HTTP ${CLOUDWATCH_HTTP_STATUS}): ${CLOUDWATCH_MESSAGE}"
-        exit 1
-    }
-    sleep 5
-done
-log_success "Grafana CloudWatch metrics access verified"
-
 # =============================================================================
 # Latency Metrics dashboard — two rows, five panels:
 #   Row 1 — Latency: ALB p99 TargetResponseTime time series + p99 stat
 #   Row 2 — Throughput and errors: RequestCount + 5xx counts (target + ELB)
 # Lives in the "Workshop Dashboards" folder alongside other workshop dashboards.
 # Picks up any ALB(s) the participant deploys later — no pre-baked LB names.
+# Reads via the CloudWatch datasource provisioned by monitoring.sh.
 # =============================================================================
 
 log_info "Provisioning Latency Metrics dashboard..."
@@ -682,6 +409,13 @@ else
     exit 1
 fi
 
+# =============================================================================
+# ServiceLatency contact point + notification policy
+# Alert rule creation is deferred to the workshop module (Ch 4): it depends on
+# the participant-deployed ALB ARN(s), which only exist after unicorn-store-spring
+# is rolled out. This script provisions the infrastructure the rule references.
+# =============================================================================
+
 # Contact point.
 EXISTING=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
     "${GRAFANA_URL}/api/v1/provisioning/contact-points" \
@@ -711,12 +445,6 @@ else
     exit 1
 fi
 
-# Alert rule creation is deferred to the workshop module (Ch 4). It depends on
-# the participant-deployed ALB ARN(s), which only exist after the unicorn-store-spring
-# workload is rolled out. perf-platform.sh provisions the *infrastructure* the
-# alert rule will reference (CloudWatch datasource, IAM role, contact point,
-# notification policy, dashboard); the rule itself is created in the chapter
-# with the discovered ALB plugged into the dimension.
 log_info "Removing any stale ServiceLatency alert rule from a previous run..."
 EXISTING_ALERT=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
     "${GRAFANA_URL}/api/v1/provisioning/alert-rules" \
@@ -727,10 +455,10 @@ if [[ -n "${EXISTING_ALERT}" ]]; then
     log_info "  Removed previous ServiceLatency rule"
 fi
 
-# Notification policy — upsert this module's route only, keyed by receiver
-# name. analysis.sh owns its own routes (thread-dump-lambda-webhook,
-# ai-jvm-analyzer-webhook); this script owns ${CONTACT_POINT_NAME}. Whoever
-# runs last does not clobber the other modules' routes.
+# Notification policy — upsert this module's route only, keyed by receiver name.
+# analysis.sh owns its own routes (thread-dump-lambda-webhook,
+# ai-jvm-analyzer-webhook); this script owns ${CONTACT_POINT_NAME}. Whoever runs
+# last does not clobber the other modules' routes.
 log_info "Upserting notification policy route for ${CONTACT_POINT_NAME}..."
 EXISTING_POLICY=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
     "${GRAFANA_URL}/api/v1/provisioning/policies")
@@ -772,20 +500,12 @@ fi
 
 log_info ""
 log_info "Agentic performance platform ready."
-log_info "  Pyroscope:          http://pyroscope.${NAMESPACE}.svc.cluster.local:4040  (S3-backed, prefix s3://${WORKSHOP_BUCKET}/pyroscope/)"
-[[ "${WORKSHOP_ID:-}" != "java-on-amazon-eks" ]] && log_info "  Internal NLB DNS:   ${NLB_DNS}  (kubectl get svc pyroscope-nlb -n monitoring)"
+log_info "  Internal NLB DNS:   ${NLB_DNS}  (kubectl get svc pyroscope-nlb -n monitoring)"
 log_info "  Analyzer webhook:   ${ANALYZER_WEBHOOK_URL}"
-log_info "  Grafana datasource: CloudWatch (read-only via grafana-eks-pod-role)"
 log_info "  Grafana dashboard:  Workshop Dashboards / Latency Metrics"
 log_info "  Grafana contact pt: ${CONTACT_POINT_NAME}"
-log_info "  Profiles Drilldown: installed in Grafana"
 log_info ""
-if [[ "${WORKSHOP_ID:-}" == "java-on-amazon-eks" ]]; then
-    log_info "Next: deploy the Kyverno-injected profiler (Phase 7) and perf-optimizer (Phase 8),"
-    log_info "      then create the ServiceLatency alert rule pointed at the ALB (Lab 4)."
-else
-    log_info "Next: participants deploy perf-analyzer (module S1) and perf-collector (module S2),"
-    log_info "      then create the ServiceLatency alert rule pointed at their ALB (module S4)."
-fi
+log_info "Next: participants deploy perf-analyzer (module S1) and perf-collector (module S2),"
+log_info "      then create the ServiceLatency alert rule pointed at their ALB (module S4)."
 
-echo "✅ Success: Perf Platform (Pyroscope S3 + NLB + CloudWatch + Grafana wiring)"
+echo "✅ Success: Perf Platform (NLB + perf-analyzer/collector RBAC + Latency dashboard + alert wiring)"
