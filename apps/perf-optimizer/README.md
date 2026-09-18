@@ -100,10 +100,20 @@ Fact paths available to SpEL: `limits.memory|cpu`, `requests.memory|cpu`,
 bash infra/scripts/deploy/java-on-amazon-eks/perf-optimizer.sh
 ```
 
-Builds + pushes the image (jib), applies the read-only `perf-optimizer` ClusterRole
-(get/list/watch on deployments/pods — **no write verbs**), optionally
-provisions a Bedrock KB, and deploys the MCP server into `monitoring`. Grounding
-falls back to the bundled `kb/*.md` when no KB is configured.
+Builds + pushes the image (jib); creates the `perf-optimizer` ServiceAccount and
+its Pod Identity association to the CDK-managed `perf-optimizer-eks-pod-role`
+(Bedrock Converse + `bedrock:Retrieve` on the KB); applies the read-only
+`perf-optimizer` ClusterRole (get/list/watch on deployments/pods — **no write
+verbs**) bound to that SA; optionally provisions a Bedrock KB; deploys the MCP
+server into `monitoring`; and ships the **Optimization** dashboard as a ConfigMap
+(`grafana_dashboard=1`, folder annotation) into the *Workshop Dashboards* Grafana
+folder. Grounding falls back to the bundled `kb/*.md` when no KB is configured.
+
+The optimizer has its own SA/role and does **not** depend on `perf-platform.sh`.
+Pyroscope, the Prometheus/Pyroscope/CloudWatch Grafana datasources, and the
+Profiles Drilldown plugin come up earlier in `setup/monitoring.sh` (shared by
+both workshops); the CON405 template (`java-on-amazon-eks.sh`) does not run
+`perf-platform.sh` at all.
 
 ## Connect Claude Code
 
