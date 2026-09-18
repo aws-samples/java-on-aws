@@ -1,6 +1,8 @@
 package com.example.perf.optimizer.collect;
 
 import com.example.perf.optimizer.facts.ThreadFacts;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +28,7 @@ import java.util.regex.Pattern;
 public class DumpCollector {
 
     private static final Logger logger = LoggerFactory.getLogger(DumpCollector.class);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
     static final int DUMP_PORT = 9100;
 
     private static final Pattern STATE = Pattern.compile("java\\.lang\\.Thread\\.State:\\s*(\\w+)");
@@ -60,6 +63,43 @@ public class DumpCollector {
         if (body == null) {
             return null;
         }
+        // JSON dump (Thread.dump_to_file -format=json) enumerates VIRTUAL threads;
+        // the text fallback (Thread.print) shows only platform/mounted threads.
+        return body.stripLeading().startsWith("{") ? parseJson(body) : parseText(body);
+    }
+
+    /** Parse the JSON thread dump: walk every thread's stack (incl. virtual threads). */
+    private ThreadFacts parseJson(String body) {
+        try {
+            var containers = MAPPER.readTree(body).path("threadDump").path("threadContainers");
+            var byState = new HashMap<String, Integer>();
+            int total = 0, poolWaiters = 0;
+            boolean blockingOnRequest = false;
+            for (var c : containers) {
+                for (var t : c.path("threads")) {
+                    total++;
+                    var stack = stackText(t.path("stack"));
+                    if (!isRequestPath(stack)) {
+                        continue;
+                    }
+                    if (BLOCKING_GET.matcher(stack).find()) {
+                        blockingOnRequest = true;
+                    }
+                    if (containsAny(stack, POOL_WAIT_MARKERS)) {
+                        poolWaiters++;
+                    }
+                }
+            }
+            byState.put("total", total);
+            return new ThreadFacts(byState, poolWaiters, blockingOnRequest);
+        } catch (Exception e) {
+            logger.warn("thread JSON parse failed: {}", e.getMessage());
+            return parseText(body);
+        }
+    }
+
+    /** Legacy Thread.print text parse (platform threads only). */
+    private ThreadFacts parseText(String body) {
         var byState = new HashMap<String, Integer>();
         Matcher m = STATE.matcher(body);
         while (m.find()) {
@@ -80,6 +120,17 @@ public class DumpCollector {
             }
         }
         return new ThreadFacts(byState, poolWaiters, blockingOnRequest);
+    }
+
+    private static String stackText(JsonNode stack) {
+        if (!stack.isArray()) {
+            return "";
+        }
+        var sb = new StringBuilder();
+        for (var frame : stack) {
+            sb.append(frame.asText()).append('\n');
+        }
+        return sb.toString();
     }
 
     private boolean isRequestPath(String threadBlock) {
