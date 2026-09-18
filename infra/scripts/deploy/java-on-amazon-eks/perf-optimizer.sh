@@ -12,7 +12,8 @@
 #
 # No admin: the KB execution role (perf-optimizer-kb-role, no permissions boundary)
 # is created by CDK; this script only PASSES it to bedrock:CreateKnowledgeBase.
-# bedrock:Retrieve on the KB is granted to perf-analyzer-eks-pod-role by CDK too.
+# The optimizer runs under its own SA (perf-optimizer) bound by Pod Identity to
+# perf-optimizer-eks-pod-role (Bedrock + bedrock:Retrieve on the KB), both from CDK.
 # The KB data source lives in the workshop bucket under perf-optimizer/kb/ (IDE
 # role can write it; the CDK exec role can read it). Runs on the IDE (ec2-user).
 # =============================================================================
@@ -108,28 +109,28 @@ provision_kb() {
 provision_kb
 
 # -----------------------------------------------------------------------------
-# 3. Ensure the perf-analyzer SA + Pod Identity binding (reused by perf-optimizer).
-#    perf-platform.sh creates the SA; this guarantees the SA and the association
-#    to perf-analyzer-eks-pod-role (Bedrock incl. KB Retrieve, S3) both exist.
+# 3. perf-optimizer ServiceAccount + Pod Identity binding to the CDK-managed
+#    perf-optimizer-eks-pod-role (Bedrock Converse + bedrock:Retrieve on the KB).
+#    Own SA — no reuse of perf-analyzer and no dependency on perf-platform.sh.
 # -----------------------------------------------------------------------------
-kubectl get sa perf-analyzer -n "${NS}" >/dev/null 2>&1 \
-  || kubectl create serviceaccount perf-analyzer -n "${NS}"
+kubectl get sa perf-optimizer -n "${NS}" >/dev/null 2>&1 \
+  || kubectl create serviceaccount perf-optimizer -n "${NS}"
 if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
-      --query "associations[?serviceAccount=='perf-analyzer' && namespace=='${NS}']" \
+      --query "associations[?serviceAccount=='perf-optimizer' && namespace=='${NS}']" \
       --output text --no-cli-pager | grep -q .; then
   aws eks create-pod-identity-association --cluster-name "${CLUSTER_NAME}" \
-    --namespace "${NS}" --service-account perf-analyzer \
-    --role-arn "$(aws iam get-role --role-name perf-analyzer-eks-pod-role --query 'Role.Arn' --output text --no-cli-pager)" \
+    --namespace "${NS}" --service-account perf-optimizer \
+    --role-arn "$(aws iam get-role --role-name perf-optimizer-eks-pod-role --query 'Role.Arn' --output text --no-cli-pager)" \
     --no-cli-pager >/dev/null
-  log_success "Pod Identity association created (perf-analyzer -> perf-analyzer-eks-pod-role)"
+  log_success "Pod Identity association created (perf-optimizer -> perf-optimizer-eks-pod-role)"
   sleep 10
 fi
 
 # -----------------------------------------------------------------------------
 # 3b. Read-only ClusterRole for the optimizer's K8s fact collection (deployments,
 #     pods) + sidecar /dump pod-IP discovery. NO write verbs — the optimizer
-#     never mutates the cluster (acceptance criterion 5). Bound to the reused
-#     perf-analyzer SA.
+#     never mutates the cluster (acceptance criterion 5). Bound to the
+#     perf-optimizer SA.
 # -----------------------------------------------------------------------------
 cat <<EOF | kubectl apply -f -
 apiVersion: rbac.authorization.k8s.io/v1
@@ -154,7 +155,7 @@ roleRef:
   name: perf-optimizer
 subjects:
   - kind: ServiceAccount
-    name: perf-analyzer
+    name: perf-optimizer
     namespace: ${NS}
 EOF
 log_success "perf-optimizer read-only ClusterRole applied (get/list/watch only)"
@@ -180,7 +181,7 @@ spec:
   template:
     metadata: {labels: {app: perf-optimizer}}
     spec:
-      serviceAccountName: perf-analyzer   # reuse: Bedrock (incl. KB Retrieve) + S3
+      serviceAccountName: perf-optimizer   # Pod Identity -> perf-optimizer-eks-pod-role (Bedrock + KB Retrieve)
       containers:
       - name: perf-optimizer
         image: ${REPO}:latest
@@ -216,6 +217,118 @@ if [ -n "${KB_ID}" ]; then
 else
   log_success "perf-optimizer up with bundled kb/*.md grounding (no managed KB)."
 fi
+
+# -----------------------------------------------------------------------------
+# 5. Optimization dashboard — the visual the optimizer's numbers move. Shipped as
+#    a ConfigMap (label grafana_dashboard=1) that the Grafana sidecar imports into
+#    the "Workshop Dashboards" folder (grafana_folder annotation + monitoring.sh's
+#    folderAnnotation). All panels read the Prometheus datasource (uid promds) and
+#    filter to the unicorn-store-spring container. Time range 1h, refresh 15s.
+# -----------------------------------------------------------------------------
+log_info "Provisioning Optimization dashboard (ConfigMap -> Grafana sidecar)..."
+DASH=$(mktemp)
+cat > "${DASH}" <<'DASH_EOF'
+{
+  "title": "Optimization",
+  "uid": "perf-optimizer-optimization",
+  "tags": ["optimization", "java", "workshop"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    { "type": "row", "id": 100, "title": "At a glance",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "collapsed": false },
+    { "type": "stat", "id": 1, "title": "Startup (ready time)",
+      "datasource": { "type": "prometheus", "uid": "promds" },
+      "gridPos": { "x": 0, "y": 1, "w": 5, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "promds" },
+        "expr": "max(application_ready_time_seconds{namespace=\"unicorn-store-spring\"})" } ] },
+    { "type": "stat", "id": 2, "title": "Working set",
+      "datasource": { "type": "prometheus", "uid": "promds" },
+      "gridPos": { "x": 5, "y": 1, "w": 5, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "promds" },
+        "expr": "max(container_memory_working_set_bytes{namespace=\"unicorn-store-spring\",container=\"unicorn-store-spring\"})" } ] },
+    { "type": "stat", "id": 3, "title": "Memory limit",
+      "datasource": { "type": "prometheus", "uid": "promds" },
+      "gridPos": { "x": 10, "y": 1, "w": 5, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "promds" },
+        "expr": "max(kube_pod_container_resource_limits{namespace=\"unicorn-store-spring\",container=\"unicorn-store-spring\",resource=\"memory\"})" } ] },
+    { "type": "stat", "id": 4, "title": "Replicas ready",
+      "datasource": { "type": "prometheus", "uid": "promds" },
+      "gridPos": { "x": 15, "y": 1, "w": 5, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "promds" },
+        "expr": "max(kube_deployment_status_replicas_ready{namespace=\"unicorn-store-spring\",deployment=\"unicorn-store-spring\"})" } ] },
+    { "type": "stat", "id": 5, "title": "Nodes",
+      "datasource": { "type": "prometheus", "uid": "promds" },
+      "gridPos": { "x": 20, "y": 1, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "promds" },
+        "expr": "count(kube_node_info)" } ] },
+    { "type": "row", "id": 200, "title": "Trends",
+      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 }, "collapsed": false },
+    { "type": "timeseries", "id": 6, "title": "Startup per pod (ready time)",
+      "datasource": { "type": "prometheus", "uid": "promds" },
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "promds" },
+        "expr": "application_ready_time_seconds{namespace=\"unicorn-store-spring\"}", "legendFormat": "{{pod}}" } ] },
+    { "type": "timeseries", "id": 7, "title": "Working set vs memory limit",
+      "datasource": { "type": "prometheus", "uid": "promds" },
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "promds" },
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"unicorn-store-spring\",container=\"unicorn-store-spring\"})", "legendFormat": "working set {{pod}}" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "promds" },
+          "expr": "max(kube_pod_container_resource_limits{namespace=\"unicorn-store-spring\",container=\"unicorn-store-spring\",resource=\"memory\"})", "legendFormat": "limit" } ] },
+    { "type": "timeseries", "id": 8, "title": "CPU usage vs limit (cores)",
+      "datasource": { "type": "prometheus", "uid": "promds" },
+      "gridPos": { "x": 0, "y": 14, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "promds" },
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"unicorn-store-spring\",container=\"unicorn-store-spring\"}[5m]))", "legendFormat": "cpu {{pod}}" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "promds" },
+          "expr": "max(kube_pod_container_resource_limits{namespace=\"unicorn-store-spring\",container=\"unicorn-store-spring\",resource=\"cpu\"})", "legendFormat": "limit" } ] },
+    { "type": "timeseries", "id": 9, "title": "Container restarts",
+      "datasource": { "type": "prometheus", "uid": "promds" },
+      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "promds" },
+        "expr": "sum by (pod) (kube_pod_container_status_restarts_total{namespace=\"unicorn-store-spring\",container=\"unicorn-store-spring\"})", "legendFormat": "{{pod}}" } ] },
+    { "type": "timeseries", "id": 10, "title": "Replicas ready",
+      "datasource": { "type": "prometheus", "uid": "promds" },
+      "gridPos": { "x": 0, "y": 22, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "promds" },
+        "expr": "kube_deployment_status_replicas_ready{namespace=\"unicorn-store-spring\",deployment=\"unicorn-store-spring\"}", "legendFormat": "ready" } ] },
+    { "type": "timeseries", "id": 11, "title": "Node count",
+      "datasource": { "type": "prometheus", "uid": "promds" },
+      "gridPos": { "x": 12, "y": 22, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "promds" },
+        "expr": "count(kube_node_info)", "legendFormat": "nodes" } ] }
+  ]
+}
+DASH_EOF
+kubectl create configmap perf-optimizer-dashboard \
+  --from-file=optimization.json="${DASH}" -n "${NS}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl label   configmap perf-optimizer-dashboard -n "${NS}" grafana_dashboard=1 --overwrite
+kubectl annotate configmap perf-optimizer-dashboard -n "${NS}" grafana_folder="Workshop Dashboards" --overwrite
+rm -f "${DASH}"
+log_success "Optimization dashboard provisioned (Workshop Dashboards / Optimization)"
 
 echo "✅ Success: perf-optimizer (image ${REPO}:latest${KB_ID:+, KB ${KB_ID}})"
 log_info "Connect Claude Code (this instance) over MCP/SSE — register at user scope, run from the app folder:"
