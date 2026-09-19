@@ -11,12 +11,26 @@ implementer host reproduces.
 - The workload opted into profiling: `perf-profile/sidecar: "true"` on its pod template.
 
 ## 1. Wire up
+In a **separate terminal** (the port-forward is long-lived and would block the Claude session):
 ```bash
-kubectl -n monitoring port-forward svc/perf-sensor 8090:8080 &   # perf-sensor.mcp -> localhost:8090/mcp
-cd ~/environment && claude                                       # skills + .mcp.json load from here
+kubectl -n monitoring port-forward svc/perf-sensor 8090:8080   # perf-sensor.mcp -> localhost:8090/mcp
 ```
-Confirm in-session: `perf-sensor` tools and `eks-mcp` are connected (`/mcp`), and the
-`java-on-eks-optimization` / `java-on-eks-checklist` skills are listed.
+In your working terminal:
+```bash
+cd ~/environment && claude                                     # skills + .mcp.json load from here
+```
+Confirm in-session (`/mcp`): **perf-sensor** connected, **eks-mcp** connected, and the
+`java-on-eks-optimization` / `java-on-eks-checklist` skills listed.
+
+**If eks-mcp shows "not connected":** it runs via `uvx` (uv). Ensure uv is installed and the
+package is warmed once — `perf-sensor-ide.sh` does this, or manually:
+```bash
+command -v uvx || (curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH="$HOME/.local/bin:$PATH")
+uvx awslabs.eks-mcp-server@latest --help >/dev/null   # prewarm (first run downloads deps)
+```
+then restart `claude`. eks-mcp is read-only with `--allow-sensitive-data-access` (needed for
+`get_pod_logs` / `get_k8s_events`). Note: Q1–Q6 lean on `perf-sensor`; eks-mcp only serves the
+narrative surface (events/logs/ad-hoc reads/docs), so the sensor tools still work without it.
 
 ## 2. Baseline
 Scale to the demo size, drive load, capture the baseline so the end-of-session recap can diff:
