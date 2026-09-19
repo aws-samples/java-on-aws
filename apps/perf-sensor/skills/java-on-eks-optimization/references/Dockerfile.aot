@@ -1,0 +1,71 @@
+# Golden AOT-cache Dockerfile (Java 25). GENERIC — fill the two placeholders from
+# the app's pom.xml, nothing else:
+#   JAR_FILE   = <build.finalName>-exec.jar  (artifactId + version, e.g. myapp-1.0.0-exec.jar)
+#   MAIN_CLASS = the Spring Boot main class  (e.g. com.example.MyApplication)
+# Everything below is application-independent. Train the AOT cache at build time,
+# ship the cache in the runtime image; startup then skips most class loading + JIT.
+ARG JAR_FILE=app-1.0.0-exec.jar
+ARG MAIN_CLASS=com.example.Application
+
+FROM public.ecr.aws/docker/library/maven:3-amazoncorretto-25-al2023 AS builder
+ARG JAR_FILE
+COPY ./pom.xml ./pom.xml
+COPY src ./src/
+RUN mvn clean package -DskipTests -ntp -Dspring-boot.aot.enabled=true && \
+    mv target/${JAR_FILE} app.jar
+
+FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023 AS trainer
+ARG MAIN_CLASS
+ENV MAIN_CLASS=${MAIN_CLASS}
+COPY --from=builder app.jar app.jar
+
+# Explode the fat jar so the trainer runs on a plain classpath.
+RUN mkdir -p /ex && (cd /ex && jar -xf /app.jar) && \
+    mkdir -p /opt/app/training /opt/app/lib && \
+    (cd /ex/BOOT-INF/classes && jar -cf /opt/app/training/classes.jar .) && \
+    cp -r /ex/BOOT-INF/lib/* /opt/app/lib/
+# Deterministic classpath ordering between training and runtime.
+RUN ls /opt/app/lib/*.jar | sort | tr '\n' ':' | sed 's/:$//' > /opt/app/lib-cp.txt
+
+# Optional datasource props so training captures JDBC/JPA classes; if absent, the
+# DB auto-config is excluded so training still completes. These are generic Spring
+# properties, not app-specific.
+ARG SPRING_DATASOURCE_URL
+ARG SPRING_DATASOURCE_USERNAME
+ARG SPRING_DATASOURCE_PASSWORD
+ENV TRAINING_JAVA_OPTS_DEFAULT="-Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration -Dspring.main.lazy-initialization=true"
+
+# 1) Record an AOT configuration (context exits on refresh — no request served).
+RUN set -e; \
+    if [ -n "${SPRING_DATASOURCE_URL}" ]; then \
+        OPTS="-Dspring.datasource.url=${SPRING_DATASOURCE_URL} -Dspring.datasource.username=${SPRING_DATASOURCE_USERNAME} -Dspring.datasource.password=${SPRING_DATASOURCE_PASSWORD}"; \
+    else OPTS="${TRAINING_JAVA_OPTS_DEFAULT}"; fi; \
+    java -XX:AOTMode=record -XX:AOTConfiguration=/app.aotconf \
+    -cp "/opt/app/training/classes.jar:$(cat /opt/app/lib-cp.txt)" \
+    -Dspring.context.exit=onRefresh ${OPTS} ${MAIN_CLASS} || true && \
+    test -s /app.aotconf
+
+# 2) Create the AOT cache from that configuration.
+RUN set -e; \
+    if [ -n "${SPRING_DATASOURCE_URL}" ]; then \
+        OPTS="-Dspring.datasource.url=${SPRING_DATASOURCE_URL} -Dspring.datasource.username=${SPRING_DATASOURCE_USERNAME} -Dspring.datasource.password=${SPRING_DATASOURCE_PASSWORD}"; \
+    else OPTS="${TRAINING_JAVA_OPTS_DEFAULT}"; fi; \
+    java -XX:AOTMode=create -XX:AOTConfiguration=/app.aotconf \
+    -XX:AOTCache=/opt/app/app.aot \
+    -cp "/opt/app/training/classes.jar:$(cat /opt/app/lib-cp.txt)" \
+    ${OPTS} ${MAIN_CLASS} || true && \
+    test -s /opt/app/app.aot
+
+FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
+ARG MAIN_CLASS
+ENV MAIN_CLASS=${MAIN_CLASS}
+RUN yum install -y shadow-utils && \
+    groupadd --system spring -g 1000 && adduser spring -u 1000 -g 1000
+COPY --from=trainer --chown=1000:1000 /opt/app/training/classes.jar /opt/app/training/classes.jar
+COPY --from=trainer --chown=1000:1000 /opt/app/lib/ /opt/app/lib/
+COPY --from=trainer --chown=1000:1000 /opt/app/app.aot /opt/app/app.aot
+COPY --from=trainer --chown=1000:1000 /opt/app/lib-cp.txt /opt/app/lib-cp.txt
+USER 1000:1000
+EXPOSE 8080
+# Runtime uses the trained AOT cache. MAIN_CLASS is baked in from the ARG above.
+ENTRYPOINT ["sh", "-c", "exec java -XX:AOTCache=/opt/app/app.aot -Dserver.port=8080 -cp /opt/app/training/classes.jar:$(cat /opt/app/lib-cp.txt) ${MAIN_CLASS}"]

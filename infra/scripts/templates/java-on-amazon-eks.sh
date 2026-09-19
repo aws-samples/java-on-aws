@@ -71,8 +71,7 @@ log_info "Phase 5: Committing workshop starting point..."
 
 # Phase 6: Privilege-free profiler (build/push image, install Kyverno + metrics-server,
 # apply the sidecar-injection MutatingPolicy). Pyroscope + Grafana wiring already
-# came up in Phase 2 (monitoring.sh); CON405 does NOT run perf-platform.sh — it
-# has no ECS NLB / perf-collector, and the optimizer brings its own SA + dashboard.
+# came up in Phase 2 (monitoring.sh); CON405 does NOT run perf-platform.sh.
 log_info "Phase 6: Deploying perf-profiler..."
 if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/perf-profiler.sh"; then
     log_success "perf-profiler deployed"
@@ -81,20 +80,45 @@ else
     exit 1
 fi
 
-# Phase 7: Optimization agent (build/push image, create Bedrock KB via the IDE role
-# using the CDK-provisioned exec role, deploy the perf-optimizer MCP server + its
-# own SA/Pod Identity, read-only ClusterRole, and the Optimization dashboard).
-log_info "Phase 7: Deploying perf-optimizer..."
-if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/perf-optimizer.sh"; then
-    log_success "perf-optimizer deployed"
+# Phase 6b: Opt unicorn-store-spring into profiling. The app is deployed (by the
+# lab content) BEFORE the inject policy exists, and the participant manifest carries
+# no sidecar label — so patch the label onto the pod template here. The patch rolls
+# the pods, which pass admission and get the profiler sidecar injected. Done in the
+# bootstrap (not in participant content) because the profiler is platform-provided.
+# Non-fatal — the sensor still measures (memory/startup/workload) without the sidecar;
+# only profileTop/threadDump/heap need it.
+log_info "Phase 6b: Opting unicorn-store-spring into profiling (sidecar injection)..."
+if kubectl -n unicorn-store-spring patch deploy/unicorn-store-spring --type merge \
+     -p '{"spec":{"template":{"metadata":{"labels":{"perf-profile/sidecar":"true"}}}}}' >/dev/null 2>&1 \
+   && kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=240s >/dev/null 2>&1; then
+    log_success "unicorn-store-spring opted into profiling (sidecar injected)"
 else
-    log_error "perf-optimizer deploy failed"
+    log_warning "could not opt unicorn-store-spring into profiling (profileTop/threadDump may be empty)"
+fi
+
+# Phase 7: perf-sensor — deterministic sensors (MCP + REST). Primary optimization
+# path for CON405 (replaces the retired perf-optimizer agent). Fatal: the session
+# depends on it.
+log_info "Phase 7: Deploying perf-sensor..."
+if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/perf-sensor.sh"; then
+    log_success "perf-sensor deployed"
+else
+    log_error "perf-sensor deploy failed"
     exit 1
 fi
 
-# Phase 7b: Prebuild the optimized app images (:crac, :aot) so the session deploys
+# Phase 7b: install the skill pack + ~/environment/.mcp.json on the IDE.
+log_info "Phase 7b: Installing perf-sensor skills + .mcp.json on the IDE..."
+if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/perf-sensor-ide.sh"; then
+    log_success "perf-sensor skills + .mcp.json installed"
+else
+    log_error "perf-sensor-ide setup failed"
+    exit 1
+fi
+
+# Phase 7c: Prebuild the optimized app images (:crac, :aot) so the session deploys
 # them without waiting on a multi-minute CRaC/AOT build.
-log_info "Phase 7b: Prebuilding unicorn-store-spring:{crac,aot}..."
+log_info "Phase 7c: Prebuilding unicorn-store-spring:{crac,aot}..."
 if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/prebuild-images.sh"; then
     log_success "Optimized images prebuilt"
 else

@@ -1,0 +1,40 @@
+# =============================================================================
+# perf-sensor — Spring Boot 4.1 / Spring AI 2.0 MCP server (streamable-http) + REST.
+# Deterministic sensors only: no Bedrock, no Spring AI chat, no AWS SDK.
+# =============================================================================
+spring:
+  application:
+    name: perf-sensor
+  threads:
+    virtual:
+      enabled: true
+  ai:
+    mcp:
+      server:
+        name: perf-sensor
+        version: 1.0.0
+        type: SYNC
+        # Streamable-HTTP transport (endpoint /mcp). Tools come from the
+        # ToolCallbackProvider bean in SensorApplication.
+        protocol: STREAMABLE
+
+# Endpoints the sensors query in-cluster (overridable via env).
+PROMETHEUS_URL: ${PROMETHEUS_URL:http://prometheus-server.monitoring}
+PYROSCOPE_URL: ${PYROSCOPE_URL:http://pyroscope.monitoring:4040}
+# Profiler sidecar /dump port and the label used to select the app pod.
+DUMP_PORT: ${DUMP_PORT:9100}
+SERVICE_LABEL: ${SERVICE_LABEL:app}
+
+server:
+  port: 8080
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true

@@ -1,0 +1,37 @@
+# perf-sensor Deployment + Service. Read-only, no AWS calls. __IMAGE__ and __NS__
+# are substituted by perf-sensor.sh. Reaches Prometheus, Pyroscope and the profiler
+# sidecar /dump by pod IP; all endpoints are overridable via env.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: perf-sensor
+  namespace: __NS__
+  labels: {app: perf-sensor}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: perf-sensor}}
+  template:
+    metadata: {labels: {app: perf-sensor}}
+    spec:
+      serviceAccountName: perf-sensor
+      containers:
+        - name: perf-sensor
+          image: __IMAGE__
+          ports: [{containerPort: 8080}]
+          env:
+            - {name: PROMETHEUS_URL, value: "http://prometheus-server.monitoring"}
+            - {name: PYROSCOPE_URL, value: "http://pyroscope.monitoring:4040"}
+            - {name: DUMP_PORT, value: "9100"}
+            - {name: SERVICE_LABEL, value: "app"}
+          readinessProbe: {httpGet: {path: /actuator/health, port: 8080}, initialDelaySeconds: 15, periodSeconds: 10}
+          resources:
+            requests: {cpu: "250m", memory: "512Mi"}
+            limits:   {cpu: "1",    memory: "1Gi"}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: perf-sensor, namespace: __NS__}
+spec:
+  selector: {app: perf-sensor}
+  ports: [{port: 8080, targetPort: 8080}]
+  type: ClusterIP

@@ -12,7 +12,6 @@ import java.util.List;
  * Creates the IAM roles used by the platform components on Amazon EKS:
  *  - perf-analyzer-eks-pod-role     (perf-analyzer Spring Boot service)
  *  - perf-collector-eks-pod-role    (perf-collector DaemonSet)
- *  - perf-optimizer-eks-pod-role    (perf-optimizer MCP server, CON405)
  *  - pyroscope-eks-pod-role         (Pyroscope server, for S3-backed storage)
  *  - grafana-eks-pod-role           (Grafana, to read ALB metrics from CloudWatch)
  *
@@ -30,10 +29,9 @@ public class PerfPlatform extends Construct {
 
     private final Role perfAnalyzerEksPodRole;
     private final Role perfCollectorEksPodRole;
-    private final Role perfOptimizerEksPodRole;
     private final Role pyroscopeEksPodRole;
     private final Role grafanaEksPodRole;
-    private final Role perfOptimizerKbRole;
+    // perf-optimizer roles removed: CON405 uses perf-sensor (no AWS calls, no IAM).
 
     public static class PerfPlatformProps {
         private Bucket workshopBucket;
@@ -62,10 +60,8 @@ public class PerfPlatform extends Construct {
 
         this.perfAnalyzerEksPodRole = createAnalyzerEksPodRole(props);
         this.perfCollectorEksPodRole = createCollectorEksPodRole(props);
-        this.perfOptimizerEksPodRole = createOptimizerEksPodRole();
         this.pyroscopeEksPodRole = createPyroscopeEksPodRole(props);
         this.grafanaEksPodRole = createGrafanaEksPodRole();
-        this.perfOptimizerKbRole = createKbExecRole(props);
         grantProfilingWriteToUnicornEcsTaskRole(props);
     }
 
@@ -110,39 +106,6 @@ public class PerfPlatform extends Construct {
 
         addTagSession(role);
         addWorkshopBucketWrite(role, props, "perf-platform/profiling/*");
-
-        return role;
-    }
-
-    /**
-     * perf-optimizer EKS pod role (CON405 / java-on-amazon-eks).
-     * Trusts pods.eks.amazonaws.com (Pod Identity).
-     * Grants Bedrock model invocation (Converse) via AmazonBedrockLimitedAccess and
-     * Knowledge Base retrieval (bedrock:Retrieve / bedrock:RetrieveAndGenerate) so the
-     * perf-optimizer MCP server can explain findings and ground on the S3 Vectors KB.
-     * No S3 and no ECS: the optimizer stages nothing to S3 and never calls ECS.
-     * Read-only against the cluster is enforced by the Kubernetes ClusterRole
-     * (get/list/watch only, no write verbs), not by this IAM role.
-     */
-    private Role createOptimizerEksPodRole() {
-        ServicePrincipal podsPrincipal = ServicePrincipal.Builder.create("pods.eks.amazonaws.com").build();
-
-        Role role = Role.Builder.create(this, "OptimizerEksPodRole")
-            .roleName("perf-optimizer-eks-pod-role")
-            .assumedBy(podsPrincipal)
-            .description("Role for the perf-optimizer EKS pod to invoke Bedrock and retrieve from the Knowledge Base")
-            .managedPolicies(List.of(
-                ManagedPolicy.fromAwsManagedPolicyName("AmazonBedrockLimitedAccess")
-            ))
-            .build();
-
-        addTagSession(role);
-        role.addToPolicy(PolicyStatement.Builder.create()
-            .effect(Effect.ALLOW)
-            .actions(List.of("bedrock:Retrieve", "bedrock:RetrieveAndGenerate"))
-            .resources(List.of("arn:aws:bedrock:" + Stack.of(this).getRegion()
-                + ":" + Stack.of(this).getAccount() + ":knowledge-base/*"))
-            .build());
 
         return role;
     }
@@ -241,70 +204,6 @@ public class PerfPlatform extends Construct {
             .actions(List.of("ecs:DescribeTasks"))
             .resources(List.of("*"))
             .build());
-    }
-
-    /**
-     * perf-optimizer Knowledge Base execution role.
-     * Trusts bedrock.amazonaws.com so the Bedrock Knowledge Base can assume it.
-     * Created here (not by a workshop script) because the IDE role cannot
-     * iam:CreateRole for perf-* names; the optimizer script only passes this role
-     * to bedrock:CreateKnowledgeBase. Grants read of the KB source docs staged in
-     * the workshop bucket under perf-optimizer/kb/*, full access to the S3 Vectors
-     * store (bucket name convention perf-optimizer-*), and invoke on the Titan
-     * embedding model. No permissions boundary (CDK-managed role, not script-created).
-     */
-    private Role createKbExecRole(PerfPlatformProps props) {
-        String region = Stack.of(this).getRegion();
-        String account = Stack.of(this).getAccount();
-
-        Role role = Role.Builder.create(this, "PerfOptimizerKbRole")
-            .roleName("perf-optimizer-kb-role")
-            .assumedBy(ServicePrincipal.Builder.create("bedrock.amazonaws.com")
-                .conditions(java.util.Map.of(
-                    "StringEquals", java.util.Map.of("aws:SourceAccount", account),
-                    "ArnLike", java.util.Map.of("aws:SourceArn",
-                        "arn:aws:bedrock:" + region + ":" + account + ":knowledge-base/*")
-                ))
-                .build())
-            .description("Execution role assumed by the perf-optimizer Bedrock Knowledge Base (S3 Vectors)")
-            .build();
-
-        // Embed KB documents with the Titan v2 text embedding model.
-        role.addToPolicy(PolicyStatement.Builder.create()
-            .effect(Effect.ALLOW)
-            .actions(List.of("bedrock:InvokeModel"))
-            .resources(List.of("arn:aws:bedrock:" + region + "::foundation-model/amazon.titan-embed-text-v2:0"))
-            .build());
-
-        // S3 Vectors store backing the KB (bucket + indexes).
-        role.addToPolicy(PolicyStatement.Builder.create()
-            .effect(Effect.ALLOW)
-            .actions(List.of("s3vectors:*"))
-            .resources(List.of(
-                "arn:aws:s3vectors:" + region + ":" + account + ":bucket/perf-optimizer-*",
-                "arn:aws:s3vectors:" + region + ":" + account + ":bucket/perf-optimizer-*/*"
-            ))
-            .build());
-
-        // Read the KB source documents staged in the workshop bucket.
-        if (props.getWorkshopBucket() != null) {
-            String bucketArn = props.getWorkshopBucket().getBucketArn();
-            role.addToPolicy(PolicyStatement.Builder.create()
-                .effect(Effect.ALLOW)
-                .actions(List.of("s3:ListBucket"))
-                .resources(List.of(bucketArn))
-                .conditions(java.util.Map.of(
-                    "StringLike", java.util.Map.of("s3:prefix",
-                        List.of("perf-optimizer/kb/*", "perf-optimizer/kb"))))
-                .build());
-            role.addToPolicy(PolicyStatement.Builder.create()
-                .effect(Effect.ALLOW)
-                .actions(List.of("s3:GetObject"))
-                .resources(List.of(bucketArn + "/perf-optimizer/kb/*"))
-                .build());
-        }
-
-        return role;
     }
 
     private void addTagSession(Role role) {
@@ -413,19 +312,11 @@ public class PerfPlatform extends Construct {
         return perfCollectorEksPodRole;
     }
 
-    public Role getPerfOptimizerEksPodRole() {
-        return perfOptimizerEksPodRole;
-    }
-
     public Role getPyroscopeEksPodRole() {
         return pyroscopeEksPodRole;
     }
 
     public Role getGrafanaEksPodRole() {
         return grafanaEksPodRole;
-    }
-
-    public Role getPerfOptimizerKbRole() {
-        return perfOptimizerKbRole;
     }
 }

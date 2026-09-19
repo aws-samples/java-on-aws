@@ -1,0 +1,16 @@
+# Sizing policy — the machine-readable source of truth for the numbers passed to
+# perf-sensor.sizeMemory. The skill reads the VALUES from here (deterministic, no
+# risk of mis-copying a number from prose); SKILL.md carries the WHY as prose.
+# Pass these verbatim to sizeMemory; never invent or round them yourself.
+policy:
+  floorFactor: 1.25         # requests = roundUp(floor * this) — near the non-heap floor plus headroom
+  peakFactor: 1.40          # limit >= peak * this — over the observed load peak
+  floorSafetyFactor: 1.90   # limit >= floor * this — protects against an under-observed peak
+  roundMi: 64               # round memory up to a multiple of this many MiB (scheduler-friendly)
+  warmSeconds: 120          # guard: min uptime before sizing; a 120 s load run after apply satisfies it
+  minSamples: 100           # guard: min profile samples for a floor/peak
+  minRequestRate: 1         # guard: rps that counts as "load observed"
+  minDeltaMi: 64            # guard: peak-floor MiB that counts as "load observed"
+
+# Default look-back window (minutes) for measure / sizeMemory / profileTop.
+windowMinutes: 15

@@ -1,0 +1,22 @@
+# Applied in the app namespace (__APP_NS__). Allows ingress to the profiler
+# sidecar /dump port (9100) ONLY from monitoring pods labelled app=perf-sensor.
+# The sensor reads thread/heap dumps by pod IP; this scopes who may reach 9100.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-perf-sensor-dump
+  namespace: __APP_NS__
+spec:
+  podSelector: {}          # all pods in the app namespace that expose 9100 (the sidecar)
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: __MONITORING_NS__
+          podSelector:
+            matchLabels:
+              app: perf-sensor
+      ports:
+        - protocol: TCP
+          port: 9100

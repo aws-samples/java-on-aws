@@ -1,0 +1,45 @@
+# Golden CRaC (Coordinated Restore at Checkpoint) Dockerfile. GENERIC — fill the
+# one placeholder from the app's pom.xml:
+#   JAR_FILE = <build.finalName>-exec.jar  (artifactId + version, e.g. myapp-1.0.0-exec.jar)
+# The checkpoint is taken at BUILD time with the Warp engine (no CRIU, no extra
+# container privileges). Restore is sub-second. Any class holding sockets/file
+# descriptors at checkpoint must implement org.crac.Resource (see crac.md).
+ARG JAR_FILE=app-1.0.0-exec.jar
+
+FROM azul/zulu-openjdk:25-jdk-crac-latest AS builder
+ARG JAR_FILE
+RUN apt-get -qq update && apt-get -qq install -y curl maven
+
+# Generic Spring datasource build-args (optional): let the checkpoint capture
+# JDBC/JPA classes. Not app-specific.
+ARG SPRING_DATASOURCE_URL
+ENV SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL
+ARG SPRING_DATASOURCE_USERNAME
+ENV SPRING_DATASOURCE_USERNAME=$SPRING_DATASOURCE_USERNAME
+ARG SPRING_DATASOURCE_PASSWORD
+ENV SPRING_DATASOURCE_PASSWORD=$SPRING_DATASOURCE_PASSWORD
+
+COPY ./pom.xml ./pom.xml
+COPY src ./src/
+RUN mvn clean package -DskipTests -ntp && mv target/${JAR_FILE} app.jar
+
+# Take the checkpoint with the Warp engine. Spring refreshes the context, then
+# checkpoints on refresh; open FDs are reported (collect-fd-stacktraces) so a
+# missing Resource hook fails loudly.
+RUN java -Dspring.context.checkpoint=onRefresh \
+    -Djdk.crac.collect-fd-stacktraces=true \
+    -XX:CRaCEngine=warp \
+    -XX:CPUFeatures=generic \
+    -XX:CRaCCheckpointTo=/opt/crac-files \
+    -jar /app.jar & PID=$! && wait ${PID} || true
+
+FROM azul/zulu-openjdk:25-jdk-crac-latest
+RUN apt-get -qq update && apt-get -qq install -y adduser \
+    && addgroup --system --gid 1000 spring \
+    && adduser --system --disabled-password --gecos "" --uid 1000 --gid 1000 spring
+COPY --from=builder --chown=1000:1000 /opt/crac-files /opt/crac-files
+COPY --from=builder --chown=1000:1000 /app.jar /app.jar
+USER 1000:1000
+EXPOSE 8080
+# Restore from the checkpoint — no cold JVM start, no class loading, no JIT warm-up.
+ENTRYPOINT ["java", "-XX:CRaCEngine=warp", "-XX:CRaCRestoreFrom=/opt/crac-files", "-Dserver.port=8080"]
