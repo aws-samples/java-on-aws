@@ -41,7 +41,12 @@ PUBLISHER_DIR="${BUILD_DIR}/src/main/java/com/unicorn/store/data"
 if [ -f "${PUBLISHER_DIR}/UnicornPublisher.crac" ]; then
     cp "${PUBLISHER_DIR}/UnicornPublisher.crac" "${PUBLISHER_DIR}/UnicornPublisher.java"
 else
-    log_warning "UnicornPublisher.crac not found — building CRaC image without the Resource hook"
+    # Hard-fail here rather than let the checkpoint fail silently: without the hook
+    # (and the org.crac dep it implies) the CRaC checkpoint never writes /opt/crac-files,
+    # and the build dies 20 lines later with a cryptic `COPY "/opt/crac-files": not found`.
+    # A missing hook means the source was de-spoiled before this ran — fix the phase order.
+    log_error "UnicornPublisher.crac not found in ${PUBLISHER_DIR} — source is de-spoiled; prebuild must run BEFORE de-spoil"
+    exit 1
 fi
 ( cd "${BUILD_DIR}" && ./scripts/build.sh crac Dockerfile.crac ) \
     && log_success "unicorn-store-spring:crac pushed" \

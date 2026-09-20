@@ -43,6 +43,19 @@ else
     exit 1
 fi
 
+# Phase 3a: Prebuild the optimized app images (:crac, :aot) so the session deploys
+# them without waiting on a multi-minute CRaC/AOT build. MUST run BEFORE Phase 3b:
+# the CRaC checkpoint needs org.crac + the UnicornPublisher.crac hook, which de-spoil
+# strips out. prebuild-images.sh builds from a throwaway copy, so it leaves the
+# participant dir untouched — de-spoil and the clean starting-point commit stay correct.
+log_info "Phase 3a: Prebuilding unicorn-store-spring:{crac,aot}..."
+if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/prebuild-images.sh"; then
+    log_success "Optimized images prebuilt"
+else
+    log_error "Prebuild of optimized images failed"
+    exit 1
+fi
+
 # Phase 3b: De-spoil the participant's app copy (leaves the shared apps/ source and the
 # immersion-day module untouched). The CRaC optimization (Q4) should be DISCOVERED, so
 # strip the pre-baked answer from ~/environment: remove the org.crac dependency from
@@ -152,16 +165,6 @@ if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/perf-sensor-ide.sh"; then
     log_success "perf-sensor skills + .mcp.json installed"
 else
     log_error "perf-sensor-ide setup failed"
-    exit 1
-fi
-
-# Phase 7c: Prebuild the optimized app images (:crac, :aot) so the session deploys
-# them without waiting on a multi-minute CRaC/AOT build.
-log_info "Phase 7c: Prebuilding unicorn-store-spring:{crac,aot}..."
-if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/prebuild-images.sh"; then
-    log_success "Optimized images prebuilt"
-else
-    log_error "Prebuild of optimized images failed"
     exit 1
 fi
 
