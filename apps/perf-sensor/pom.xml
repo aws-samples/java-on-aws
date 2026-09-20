@@ -46,6 +46,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- Prometheus scrape endpoint (/actuator/prometheus) so the sensor can
+             publish the startup time it reads from pod logs as a scraped gauge. -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
 
         <!-- MCP server (WebMVC, streamable-http transport). Exposes @Tool-annotated
              beans registered via a ToolCallbackProvider to MCP clients (Claude Code). -->

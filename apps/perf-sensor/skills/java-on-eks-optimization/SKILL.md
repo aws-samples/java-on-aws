@@ -39,7 +39,6 @@ Do not read desired-state that `measure` already returns via `read_k8s_resource`
 - Use the reference Dockerfiles verbatim except the documented placeholders, filled
   from the app's `pom.xml` (`artifactId`, `version`, `build.finalName`, main class).
 - Show the full change and **wait for confirmation** before writing any file.
-- One git branch per change: `opt/<short-name>`.
 - After the participant applies, call `measure` again and run the
   **`java-on-eks-checklist`** skill; report **before → after**.
 
@@ -61,18 +60,29 @@ Read the file and pass the values through. The *why* for each:
   vs heap from the evidence (working-set floor/peak vs heap committed). Propose the
   `deployment-resources.yaml` fragment with the returned values. Expect a second pass
   after apply.
-- **"start faster without changing the image"** → `measure`, `startupLog`;
-  `read_k8s_resource` to confirm `resizePolicy` absent. Propose
-  `deployment-cpu-boost.yaml` (resizePolicy + boot CPU) plus the manual resize command.
+- **"start faster without changing the image"** → `measure`, `startupLog`. Propose
+  the **`startup-cpu-boost.yaml`** `StartupCPUBoost` CR (the Kube Startup CPU Boost
+  controller is platform-installed): boots the container at higher CPU and resizes it
+  down automatically on Ready — the production path, one namespaced CR, no per-pod
+  work. Reference `deployment-cpu-boost.yaml` only to explain the underlying in-place
+  resize (and the manual `--subresource resize`) — that manual patch is for
+  understanding the mechanism, not for production.
 - **"start faster without changing the application"** → `startupLog`, `profileTop cpu`
   (JIT / class-loading share). Propose AOT (Java 25) or CDS (older JDK); render
   `Dockerfile.aot` with placeholders filled.
-- **"start even faster / under a second"** → `startupLog`; propose CRaC; render
-  `Dockerfile.crac`. **Scan `src/` for classes holding network clients or file
-  handles** and propose a CRaC `Resource` hook for each. Mention credentials-at-restore.
+- **"start even faster / under a second"** → `startupLog`; propose CRaC. Add the
+  `org.crac` dependency to `pom.xml` (not present by default), render `Dockerfile.crac`,
+  and **scan `src/` for classes holding network clients or file handles** — propose a
+  CRaC `Resource` hook for each. Mention credentials-at-restore. **Clear
+  `JAVA_TOOL_OPTIONS` (GC/heap flags) from the Deployment for the CRaC image** — those
+  are baked into the checkpoint; leaving them crash-loops the restore.
 - **"fix latency under load"** → `profileTop wall`, `threadDump`; name the blocking
   frame and `file:line` from the dump. Propose the non-blocking change; size the pool
-  from evidence.
+  from evidence. Diagnose on the **plain/AOT JVM** — on a CRaC-restored JVM the wall
+  profiler can't unwind Java frames (collapses to `libc.so.6`, `futexWallShare` ~0,
+  which means "not measurable", not "no blocking"). Verify the fix with the **HTTP
+  request-latency metric** (`http_server_requests_seconds`), which works on every image
+  including CRaC. See `references/blocking-calls.md`.
 - **"how are we doing / score"** → run the `java-on-eks-checklist` skill.
 
 ## 4. Answer format

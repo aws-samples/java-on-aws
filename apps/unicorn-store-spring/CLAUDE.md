@@ -21,22 +21,28 @@ service on EKS (techniques, sizing, golden Dockerfiles) lives in the
 
 ## Build & deploy
 
+**`k8s/deployment.yaml` is the single source of truth.** Image, resources, env, and
+probes all live in that file — change them there and apply the file. Do **not** use
+`kubectl set image` / `set env` / `patch` for lasting changes: they mutate the live
+object only, so the next `apply -f` reverts them (the file wins) and silently undoes
+your image or flag change. One file, one `apply`, no drift.
+
 Image builds go through **`scripts/build.sh <tag> [dockerfile]`**, which resolves the
 ECR repo and the Aurora build-args (SSM `workshop-db-connection-string` + Secrets
 Manager `workshop-db-secret`) — no placeholders. It prints the pushed `repo:tag`.
 
 ```bash
-# Image change (new Dockerfile / source), e.g. tag aot or crac:
-IMG=$(./scripts/build.sh aot Dockerfile.aot)     # or: crac Dockerfile.crac | latest
-kubectl -n unicorn-store-spring set image deploy/unicorn-store-spring unicorn-store-spring="$IMG"
-kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring
+# 1. Build (only when the image changes — new Dockerfile / source):
+IMG=$(./scripts/build.sh <tag> <Dockerfile>)     # e.g. ./scripts/build.sh latest
 
-# Manifest change (resources, resizePolicy, env):
+# 2. Edit k8s/deployment.yaml: set the container image to "$IMG" (if built) and make
+#    any resources / env / resizePolicy changes in the SAME file.
+#    (image lives at spec.template.spec.containers[0].image)
+
+# 3. Apply the file and wait:
 kubectl -n unicorn-store-spring apply -f k8s/deployment.yaml
-kubectl -n unicorn-store-spring rollout restart deploy/unicorn-store-spring   # apply of unchanged :latest is a no-op
-kubectl -n unicorn-store-spring rollout status  deploy/unicorn-store-spring
+kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring
 ```
 
-## Branch convention
-
-One change per branch: `git checkout -b opt/<short-name>` before editing.
+Removing an env var (e.g. dropping `JAVA_TOOL_OPTIONS` for a CRaC image) is a manifest
+edit too — delete it from the file and apply, don't `set env`.

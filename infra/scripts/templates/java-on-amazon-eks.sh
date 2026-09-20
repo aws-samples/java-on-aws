@@ -43,6 +43,23 @@ else
     exit 1
 fi
 
+# Phase 3b: De-spoil the participant's app copy (leaves the shared apps/ source and the
+# immersion-day module untouched). The CRaC optimization (Q4) should be DISCOVERED, so
+# strip the pre-baked answer from ~/environment: remove the org.crac dependency from
+# pom.xml (the optimization skill re-adds it) and delete the finished CRaC reference
+# implementation (UnicornPublisher.crac). Non-fatal.
+log_info "Phase 3b: De-spoiling app copy (remove org.crac dep + CRaC crib)..."
+APP_SRC="$HOME/environment/unicorn-store-spring"
+if [ -d "$APP_SRC" ]; then
+    # Remove the whole <dependencies> block that carries org.crac (only crac lives there).
+    perl -0777 -i -pe 's{\s*<dependencies>\s*<dependency>\s*<groupId>org\.crac</groupId>.*?</dependencies>}{}s' \
+        "$APP_SRC/pom.xml" 2>/dev/null || true
+    find "$APP_SRC/src" -name '*.crac' -delete 2>/dev/null || true
+    log_success "App copy de-spoiled (org.crac dep + *.crac removed)"
+else
+    log_warning "app copy not found at $APP_SRC — skipped de-spoil"
+fi
+
 # ---------------------------------------------------------------------------
 # Workshop tooling — runs as ec2-user with the IDE role, after the starting point.
 # ---------------------------------------------------------------------------
@@ -81,19 +98,41 @@ else
 fi
 
 # Phase 6b: Opt unicorn-store-spring into profiling. The app is deployed (by the
-# lab content) BEFORE the inject policy exists, and the participant manifest carries
-# no sidecar label — so patch the label onto the pod template here. The patch rolls
-# the pods, which pass admission and get the profiler sidecar injected. Done in the
-# bootstrap (not in participant content) because the profiler is platform-provided.
+# lab content) BEFORE the inject policy exists, and the lab-generated manifest carries
+# no sidecar label. Write the label INTO the on-disk manifest (not just a live patch)
+# so it persists across every `kubectl apply -f deployment.yaml` the participant runs
+# during the session — otherwise an apply reverts the pod template and drops the
+# sidecar (samples: 0 -> sizeMemory/checklist blocked). Applying the edited manifest
+# rolls the pods; they pass admission and get the profiler sidecar injected. Kept the
+# label (not namespace-wide injection) so the opt-in is visible/teachable in the YAML.
 # Non-fatal — the sensor still measures (memory/startup/workload) without the sidecar;
 # only profileTop/threadDump/heap need it.
 log_info "Phase 6b: Opting unicorn-store-spring into profiling (sidecar injection)..."
-if kubectl -n unicorn-store-spring patch deploy/unicorn-store-spring --type merge \
-     -p '{"spec":{"template":{"metadata":{"labels":{"perf-profile/sidecar":"true"}}}}}' >/dev/null 2>&1 \
+DEPLOY_MANIFEST="$HOME/environment/unicorn-store-spring/k8s/deployment.yaml"
+if [ -f "$DEPLOY_MANIFEST" ] \
+   && yq -i '.spec.template.metadata.labels."perf-profile/sidecar" = "true"' "$DEPLOY_MANIFEST" \
+   && kubectl -n unicorn-store-spring apply -f "$DEPLOY_MANIFEST" >/dev/null 2>&1 \
    && kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=240s >/dev/null 2>&1; then
-    log_success "unicorn-store-spring opted into profiling (sidecar injected)"
+    # Commit so the label is part of the participant's starting point (Phase 5 committed
+    # the pre-label state) and their working tree stays clean.
+    ( cd "$HOME/environment/unicorn-store-spring" \
+        && git add k8s/deployment.yaml \
+        && git commit -m "Opt into profiler sidecar injection (perf-profile/sidecar label)" ) \
+        >/dev/null 2>&1 || true
+    log_success "unicorn-store-spring opted into profiling (sidecar label in manifest, injected)"
 else
     log_warning "could not opt unicorn-store-spring into profiling (profileTop/threadDump may be empty)"
+fi
+
+# Phase 6c: Kube Startup CPU Boost — cluster-wide controller (platform install) so the
+# "start faster without changing the image" answer hands developers a declarative
+# StartupCPUBoost CR instead of a manual per-pod resize. Non-fatal: the skill's manual
+# in-place-resize path still works if the controller is absent.
+log_info "Phase 6c: Installing Kube Startup CPU Boost controller..."
+if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/startup-cpu-boost.sh"; then
+    log_success "Kube Startup CPU Boost installed"
+else
+    log_warning "Kube Startup CPU Boost install failed (manual in-place-resize still available)"
 fi
 
 # Phase 7: perf-sensor — deterministic sensors (MCP + REST). Primary optimization

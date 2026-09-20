@@ -17,4 +17,3 @@
             value: >-
               -XX:+Use<sizeMemory.gc>                 # SerialGC on <=1 vCPU; never G1 there
               -XX:MaxRAMPercentage=<sizeMemory.maxRamPercentage>   # e.g. 75
-              -XX:InitialRAMPercentage=50

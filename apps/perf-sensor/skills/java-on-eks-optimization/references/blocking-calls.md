@@ -40,9 +40,31 @@ return without waiting, or bound and size the work deliberately.
 - Virtual threads make blocking cheaper but do not make a needless block correct;
   remove the block first.
 
+## Diagnose on the plain-JVM image, not on CRaC
+
+`profileTop wall` and `threadDump` resolve Java frames on a normal JVM (Corretto/plain
+or AOT), so that is where you diagnose latency — before switching the workload to CRaC.
+On a **CRaC-restored (Azul Zulu) JVM** the wall profiler cannot unwind the Java stack:
+frames collapse to the native leaf (e.g. `libc.so.6`), so `futexWallShare` reads ~0 and
+gives no `Unsafe.park`/futex signal — and `threadDump` may be empty depending on the
+image. A `futexWallShare` of 0 on a CRaC pod means "not measurable here", **not** "no
+blocking". Do the latency diagnosis on the plain JVM; the blocking call is a property of
+the code, so the finding carries over to the CRaC build unchanged.
+
+## Verify
+
+Prefer the **HTTP request-latency metric** as the authoritative before/after — it works
+on every image including CRaC: `http_server_requests_seconds` (avg
+`sum(rate(_sum))/sum(rate(_count))`, or `_max`), filtered by the write method/URI. A
+blocking publish adds the downstream round-trip to every write; removing it drops that
+latency sharply.
+
+On a plain/AOT JVM you can also confirm with the profiler: `profileTop wall`
+(`futexWallShare` falls) and `threadDump` (`requestThreadsBlockedInFutureGet` → 0) under
+the same load. On CRaC, rely on the HTTP-latency metric instead.
+
 ## Artifact
 
 There is no golden file here — the change is in the app's source. Name the blocking
 frame and `file:line` from `threadDump`, propose the non-blocking rewrite, and give a
-pool size derived from the dump. Verify with `profileTop wall` (futexWallShare falls)
-and `threadDump` (`requestThreadsBlockedInFutureGet` → 0) under the same load.
+pool size derived from the dump.

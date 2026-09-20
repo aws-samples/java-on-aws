@@ -29,11 +29,15 @@ server:
   port: 8080
   shutdown: graceful
 
+# Which workload's startup time to publish as perf_sensor_startup_seconds (per Ready
+# pod) is set via the STARTUP_METRIC_SERVICE env var (default in StartupMetrics:
+# unicorn-store-spring). Namespace == service == container name by convention.
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       probes:

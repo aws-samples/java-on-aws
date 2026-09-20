@@ -13,7 +13,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../../lib/common.sh"
-source /etc/profile.d/workshop.sh
+# Optional workshop context (present on the IDE); safe to skip elsewhere (e.g. a Mac).
+[ -f /etc/profile.d/workshop.sh ] && source /etc/profile.d/workshop.sh
 
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 APP_DIR="${REPO_ROOT}/apps/perf-profiler"
@@ -29,7 +30,10 @@ CLUSTER_NAME="${PREFIX:-workshop}-eks"   # stamped into the sidecar as a Pyrosco
 log_info "Building and pushing perf-profiler image..."
 aws ecr get-login-password --region "${AWS_REGION}" \
   | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
-docker build -t perf-profiler:latest "${APP_DIR}"
+# Pin linux/amd64: the EKS nodes are amd64, but this build may run on an arm64 host
+# (e.g. an Apple-Silicon Mac), where a native `docker build` would push arm64 and the
+# nodes fail the pull with "no match for platform".
+docker build --platform linux/amd64 -t perf-profiler:latest "${APP_DIR}"
 docker tag perf-profiler:latest "${ECR_URI}:latest"
 docker push "${ECR_URI}:latest"
 log_success "perf-profiler image pushed: ${ECR_URI}:latest"

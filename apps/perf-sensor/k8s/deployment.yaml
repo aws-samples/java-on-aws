@@ -11,7 +11,12 @@ spec:
   replicas: 1
   selector: {matchLabels: {app: perf-sensor}}
   template:
-    metadata: {labels: {app: perf-sensor}}
+    metadata:
+      labels: {app: perf-sensor}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8080"
     spec:
       serviceAccountName: perf-sensor
       containers:

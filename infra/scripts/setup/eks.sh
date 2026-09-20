@@ -103,21 +103,20 @@ spec:
         - key: kubernetes.io/os
           operator: In
           values: ["linux"]
-        - key: eks.amazonaws.com/instance-cpu-manufacturer
+        # Pin to a single instance family so every pod lands on the same CPU
+        # (m6a: AMD EPYC Milan, one sustained clock). This keeps startup-time
+        # measurements repeatable — otherwise Karpenter can pick a faster-clocked
+        # instance (e.g. m8azn at 5 GHz) and startup "improves" from hardware, not
+        # from the change. Family (not type) keeps capacity flexible across sizes.
+        - key: eks.amazonaws.com/instance-family
           operator: In
-          values: ["amd"]
+          values: ["m6a"]
         - key: eks.amazonaws.com/instance-cpu
           operator: Gt
           values: ["3"]
         - key: eks.amazonaws.com/instance-memory
           operator: Gt
           values: ["16383"]
-        - key: eks.amazonaws.com/instance-category
-          operator: In
-          values: ["c", "m"]
-        - key: eks.amazonaws.com/instance-generation
-          operator: Gt
-          values: ["5"]
   limits:
     cpu: 16
     memory: 64Gi

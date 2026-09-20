@@ -5,6 +5,7 @@ import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * perf-sensor — deterministic performance sensors for a Java workload on EKS,
@@ -14,6 +15,7 @@ import org.springframework.context.annotation.Bean;
  * java-on-eks-optimization / java-on-eks-checklist skills.
  */
 @SpringBootApplication
+@EnableScheduling   // StartupMetrics polls Ready-pod identity and publishes a gauge
 public class SensorApplication {
 
     public static void main(String[] args) {

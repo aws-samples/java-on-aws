@@ -162,6 +162,26 @@ install_utilities() {
     echo -e '[whitelist]\nprefix = [ "/home/ec2-user/environment" ]' > ~/.config/direnv/direnv.toml
 }
 
+install_uv() {
+    # uv/uvx — runs the awslabs eks-mcp-server for Claude Code (java-on-amazon-eks).
+    # Installing here (base tools) instead of the workshop phase means the package is
+    # already on PATH and warmed before the first `claude` session, so eks-mcp connects
+    # immediately instead of failing on a cold multi-package download.
+    log_info "Installing uv (uvx) and prewarming eks-mcp-server..."
+    retry_optional "uv" "curl -LsSf https://astral.sh/uv/install.sh | sh"
+    export PATH="$HOME/.local/bin:$PATH"
+    # ~/.local/bin is already exported by k9s/claude installs above; make it persistent.
+    grep -q '.local/bin' /etc/profile.d/workshop.sh 2>/dev/null \
+        || echo "export PATH=\$PATH:\$HOME/.local/bin" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
+    if command -v uvx >/dev/null 2>&1; then
+        uvx awslabs.eks-mcp-server@latest --help >/dev/null 2>&1 \
+            && echo "✅ Success: uv $(uv --version 2>/dev/null | awk '{print $2}') (eks-mcp-server prewarmed)" \
+            || echo "⚠️  Warning: uv installed but eks-mcp-server prewarm failed"
+    else
+        echo "⚠️  Warning: uv installation could not be verified"
+    fi
+}
+
 install_kiro_cli() {
     log_info "Installing Kiro CLI..."
     retry_optional "Kiro CLI" \
@@ -198,6 +218,7 @@ install_claude_code() {
   "model": "sonnet",
   "env": {
     "CLAUDE_CODE_USE_BEDROCK": "1",
+    "CLAUDE_CODE_DISABLE_MOUSE": "1",
     "AWS_REGION": "${AWS_REGION}",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-4-6",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "us.anthropic.claude-opus-4-6-v1",
@@ -218,6 +239,7 @@ install_utilities
 source /etc/profile.d/workshop.sh
 aws configure set default.region ${AWS_REGION}
 
+install_uv
 install_kiro_cli
 install_claude_code
 

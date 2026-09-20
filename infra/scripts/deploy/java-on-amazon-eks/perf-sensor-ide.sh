@@ -55,21 +55,8 @@ cat > "${ENV_DIR}/.mcp.json" <<EOF
 EOF
 echo "wrote ${ENV_DIR}/.mcp.json"
 # --allow-sensitive-data-access is required for get_pod_logs / get_k8s_events (read-only;
-# write stays off). Auth uses the IDE role (default iam mode).
-
-# eks-mcp runs via uvx (uv). Ensure uv is present and PREWARM the package so Claude's
-# first MCP connect isn't a cold multi-package download (the usual "not connected" cause).
-if ! command -v uvx >/dev/null 2>&1; then
-  echo "installing uv (for uvx)..."
-  curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1 || true
-  export PATH="${HOME}/.local/bin:${HOME}/.cargo/bin:${PATH}"
-fi
-if command -v uvx >/dev/null 2>&1; then
-  echo "prewarming eks-mcp-server package..."
-  uvx awslabs.eks-mcp-server@latest --help >/dev/null 2>&1 || true
-else
-  echo "WARN: uvx not found — install uv so the eks-mcp server can start: https://astral.sh/uv"
-fi
+# write stays off). Auth uses the IDE role (default iam mode). uv/uvx and the eks-mcp
+# package are installed and prewarmed by ide/tools.sh (install_uv) during base bootstrap.
 
 echo
 echo "Next:"

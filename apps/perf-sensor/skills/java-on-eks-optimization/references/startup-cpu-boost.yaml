@@ -1,0 +1,38 @@
+# StartupCPUBoost — the PRODUCTION "start faster without changing the image" path.
+# GENERIC — replace <app> and <namespace>.
+#
+# The Kube Startup CPU Boost controller is installed cluster-wide by the platform
+# (bootstrap). A developer only applies this namespaced CR: the controller then
+# boosts the container's CPU at pod admission and resizes it back DOWN in place once
+# the pod reports Ready — automatically, for EVERY pod, rollout, and scale-up. No
+# per-pod `kubectl patch`, no image or code change, zero restarts.
+#
+# percentageIncrease.value: 100 doubles CPU during startup (e.g. steady 1 vCPU ->
+# 2 vCPU at boot), which roughly halves startup (more processors -> JIT + class
+# loading parallelize). durationPolicy removes the boost the moment the pod is Ready.
+#
+# Prereq: the CPU resize must not restart the container. Kubernetes' default resize
+# behavior for CPU is NotRequired (no restart); if your cluster policy differs, add
+# the `resizePolicy` from deployment-cpu-boost.yaml to the app container.
+apiVersion: autoscaling.x-k8s.io/v1alpha1
+kind: StartupCPUBoost
+metadata:
+  name: <app>
+  namespace: <namespace>
+selector:
+  matchExpressions:
+    - key: app
+      operator: In
+      values: ["<app>"]
+spec:
+  resourcePolicy:
+    containerPolicies:
+      - matchContainers:
+          type: ExactName
+          value: <app>
+        percentageIncrease:
+          value: 100          # +100% CPU during boot (steady 1 vCPU -> 2 vCPU)
+  durationPolicy:
+    podCondition:
+      type: Ready
+      status: "True"          # boost removed (resized down in place) when Ready

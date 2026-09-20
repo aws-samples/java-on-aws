@@ -46,7 +46,6 @@ env:
     value: >-
       -XX:+Use<sizeMemory.gc>                     # SerialGC on <=1 vCPU
       -XX:MaxRAMPercentage=<sizeMemory.maxRamPercentage>   # heap as % of the limit
-      -XX:InitialRAMPercentage=50
 ```
 
 Immersion Day: Optimize containers → Baseline / Results.

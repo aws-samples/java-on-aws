@@ -78,9 +78,12 @@ public class DumpServer {
         }
     }
 
+    // Detect a JVM by libjvm.so in its memory map, not by comm=="java": a CRaC-restored
+    // process comes back with comm=exe (and empty cmdline), so a comm match misses it,
+    // making jcmd/thread-dump return null on CRaC even though jcmd itself works.
     private static boolean isJava(long pid) {
         try {
-            return "java".equals(Files.readString(Path.of("/proc/" + pid + "/comm")).trim());
+            return Files.readString(Path.of("/proc/" + pid + "/maps")).contains("libjvm.so");
         } catch (IOException e) {
             return false;
         }

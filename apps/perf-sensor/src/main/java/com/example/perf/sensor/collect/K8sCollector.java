@@ -107,10 +107,15 @@ public class K8sCollector {
                     }
                 }
                 if (app.getEnv() != null) {
+                    // findFirst() on the EnvVar, THEN map to its value: a JAVA_TOOL_OPTIONS
+                    // entry with a null value (e.g. cleared to empty, not removed) would make
+                    // .map(getValue).findFirst() call Optional.of(null) -> NPE, which crashed
+                    // the whole snapshot (workload/uptime null -> sizeMemory BLOCKED).
                     javaToolOptions = app.getEnv().stream()
                         .filter(e -> "JAVA_TOOL_OPTIONS".equals(e.getName()))
+                        .findFirst()
                         .map(io.kubernetes.client.openapi.models.V1EnvVar::getValue)
-                        .findFirst().orElse(null);
+                        .orElse(null);
                 }
                 readinessProbe = app.getReadinessProbe() != null;
             }
@@ -168,7 +173,7 @@ public class K8sCollector {
                 javaToolOptions, readinessProbe, sidecars, readyPods);
             return new Snapshot(workload, restarts, podIP, podName, workload.container(), uptimeSeconds);
         } catch (Exception e) {
-            logger.warn("K8s collect failed ns={} deploy={}: {}", namespace, deployment, e.getMessage());
+            logger.warn("K8s collect failed ns={} deploy={}: {}", namespace, deployment, e.toString(), e);
             return new Snapshot(null, null, null, null, null, null);
         }
     }

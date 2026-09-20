@@ -15,6 +15,19 @@ because there is no cold start: the process resumes where the checkpoint left of
   so the snapshot is a ready-to-serve application.
 - At runtime, `-XX:CRaCRestoreFrom=…` restores the image.
 
+## Add the `org.crac` dependency
+
+CRaC hooks use the `org.crac` API, which the app does not depend on by default. Add
+it to `pom.xml` first (Maven; Gradle is analogous):
+
+```xml
+<dependency>
+    <groupId>org.crac</groupId>
+    <artifactId>crac</artifactId>
+    <version>1.5.0</version>
+</dependency>
+```
+
 ## The Resource-hook rule
 
 Open file descriptors and sockets **cannot** be checkpointed. **Any class holding a
@@ -52,6 +65,17 @@ Scan `src/` for every class that opens a client/connection/file and add a hook t
   scale-up.
 - The restored process is already warm: no JIT ramp, no cold-cache latency spike.
 
+## Gotcha: clear `JAVA_TOOL_OPTIONS` on the CRaC deployment
+
+GC and heap flags are **baked into the checkpoint** and cannot change at restore. If
+the deployment carries `JAVA_TOOL_OPTIONS` from an earlier right-sizing step
+(e.g. `-XX:+UseSerialGC -XX:MaxRAMPercentage=75`), the restoring JVM re-reads it,
+finds a flag it may not change after checkpoint, and **crash-loops** (e.g. "cannot
+change GC after restore"). When switching a workload to the CRaC image, **remove
+`JAVA_TOOL_OPTIONS`** (or at least the GC/heap flags) from the Deployment — the
+checkpoint and the `Dockerfile.crac` ENTRYPOINT own those flags. Keep the memory
+`requests`/`limits`; only the JVM-flag env must go.
+
 ## Trade-offs
 
 - **Credentials at restore**: a client closed before checkpoint must fetch fresh
@@ -62,8 +86,9 @@ Scan `src/` for every class that opens a client/connection/file and add a hook t
 
 ## Artifact
 
-Use `Dockerfile.crac` verbatim, filling `JAR_FILE` from the app's `pom.xml`. Add an
-`org.crac.Resource` hook to each FD-holding class found in `src/`. Verify with
+Three changes: (1) add the `org.crac` dependency to `pom.xml`; (2) add an
+`org.crac.Resource` hook to each FD-holding class found in `src/`; (3) use
+`Dockerfile.crac` verbatim, filling `JAR_FILE` from the app's `pom.xml`. Verify with
 `perf-sensor.startupLog` — `kind` should read **Restored** and seconds < 1.
 
 Immersion Day: Optimize containers → CRaC.

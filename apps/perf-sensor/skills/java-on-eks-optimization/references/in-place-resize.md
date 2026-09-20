@@ -9,12 +9,34 @@ scale CPU **down** once the pod is Ready — with no restart and no image change
 
 ## How it works
 
-- Kubernetes in-place pod resize (`resizePolicy` with `restartPolicy: NotRequired`
-  for `cpu`) lets CPU change without recreating the pod.
-- Boot the container at a high CPU (e.g. 2 vCPU) — startup roughly halves — then
-  patch the pod's `resize` subresource down to the steady CPU after Ready.
-- More CPU at boot also means the JVM sees more processors, so JIT and startup work
-  parallelize.
+Kubernetes in-place pod resize lets a container's CPU change without recreating the
+pod. Boot at a high CPU (e.g. 2 vCPU) — the JVM sees more processors, so JIT and
+class loading parallelize and startup roughly halves — then drop CPU back to the
+steady value once the pod is Ready. No image or code change, zero restarts.
+
+## Production path — Kube Startup CPU Boost (use this)
+
+The **Kube Startup CPU Boost** controller (github.com/google/kube-startup-cpu-boost)
+is installed cluster-wide by the platform. A developer applies one namespaced
+`StartupCPUBoost` CR (**`startup-cpu-boost.yaml`**): the controller boosts CPU at pod
+admission and resizes it down in place automatically when the pod is Ready — for
+every pod, every rollout, every scale-up. This is the answer to give: declarative,
+fleet-wide, no per-pod action.
+
+## Under the hood — manual in-place resize (mechanism only)
+
+The controller drives the same primitive you can invoke by hand; show it once so the
+CR isn't magic:
+
+- `resizePolicy` with `restartPolicy: NotRequired` for `cpu` lets CPU change without
+  restarting the container (default CPU resize is already NotRequired on current K8s).
+- Set a high boot CPU in the Deployment, then patch the pod's `resize` subresource
+  down after Ready. The resize call must send the **full** resources map (cpu AND
+  memory) or the API rejects it.
+
+`deployment-cpu-boost.yaml` documents this manual path. It is **per-pod** — fine to
+demonstrate the mechanism, wrong for production (every new pod would need a hand
+patch, and nothing scales it back down). Prefer the CR.
 
 ## Key benefits
 
@@ -22,20 +44,13 @@ scale CPU **down** once the pod is Ready — with no restart and no image change
 - No steady-state CPU waste — you pay the boot premium only during boot.
 - Zero restarts: the resize is in place.
 
-## Trade-offs
+## Trade-off
 
-- The manual `patch --subresource resize` is per-pod — fine for a demo, wrong for a
-  fleet. In production use the **Kube Startup CPU Boost** controller
-  (github.com/google/kube-startup-cpu-boost) to boost + scale down automatically
-  across the Deployment. The `resizePolicy` is the prerequisite either way.
-- The resize call must send the **full** resources map (cpu AND memory) or the API
-  rejects it.
 - GC/heap ergonomics are fixed at JVM start; this lever targets CPU/startup, not heap.
 
-## Artifact
+## Verify
 
-Apply `deployment-cpu-boost.yaml` (declares the `resizePolicy` + boot CPU), then the
-manual resize command it documents. Verify with `perf-sensor.startupLog` (startup
-seconds drop) and `measure` (restartCount stays 0 — resized without restart).
+Apply the `StartupCPUBoost` CR, then check `perf-sensor.startupLog` (startup seconds
+drop) and `measure` (restartCount stays 0 — resized without restart).
 
 Immersion Day: Optimize containers → Pod resize.
