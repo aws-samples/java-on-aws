@@ -6,6 +6,7 @@
 # Source common utilities
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
+LOG="${WORKSHOP_LOG_DIR}/unicorn-store-spring-build.log"
 
 # Source environment variables
 source /etc/profile.d/workshop.sh
@@ -53,8 +54,8 @@ log_success "Git repository initialized with initial commit"
 cd ~/environment/unicorn-store-spring
 
 # Build the application with Maven
-log_info "Building application with Maven..."
-mvn clean package -ntp
+log_info "Building application with Maven... (full log: $LOG)"
+mvn clean package -ntp >>"$LOG" 2>&1 || { log_error "mvn package failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 log_success "Maven build completed"
 
 # Login to ECR
@@ -63,8 +64,8 @@ aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS 
 log_success "ECR login successful"
 
 # Build Docker image
-log_info "Building Docker image..."
-docker build -t "$IMAGE_NAME" .
+log_info "Building Docker image... (full log: $LOG)"
+docker build -t "$IMAGE_NAME" . >>"$LOG" 2>&1 || { log_error "docker build failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 log_success "Docker image built"
 
 # Delete local Docker images to free up space

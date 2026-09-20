@@ -239,6 +239,9 @@ ws_print_failure() {
   echo "Error:" >&2
   echo "$message" >&2
   echo >&2
+  echo "Recent output (last 40 lines of ${WS_OUTPUT_LOG}):" >&2
+  tail -n 40 "$WS_OUTPUT_LOG" 2>/dev/null >&2 || true
+  echo >&2
   echo "Reports: ${WS_RUN_DIR}" >&2
 }
 
@@ -728,7 +731,10 @@ ws_run_block() {
 
   # Source in the current shell so variables and working directory persist exactly
   # as they do when a participant uses one terminal throughout the workshop.
-  source "$WS_CURRENT_CODE_FILE"
+  # Block output goes to the on-box run log only (not the console/CloudWatch); the
+  # harness still prints the per-block header and PASSED/FAILED lines, and the
+  # failure path tails this log so a failing block's detail stays visible.
+  source "$WS_CURRENT_CODE_FILE" >> "$WS_OUTPUT_LOG" 2>&1
   ws_restore_runtime_guards
 
   rm -f "${WS_RUN_DIR}/.active-block"

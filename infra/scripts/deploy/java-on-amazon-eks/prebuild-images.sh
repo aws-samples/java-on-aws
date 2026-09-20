@@ -35,7 +35,8 @@ cp -r "${APP_SRC}/." "${BUILD_DIR}/"
 rm -rf "${BUILD_DIR}/.git" "${BUILD_DIR}/target"
 
 # --- CRaC: golden Dockerfile + Resource hook swapped in ----------------------
-log_info "Prebuilding unicorn-store-spring:crac..."
+CRAC_LOG="${WORKSHOP_LOG_DIR}/prebuild-crac.log"
+log_info "Prebuilding unicorn-store-spring:crac (full log: ${CRAC_LOG})..."
 cp "${GOLDEN_DIR}/Dockerfile.08-crac" "${BUILD_DIR}/Dockerfile.crac"
 PUBLISHER_DIR="${BUILD_DIR}/src/main/java/com/unicorn/store/data"
 if [ -f "${PUBLISHER_DIR}/UnicornPublisher.crac" ]; then
@@ -48,19 +49,20 @@ else
     log_error "UnicornPublisher.crac not found in ${PUBLISHER_DIR} — source is de-spoiled; prebuild must run BEFORE de-spoil"
     exit 1
 fi
-( cd "${BUILD_DIR}" && ./scripts/build.sh crac Dockerfile.crac ) \
+( cd "${BUILD_DIR}" && ./scripts/build.sh crac Dockerfile.crac ) >"${CRAC_LOG}" 2>&1 \
     && log_success "unicorn-store-spring:crac pushed" \
-    || { log_error "CRaC prebuild failed"; exit 1; }
+    || { log_error "CRaC prebuild failed — last 40 lines of ${CRAC_LOG}:"; tail -n 40 "${CRAC_LOG}"; exit 1; }
 
 # --- AOT: golden Dockerfile on the unmodified source --------------------------
-log_info "Prebuilding unicorn-store-spring:aot..."
+AOT_LOG="${WORKSHOP_LOG_DIR}/prebuild-aot.log"
+log_info "Prebuilding unicorn-store-spring:aot (full log: ${AOT_LOG})..."
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 cp -r "${APP_SRC}/." "${BUILD_DIR}/"
 rm -rf "${BUILD_DIR}/.git" "${BUILD_DIR}/target"
 cp "${GOLDEN_DIR}/Dockerfile.06-aot" "${BUILD_DIR}/Dockerfile.aot"
-( cd "${BUILD_DIR}" && ./scripts/build.sh aot Dockerfile.aot ) \
+( cd "${BUILD_DIR}" && ./scripts/build.sh aot Dockerfile.aot ) >"${AOT_LOG}" 2>&1 \
     && log_success "unicorn-store-spring:aot pushed" \
-    || { log_error "AOT prebuild failed"; exit 1; }
+    || { log_error "AOT prebuild failed — last 40 lines of ${AOT_LOG}:"; tail -n 40 "${AOT_LOG}"; exit 1; }
 
 log_success "Prebuilt images ready: unicorn-store-spring:{crac,aot}"

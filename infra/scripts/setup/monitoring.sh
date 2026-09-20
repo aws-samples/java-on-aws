@@ -7,6 +7,7 @@
 # Source common utilities
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
+LOG="${WORKSHOP_LOG_DIR}/monitoring.log"
 
 log_info "Starting monitoring stack setup..."
 
@@ -46,7 +47,7 @@ kubectl create namespace "$NAMESPACE" 2>/dev/null || true
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
 helm repo add grafana-community https://grafana-community.github.io/helm-charts || true
 helm repo add grafana https://grafana.github.io/helm-charts || true   # pyroscope chart
-helm repo update
+helm repo update >>"$LOG" 2>&1 || { log_error "helm repo update failed — see $LOG"; tail -n 40 "$LOG"; exit 1; }
 
 # Grafana secret
 kubectl delete secret "$GRAFANA_SECRET_NAME" -n "$NAMESPACE" 2>/dev/null || true
@@ -77,7 +78,8 @@ EOF
 log_info "Deploying Prometheus..."
 helm upgrade --install prometheus prometheus-community/prometheus \
   --namespace "$NAMESPACE" \
-  --values "$VALUES_FILE"
+  --values "$VALUES_FILE" >>"$LOG" 2>&1 \
+  || { log_error "Prometheus helm install failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 
 # Wait for Prometheus to be ready
 log_info "Waiting for Prometheus to be ready..."
@@ -177,7 +179,8 @@ EOF
 log_info "Deploying Grafana..."
 helm upgrade --install grafana grafana-community/grafana \
   --namespace "$NAMESPACE" \
-  --values "$GRAFANA_VALUES_FILE"
+  --values "$GRAFANA_VALUES_FILE" >>"$LOG" 2>&1 \
+  || { log_error "Grafana helm install failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 
 # Wait for Grafana LB
 for i in {1..30}; do
@@ -354,7 +357,8 @@ EOF
 helm upgrade --install pyroscope grafana/pyroscope \
     --namespace "${NAMESPACE}" \
     --values "${WORK}/pyroscope-values.yaml" \
-    --wait --timeout 10m
+    --wait --timeout 10m >>"$LOG" 2>&1 \
+    || { log_error "Pyroscope helm install failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 
 kubectl wait --for=condition=ready pod \
     -l app.kubernetes.io/name=pyroscope \
@@ -375,7 +379,8 @@ helm upgrade --install grafana grafana-community/grafana \
     --namespace "${NAMESPACE}" \
     --reuse-values \
     --set "plugins={grafana-pyroscope-app@1.17.0}" \
-    --wait --timeout 10m
+    --wait --timeout 10m >>"$LOG" 2>&1 \
+    || { log_error "Grafana plugin helm upgrade failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 log_success "Profiles Drilldown plugin installed"
 
 log_info "Waiting for Grafana API after plugin upgrade..."

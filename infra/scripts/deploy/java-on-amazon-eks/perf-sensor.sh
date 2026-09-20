@@ -18,6 +18,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Optional workshop context (present on the IDE); safe to skip elsewhere.
 [ -f "${SCRIPT_DIR}/../../lib/common.sh" ] && source "${SCRIPT_DIR}/../../lib/common.sh"
+LOG="${WORKSHOP_LOG_DIR}/perf-sensor-build.log"
 [ -f /etc/profile.d/workshop.sh ] && source /etc/profile.d/workshop.sh
 
 # Minimal log helpers if common.sh is not present.
@@ -51,8 +52,8 @@ aws ecr describe-repositories --repository-names perf-sensor --region "${REGION}
 log_info "Building and pushing perf-sensor image..."
 aws ecr get-login-password --region "${REGION}" \
   | docker login --username AWS --password-stdin "${ECR_BASE}"
-( cd "${APP_DIR}" && mvn -q clean compile jib:build -Dimage="${REPO}:latest" ) \
-  || { log_error "perf-sensor build failed"; exit 1; }
+( cd "${APP_DIR}" && mvn -q clean compile jib:build -Dimage="${REPO}:latest" ) >>"$LOG" 2>&1 \
+  || { log_error "perf-sensor build failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 log_success "perf-sensor image pushed: ${REPO}:latest"
 
 # -----------------------------------------------------------------------------

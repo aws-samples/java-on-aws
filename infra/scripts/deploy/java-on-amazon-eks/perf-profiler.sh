@@ -13,6 +13,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../../lib/common.sh"
+LOG="${WORKSHOP_LOG_DIR}/perf-profiler.log"
 # Optional workshop context (present on the IDE); safe to skip elsewhere (e.g. a Mac).
 [ -f /etc/profile.d/workshop.sh ] && source /etc/profile.d/workshop.sh
 
@@ -33,9 +34,9 @@ aws ecr get-login-password --region "${AWS_REGION}" \
 # Pin linux/amd64: the EKS nodes are amd64, but this build may run on an arm64 host
 # (e.g. an Apple-Silicon Mac), where a native `docker build` would push arm64 and the
 # nodes fail the pull with "no match for platform".
-docker build --platform linux/amd64 -t perf-profiler:latest "${APP_DIR}"
+docker build --platform linux/amd64 -t perf-profiler:latest "${APP_DIR}" >>"$LOG" 2>&1 || { log_error "perf-profiler docker build failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 docker tag perf-profiler:latest "${ECR_URI}:latest"
-docker push "${ECR_URI}:latest"
+docker push "${ECR_URI}:latest" >>"$LOG" 2>&1 || { log_error "perf-profiler docker push failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 log_success "perf-profiler image pushed: ${ECR_URI}:latest"
 
 # -----------------------------------------------------------------------------
@@ -48,7 +49,7 @@ helm repo add kyverno https://kyverno.github.io/kyverno/ >/dev/null 2>&1 || true
 helm repo update >/dev/null
 helm upgrade --install kyverno kyverno/kyverno \
   --namespace kyverno --create-namespace --version 3.9.1 \
-  --wait --timeout 10m
+  --wait --timeout 10m >>"$LOG" 2>&1 || { log_error "kyverno helm install failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 log_success "Kyverno installed"
 
 # -----------------------------------------------------------------------------
@@ -60,7 +61,7 @@ helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/ >
 helm repo update >/dev/null
 helm upgrade --install metrics-server metrics-server/metrics-server \
   --namespace kube-system \
-  --wait --timeout 5m
+  --wait --timeout 5m >>"$LOG" 2>&1 || { log_error "metrics-server helm install failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 log_success "metrics-server installed"
 
 # -----------------------------------------------------------------------------

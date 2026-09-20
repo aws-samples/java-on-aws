@@ -21,6 +21,7 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../../lib/common.sh"
+LOG="${WORKSHOP_LOG_DIR}/perf-optimizer-build.log"
 source /etc/profile.d/workshop.sh
 
 REGION="${AWS_REGION:-us-east-1}"
@@ -46,8 +47,8 @@ EMBED_ARN="arn:aws:bedrock:${REGION}::foundation-model/amazon.titan-embed-text-v
 log_info "Building and pushing perf-optimizer image..."
 aws ecr get-login-password --region "${REGION}" \
   | docker login --username AWS --password-stdin "${ECR_BASE}"
-( cd "${APP_DIR}" && mvn -q clean compile jib:build -Dimage="${REPO}:latest" ) \
-  || { log_error "perf-optimizer build failed"; exit 1; }
+( cd "${APP_DIR}" && mvn -q clean compile jib:build -Dimage="${REPO}:latest" ) >>"$LOG" 2>&1 \
+  || { log_error "perf-optimizer build failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 log_success "perf-optimizer image pushed: ${REPO}:latest"
 
 # -----------------------------------------------------------------------------
