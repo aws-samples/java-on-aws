@@ -226,6 +226,30 @@ install_claude_code() {
   }
 }
 EOF
+
+    # Pre-accept Claude Code first-run onboarding so the first `claude` in ~/environment
+    # doesn't prompt: theme (hasCompletedOnboarding), Shift+Enter terminal setup
+    # (shiftEnterKeyBindingInstalled), and folder trust (projects[dir].hasTrustDialogAccepted).
+    # Generic to all workshops (they all open ~/environment). Project MCP-server enablement is
+    # workshop-specific and lives with each workshop's .mcp.json (e.g. perf-sensor-ide.sh), NOT here.
+    # Merge instead of overwrite — Claude Code owns ~/.claude.json and writes session state there.
+    log_info "Pre-accepting Claude Code onboarding + folder trust for ~/environment..."
+    python3 - "$HOME/.claude.json" "$HOME/environment" <<'PY'
+import json, os, sys
+path, ws = sys.argv[1], sys.argv[2]
+data = {}
+if os.path.exists(path):
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except Exception:
+        data = {}
+data["hasCompletedOnboarding"] = True
+data["shiftEnterKeyBindingInstalled"] = True
+data.setdefault("projects", {}).setdefault(ws, {})["hasTrustDialogAccepted"] = True
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+PY
 }
 
 install_java

@@ -54,6 +54,29 @@ cat > "${ENV_DIR}/.mcp.json" <<EOF
 }
 EOF
 echo "wrote ${ENV_DIR}/.mcp.json"
+
+# Auto-approve THIS workshop's two .mcp.json servers so the first `claude` in ~/environment
+# doesn't show the "new MCP servers found — Enable" prompt. Project-scoped (not global): only
+# perf-sensor + eks-mcp, only for this workspace. Relies on folder trust pre-accepted by
+# ide/tools.sh. Merge so we don't clobber any existing project settings.
+python3 - "${ENV_DIR}/.claude/settings.json" <<'PY'
+import json, os, sys
+path = sys.argv[1]
+data = {}
+if os.path.exists(path):
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except Exception:
+        data = {}
+servers = set(data.get("enabledMcpjsonServers", []))
+servers.update(["perf-sensor", "eks-mcp"])
+data["enabledMcpjsonServers"] = sorted(servers)
+os.makedirs(os.path.dirname(path), exist_ok=True)
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+PY
+echo "wrote ${ENV_DIR}/.claude/settings.json (enabledMcpjsonServers: perf-sensor, eks-mcp)"
 # --allow-sensitive-data-access is required for get_pod_logs / get_k8s_events (read-only;
 # write stays off). Auth uses the IDE role (default iam mode). uv/uvx and the eks-mcp
 # package are installed and prewarmed by ide/tools.sh (install_uv) during base bootstrap.

@@ -532,7 +532,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1789825003753"
+      ContentHash: "1789931029973"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2719,6 +2719,7 @@ Resources:
             Resource:
               - arn:aws:bedrock:*::foundation-model/*
               - arn:aws:ec2:*::image/*
+              - arn:aws:ssm:*::document/*
               - Fn::Join:
                   - ""
                   - - "arn:aws:acm:*:"
@@ -2848,7 +2849,22 @@ Resources:
                   - ""
                   - - "arn:aws:ssm:*:"
                     - Ref: AWS::AccountId
+                    - :document/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ssm:*:"
+                    - Ref: AWS::AccountId
+                    - :managed-instance/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ssm:*:"
+                    - Ref: AWS::AccountId
                     - :parameter/workshop-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ssm:*:"
+                    - Ref: AWS::AccountId
+                    - :session/*
           - Action:
               - aws-marketplace:Unsubscribe
               - aws-marketplace:ViewSubscriptions
@@ -4784,7 +4800,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260919153643"
+            - "-20260920210349"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -4868,7 +4884,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260919153643"
+            - "-20260920210349"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
