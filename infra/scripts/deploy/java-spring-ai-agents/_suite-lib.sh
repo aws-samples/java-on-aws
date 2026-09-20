@@ -14,6 +14,11 @@ log() { printf '[%s] %s\n' "${SUITE_NAME}" "$*"; }
 warn() { printf '[%s] WARNING: %s\n' "${SUITE_NAME}" "$*" >&2; }
 die() { printf '[%s] ERROR: %s\n' "${SUITE_NAME}" "$*" >&2; exit 1; }
 
+# Verbose build output (mvn/jib/buildx) goes to on-box log files so it does not
+# flood EC2 UserData -> CloudWatch; only log/warn/die lines reach the console.
+: "${SUITE_LOG_DIR:=/var/log/workshop}"
+mkdir -p "${SUITE_LOG_DIR}" 2>/dev/null || SUITE_LOG_DIR="${TMPDIR:-/tmp}"
+
 secure_work_dir() {
   mkdir -p "${WORK_DIR}"
   chmod 700 "${WORK_DIR}"
@@ -291,7 +296,10 @@ build_and_push_jib() {
   ensure_ecr_repository "${repository}"
   local registry="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
   aws_cli ecr get-login-password | docker login --username AWS --password-stdin "${registry}"
-  (cd "${app_dir}" && mvn -ntp compile jib:build -Dimage="${registry}/${repository}:${tag}" -DskipTests)
+  local jib_log="${SUITE_LOG_DIR}/jib-${repository//\//_}-${tag}.log"
+  log "Building ${repository}:${tag} via jib (full log: ${jib_log})"
+  (cd "${app_dir}" && mvn -ntp compile jib:build -Dimage="${registry}/${repository}:${tag}" -DskipTests) >>"${jib_log}" 2>&1 \
+    || { warn "jib build failed — last 40 lines of ${jib_log}:"; tail -n 40 "${jib_log}" >&2; die "jib build failed for ${repository}:${tag}"; }
 }
 
 upsert_pod_identity() {

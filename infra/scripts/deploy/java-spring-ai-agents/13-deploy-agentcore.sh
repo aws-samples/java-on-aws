@@ -94,7 +94,10 @@ aws_cli ecr get-login-password | docker login --username AWS --password-stdin "$
 if ! docker buildx inspect java-spring-ai-agents-suite >/dev/null 2>&1; then
   docker buildx create --name java-spring-ai-agents-suite --driver docker-container >/dev/null
 fi
-docker buildx build --builder java-spring-ai-agents-suite --platform linux/arm64 -t "${ECR_URI}" --push "${BUILD_DIR}"
+BUILDX_LOG="${SUITE_LOG_DIR}/agentcore-buildx.log"
+log "Building + pushing aiagent (arm64) via buildx (full log: ${BUILDX_LOG})"
+docker buildx build --builder java-spring-ai-agents-suite --platform linux/arm64 -t "${ECR_URI}" --push "${BUILD_DIR}" >>"${BUILDX_LOG}" 2>&1 \
+  || { warn "buildx build failed — last 40 lines of ${BUILDX_LOG}:"; tail -n 40 "${BUILDX_LOG}" >&2; die "agentcore buildx build failed"; }
 IMAGE_DIGEST=$(aws_cli ecr describe-images --repository-name aiagent --image-ids imageTag=latest \
   --query 'imageDetails[0].imageDigest' --output text)
 CONTAINER_URI="${REGISTRY}/aiagent@${IMAGE_DIGEST}"

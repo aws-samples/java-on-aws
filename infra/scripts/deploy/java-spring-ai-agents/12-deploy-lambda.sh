@@ -20,7 +20,10 @@ cat > "${AIAGENT_DIR}/run.sh" <<'EOF'
 exec java -jar agent-0.0.1-SNAPSHOT.jar
 EOF
 chmod +x "${AIAGENT_DIR}/run.sh"
-(cd "${AIAGENT_DIR}" && mvn -ntp clean package -DskipTests)
+MVN_LOG="${SUITE_LOG_DIR}/lambda-mvn-package.log"
+log "Packaging aiagent for Lambda (full log: ${MVN_LOG})"
+(cd "${AIAGENT_DIR}" && mvn -ntp clean package -DskipTests) >>"${MVN_LOG}" 2>&1 \
+  || { warn "mvn package failed — last 40 lines of ${MVN_LOG}:"; tail -n 40 "${MVN_LOG}" >&2; die "Lambda mvn package failed"; }
 cp "${AIAGENT_DIR}/target/agent-0.0.1-SNAPSHOT.jar" "${AIAGENT_DIR}/run.sh" "${tmp_dir}/"
 (cd "${tmp_dir}" && zip -q aiagent-deployment.zip agent-0.0.1-SNAPSHOT.jar run.sh)
 
