@@ -18,7 +18,7 @@ import java.util.Map;
 
 /**
  * Reads desired-state {@link WorkloadFacts} from the Kubernetes API (read-only):
- * the Deployment (resources, env, resizePolicy, readinessProbe, image, replicas)
+ * the Deployment (resources, env, resizePolicy, readinessProbe, startupProbe, image, replicas)
  * and a running Pod (sidecars, restartCount, pod IP for {@code /dump}, pod name
  * for logs). Extraction is in code so the fields that back scored checklist items
  * are deterministic. Degrades gracefully — returns a {@link Snapshot} of nulls
@@ -89,6 +89,15 @@ public class K8sCollector {
             String cpuResizeRestart = null;
             String javaToolOptions = null;
             boolean readinessProbe = false;
+            boolean startupProbe = false;
+            // Security posture (PSS-Restricted essentials the workshop scores):
+            // runAsNonRoot may be set on the pod or the container; allowPrivilegeEscalation
+            // is container-only and defaults to ALLOWED (true) when unset, so "secure" means
+            // an explicit false.
+            var podSc = spec != null && spec.getTemplate().getSpec() != null
+                ? spec.getTemplate().getSpec().getSecurityContext() : null;
+            boolean runAsNonRoot = podSc != null && Boolean.TRUE.equals(podSc.getRunAsNonRoot());
+            boolean allowPrivilegeEscalation = true;
             if (app != null) {
                 var res = app.getResources();
                 if (res != null) {
@@ -118,6 +127,15 @@ public class K8sCollector {
                         .orElse(null);
                 }
                 readinessProbe = app.getReadinessProbe() != null;
+                startupProbe = app.getStartupProbe() != null;
+                var sc = app.getSecurityContext();
+                if (sc != null) {
+                    if (Boolean.TRUE.equals(sc.getRunAsNonRoot())) {
+                        runAsNonRoot = true;   // container-level overrides/augments pod-level
+                    }
+                    // secure only when explicitly disabled; unset => K8s default ALLOWS it
+                    allowPrivilegeEscalation = !Boolean.FALSE.equals(sc.getAllowPrivilegeEscalation());
+                }
             }
 
             // Resolve pods from the workload's OWN selector (not an assumed label), then
@@ -170,7 +188,8 @@ public class K8sCollector {
             var workload = new WorkloadFacts(namespace, deployment,
                 app == null ? deployment : app.getName(), imageTag, replicas,
                 cpuReq, cpuLim, memReq, memLim, cpuResize, cpuResizeRestart,
-                javaToolOptions, readinessProbe, sidecars, readyPods);
+                javaToolOptions, readinessProbe, startupProbe,
+                runAsNonRoot, allowPrivilegeEscalation, sidecars, readyPods);
             return new Snapshot(workload, restarts, podIP, podName, workload.container(), uptimeSeconds);
         } catch (Exception e) {
             logger.warn("K8s collect failed ns={} deploy={}: {}", namespace, deployment, e.toString(), e);

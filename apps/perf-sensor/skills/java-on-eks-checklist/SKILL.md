@@ -20,8 +20,9 @@ the same score. Never guess a missing fact — mark it UNKNOWN.
    UNKNOWN, not FAIL.
 4. Report `score/total`, where total counts only PASS+FAIL items (UNKNOWN is not
    counted). Then list the items grouped as in `references/checklist.md`, each with
-   its verdict, the evidence value(s) that decided it, and the source link for the
-   group.
+   its verdict, **the named fact/signal and value that decided it** (e.g.
+   `workload.imageTag=latest`, `runtime.startupSeconds=13.0`), and the source link for
+   the group. Every verdict must cite the signal it came from — never assert without one.
 
 ## Output format
 
@@ -40,3 +41,9 @@ JVM ergonomics
 
 Report only what the facts support. When re-scoring after an applied change,
 run the identical procedure and show before → after per item.
+
+This skill **scores; it does not prescribe.** Report each item's verdict and the
+deciding evidence only. Do **not** append remediation steps, "how to fix", or
+"ask for X" next-step hints for FAIL/UNKNOWN items — surfacing every remaining fix
+at once spoils the participant's step-by-step discovery. If they want a fix, they
+ask the optimization skill for that specific improvement.

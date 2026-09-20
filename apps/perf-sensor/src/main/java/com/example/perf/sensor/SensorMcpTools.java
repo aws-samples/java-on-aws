@@ -31,7 +31,7 @@ public class SensorMcpTools {
 
     @Tool(description = """
         Measure a Java service on EKS: Kubernetes desired-state (requests/limits in MiB/cores,
-        cpu resizePolicy, JAVA_TOOL_OPTIONS, image tag, replicas, readiness probe, sidecars) plus
+        cpu resizePolicy, JAVA_TOOL_OPTIONS, image tag, replicas, readiness probe, startup probe, sidecars) plus
         measured runtime (working-set floor/peak MiB, heap committed MiB, GC name, effective CPUs,
         startup seconds, restarts), a CPU/wall profile summary (jit/gc/futex shares, samples), and
         the window {uptimeSeconds, samples, requestRatePerSec}. Facts only — everything the
@@ -82,6 +82,28 @@ public class SensorMcpTools {
         @ToolParam(description = "number of Ready pods to sample and aggregate (default 1 = newest pod)", required = false) Integer sampleN) {
         logger.info("MCP threadDump service={} sampleN={}", service, sampleN);
         return sensor.threadDump(service, sampleN == null ? 1 : sampleN);
+    }
+
+    @Tool(description = """
+        Deterministically diagnose a request-path blocking call. The sensor drives a bounded,
+        rate-based write load directly at the pod and samples the thread dump over time while it
+        runs, then aggregates. Use this for "why is latency high" on a virtual-thread app: a
+        blocked request thread (Future.get on a virtual thread) exists only while requests are in
+        flight and is invisible to the wall flame graph (a parked virtual thread unmounts) — this
+        reproduces and catches it on any image, including CRaC. requestThreadsBlockedInFutureGet is
+        the PEAK concurrent blocked across samples; topBlockingFrames counts are summed. No need for
+        the participant to run a benchmark first. Rate is clamped to protect a small pod. Returns the
+        aggregated thread facts plus load stats (sent/ok/failed).""")
+    public com.example.perf.sensor.SensorService.BlockingDiagnosis diagnoseBlocking(
+        @ToolParam(description = "Pyroscope service_name = Deployment name") String service,
+        @ToolParam(description = "write requests per second to drive (default 25; clamped to 100)", required = false) Integer ratePerSec,
+        @ToolParam(description = "how long to drive load, seconds (default 12; clamped to 60)", required = false) Integer durationSec,
+        @ToolParam(description = "thread-dump sampling interval in ms (default 1000)", required = false) Integer intervalMs) {
+        logger.info("MCP diagnoseBlocking service={} rate={} dur={}", service, ratePerSec, durationSec);
+        return sensor.diagnoseBlocking(service,
+            ratePerSec == null ? 25 : ratePerSec,
+            durationSec == null ? 12 : durationSec,
+            intervalMs == null ? 1000L : intervalMs);
     }
 
     @Tool(description = """

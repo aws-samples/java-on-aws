@@ -25,7 +25,7 @@ class SizeMemoryTest {
     private static final SizeParams POLICY =
         new SizeParams(1.25, 1.40, 1.90, 64, 120, 100, 1, 64);
 
-    private final SensorService sensor = new SensorService(null, null, null, null, null, null);
+    private final SensorService sensor = new SensorService(null, null, null, null, null, null, null);
 
     private Facts fixture(String name) throws IOException {
         try (var in = getClass().getResourceAsStream("/fixtures/" + name + ".json")) {
@@ -91,7 +91,8 @@ class SizeMemoryTest {
         var twoCpu = new com.example.perf.sensor.facts.WorkloadFacts(
             wl.namespace(), wl.deployment(), wl.container(), wl.imageTag(), wl.replicas(),
             wl.cpuRequestCores(), 2.0, wl.memRequestMi(), wl.memLimitMi(), wl.cpuResizePolicy(),
-            wl.cpuResizeRestartPolicy(), wl.javaToolOptions(), wl.readinessProbe(), wl.sidecars(), wl.readyPods());
+            wl.cpuResizeRestartPolicy(), wl.javaToolOptions(), wl.readinessProbe(), wl.startupProbe(),
+            wl.runAsNonRoot(), wl.allowPrivilegeEscalation(), wl.sidecars(), wl.readyPods());
         var r = sensor.sizeMemory(new Facts(twoCpu, base.runtime(), base.profile(), null), POLICY);
         assertThat(r.status()).isEqualTo("OK");
         assertThat(r.gc()).isEqualTo("G1GC");

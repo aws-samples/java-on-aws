@@ -21,6 +21,9 @@ import java.util.List;
  * @param cpuResizeRestartPolicy the CPU resizePolicy restart value (e.g. "NotRequired"), or null
  * @param javaToolOptions    value of the JAVA_TOOL_OPTIONS env var, or null if unset
  * @param readinessProbe     true when the app container declares a readinessProbe
+ * @param startupProbe       true when the app container declares a startupProbe
+ * @param runAsNonRoot       true when the app container (or pod) securityContext sets runAsNonRoot: true
+ * @param allowPrivilegeEscalation true when the app container ALLOWS privilege escalation (secure = false; defaults to false when unset)
  * @param sidecars           names of non-app containers in the representative pod (e.g. "perf-profiler")
  * @param readyPods          count of Running+Ready pods of the workload (fleet size actually measured)
  */
@@ -38,6 +41,9 @@ public record WorkloadFacts(
     String cpuResizeRestartPolicy,
     String javaToolOptions,
     boolean readinessProbe,
+    boolean startupProbe,
+    boolean runAsNonRoot,
+    boolean allowPrivilegeEscalation,
     List<String> sidecars,
     Integer readyPods
 ) {

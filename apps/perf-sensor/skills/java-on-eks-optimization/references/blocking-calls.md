@@ -7,24 +7,37 @@ for an async client (event publish, downstream call) to finish — holds the thr
 idle while latency climbs under load. The fix is to not block the request path:
 return without waiting, or bound and size the work deliberately.
 
-## The wall-vs-CPU lens
+## How to see it: thread dump under load, not the flame graph
 
-- A **CPU** profile shows where cycles burn. A **wall** profile shows where time
-  passes, including *off-CPU* waiting (parked threads, lock/futex waits).
-- High latency with low CPU is the signature of blocking: `perf-sensor.profileTop
-  wall` shows a large `futexWallShare` (time parked in `Unsafe.park` / futex), while
-  the CPU profile looks idle. That gap is the tell.
+This app runs on **virtual threads** (`spring.threads.virtual.enabled`). A request that
+calls a blocking `Future.get()` parks the virtual thread, which **unmounts from its
+carrier** — so a *sampling* profiler has no thread to sample while it waits. The block is
+therefore **invisible in the wall flame graph on every image** (plain, AOT, and CRaC), and
+`futexWallShare` is at best a vague "something is parked" aggregate (carriers park
+normally), not a pointer to the blocking line. On CRaC the wall profile degrades further
+(the restored JVM's stacks collapse to the native leaf, e.g. `libc.so.6`) — a second
+effect, not the cause.
 
-## Reading ThreadFacts
+The tool that **names** the block is a **thread dump**: `jcmd Thread.dump` lists virtual
+threads and their stacks whether mounted or not. Use **`perf-sensor.diagnoseBlocking`** —
+it drives a bounded write load at the pod and samples the thread dump over time, so the
+block is caught reliably on any image without you having to time a benchmark. The **CPU**
+profile answers a different question (where cycles burn — startup/JIT/GC), and the **HTTP
+latency metric** is the authoritative "it is slow" signal on every image.
 
-`perf-sensor.threadDump` summarizes the live dump:
+## Reading the result
+
+`perf-sensor.diagnoseBlocking` (and `threadDump`) summarize the dump:
 
 - `requestThreadsBlockedInFutureGet` — request-path threads parked in a blocking
-  `Future.get()/join()`. **> 0 under load is the defect.**
+  `Future.get()/join()`. **> 0 under load is the defect.** From `diagnoseBlocking` this is
+  the PEAK concurrent blocked across the samples it took while driving load.
 - `topBlockingFrames` — the exact frame (`…CompletableFuture.get(...)`) and how many
-  threads sit on it; trace it to the `file:line` in `src/`.
+  threads sat on it (summed across samples); trace it to the `file:line` in `src/`.
 - `carriersParkedInPoolWait` — threads waiting on a connection pool; a sign the pool
   is undersized rather than the code blocking.
+- `loadSent/loadOk/loadFailed` (from `diagnoseBlocking`) — the load actually driven; a
+  rising `loadFailed` means the pod is saturating, so lower `ratePerSec`.
 
 ## Key benefits of fixing it
 
@@ -40,28 +53,22 @@ return without waiting, or bound and size the work deliberately.
 - Virtual threads make blocking cheaper but do not make a needless block correct;
   remove the block first.
 
-## Diagnose on the plain-JVM image, not on CRaC
+## Same procedure on every image
 
-`profileTop wall` and `threadDump` resolve Java frames on a normal JVM (Corretto/plain
-or AOT), so that is where you diagnose latency — before switching the workload to CRaC.
-On a **CRaC-restored (Azul Zulu) JVM** the wall profiler cannot unwind the Java stack:
-frames collapse to the native leaf (e.g. `libc.so.6`), so `futexWallShare` reads ~0 and
-gives no `Unsafe.park`/futex signal — and `threadDump` may be empty depending on the
-image. A `futexWallShare` of 0 on a CRaC pod means "not measurable here", **not** "no
-blocking". Do the latency diagnosis on the plain JVM; the blocking call is a property of
-the code, so the finding carries over to the CRaC build unchanged.
+Diagnose the block the same way whatever image is deployed (plain, AOT, or CRaC): run
+`perf-sensor.diagnoseBlocking <service>`. Because it drives the load and reads the thread
+dump — not the wall flame graph — it works identically on CRaC. There is no need to change
+the deployed image to diagnose: the block is a property of the code, and the thread dump
+names it on the CRaC-restored JVM just as on a plain one.
 
-## Verify
+## Verify the fix
 
-Prefer the **HTTP request-latency metric** as the authoritative before/after — it works
-on every image including CRaC: `http_server_requests_seconds` (avg
-`sum(rate(_sum))/sum(rate(_count))`, or `_max`), filtered by the write method/URI. A
-blocking publish adds the downstream round-trip to every write; removing it drops that
-latency sharply.
-
-On a plain/AOT JVM you can also confirm with the profiler: `profileTop wall`
-(`futexWallShare` falls) and `threadDump` (`requestThreadsBlockedInFutureGet` → 0) under
-the same load. On CRaC, rely on the HTTP-latency metric instead.
+The **HTTP request-latency metric** is the authoritative before/after on every image
+including CRaC: `http_server_requests_seconds` (avg `sum(rate(_sum))/sum(rate(_count))`,
+or `_max`), filtered by the write method/URI. A blocking publish adds the downstream
+round-trip to every write; removing it drops that latency sharply. Confirm the code change
+with `diagnoseBlocking` again — `requestThreadsBlockedInFutureGet` should fall to 0 under
+the same driven load.
 
 ## Artifact
 

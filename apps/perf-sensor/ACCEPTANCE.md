@@ -8,7 +8,10 @@ implementer host reproduces.
 ## 0. Prerequisites (bootstrap does these; verify)
 - `perf-sensor` deployed in `monitoring`, pod Ready. (`deploy/java-on-amazon-eks/perf-sensor.sh`)
 - Skills + `~/environment/.mcp.json` installed. (`deploy/java-on-amazon-eks/perf-sensor-ide.sh`)
-- The workload opted into profiling: `perf-profile/sidecar: "true"` on its pod template.
+- Kyverno sidecar-injection policy installed (`deploy/java-on-amazon-eks/perf-profiler.sh`).
+  The workload is **not** pre-labelled — attaching the profiler (`perf-profile/sidecar: "true"`)
+  is the **opening participant step** (content/baseline), so `profileTop`/`threadDump`/heap are
+  empty until the participant attaches it. Verify the label is absent on a fresh env.
 
 ## 1. Wire up
 In a **separate terminal** (the port-forward is long-lived and would block the Claude session):
@@ -22,21 +25,10 @@ cd ~/environment && claude                                     # skills + .mcp.j
 Confirm in-session (`/mcp`): **perf-sensor** connected, **eks-mcp** connected, and the
 `java-on-eks-optimization` / `java-on-eks-checklist` skills listed.
 
-**If eks-mcp shows "not connected":** it runs via `uvx` (uv). Ensure uv is installed and the
-package is warmed once — `perf-sensor-ide.sh` does this, or manually:
-```bash
-command -v uvx || (curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH="$HOME/.local/bin:$PATH")
-uvx awslabs.eks-mcp-server@latest --help >/dev/null   # prewarm (first run downloads deps)
-```
-then restart `claude`. eks-mcp is read-only with `--allow-sensitive-data-access` (needed for
-`get_pod_logs` / `get_k8s_events`). Note: Q1–Q6 lean on `perf-sensor`; eks-mcp only serves the
-narrative surface (events/logs/ad-hoc reads/docs), so the sensor tools still work without it.
-
 ## 2. Baseline
-Scale to the demo size, drive load, capture the baseline so the end-of-session recap can diff:
+Drive load and capture the baseline so the end-of-session recap can diff:
 ```bash
-kubectl -n unicorn-store-spring scale deploy/unicorn-store-spring --replicas=10
-infra/scripts/test/benchmark.sh $(infra/scripts/test/getsvcurl.sh eks) 120 20
+~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 20
 ```
 While it warms, participants read the architecture. Then ask **"How are we doing against best
 practices?"** and save the score + `measure` JSON as the baseline.
@@ -48,7 +40,7 @@ practices?"** and save the score + `measure` JSON as the baseline.
 | 2 | How can I start faster without changing the image? | `resizePolicy` + boot CPU from the reference; manual resize command with the full resources map |
 | 3 | How can I start faster without changing the application? | AOT (Java 25); `Dockerfile.aot` identical to the reference except placeholders filled with `store-spring-1.0.0-exec.jar` / `com.unicorn.store.StoreApplication` |
 | 4 | How can I start in under a second? | CRaC; `Dockerfile.crac`; finds `UnicornPublisher` (EventBridge) and proposes the `Resource` hook; mentions credentials-at-restore |
-| 5 | (under load) Why is latency high and how do I fix it? | cites futex wall share and `UnicornService.publishUnicornEvent:<line>` from `threadDump` (use `sampleN` ≥ replicas); proposes non-blocking publish + pool size |
+| 5 | Why is latency high and how do I fix it? | calls `diagnoseBlocking` (it drives its own bounded load — no benchmark to time); cites `requestThreadsBlockedInFutureGet` and `UnicornService.publishUnicornEvent:<line>` / `CompletableFuture.get`; does NOT use `profileTop wall` (virtual-thread block is invisible there) and does NOT switch the image; proposes non-blocking publish + pool size |
 | 6 | How are we doing against best practices? | checklist skill runs on `measure` facts; score + grouped items with sources; identical PASS/FAIL across the three runs |
 
 **Variance rule:** anything that differs between the three runs other than prose is a defect in
@@ -56,9 +48,7 @@ the skill or a tool description — fix it before the verdict.
 
 ## 4. Apply loop
 With apply confirmed, apply 1–4 in sequence, build with `scripts/build.sh`, deploy, and confirm
-the `java-on-eks-checklist` score rises monotonically. For fast iteration operate at 1–2 replicas;
-scale back to 10 at the end to show nodes freed (Grafana "Java on EKS — Sensor": fleet
-reserved-vs-used, node count) and faster fleet scale-up.
+the `java-on-eks-checklist` score rises monotonically.
 
 ## 5. Verdict
 3/3 runs pass on all six → adopt. Otherwise tighten the skill first; fall back to page-provided

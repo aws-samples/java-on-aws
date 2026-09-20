@@ -11,6 +11,9 @@
     "memLimitMi": 256.0,
     "cpuResizePolicy": true,
     "javaToolOptions": null,
+    "startupProbe": true,
+    "runAsNonRoot": true,
+    "allowPrivilegeEscalation": false,
     "sidecars": ["perf-profiler"]
   },
   "runtime": {

@@ -89,6 +89,30 @@ else
     exit 1
 fi
 
+# Phase 4b: De-spoil the deployed manifest so the baseline is the honest, unoptimized
+# starting point the workshop then fixes. The lab-generated manifest ships resource
+# requests/limits and tuned probe delays; strip them so the "cloud-native" checklist
+# scores low-but-nonzero at the start (an unbounded, defaults-only JVM legitimately
+# fails the Performance/Cost items) and each module raises the score:
+#   - remove the whole `resources:` block  -> MaxRAMPercentage/GC-shape/requests-set/
+#     memory-right-sized all FAIL until Q1 (add requests/limits + MaxRAMPercentage).
+#   - drop the redundant probe initialDelaySeconds (startup:20 is an anti-pattern - the
+#     failureThreshold budget is the lever; readiness:10 never fires while a startupProbe
+#     exists) so the starting manifest is clean.
+# Must run AFTER Phase 4 (which regenerates the manifest) and BEFORE the Phase 5 commit,
+# so the participant's starting-point commit already carries the stripped manifest.
+# Non-fatal: the app still runs unbounded; a warning is enough.
+log_info "Phase 4b: De-spoiling deployed manifest (remove resources + redundant probe delays)..."
+DEPLOY_MANIFEST="$HOME/environment/unicorn-store-spring/k8s/deployment.yaml"
+if [ -f "$DEPLOY_MANIFEST" ] \
+   && yq -i 'del(.spec.template.spec.containers[].resources, .spec.template.spec.containers[].startupProbe.initialDelaySeconds, .spec.template.spec.containers[].readinessProbe.initialDelaySeconds)' "$DEPLOY_MANIFEST" \
+   && kubectl -n unicorn-store-spring apply -f "$DEPLOY_MANIFEST" >/dev/null 2>&1 \
+   && kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=240s >/dev/null 2>&1; then
+    log_success "Manifest de-spoiled (resources + redundant probe delays removed)"
+else
+    log_warning "could not de-spoil the deployed manifest (baseline may score higher than intended)"
+fi
+
 # Phase 5: Commit the starting point into the participant's local repo.
 # (unicorn-store-spring.sh already did `git init` + the initial commit; this
 # captures the lab-generated Dockerfile + k8s manifests.)
@@ -110,32 +134,28 @@ else
     exit 1
 fi
 
-# Phase 6b: Opt unicorn-store-spring into profiling. The app is deployed (by the
-# lab content) BEFORE the inject policy exists, and the lab-generated manifest carries
-# no sidecar label. Write the label INTO the on-disk manifest (not just a live patch)
-# so it persists across every `kubectl apply -f deployment.yaml` the participant runs
-# during the session — otherwise an apply reverts the pod template and drops the
-# sidecar (samples: 0 -> sizeMemory/checklist blocked). Applying the edited manifest
-# rolls the pods; they pass admission and get the profiler sidecar injected. Kept the
-# label (not namespace-wide injection) so the opt-in is visible/teachable in the YAML.
-# Non-fatal — the sensor still measures (memory/startup/workload) without the sidecar;
-# only profileTop/threadDump/heap need it.
-log_info "Phase 6b: Opting unicorn-store-spring into profiling (sidecar injection)..."
-DEPLOY_MANIFEST="$HOME/environment/unicorn-store-spring/k8s/deployment.yaml"
-if [ -f "$DEPLOY_MANIFEST" ] \
-   && yq -i '.spec.template.metadata.labels."perf-profile/sidecar" = "true"' "$DEPLOY_MANIFEST" \
-   && kubectl -n unicorn-store-spring apply -f "$DEPLOY_MANIFEST" >/dev/null 2>&1 \
-   && kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=240s >/dev/null 2>&1; then
-    # Commit so the label is part of the participant's starting point (Phase 5 committed
-    # the pre-label state) and their working tree stays clean.
-    ( cd "$HOME/environment/unicorn-store-spring" \
-        && git add k8s/deployment.yaml \
-        && git commit -m "Opt into profiler sidecar injection (perf-profile/sidecar label)" ) \
-        >/dev/null 2>&1 || true
-    log_success "unicorn-store-spring opted into profiling (sidecar label in manifest, injected)"
-else
-    log_warning "could not opt unicorn-store-spring into profiling (profileTop/threadDump may be empty)"
-fi
+# Phase 6b: (disabled) Profiler attach is now the OPENING participant step, not a
+# bootstrap pre-injection. The Kyverno sidecar-injection policy is installed in Phase 6;
+# the participant opts their workload in by adding the `perf-profile/sidecar: "true"`
+# label themselves (content/baseline: yq the label -> apply -> commit), which teaches
+# observability-first and keeps the profiler out of the scored checklist (it's tooling,
+# not a best practice). Left here (commented) so the mechanism is discoverable; do NOT
+# re-enable — pre-attaching hides the opening step and re-adds the profiler as a freebie.
+#
+# log_info "Phase 6b: Opting unicorn-store-spring into profiling (sidecar injection)..."
+# DEPLOY_MANIFEST="$HOME/environment/unicorn-store-spring/k8s/deployment.yaml"
+# if [ -f "$DEPLOY_MANIFEST" ] \
+#    && yq -i '.spec.template.metadata.labels."perf-profile/sidecar" = "true"' "$DEPLOY_MANIFEST" \
+#    && kubectl -n unicorn-store-spring apply -f "$DEPLOY_MANIFEST" >/dev/null 2>&1 \
+#    && kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=240s >/dev/null 2>&1; then
+#     ( cd "$HOME/environment/unicorn-store-spring" \
+#         && git add k8s/deployment.yaml \
+#         && git commit -m "Opt into profiler sidecar injection (perf-profile/sidecar label)" ) \
+#         >/dev/null 2>&1 || true
+#     log_success "unicorn-store-spring opted into profiling (sidecar label in manifest, injected)"
+# else
+#     log_warning "could not opt unicorn-store-spring into profiling (profileTop/threadDump may be empty)"
+# fi
 
 # Phase 6c: Kube Startup CPU Boost — cluster-wide controller (platform install) so the
 # "start faster without changing the image" answer hands developers a declarative

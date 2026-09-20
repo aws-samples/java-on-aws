@@ -60,6 +60,15 @@ public class SensorController {
         return sensor.threadDump(service, sampleN);
     }
 
+    @GetMapping("/diagnoseBlocking/{service}")
+    public com.example.perf.sensor.SensorService.BlockingDiagnosis diagnoseBlocking(
+            @PathVariable String service,
+            @RequestParam(defaultValue = "25") int ratePerSec,
+            @RequestParam(defaultValue = "12") int durationSec,
+            @RequestParam(defaultValue = "1000") long intervalMs) {
+        return sensor.diagnoseBlocking(service, ratePerSec, durationSec, intervalMs);
+    }
+
     @GetMapping("/profileTop/{service}")
     public ProfileTop profileTop(@PathVariable String service,
                                  @RequestParam(defaultValue = "cpu") String type,
@@ -86,6 +95,9 @@ public class SensorController {
             Map.of("name", "threadDump",
                 "input", "service, sampleN=1",
                 "output", "ThreadFacts {pod, total, byState, virtualThreads, requestThreadsBlockedInFutureGet, carriersParkedInPoolWait, topBlockingFrames, sample}"),
+            Map.of("name", "diagnoseBlocking",
+                "input", "service, ratePerSec=25, durationSec=12, intervalMs=1000",
+                "output", "{threads: ThreadFacts (peak blocked + summed frames), ratePerSec, durationSec, loadSent, loadOk, loadFailed}"),
             Map.of("name", "profileTop",
                 "input", "service, type=cpu|wall, windowMinutes=15, limit=15",
                 "output", "{frames, jitShare, gcShare, futexWallShare, samples}"),

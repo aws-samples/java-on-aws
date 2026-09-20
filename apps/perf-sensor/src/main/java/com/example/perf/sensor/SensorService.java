@@ -3,6 +3,7 @@ package com.example.perf.sensor;
 import com.example.perf.sensor.collect.DumpCollector;
 import com.example.perf.sensor.collect.FactsCollector;
 import com.example.perf.sensor.collect.K8sCollector;
+import com.example.perf.sensor.collect.LoadDriver;
 import com.example.perf.sensor.collect.LogCollector;
 import com.example.perf.sensor.collect.PrometheusClient;
 import com.example.perf.sensor.collect.PyroscopeClient;
@@ -36,15 +37,18 @@ public class SensorService {
     private final PyroscopeClient pyroscope;
     private final DumpCollector dump;
     private final LogCollector logs;
+    private final LoadDriver loadDriver;
 
     public SensorService(FactsCollector facts, K8sCollector k8s, PrometheusClient prometheus,
-                         PyroscopeClient pyroscope, DumpCollector dump, LogCollector logs) {
+                         PyroscopeClient pyroscope, DumpCollector dump, LogCollector logs,
+                         LoadDriver loadDriver) {
         this.facts = facts;
         this.k8s = k8s;
         this.prometheus = prometheus;
         this.pyroscope = pyroscope;
         this.dump = dump;
         this.logs = logs;
+        this.loadDriver = loadDriver;
     }
 
     // --- records returned by the tools/endpoints -------------------------------
@@ -209,6 +213,89 @@ public class SensorService {
         var pods = dumps.stream().map(ThreadFacts::pod).toList();
         return new ThreadFacts(String.join(",", pods), Instant.now().toString(),
             total, byState, virtual, blocked, pool, topFrames, dumps.getFirst().sample());
+    }
+
+    /**
+     * Sample the representative pod's thread dump {@code samples} times, {@code intervalMs} apart,
+     * and aggregate over TIME (not across pods). A request-path block on a virtual-thread app is
+     * brief — the vthread parks in {@code Future.get()} only for the downstream round-trip — so a
+     * single snapshot usually misses it. Sampling repeatedly under load reliably catches it.
+     * {@code requestThreadsBlockedInFutureGet} is the PEAK concurrent blocked across samples;
+     * {@code topBlockingFrames} counts are summed (recurrence). Must be taken WHILE load flows.
+     */
+    public ThreadFacts threadDumpOverTime(String service, int samples, long intervalMs) {
+        int n = Math.max(1, Math.min(samples <= 0 ? 5 : samples, 30));
+        long gap = intervalMs <= 0 ? 1000L : Math.min(intervalMs, 5000L);
+        var snap = k8s.collect(service, service);
+        String ip = snap.appPodIP(), name = snap.appPodName();
+        var byState = new java.util.LinkedHashMap<String, Integer>();
+        var frames = new java.util.LinkedHashMap<String, Integer>();
+        int maxTotal = 0, maxVirtual = 0, maxBlocked = 0, maxPool = 0, taken = 0;
+        ThreadFacts last = null;
+        for (int i = 0; i < n; i++) {
+            var d = dump.threads(ip, name);
+            if (d != null) {
+                taken++;
+                last = d;
+                maxTotal = Math.max(maxTotal, d.total());
+                maxVirtual = Math.max(maxVirtual, d.virtualThreads());
+                maxBlocked = Math.max(maxBlocked, d.requestThreadsBlockedInFutureGet());
+                maxPool = Math.max(maxPool, d.carriersParkedInPoolWait());
+                if (d.byState() != null) {
+                    d.byState().forEach((k, v) -> byState.merge(k, v, Integer::sum));
+                }
+                if (d.topBlockingFrames() != null) {
+                    d.topBlockingFrames().forEach(f -> frames.merge(f.frame(), f.count(), Integer::sum));
+                }
+            }
+            if (i < n - 1) {
+                try {
+                    Thread.sleep(gap);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        if (taken == 0) {
+            return null;
+        }
+        var topFrames = frames.entrySet().stream()
+            .sorted(java.util.Map.Entry.<String, Integer>comparingByValue().reversed())
+            .map(e -> new ThreadFacts.FrameCount(e.getKey(), e.getValue()))
+            .toList();
+        return new ThreadFacts(name, Instant.now().toString(),
+            maxTotal, byState, maxVirtual, maxBlocked, maxPool, topFrames,
+            last == null ? null : last.sample());
+    }
+
+    /** A blocking diagnosis: thread facts aggregated over time under a driven load, plus load stats. */
+    public record BlockingDiagnosis(ThreadFacts threads, int ratePerSec, int durationSec,
+                                    int loadSent, int loadOk, int loadFailed) {}
+
+    /**
+     * Deterministically diagnose a request-path block WITHOUT depending on the participant to
+     * time a benchmark: the sensor drives a bounded, rate-based write load directly at the pod
+     * and samples the thread dump over time while it runs. A blocked request thread
+     * (Future.get on a virtual thread) only exists while requests are in flight, so this makes
+     * the block reproducible on any image — including CRaC, where the wall profiler can't show it.
+     * Rate is clamped ([1,100]/sec) so it never saturates a small, right-sized pod.
+     */
+    public BlockingDiagnosis diagnoseBlocking(String service, int ratePerSec, int durationSec, long intervalMs) {
+        int rate = Math.max(1, Math.min(ratePerSec <= 0 ? 25 : ratePerSec, 100));
+        int dur = Math.max(3, Math.min(durationSec <= 0 ? 12 : durationSec, 60));
+        long gap = intervalMs <= 0 ? 1000L : Math.min(intervalMs, 5000L);
+        int samples = Math.max(2, (int) ((dur * 1000L) / gap));
+        var snap = k8s.collect(service, service);
+        String ip = snap.appPodIP();
+        if (ip == null) {
+            // No pod IP to drive load at — still sample over time (participant may drive load).
+            return new BlockingDiagnosis(threadDumpOverTime(service, samples, gap), rate, dur, 0, 0, 0);
+        }
+        try (var load = loadDriver.start(ip, rate)) {
+            var threads = threadDumpOverTime(service, samples, gap);
+            return new BlockingDiagnosis(threads, rate, dur, load.sent(), load.ok(), load.failed());
+        }
     }
 
     public ProfileTop profileTop(String service, String type, int windowMinutes, int limit) {

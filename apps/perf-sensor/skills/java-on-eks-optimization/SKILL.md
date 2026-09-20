@@ -16,7 +16,13 @@ the change and wait for confirmation before writing anything.
 - `measure <service>` — workload + runtime + profile summary + window. Start here.
 - `sizeMemory <service> …params` — memory requests/limits/GC with a guard. See Hard rules.
 - `threadDump <service>` — summarized thread dump; request-path blocking, top frames.
-- `profileTop <service> cpu|wall` — hottest frames; `cpu` → jit/gc share, `wall` → futex share.
+- `diagnoseBlocking <service>` — drives a bounded write load at the pod and samples the thread
+  dump over time; reports peak `requestThreadsBlockedInFutureGet` + summed `topBlockingFrames`.
+  The reliable way to find a request-path block (virtual threads hide it from the wall profile);
+  works on every image incl. CRaC and needs no benchmark timing.
+- `profileTop <service> cpu|wall` — hottest frames; `cpu` → jit/gc share (startup), `wall` → futex
+  share. Note: on a virtual-thread app `wall` does NOT reveal request-path blocking (parked
+  vthreads unmount); use it for CPU/GC, not for blocking.
 - `startupLog <service>` — last `Started`/`Restored` line; verifies a CRaC restore.
 
 **EKS MCP Server** (everything not scored/gated):
@@ -39,8 +45,12 @@ Do not read desired-state that `measure` already returns via `read_k8s_resource`
 - Use the reference Dockerfiles verbatim except the documented placeholders, filled
   from the app's `pom.xml` (`artifactId`, `version`, `build.finalName`, main class).
 - Show the full change and **wait for confirmation** before writing any file.
-- After the participant applies, call `measure` again and run the
-  **`java-on-eks-checklist`** skill; report **before → after**.
+- After the participant applies, call `measure` again and report **only the applied
+  technique's before → after** delta — the metric it targeted (e.g. memory request/limit,
+  startup seconds). Do **not** run the full `java-on-eks-checklist` here, and do **not**
+  list other or remaining best-practice items or how to fix them: each is the participant's
+  next question to discover. Run the checklist only when they explicitly ask
+  "how are we doing / score".
 
 **Policy parameters.** The authoritative values live in `references/sizing-policy.yaml`
 (machine-readable, so they are used deterministically); the sensor owns the arithmetic.
@@ -76,19 +86,23 @@ Read the file and pass the values through. The *why* for each:
   CRaC `Resource` hook for each. Mention credentials-at-restore. **Clear
   `JAVA_TOOL_OPTIONS` (GC/heap flags) from the Deployment for the CRaC image** — those
   are baked into the checkpoint; leaving them crash-loops the restore.
-- **"fix latency under load"** → `profileTop wall`, `threadDump`; name the blocking
-  frame and `file:line` from the dump. Propose the non-blocking change; size the pool
-  from evidence. Diagnose on the **plain/AOT JVM** — on a CRaC-restored JVM the wall
-  profiler can't unwind Java frames (collapses to `libc.so.6`, `futexWallShare` ~0,
-  which means "not measurable", not "no blocking"). Verify the fix with the **HTTP
-  request-latency metric** (`http_server_requests_seconds`), which works on every image
-  including CRaC. See `references/blocking-calls.md`.
+- **"fix latency under load"** → `diagnoseBlocking <service>`. It drives a bounded write
+  load and samples the thread dump, so it names the blocking frame and `file:line`
+  (`…CompletableFuture.get`) on **any image, including CRaC**, with no benchmark to time.
+  Do **not** use `profileTop wall` to find this — on a virtual-thread app the parked
+  request thread unmounts and never appears in the flame graph (and on CRaC the wall
+  profile collapses to native). Propose the non-blocking change; size the pool from
+  evidence. Verify with the **HTTP request-latency metric** (`http_server_requests_seconds`,
+  every image) and a second `diagnoseBlocking` (blocked → 0). See `references/blocking-calls.md`.
 - **"how are we doing / score"** → run the `java-on-eks-checklist` skill.
 
 ## 4. Answer format
 
 - **Finding** — one line.
-- **Evidence** — the tool values (name the tool).
+- **Evidence** — the tool values, and **name the tool and the specific signal** they came
+  from (e.g. "from `diagnoseBlocking`: `requestThreadsBlockedInFutureGet`=3, frame
+  `…CompletableFuture.get`" / "from `sizeMemory`: rssPeak 517Mi" / "from `profileTop cpu`:
+  jitShare 42%"). Every decision must trace to a named signal — never an estimate.
 - **Technique** — 2–4 lines from the matching `references/*.md`.
 - **Change** — the full artifact (fragment / Dockerfile / diff).
 - **Apply** — the commands from the app's `CLAUDE.md` (`scripts/build.sh`, `kubectl`).

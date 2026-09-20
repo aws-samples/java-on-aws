@@ -11,6 +11,9 @@
     "memLimitMi": 768.0,
     "cpuResizePolicy": true,
     "javaToolOptions": "-XX:+UseSerialGC -XX:MaxRAMPercentage=75",
+    "startupProbe": true,
+    "runAsNonRoot": true,
+    "allowPrivilegeEscalation": false,
     "sidecars": ["perf-profiler"]
   },
   "runtime": {
