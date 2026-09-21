@@ -41,16 +41,23 @@ patch, and nothing scales it back down). Prefer the CR.
 ## Key benefits
 
 - Faster startup (and faster rollouts / scale-ups) with no image or code change.
-- No steady-state CPU waste — you pay the boot premium only during boot.
+- No steady-state CPU waste — you pay the boot premium only during boot. With the
+  boost in place, the steady-state `requests.cpu` can follow the measured demand
+  (`cpuUsageP95Cores` from `measure`) instead of being sized for boot; the boost
+  percentage then supplies the boot CPU on top of the lower request.
 - Zero restarts: the resize is in place.
 
 ## Trade-off
 
 - GC/heap ergonomics are fixed at JVM start; this lever targets CPU/startup, not heap.
+- The JVM's processor count is also fixed at start: it sees the boosted CPU, so GC and
+  JIT thread counts stay sized for boot after the resize down. On a one-core steady
+  state keep SerialGC explicit (`-XX:+UseSerialGC`) so the boot-time view does not
+  select G1.
 
-## Verify
+## What the operator verifies afterwards
 
-Apply the `StartupCPUBoost` CR, then check `perf-sensor.startupLog` (startup seconds
-drop) and `measure` (restartCount stays 0 — resized without restart).
+`perf-sensor.startupLog` (startup seconds drop) and `measure` (restartCount stays 0 —
+resized without restart; `cpuRequestCores` near `cpuUsageP95Cores`).
 
-Immersion Day: Optimize containers → Pod resize.
+

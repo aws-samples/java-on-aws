@@ -26,6 +26,15 @@ import java.util.List;
  * @param allowPrivilegeEscalation true when the app container ALLOWS privilege escalation (secure = false; defaults to false when unset)
  * @param sidecars           names of non-app containers in the representative pod (e.g. "perf-profiler")
  * @param readyPods          count of Running+Ready pods of the workload (fleet size actually measured)
+ * @param livenessProbe      true when the app container declares a livenessProbe
+ * @param livenessPath       httpGet path of the liveness probe, or null
+ * @param readinessPath      httpGet path of the readiness probe, or null
+ * @param livenessBudgetSeconds  liveness failureThreshold x periodSeconds (time a GC pause may stall before a restart), or null
+ * @param startupBudgetSeconds   startup failureThreshold x periodSeconds (time the JVM may take to boot), or null
+ * @param startupInitialDelaySeconds  startupProbe.initialDelaySeconds (0 when unset; padding, not a budget), or null when no probe
+ * @param readinessInitialDelaySeconds readinessProbe.initialDelaySeconds (0 when unset), or null when no probe
+ * @param terminationGracePeriodSeconds pod terminationGracePeriodSeconds (K8s default 30 when unset)
+ * @param preStopSleepSeconds  seconds slept by a preStop exec/sleep hook (0 when no hook)
  */
 public record WorkloadFacts(
     String namespace,
@@ -45,7 +54,16 @@ public record WorkloadFacts(
     boolean runAsNonRoot,
     boolean allowPrivilegeEscalation,
     List<String> sidecars,
-    Integer readyPods
+    Integer readyPods,
+    boolean livenessProbe,
+    String livenessPath,
+    String readinessPath,
+    Integer livenessBudgetSeconds,
+    Integer startupBudgetSeconds,
+    Integer startupInitialDelaySeconds,
+    Integer readinessInitialDelaySeconds,
+    Long terminationGracePeriodSeconds,
+    Integer preStopSleepSeconds
 ) {
     /** True when at least one non-app (sidecar) container is present in the pod. */
     public boolean sidecarsPresent() {

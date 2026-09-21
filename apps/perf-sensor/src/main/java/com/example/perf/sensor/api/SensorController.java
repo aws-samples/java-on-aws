@@ -41,7 +41,6 @@ public class SensorController {
     @GetMapping("/sizeMemory/{service}")
     public SizeResult sizeMemory(@PathVariable String service,
                                  @RequestParam(defaultValue = "15") int windowMinutes,
-                                 @RequestParam double floorFactor,
                                  @RequestParam double peakFactor,
                                  @RequestParam double floorSafetyFactor,
                                  @RequestParam int roundMi,
@@ -50,7 +49,7 @@ public class SensorController {
                                  @RequestParam double minRequestRate,
                                  @RequestParam double minDeltaMi) {
         return sensor.sizeMemory(service, windowMinutes,
-            new SizeParams(floorFactor, peakFactor, floorSafetyFactor, roundMi, warmSeconds,
+            new SizeParams(peakFactor, floorSafetyFactor, roundMi, warmSeconds,
                 minSamples, minRequestRate, minDeltaMi));
     }
 
@@ -90,8 +89,8 @@ public class SensorController {
                 "input", "service, windowMinutes=15",
                 "output", "WorkloadFacts (incl. readyPods) + RuntimeFacts + ProfileFacts summary + window + per-pod breakdown"),
             Map.of("name", "sizeMemory",
-                "input", "service, windowMinutes, floorFactor, peakFactor, floorSafetyFactor, roundMi, warmSeconds, minSamples, minRequestRate, minDeltaMi",
-                "output", "{status, reason, requests.memory, limits.memory, maxRamPercentage, gc, evidence, params}"),
+                "input", "service, windowMinutes, peakFactor, floorSafetyFactor, roundMi, warmSeconds, minSamples, minRequestRate, minDeltaMi",
+                "output", "{status, reason, requests.memory (== limits), limits.memory, maxRamPercentage, initialRamPercentage, gc, evidence, params}"),
             Map.of("name", "threadDump",
                 "input", "service, sampleN=1",
                 "output", "ThreadFacts {pod, total, byState, virtualThreads, requestThreadsBlockedInFutureGet, carriersParkedInPoolWait, topBlockingFrames, sample}"),

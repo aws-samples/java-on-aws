@@ -65,6 +65,27 @@ public class PrometheusClient {
         return scalar("sum(rate(http_server_requests_seconds_count{application=\"" + app + "\"}[" + mins + "m]))");
     }
 
+    /**
+     * p95 of the app container's CPU usage rate over the window, cores (worst pod). Steady-state
+     * demand for the "CPU request reflects steady state" item; the 1m rate smooths scrape jitter,
+     * the 95th percentile ignores the boot spike.
+     */
+    public Double cpuUsageP95Cores(String namespace, String container, int mins) {
+        return scalar("max(quantile_over_time(0.95, rate(container_cpu_usage_seconds_total"
+            + sel(namespace, container) + "[1m])[" + mins + "m:30s]))");
+    }
+
+    /** CFS throttled periods / total periods over the window, 0..1 (worst pod); null without cAdvisor. */
+    public Double cpuThrottledRatio(String namespace, String container, int mins) {
+        return scalar("max(increase(container_cpu_cfs_throttled_periods_total" + sel(namespace, container) + win(mins) + ")"
+            + " / increase(container_cpu_cfs_periods_total" + sel(namespace, container) + win(mins) + "))");
+    }
+
+    /** Max threads waiting for a pooled DB connection over the window (Micrometer hikaricp_connections_pending). */
+    public Double hikariPendingMax(String app, int mins) {
+        return scalar("max(max_over_time(hikaricp_connections_pending{application=\"" + app + "\"}" + win(mins) + "))");
+    }
+
     /** Per-pod working-set peak over the window, MiB (drill-down behind the fleet peak). */
     public java.util.Map<String, Double> perPodPeakMi(String namespace, String container, int mins) {
         var out = new java.util.LinkedHashMap<String, Double>();

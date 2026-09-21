@@ -2,8 +2,11 @@
 # perf-sensor.sizeMemory. The skill reads the VALUES from here (deterministic, no
 # risk of mis-copying a number from prose); SKILL.md carries the WHY as prose.
 # Pass these verbatim to sizeMemory; never invent or round them yourself.
+#
+# Result shape: limits = roundUp(max(peak * peakFactor, floor * floorSafetyFactor));
+# requests = limits (Guaranteed memory QoS — JVM memory is stable after warm-up, and a
+# Burstable JVM is the first OOM-kill candidate on a busy node).
 policy:
-  floorFactor: 1.25         # requests = roundUp(floor * this) — near the non-heap floor plus headroom
   peakFactor: 1.40          # limit >= peak * this — over the observed load peak
   floorSafetyFactor: 1.90   # limit >= floor * this — protects against an under-observed peak
   roundMi: 64               # round memory up to a multiple of this many MiB (scheduler-friendly)

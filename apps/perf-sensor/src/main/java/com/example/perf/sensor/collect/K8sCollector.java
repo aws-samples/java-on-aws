@@ -32,7 +32,8 @@ public class K8sCollector {
 
     /** Workload facts plus the extras the other collectors need. */
     public record Snapshot(WorkloadFacts workload, Integer restarts, String appPodIP,
-                           String appPodName, String appContainer, Double uptimeSeconds) {}
+                           String appPodName, String appContainer, Double uptimeSeconds,
+                           String lastTerminationReason) {}
 
     /** A Ready pod's name + IP (for per-pod fan-out, e.g. thread-dump sampling). */
     public record PodRef(String name, String ip) {}
@@ -98,6 +99,15 @@ public class K8sCollector {
                 ? spec.getTemplate().getSpec().getSecurityContext() : null;
             boolean runAsNonRoot = podSc != null && Boolean.TRUE.equals(podSc.getRunAsNonRoot());
             boolean allowPrivilegeEscalation = true;
+            boolean livenessProbe = false;
+            String livenessPath = null, readinessPath = null;
+            Integer livenessBudget = null, startupBudget = null;
+            Integer startupInitialDelay = null, readinessInitialDelay = null;
+            Integer preStopSleep = 0;
+            // Pod-level: terminationGracePeriodSeconds defaults to 30 when unset.
+            Long grace = spec != null && spec.getTemplate().getSpec() != null
+                && spec.getTemplate().getSpec().getTerminationGracePeriodSeconds() != null
+                ? spec.getTemplate().getSpec().getTerminationGracePeriodSeconds() : 30L;
             if (app != null) {
                 var res = app.getResources();
                 if (res != null) {
@@ -128,6 +138,14 @@ public class K8sCollector {
                 }
                 readinessProbe = app.getReadinessProbe() != null;
                 startupProbe = app.getStartupProbe() != null;
+                livenessProbe = app.getLivenessProbe() != null;
+                livenessPath = httpPath(app.getLivenessProbe());
+                readinessPath = httpPath(app.getReadinessProbe());
+                livenessBudget = budget(app.getLivenessProbe());
+                startupBudget = budget(app.getStartupProbe());
+                startupInitialDelay = initialDelay(app.getStartupProbe());
+                readinessInitialDelay = initialDelay(app.getReadinessProbe());
+                preStopSleep = preStopSleepSeconds(app);
                 var sc = app.getSecurityContext();
                 if (sc != null) {
                     if (Boolean.TRUE.equals(sc.getRunAsNonRoot())) {
@@ -149,6 +167,7 @@ public class K8sCollector {
             String podName = null;
             Double uptimeSeconds = null;
             Integer readyPods = null;
+            String lastTermination = null;
             var pods = core.listNamespacedPod(namespace).labelSelector(selector).execute();
             if (pods.getItems() != null) {
                 var ready = pods.getItems().stream().filter(K8sCollector::isReady).toList();
@@ -167,6 +186,9 @@ public class K8sCollector {
                                 .findFirst().orElse(null);
                             if (appStatus != null) {
                                 restarts = appStatus.getRestartCount();
+                                if (appStatus.getLastState() != null && appStatus.getLastState().getTerminated() != null) {
+                                    lastTermination = appStatus.getLastState().getTerminated().getReason();
+                                }
                                 if (appStatus.getState() != null && appStatus.getState().getRunning() != null
                                     && appStatus.getState().getRunning().getStartedAt() != null) {
                                     var startedAt = appStatus.getState().getRunning().getStartedAt();
@@ -189,12 +211,48 @@ public class K8sCollector {
                 app == null ? deployment : app.getName(), imageTag, replicas,
                 cpuReq, cpuLim, memReq, memLim, cpuResize, cpuResizeRestart,
                 javaToolOptions, readinessProbe, startupProbe,
-                runAsNonRoot, allowPrivilegeEscalation, sidecars, readyPods);
-            return new Snapshot(workload, restarts, podIP, podName, workload.container(), uptimeSeconds);
+                runAsNonRoot, allowPrivilegeEscalation, sidecars, readyPods,
+                livenessProbe, livenessPath, readinessPath, livenessBudget, startupBudget,
+                startupInitialDelay, readinessInitialDelay, grace, preStopSleep);
+            return new Snapshot(workload, restarts, podIP, podName, workload.container(), uptimeSeconds, lastTermination);
         } catch (Exception e) {
             logger.warn("K8s collect failed ns={} deploy={}: {}", namespace, deployment, e.toString(), e);
-            return new Snapshot(null, null, null, null, null, null);
+            return new Snapshot(null, null, null, null, null, null, null);
         }
+    }
+
+    /** httpGet path of a probe, or null when absent / not an HTTP probe. */
+    private static String httpPath(io.kubernetes.client.openapi.models.V1Probe probe) {
+        return probe == null || probe.getHttpGet() == null ? null : probe.getHttpGet().getPath();
+    }
+
+    /** failureThreshold x periodSeconds with the K8s defaults (3 x 10), or null when no probe. */
+    private static Integer budget(io.kubernetes.client.openapi.models.V1Probe probe) {
+        if (probe == null) return null;
+        int failures = probe.getFailureThreshold() == null ? 3 : probe.getFailureThreshold();
+        int period = probe.getPeriodSeconds() == null ? 10 : probe.getPeriodSeconds();
+        return failures * period;
+    }
+
+    private static Integer initialDelay(io.kubernetes.client.openapi.models.V1Probe probe) {
+        if (probe == null) return null;
+        return probe.getInitialDelaySeconds() == null ? 0 : probe.getInitialDelaySeconds();
+    }
+
+    /** Seconds slept by a preStop hook: exec `sleep N` / `sh -c "sleep N"`, or the K8s 1.30+ sleep action. 0 when none. */
+    static int preStopSleepSeconds(V1Container app) {
+        var lc = app.getLifecycle();
+        if (lc == null || lc.getPreStop() == null) return 0;
+        var pre = lc.getPreStop();
+        if (pre.getSleep() != null && pre.getSleep().getSeconds() != null) {
+            return (int) pre.getSleep().getSeconds().longValue();
+        }
+        if (pre.getExec() != null && pre.getExec().getCommand() != null) {
+            var m = java.util.regex.Pattern.compile("sleep\\s+(\\d+)")
+                .matcher(String.join(" ", pre.getExec().getCommand()));
+            if (m.find()) return Integer.parseInt(m.group(1));
+        }
+        return 0;
     }
 
     /** Label selector from the Deployment's own matchLabels; falls back to serviceLabel=deployment. */

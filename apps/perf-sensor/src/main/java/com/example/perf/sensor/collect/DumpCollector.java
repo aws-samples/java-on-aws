@@ -38,10 +38,16 @@ public class DumpCollector {
         Pattern.compile("CompletableFuture\\.(get|join)|Future\\.get");
     private static final String[] POOL_WAIT_MARKERS = {"ConcurrentBag", "getConnection", "HikariPool"};
 
-    /** Heap/runtime facts scraped from GC.heap_info + VM.flags; fields null when not parseable. */
-    public record HeapInfo(Double heapUsedMi, Double heapCommittedMi, String gcName) {
+    /**
+     * Heap/runtime facts scraped from GC.heap_info + VM.flags; fields null when not parseable.
+     * {@code maxHeapMi}/{@code initialHeapMi} are the JVM's OBSERVED bounds (VM.flags prints
+     * MaxHeapSize/InitialHeapSize whether they came from -Xmx, MaxRAMPercentage, ergonomics or
+     * a CRaC checkpoint), so they score "heap follows the container" on any image.
+     */
+    public record HeapInfo(Double heapUsedMi, Double heapCommittedMi, String gcName,
+                           Double maxHeapMi, Double initialHeapMi) {
         static HeapInfo empty() {
-            return new HeapInfo(null, null, null);
+            return new HeapInfo(null, null, null, null, null);
         }
     }
 
@@ -160,7 +166,10 @@ public class DumpCollector {
             committed = kbToMi(sumMatches(body, "committed\\s+(\\d+)K"));
         }
         Double used = kbToMi(sumMatches(body, "\\bused\\s+(\\d+)K"));
-        return new HeapInfo(used, committed, gc);
+        // VM.flags: "-XX:MaxHeapSize=1610612736 ... -XX:InitialHeapSize=134217728" (bytes)
+        Double maxHeap = bytesToMi(firstMatch(body, "-XX:MaxHeapSize=(\\d+)"));
+        Double initialHeap = bytesToMi(firstMatch(body, "-XX:InitialHeapSize=(\\d+)"));
+        return new HeapInfo(used, committed, gc, maxHeap, initialHeap);
     }
 
     private String get(String podIP, String kind) {
@@ -204,5 +213,14 @@ public class DumpCollector {
 
     private static Double kbToMi(Double kb) {
         return kb == null ? null : kb / 1024.0;
+    }
+
+    private static Double firstMatch(String body, String regex) {
+        var m = Pattern.compile(regex).matcher(body);
+        return m.find() ? Double.parseDouble(m.group(1)) : null;
+    }
+
+    private static Double bytesToMi(Double bytes) {
+        return bytes == null ? null : bytes / (1024.0 * 1024.0);
     }
 }

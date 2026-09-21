@@ -59,6 +59,12 @@ echo "wrote ${ENV_DIR}/.mcp.json"
 # doesn't show the "new MCP servers found — Enable" prompt. Project-scoped (not global): only
 # perf-sensor + eks-mcp, only for this workspace. Relies on folder trust pre-accepted by
 # ide/tools.sh. Merge so we don't clobber any existing project settings.
+#
+# permissions.allow: pre-approve the read-only sensors (mcp__<server> = every tool on that
+# server), file reads, and edits so the investigate -> explain -> ask -> apply loop runs
+# without tool prompts. The skill's "apply?" question is a hard stop in the answer text, not a
+# tool permission, so it survives this. Bash is deliberately NOT listed: kubectl/build/git
+# still prompt — rollout stays a participant action we don't block but don't auto-run.
 python3 - "${ENV_DIR}/.claude/settings.json" <<'PY'
 import json, os, sys
 path = sys.argv[1]
@@ -72,11 +78,17 @@ if os.path.exists(path):
 servers = set(data.get("enabledMcpjsonServers", []))
 servers.update(["perf-sensor", "eks-mcp"])
 data["enabledMcpjsonServers"] = sorted(servers)
+perms = data.setdefault("permissions", {})
+allow = list(perms.get("allow", []))
+for rule in ["mcp__perf-sensor", "mcp__eks-mcp", "Read", "Grep", "Glob", "Edit", "Write"]:
+    if rule not in allow:
+        allow.append(rule)
+perms["allow"] = allow
 os.makedirs(os.path.dirname(path), exist_ok=True)
 with open(path, "w") as f:
     json.dump(data, f, indent=2)
 PY
-echo "wrote ${ENV_DIR}/.claude/settings.json (enabledMcpjsonServers: perf-sensor, eks-mcp)"
+echo "wrote ${ENV_DIR}/.claude/settings.json (enabledMcpjsonServers + permissions.allow for sensors, read, edit)"
 # --allow-sensitive-data-access is required for get_pod_logs / get_k8s_events (read-only;
 # write stays off). Auth uses the IDE role (default iam mode). uv/uvx and the eks-mcp
 # package are installed and prewarmed by ide/tools.sh (install_uv) during base bootstrap.

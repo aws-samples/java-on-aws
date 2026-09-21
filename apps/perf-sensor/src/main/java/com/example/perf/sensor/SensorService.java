@@ -66,7 +66,7 @@ public class SensorService {
                                 java.util.List<PodBreakdown> pods) {}
 
     /** Caller-supplied sizing policy — all required, no defaults (the skill owns the numbers). */
-    public record SizeParams(double floorFactor, double peakFactor, double floorSafetyFactor,
+    public record SizeParams(double peakFactor, double floorSafetyFactor,
                              int roundMi, int warmSeconds, int minSamples,
                              double minRequestRate, double minDeltaMi) {}
 
@@ -75,9 +75,13 @@ public class SensorService {
     public record SizeEvidence(Double rssFloorMi, Double rssPeakMi,
                                Double heapCommittedMi, Double cpuLimitCores) {}
 
-    /** OK: computed sizing. BLOCKED: reason set, sizing null (guard not satisfied). */
+    /**
+     * OK: computed sizing — requests == limits (Guaranteed memory QoS: JVM memory is stable
+     * after warm-up and a Burstable JVM is the first OOM-kill candidate on a busy node).
+     * BLOCKED: reason set, sizing null (guard not satisfied).
+     */
     public record SizeResult(String status, String reason, Sized requests, Sized limits,
-                             Integer maxRamPercentage, String gc,
+                             Integer maxRamPercentage, Integer initialRamPercentage, String gc,
                              SizeEvidence evidence, SizeParams params) {}
 
     public record ProfileTop(java.util.List<com.example.perf.sensor.facts.Frame> frames,
@@ -124,8 +128,8 @@ public class SensorService {
      * Pure sizing over already-collected facts (also the unit-test entry point).
      * Guard: BLOCKED unless {@code uptime > warmSeconds && samples > minSamples}
      * and {@code (requestRate > minRequestRate || rssPeak - rssFloor > minDeltaMi)}.
-     * Rule: requests = roundUpMi(floor*floorFactor); limits =
-     * roundUpMi(max(peak*peakFactor, floor*floorSafetyFactor)); maxRamPercentage = 75;
+     * Rule: limits = roundUpMi(max(peak*peakFactor, floor*floorSafetyFactor));
+     * requests = limits (Guaranteed); maxRamPercentage = 75; initialRamPercentage = 50;
      * gc = cpuLimit <= 1 ? SerialGC : G1GC.
      */
     public SizeResult sizeMemory(Facts f, SizeParams p) {
@@ -158,16 +162,16 @@ public class SensorService {
                 .formatted(fmt(reqRate), fmt(p.minRequestRate()), peak - floor, p.minDeltaMi()), evidence, p);
         }
 
-        String requests = roundUpMi(floor * p.floorFactor(), p.roundMi());
         String limits = roundUpMi(Math.max(peak * p.peakFactor(), floor * p.floorSafetyFactor()), p.roundMi());
+        String requests = limits;   // Guaranteed memory QoS
         String gc = (cpuLimit != null && cpuLimit <= 1) ? "SerialGC" : "G1GC";
-        logger.info("sizeMemory OK floor={} peak={} cpuLimit={} -> requests={} limits={} gc={}",
-            floor, peak, cpuLimit, requests, limits, gc);
-        return new SizeResult("OK", null, new Sized(requests), new Sized(limits), 75, gc, evidence, p);
+        logger.info("sizeMemory OK floor={} peak={} cpuLimit={} -> requests=limits={} gc={}",
+            floor, peak, cpuLimit, limits, gc);
+        return new SizeResult("OK", null, new Sized(requests), new Sized(limits), 75, 50, gc, evidence, p);
     }
 
     private static SizeResult blocked(String reason, SizeEvidence ev, SizeParams p) {
-        return new SizeResult("BLOCKED", reason, null, null, null, null, ev, p);
+        return new SizeResult("BLOCKED", reason, null, null, null, null, null, ev, p);
     }
 
     // --- threadDump / profileTop / startupLog ----------------------------------

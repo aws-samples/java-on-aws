@@ -65,16 +65,24 @@ Scan `src/` for every class that opens a client/connection/file and add a hook t
   scale-up.
 - The restored process is already warm: no JIT ramp, no cold-cache latency spike.
 
-## Gotcha: clear `JAVA_TOOL_OPTIONS` on the CRaC deployment
+## Gotcha: JVM flags live in the checkpoint, not in the Deployment
 
 GC and heap flags are **baked into the checkpoint** and cannot change at restore. If
 the deployment carries `JAVA_TOOL_OPTIONS` from an earlier right-sizing step
 (e.g. `-XX:+UseSerialGC -XX:MaxRAMPercentage=75`), the restoring JVM re-reads it,
 finds a flag it may not change after checkpoint, and **crash-loops** (e.g. "cannot
 change GC after restore"). When switching a workload to the CRaC image, **remove
-`JAVA_TOOL_OPTIONS`** (or at least the GC/heap flags) from the Deployment — the
-checkpoint and the `Dockerfile.crac` ENTRYPOINT own those flags. Keep the memory
-`requests`/`limits`; only the JVM-flag env must go.
+`JAVA_TOOL_OPTIONS`** (or at least the GC/heap flags) from the Deployment. Keep the
+memory `requests`/`limits`; only the JVM-flag env must go.
+
+Consequences to state explicitly:
+- `Dockerfile.crac` sets `-XX:+UseSerialGC` on the checkpoint command, so the GC still
+  fits a ≤ 1 vCPU pod after restore.
+- The heap ceiling (`MaxHeapSize`) is fixed at checkpoint time from the **build**
+  container, not from the pod's memory limit. `MaxRAMPercentage` in the Deployment has
+  no effect on a restored JVM. If the heap ceiling must match the pod, take the
+  checkpoint in a container with the same memory limit or pass an explicit `-Xmx` on
+  the checkpoint command. This is a CRaC trade-off, not a misconfiguration.
 
 ## Trade-offs
 
@@ -91,4 +99,4 @@ Three changes: (1) add the `org.crac` dependency to `pom.xml`; (2) add an
 `Dockerfile.crac` verbatim, filling `JAR_FILE` from the app's `pom.xml`. Verify with
 `perf-sensor.startupLog` — `kind` should read **Restored** and seconds < 1.
 
-Immersion Day: Optimize containers → CRaC.
+

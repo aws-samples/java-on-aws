@@ -50,13 +50,18 @@ public class FactsCollector {
         Double rssPeak = prometheus.workingSetPeakMi(service, container, mins);
         Double startup = prometheus.startupSeconds(service);
         Double requestRate = prometheus.requestRatePerSec(service, mins);
+        Double cpuP95 = prometheus.cpuUsageP95Cores(service, container, mins);
+        Double throttled = prometheus.cpuThrottledRatio(service, container, mins);
+        Double hikariPending = prometheus.hikariPendingMax(service, mins);
         var heap = dump.heap(snap.appPodIP());
         // effectiveCpuCount: the JVM rounds the CPU limit up to whole processors.
         Integer effectiveCpu = (workload != null && workload.cpuLimitCores() != null)
             ? (int) Math.ceil(workload.cpuLimitCores()) : null;
         var runtime = new RuntimeFacts(rssFloor, rssPeak,
             heap.heapUsedMi(), heap.heapCommittedMi(), heap.gcName(),
-            effectiveCpu, startup, snap.restarts(), snap.uptimeSeconds(), requestRate);
+            effectiveCpu, startup, snap.restarts(), snap.uptimeSeconds(), requestRate,
+            heap.maxHeapMi(), heap.initialHeapMi(), cpuP95, throttled, hikariPending,
+            snap.lastTerminationReason());
 
         ProfileFacts profile = pyroscope.summarize(service, from.toString(), to.toString(), 15);
 

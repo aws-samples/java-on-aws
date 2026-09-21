@@ -42,4 +42,4 @@ Use `Dockerfile.aot` verbatim, filling `JAR_FILE` and `MAIN_CLASS` from the app'
 push, `set image`, then verify with `perf-sensor.startupLog` and `measure`
 (startup seconds drop) and `profileTop cpu` (JIT share falls).
 
-Immersion Day: Optimize containers → CDS, AOT.
+

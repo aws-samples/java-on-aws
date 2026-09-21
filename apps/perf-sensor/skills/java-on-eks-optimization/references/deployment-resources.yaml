@@ -1,19 +1,20 @@
 # Memory right-sizing fragment. GENERIC — the VALUES come from perf-sensor.sizeMemory
-# (requests.memory, limits.memory, gc, maxRamPercentage); do not invent them. Apply
-# under spec.template.spec.containers[0] in the app's k8s/deployment.yaml, replacing
-# <app> with the container name. Changes ONLY memory + JAVA_TOOL_OPTIONS and PRESERVES
-# the current CPU values, so it composes with the CPU-boost fragment in either order.
-# A memory-limit shrink needs a rollout restart.
+# (requests.memory == limits.memory, gc, maxRamPercentage, initialRamPercentage); do not
+# invent them. Apply under spec.template.spec.containers[0] in the app's
+# k8s/deployment.yaml, replacing <app> with the container name. Changes ONLY memory +
+# JAVA_TOOL_OPTIONS and PRESERVES the current CPU values, so it composes with the CPU
+# fragments in either order. A memory-limit change needs a rollout restart.
         # container: <app>
         resources:
           requests:
             cpu: "<keep current>"          # unchanged
-            memory: "<sizeMemory.requests.memory>"   # e.g. 512Mi
+            memory: "<sizeMemory.requests.memory>"   # == limits (Guaranteed), e.g. 768Mi
           limits:
             cpu: "<keep current>"          # unchanged
             memory: "<sizeMemory.limits.memory>"     # e.g. 768Mi
         env:
           - name: JAVA_TOOL_OPTIONS
             value: >-
-              -XX:+Use<sizeMemory.gc>                 # SerialGC on <=1 vCPU; never G1 there
-              -XX:MaxRAMPercentage=<sizeMemory.maxRamPercentage>   # e.g. 75
+              -XX:+Use<sizeMemory.gc>                                  # SerialGC on <=1 vCPU; never G1 there
+              -XX:MaxRAMPercentage=<sizeMemory.maxRamPercentage>       # heap ceiling as % of the limit, e.g. 75
+              -XX:InitialRAMPercentage=<sizeMemory.initialRamPercentage>   # start near steady size, e.g. 50

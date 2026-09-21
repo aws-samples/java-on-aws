@@ -31,11 +31,13 @@ public class SensorMcpTools {
 
     @Tool(description = """
         Measure a Java service on EKS: Kubernetes desired-state (requests/limits in MiB/cores,
-        cpu resizePolicy, JAVA_TOOL_OPTIONS, image tag, replicas, readiness probe, startup probe, sidecars) plus
-        measured runtime (working-set floor/peak MiB, heap committed MiB, GC name, effective CPUs,
-        startup seconds, restarts), a CPU/wall profile summary (jit/gc/futex shares, samples), and
-        the window {uptimeSeconds, samples, requestRatePerSec}. Facts only — everything the
-        checklist needs to score items 1-9. Deterministic; no LLM.""")
+        cpu resizePolicy, JAVA_TOOL_OPTIONS, image tag, replicas, probes with paths/budgets/initial
+        delays, terminationGracePeriodSeconds, preStop sleep, sidecars) plus measured runtime
+        (working-set floor/peak MiB, heap committed MiB, observed MaxHeapSize/InitialHeapSize MiB,
+        GC name, effective CPUs, CPU usage p95 cores, CFS throttled ratio, startup seconds, restarts,
+        last termination reason, max DB-pool waiters), a CPU/wall profile summary (jit/gc/futex
+        shares, samples), and the window {uptimeSeconds, samples, requestRatePerSec}. Facts only —
+        everything the checklist needs except the thread dump. Deterministic; no LLM.""")
     public MeasureResult measure(
         @ToolParam(description = "Pyroscope service_name = Deployment name") String service,
         @ToolParam(description = "Look-back window in minutes (default 15)", required = false) Integer windowMinutes) {
@@ -44,18 +46,18 @@ public class SensorMcpTools {
     }
 
     @Tool(description = """
-        Compute memory requests/limits (MiB), MaxRAMPercentage and GC for a Java service from its
-        MEASURED working-set, with a guard that must not be skipped. Returns status OK or BLOCKED.
-        BLOCKED (with a reason, no sizing) unless the profiling window is warm (uptime > warmSeconds
-        AND samples > minSamples) and load was observed (requestRate > minRequestRate OR
-        rssPeak-rssFloor > minDeltaMi). All policy parameters are REQUIRED and supplied by the
-        caller (the optimization skill owns the numbers; this tool owns only the arithmetic):
-        requests = roundUpMi(floor*floorFactor); limits = roundUpMi(max(peak*peakFactor,
-        floor*floorSafetyFactor)); MaxRAMPercentage = 75; GC = cpuLimit <= 1 ? SerialGC : G1GC.""")
+        Compute memory requests/limits (MiB), MaxRAMPercentage, InitialRAMPercentage and GC for a
+        Java service from its MEASURED working-set, with a guard that must not be skipped. Returns
+        status OK or BLOCKED. BLOCKED (with a reason, no sizing) unless the profiling window is warm
+        (uptime > warmSeconds AND samples > minSamples) and load was observed (requestRate >
+        minRequestRate OR rssPeak-rssFloor > minDeltaMi). All policy parameters are REQUIRED and
+        supplied by the caller (the optimization skill owns the numbers; this tool owns only the
+        arithmetic): limits = roundUpMi(max(peak*peakFactor, floor*floorSafetyFactor));
+        requests = limits (Guaranteed memory QoS); MaxRAMPercentage = 75; InitialRAMPercentage = 50;
+        GC = cpuLimit <= 1 ? SerialGC : G1GC.""")
     public SizeResult sizeMemory(
         @ToolParam(description = "Pyroscope service_name = Deployment name") String service,
         @ToolParam(description = "Look-back window in minutes") int windowMinutes,
-        @ToolParam(description = "requests = floor * this (e.g. 1.25)") double floorFactor,
         @ToolParam(description = "limit >= peak * this (e.g. 1.40)") double peakFactor,
         @ToolParam(description = "limit >= floor * this (e.g. 1.90), protects an under-observed peak") double floorSafetyFactor,
         @ToolParam(description = "round memory up to a multiple of this many MiB (e.g. 64)") int roundMi,
@@ -65,7 +67,7 @@ public class SensorMcpTools {
         @ToolParam(description = "guard: minimum peak-floor MiB delta that counts as load (e.g. 64)") double minDeltaMi) {
         logger.info("MCP sizeMemory service={} window={}", service, windowMinutes);
         return sensor.sizeMemory(service, windowMinutes,
-            new SizeParams(floorFactor, peakFactor, floorSafetyFactor, roundMi, warmSeconds,
+            new SizeParams(peakFactor, floorSafetyFactor, roundMi, warmSeconds,
                 minSamples, minRequestRate, minDeltaMi));
     }
 

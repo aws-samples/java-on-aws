@@ -23,7 +23,7 @@ class SizeMemoryTest {
 
     // The java-on-eks-optimization SOP policy parameters.
     private static final SizeParams POLICY =
-        new SizeParams(1.25, 1.40, 1.90, 64, 120, 100, 1, 64);
+        new SizeParams(1.40, 1.90, 64, 120, 100, 1, 64);
 
     private final SensorService sensor = new SensorService(null, null, null, null, null, null, null);
 
@@ -36,11 +36,13 @@ class SizeMemoryTest {
 
     @Test
     void baseline_sizesToAcceptanceRange_serialGc() throws IOException {
+        // floor 377, peak 517: limits = roundUp(max(723.8, 716.3), 64) = 768; requests == limits.
         var r = sensor.sizeMemory(fixture("baseline"), POLICY);
         assertThat(r.status()).isEqualTo("OK");
-        assertThat(r.requests().memory()).isEqualTo("512Mi");
+        assertThat(r.requests().memory()).isEqualTo("768Mi");
         assertThat(r.limits().memory()).isEqualTo("768Mi");
         assertThat(r.maxRamPercentage()).isEqualTo(75);
+        assertThat(r.initialRamPercentage()).isEqualTo(50);
         assertThat(r.gc()).isEqualTo("SerialGC");
         assertThat(r.evidence().rssFloorMi()).isEqualTo(377.0);
         assertThat(r.evidence().rssPeakMi()).isEqualTo(517.0);
@@ -50,17 +52,17 @@ class SizeMemoryTest {
     void rightSized_stillComputesTargets() throws IOException {
         var r = sensor.sizeMemory(fixture("right-sized"), POLICY);
         assertThat(r.status()).isEqualTo("OK");
-        assertThat(r.requests().memory()).isEqualTo("512Mi");
+        assertThat(r.requests().memory()).isEqualTo("768Mi");
         assertThat(r.limits().memory()).isEqualTo("768Mi");
         assertThat(r.gc()).isEqualTo("SerialGC");
     }
 
     @Test
     void crac_sizesSmall_floorSafetyDominates() throws IOException {
-        // floor 190, peak 210: requests=roundUp(237.5,64)=256; limits=roundUp(max(294,361),64)=384.
+        // floor 190, peak 210: limits=roundUp(max(294,361),64)=384; requests == limits.
         var r = sensor.sizeMemory(fixture("crac"), POLICY);
         assertThat(r.status()).isEqualTo("OK");
-        assertThat(r.requests().memory()).isEqualTo("256Mi");
+        assertThat(r.requests().memory()).isEqualTo("384Mi");
         assertThat(r.limits().memory()).isEqualTo("384Mi");
         assertThat(r.gc()).isEqualTo("SerialGC");
     }
@@ -92,7 +94,10 @@ class SizeMemoryTest {
             wl.namespace(), wl.deployment(), wl.container(), wl.imageTag(), wl.replicas(),
             wl.cpuRequestCores(), 2.0, wl.memRequestMi(), wl.memLimitMi(), wl.cpuResizePolicy(),
             wl.cpuResizeRestartPolicy(), wl.javaToolOptions(), wl.readinessProbe(), wl.startupProbe(),
-            wl.runAsNonRoot(), wl.allowPrivilegeEscalation(), wl.sidecars(), wl.readyPods());
+            wl.runAsNonRoot(), wl.allowPrivilegeEscalation(), wl.sidecars(), wl.readyPods(),
+            wl.livenessProbe(), wl.livenessPath(), wl.readinessPath(), wl.livenessBudgetSeconds(),
+            wl.startupBudgetSeconds(), wl.startupInitialDelaySeconds(), wl.readinessInitialDelaySeconds(),
+            wl.terminationGracePeriodSeconds(), wl.preStopSleepSeconds());
         var r = sensor.sizeMemory(new Facts(twoCpu, base.runtime(), base.profile(), null), POLICY);
         assertThat(r.status()).isEqualTo("OK");
         assertThat(r.gc()).isEqualTo("G1GC");

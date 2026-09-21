@@ -7,8 +7,9 @@ description: "Optimize a Java service on Amazon EKS: memory, startup, latency. U
 
 Optimize a Java service on EKS from measured facts. Every number comes from a
 tool — never estimate. The `perf-sensor` tools measure; the EKS MCP Server covers
-the non-scored surface (events, logs, ad-hoc resource reads, docs). You propose
-the change and wait for confirmation before writing anything.
+the non-scored surface (events, logs, ad-hoc resource reads, docs). You investigate,
+name the root cause, explain the change, apply it to the working tree, and stop.
+Rollout and verification belong to the operator.
 
 ## 1. Tools
 
@@ -34,78 +35,89 @@ the change and wait for confirmation before writing anything.
 Do not read desired-state that `measure` already returns via `read_k8s_resource` —
 `measure` extracts it deterministically for scoring.
 
-## 2. Hard rules
+## 2. Procedure — every question follows these five steps
+
+1. **Investigate.** `measure`, then the tool the question calls for (§4). Read the
+   app's `pom.xml` / `k8s/` / `src/` only for what the change needs.
+2. **Root cause.** One line: what the evidence shows and why it costs memory,
+   startup time or latency. Name the tool and the signal
+   (e.g. "from `sizeMemory`: rssPeak 366 Mi vs limit 2048 Mi").
+3. **Solution.** Why this change resolves that root cause, 3–5 lines from the
+   matching `references/*.md`. Link the reference file.
+4. **Apply.** Edit the files in the working tree. Do not stage or commit — the
+   operator reviews the change with `git diff`.
+5. **Exit.** Report `Files changed: <paths>` and close with exactly:
+   `Not deployed. Review the diff, roll out, and re-measure under load to confirm the effect.`
+   Then stop.
+
+## 3. Hard rules
 
 - **Every number comes from a tool result. Never estimate a size, share, or time.**
 - Call `sizeMemory` with the policy parameters from **`references/sizing-policy.yaml`**
   (read the values from that file, pass them verbatim) — **never compute sizes yourself
-  and never retype the numbers from prose.**
+  and never retype the numbers from prose.** `sizeMemory` returns `requests == limits`
+  (Guaranteed memory QoS); keep them equal.
 - If `sizeMemory` returns `BLOCKED`, report the reason and **stop** (do not size).
 - **Never recommend G1GC on ≤ 1 vCPU.** `sizeMemory` returns SerialGC there; keep it.
 - Use the reference Dockerfiles verbatim except the documented placeholders, filled
   from the app's `pom.xml` (`artifactId`, `version`, `build.finalName`, main class).
-- Show the full change and **wait for confirmation** before writing any file.
-- After the participant applies, call `measure` again and report **only the applied
-  technique's before → after** delta — the metric it targeted (e.g. memory request/limit,
-  startup seconds). Do **not** run the full `java-on-eks-checklist` here, and do **not**
-  list other or remaining best-practice items or how to fix them: each is the participant's
-  next question to discover. Run the checklist only when they explicitly ask
-  "how are we doing / score".
+- **After step 4 you do not build, deploy, patch, drive load, or re-measure.** If asked
+  to deploy or verify, answer with the step-5 closing line. A new question starts a new
+  five-step run.
+- **If the measured state already matches the solution** (e.g. `sizeMemory` returns the
+  values the Deployment already carries, or the artifact is already present), report the
+  root cause as resolved with the evidence and stop. No edit.
+- Do not run the `java-on-eks-checklist` inside an optimization run, and do not list
+  other or remaining improvements: each is the operator's next question. Run the
+  checklist only when explicitly asked "how are we doing / score".
+- Do not repeat the theory the references hold beyond the 3–5 lines of step 3.
 
 **Policy parameters.** The authoritative values live in `references/sizing-policy.yaml`
 (machine-readable, so they are used deterministically); the sensor owns the arithmetic.
 Read the file and pass the values through. The *why* for each:
 
-- `floorFactor` — requests near the non-heap floor plus headroom.
 - `peakFactor` — limit over the observed load peak.
 - `floorSafetyFactor` — protects against an under-observed peak.
 - `roundMi` — scheduler-friendly granularity.
-- `warmSeconds` — past the bulk of JIT warm-up; a 120 s load run after apply satisfies it.
+- `warmSeconds` — past the bulk of JIT warm-up; a 120 s load run after a restart satisfies it.
 - `minSamples` — enough profile samples for a floor/peak.
 - `minRequestRate` / `minDeltaMi` — what counts as "load observed".
 
-## 3. Question → procedure
+## 4. Question → tools and reference
 
 - **"reduce memory"** → `measure`, then `sizeMemory` (params above). Explain footprint
-  vs heap from the evidence (working-set floor/peak vs heap committed). Propose the
-  `deployment-resources.yaml` fragment with the returned values. Expect a second pass
-  after apply.
-- **"start faster without changing the image"** → `measure`, `startupLog`. Propose
-  the **`startup-cpu-boost.yaml`** `StartupCPUBoost` CR (the Kube Startup CPU Boost
-  controller is platform-installed): boots the container at higher CPU and resizes it
-  down automatically on Ready — the production path, one namespaced CR, no per-pod
-  work. Reference `deployment-cpu-boost.yaml` only to explain the underlying in-place
-  resize (and the manual `--subresource resize`) — that manual patch is for
-  understanding the mechanism, not for production.
+  vs heap from the evidence (working-set floor/peak vs heap committed vs observed
+  `maxHeapMi`). Artifact: `deployment-resources.yaml` with the returned values. Say that
+  a second pass after a load run is part of the method (the heap moves with the limit).
+  Reference: `right-size-memory.md`.
+- **"start faster without changing the image"** → `measure`, `startupLog`. Artifact:
+  `startup-cpu-boost.yaml` `StartupCPUBoost` CR (the Kube Startup CPU Boost controller is
+  platform-installed): boots the container at higher CPU and resizes it down automatically
+  on Ready. Do not change the Deployment's CPU request or limit in this run. Reference
+  `deployment-cpu-boost.yaml` only to explain the underlying in-place resize.
+  Reference: `in-place-resize.md`.
 - **"start faster without changing the application"** → `startupLog`, `profileTop cpu`
-  (JIT / class-loading share). Propose AOT (Java 25) or CDS (older JDK); render
-  `Dockerfile.aot` with placeholders filled.
-- **"start even faster / under a second"** → `startupLog`; propose CRaC. Add the
-  `org.crac` dependency to `pom.xml` (not present by default), render `Dockerfile.crac`,
-  and **scan `src/` for classes holding network clients or file handles** — propose a
-  CRaC `Resource` hook for each. Mention credentials-at-restore. **Clear
-  `JAVA_TOOL_OPTIONS` (GC/heap flags) from the Deployment for the CRaC image** — those
-  are baked into the checkpoint; leaving them crash-loops the restore.
+  (JIT / class-loading share). Artifact: `Dockerfile.aot` (Java 25) or CDS (older JDK) with
+  placeholders filled. Reference: `build-time-cache.md`.
+- **"start even faster / under a second"** → `startupLog`; CRaC. Artifact: `org.crac`
+  dependency in `pom.xml` (not present by default), `Dockerfile.crac`, and a CRaC
+  `Resource` hook for each class in `src/` holding network clients or file handles.
+  Mention credentials-at-restore. **Remove `JAVA_TOOL_OPTIONS` (GC/heap flags) from the
+  Deployment for the CRaC image** — those are baked into the checkpoint; leaving them
+  crash-loops the restore. Reference: `crac.md`.
 - **"fix latency under load"** → `diagnoseBlocking <service>`. It drives a bounded write
   load and samples the thread dump, so it names the blocking frame and `file:line`
-  (`…CompletableFuture.get`) on **any image, including CRaC**, with no benchmark to time.
-  Do **not** use `profileTop wall` to find this — on a virtual-thread app the parked
-  request thread unmounts and never appears in the flame graph (and on CRaC the wall
-  profile collapses to native). Propose the non-blocking change; size the pool from
-  evidence. Verify with the **HTTP request-latency metric** (`http_server_requests_seconds`,
-  every image) and a second `diagnoseBlocking` (blocked → 0). See `references/blocking-calls.md`.
+  (`…CompletableFuture.get`) on **any image, including CRaC**. Do **not** use
+  `profileTop wall` to find this. Artifact: the non-blocking change plus a pool size from
+  evidence (`hikariPendingMax`). Reference: `blocking-calls.md`.
 - **"how are we doing / score"** → run the `java-on-eks-checklist` skill.
 
-## 4. Answer format
+## 5. Answer format
 
-- **Finding** — one line.
-- **Evidence** — the tool values, and **name the tool and the specific signal** they came
-  from (e.g. "from `diagnoseBlocking`: `requestThreadsBlockedInFutureGet`=3, frame
-  `…CompletableFuture.get`" / "from `sizeMemory`: rssPeak 517Mi" / "from `profileTop cpu`:
-  jitShare 42%"). Every decision must trace to a named signal — never an estimate.
-- **Technique** — 2–4 lines from the matching `references/*.md`.
-- **Change** — the full artifact (fragment / Dockerfile / diff).
-- **Apply** — the commands from the app's `CLAUDE.md` (`scripts/build.sh`, `kubectl`).
-- **Verify** — which tool to re-run and what should change.
-
-Link the reference file and the matching Immersion Day page.
+```
+Root cause: <one line, with tool + signal>
+Evidence:   <tool values, each named>
+Solution:   <3–5 lines> — see references/<file>
+Files changed: <paths>
+Not deployed. Review the diff, roll out, and re-measure under load to confirm the effect.
+```

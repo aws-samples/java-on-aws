@@ -29,6 +29,9 @@ class DumpParseTest {
         // committed = 25920 + 57528 = 83448K = 81.49Mi ; used = 13546 + 41247 = 54793K = 53.5Mi
         assertThat(heap.heapCommittedMi()).isCloseTo(81.49, org.assertj.core.data.Offset.offset(0.1));
         assertThat(heap.heapUsedMi()).isCloseTo(53.5, org.assertj.core.data.Offset.offset(0.5));
+        // observed heap bounds from VM.flags (bytes -> MiB)
+        assertThat(heap.maxHeapMi()).isEqualTo(512.0);
+        assertThat(heap.initialHeapMi()).isEqualTo(32.0);
     }
 
     @Test

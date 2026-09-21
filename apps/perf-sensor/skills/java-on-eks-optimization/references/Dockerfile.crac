@@ -26,8 +26,12 @@ RUN mvn clean package -DskipTests -ntp && mv target/${JAR_FILE} app.jar
 # Take the checkpoint with the Warp engine. Spring refreshes the context, then
 # checkpoints on refresh; open FDs are reported (collect-fd-stacktraces) so a
 # missing Resource hook fails loudly.
+# GC is BAKED into the checkpoint and cannot change at restore: pick it here for the
+# pod's CPU shape (SerialGC for <= 1 vCPU). Without it the CRaC JDK defaults to G1 at
+# checkpoint time and the restored pod runs G1 on one core.
 RUN java -Dspring.context.checkpoint=onRefresh \
     -Djdk.crac.collect-fd-stacktraces=true \
+    -XX:+UseSerialGC \
     -XX:CRaCEngine=warp \
     -XX:CPUFeatures=generic \
     -XX:CRaCCheckpointTo=/opt/crac-files \

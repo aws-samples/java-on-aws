@@ -1,95 +1,104 @@
-# Cloud-native Java on EKS — checklist
+# Cloud-native Java on Kubernetes — performance checklist
 
-Each item is scored PASS / FAIL / UNKNOWN from named evidence in `perf-sensor.measure`
-(item 7 needs `perf-sensor.threadDump`). A null fact makes the item **UNKNOWN — never
-FAIL on a missing fact**. The score is `passed / (PASS + FAIL)`; UNKNOWN is not counted.
+Twelve practices for a Java service on Kubernetes that must **start fast, run lean
+and stay responsive**. Each item pairs a declared intent with the runtime behaviour
+that confirms it, so it is scored from **measured facts** (`perf-sensor.measure`,
+plus `perf-sensor.threadDump` for item 11), not from a YAML lint. Security, image
+hygiene, availability and observability practices are real but out of this scope;
+see the end.
 
-Grouped by **AWS Well-Architected pillar**. Thresholds marked *(teaching bar)* are
-workshop-chosen round numbers, not canonical constants — they give a clear PASS/FAIL for
-the session. A defaults-only, unbounded JVM (the baseline) legitimately fails the
-Performance and Cost items; each workshop module raises the score.
+Scoring: PASS / FAIL / UNKNOWN per item from the named evidence; a null fact makes the
+item **UNKNOWN — never FAIL on a missing fact**. Score = `PASS / 12`; list UNKNOWN
+items separately. Two thresholds are stated bars, not constants: 5 s for startup
+(12-factor: "a few seconds") and 2× for the limit-to-working-set ratio.
 
-## Security
+## Memory
 
-| # | Item | Rule | Evidence (`measure`) |
+| # | Practice | Rule | Evidence |
 |---|---|---|---|
-| 1 | runs as non-root, no privilege escalation | `workload.runAsNonRoot == true` AND `workload.allowPrivilegeEscalation == false` | `workload.runAsNonRoot`, `workload.allowPrivilegeEscalation` |
+| 1 | Memory is Guaranteed and honoured | `memRequestMi == memLimitMi`, both set; AND `restarts == 0` or `lastTerminationReason != OOMKilled` | `workload.memRequestMi`, `workload.memLimitMi`, `runtime.restarts`, `runtime.lastTerminationReason` |
+| 2 | Limit sized from the measured working set | `memLimitMi / rssPeakMi ≤ 2.0` (peak observed under load: `window.requestRatePerSec > 0`) | `workload.memLimitMi`, `runtime.rssPeakMi`, `window.requestRatePerSec` |
+| 3 | Heap follows the container | observed `maxHeapMi / memLimitMi` between 0.50 and 0.80; AND `javaToolOptions` does not contain `-Xmx` | `runtime.maxHeapMi`, `workload.memLimitMi`, `workload.javaToolOptions` |
+| 4 | Heap starts near its steady size | observed `initialHeapMi / maxHeapMi ≥ 0.50` | `runtime.initialHeapMi`, `runtime.maxHeapMi` |
 
-Security is job zero — AWS ships the sample hardened (non-root, no privilege escalation),
-so this PASSes at baseline. The workshop optimizes performance, not security posture.
-Source: Kubernetes Pod Security Standards (Restricted); EKS Best Practices — Security.
-https://kubernetes.io/docs/concepts/security/pod-security-standards/
-https://docs.aws.amazon.com/eks/latest/best-practices/pod-security.html
+Why: the JVM sizes heap and GC from the cgroup limit; a request below the limit makes
+the pod Burstable and the first OOM-kill candidate on a busy node (1). Node capacity
+is reserved by the limit, so the limit must track what the pod uses (2). The default
+heap ceiling is 25 % of the limit, which wastes the container; 75 % leaves room for
+metaspace, threads and code cache (3). A tiny initial heap pays for repeated heap
+growth during boot (4). Observed `MaxHeapSize`/`InitialHeapSize` come from `VM.flags`,
+so they hold on any image, including a CRaC restore where flags live in the checkpoint.
+Sources: AWS Containers blog — *JVM memory, CPU, and classpath best practices for Java
+containers on AWS*; Microsoft — *Containerize your Java applications for Kubernetes*;
+JDK `java` tool reference (container support, `MaxRAMPercentage`, `InitialRAMPercentage`).
 
-## Reliability
+## CPU
 
-| # | Item | Rule | Evidence (`measure`) |
+| # | Practice | Rule | Evidence |
 |---|---|---|---|
-| 2 | readiness probe present | `workload.readinessProbe == true` | `workload.readinessProbe` |
-| 3 | startup probe present | `workload.startupProbe == true` (lets a slow JVM boot without tripping liveness) | `workload.startupProbe` |
+| 5 | JVM sees its CPU and the GC fits it | `cpuLimitCores` set AND `effectiveCpuCount == ceil(cpuLimitCores)`; AND (`effectiveCpuCount ≤ 1` → `gcName == SerialGC`) | `workload.cpuLimitCores`, `runtime.effectiveCpuCount`, `runtime.gcName` |
+| 6 | CPU request reflects steady state, not boot | `cpuRequestCores / cpuUsageP95Cores ≤ 2.0` (under load: `window.requestRatePerSec > 0`) | `workload.cpuRequestCores`, `runtime.cpuUsageP95Cores`, `window.requestRatePerSec` |
+| 7 | Not CFS-throttled under load | `cpuThrottledRatio ≤ 0.05` | `runtime.cpuThrottledRatio` |
 
-Source: Kubernetes liveness/readiness/startup probes — a startup probe is the recommended
-way to protect slow-starting apps; EKS Best Practices — running applications.
-https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
-https://docs.aws.amazon.com/eks/latest/best-practices/application.html
+Why: GC, JIT and ForkJoin thread counts are fixed at JVM start from the processor
+count; a JVM that sees more cores than its quota over-threads and gets throttled, and
+G1's concurrent threads compete with the application on a single core (5). Java needs
+several times more CPU during boot than at steady state; a request sized for boot is
+paid forever — use a startup boost / in-place resize for the boot spike instead (6).
+CFS throttling stretches GC pauses and trips liveness probes (7).
+Sources: AWS Containers blog (as above; CFS throttling, `ActiveProcessorCount`);
+HotSpot GC tuning guide (ergonomics: Serial below two CPUs); learnk8s — *Kubernetes
+production readiness checklist* (right-sizing); Kube Startup CPU Boost.
 
-## Performance Efficiency
+## Startup
 
-| # | Item | Rule | Evidence (`measure`) |
+| # | Practice | Rule | Evidence |
 |---|---|---|---|
-| 4 | `MaxRAMPercentage` set, no `-Xmx` | `workload.javaToolOptions` contains `MaxRAMPercentage` and NOT `-Xmx` | `workload.javaToolOptions` |
-| 5 | GC matches CPU shape | PASS iff the GC fits the container's CPU: with `workload.cpuLimitCores ≤ 1`, `runtime.gcName == SerialGC`. An **unbounded** container (no CPU limit) that runs **G1** FAILs — the JVM sizes GC threads/heap to the whole node, not the pod | `runtime.gcName`, `workload.cpuLimitCores` |
-| 6 | startup under 2 s *(teaching bar)* | `runtime.startupSeconds < 2` | `runtime.startupSeconds` |
-| 7 | no blocking call on the request path | `threadDump.requestThreadsBlockedInFutureGet == 0` (UNKNOWN without a dump) | `threadDump.requestThreadsBlockedInFutureGet` |
+| 8 | Fast startup | `startupSeconds ≤ 5` | `runtime.startupSeconds` |
+| 9 | Probe budgets match observed behaviour | `startupProbe` present AND `startupBudgetSeconds ≥ 2 × startupSeconds` AND `startupInitialDelaySeconds == 0` AND `readinessInitialDelaySeconds == 0`; AND `livenessBudgetSeconds ≥ 30`; AND `livenessPath != readinessPath` | `workload.startupProbe`, `workload.startupBudgetSeconds`, `workload.startupInitialDelaySeconds`, `workload.readinessInitialDelaySeconds`, `workload.livenessBudgetSeconds`, `workload.livenessPath`, `workload.readinessPath`, `runtime.startupSeconds` |
+| 10 | Shutdown budget is consistent | `terminationGracePeriodSeconds ≥ preStopSleepSeconds + 30` (30 = Spring Boot's default graceful-shutdown timeout) | `workload.terminationGracePeriodSeconds`, `workload.preStopSleepSeconds` |
 
-Source (4): `java` command / container support — MaxRAMPercentage.
-https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html
-Source (5): HotSpot GC ergonomics — SerialGC below ~2 CPUs / small heaps.
-https://docs.oracle.com/en/java/javase/25/gctuning/
-Source (6): Spring Boot — efficient deployments (CDS, AOT, CRaC).
-https://docs.spring.io/spring-boot/reference/packaging/efficient.html
-Source (7): Java virtual threads / non-blocking request handling. Note: on a virtual-thread
-app a blocked request thread is found via a **thread dump**, not the wall flame graph.
-https://docs.oracle.com/en/java/javase/25/core/virtual-threads.html
+Why: a disposable process starts in seconds so rollouts and scale-outs are fast (8).
+A startup probe gives the JVM its boot budget via `failureThreshold × periodSeconds`,
+not via `initialDelaySeconds` padding that delays every pod equally; the liveness budget
+must outlast a GC pause or the pod restarts for nothing; liveness and readiness answer
+different questions and need different endpoints (9). Kubernetes sends SIGTERM after
+`preStop` and kills at the grace period; if the app's graceful drain does not fit in the
+remainder, in-flight requests die on every rollout (10).
+Sources: The Twelve-Factor App — IX. Disposability; Spring Boot reference — *Efficient
+deployments* (CDS, AOT, CRaC) and *Graceful shutdown*; Kubernetes — *Configure liveness,
+readiness and startup probes*, *Pod lifecycle (termination)*; AWS Containers blog (GC
+pauses vs probe timing); learnk8s (SIGTERM handling, probe semantics).
 
-## Cost Optimization
+## Latency
 
-| # | Item | Rule | Evidence (`measure`) |
+| # | Practice | Rule | Evidence |
 |---|---|---|---|
-| 8 | requests and limits set | `workload.cpuRequestCores`, `workload.memRequestMi`, `workload.cpuLimitCores`, `workload.memLimitMi` all present | `workload.*RequestCores/*RequestMi/*LimitCores/*LimitMi` |
-| 9 | memory limit within 2× working set *(teaching bar)* | `workload.memLimitMi / runtime.rssPeakMi ≤ 2.0` | `workload.memLimitMi`, `runtime.rssPeakMi` |
+| 11 | Request path does not block on downstream calls | `threadDump.requestThreadsBlockedInFutureGet == 0` while `diagnoseBlocking` drives load (UNKNOWN without a dump under load) | `threadDump.requestThreadsBlockedInFutureGet`, `threadDump.topBlockingFrames` |
+| 12 | Connection pool is not a bottleneck | `hikariPendingMax == 0` under load (`window.requestRatePerSec > 0`) | `runtime.hikariPendingMax`, `window.requestRatePerSec` |
 
-Source: EKS Best Practices — cost optimization / right-sizing; Kubernetes resource management.
-https://docs.aws.amazon.com/eks/latest/best-practices/cost-opt-compute.html
-https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-
-## Operational Excellence
-
-| # | Item | Rule | Evidence (`measure`) |
-|---|---|---|---|
-| 10 | image tag pinned | `workload.imageTag != latest` and not blank | `workload.imageTag` |
-
-Source: Kubernetes image names — avoid `:latest`.
-https://kubernetes.io/docs/concepts/containers/images/#image-names
+Why: a request thread parked in `Future.get()` adds the downstream round-trip to every
+request and, on virtual threads, is invisible to a sampling profiler — only a thread
+dump under load names it (11). Threads queuing for a pooled connection is latency the
+database never sees; size the pool to the measured concurrency (12).
+Sources: JDK *Virtual Threads* guide; HikariCP — *About pool sizing*; learnk8s
+(long-lived connections and pools).
 
 ---
 
-## Out of scope for this session (further reading)
+## Out of scope here (further reading)
 
-Genuine cloud-native practices the EKS Best Practices Guide covers, but outside a
-single-service startup/memory/latency session — mention as "what to look at next",
-don't score:
+Practices a full production review covers but this performance checklist does not score:
 
-- Liveness probe, PodDisruptionBudget, topology spread / anti-affinity, HPA —
-  https://docs.aws.amazon.com/eks/latest/best-practices/application.html
-- Full Pod Security Standards "Restricted" (`readOnlyRootFilesystem`, `capabilities.drop`,
-  `seccompProfile`) beyond non-root + no-privilege-escalation —
-  https://kubernetes.io/docs/concepts/security/pod-security-standards/
-- Graceful shutdown (SIGTERM, `terminationGracePeriodSeconds`, `server.shutdown=graceful`) —
-  https://docs.spring.io/spring-boot/reference/web/graceful-shutdown.html
+- Security: `readOnlyRootFilesystem`, `capabilities.drop: [ALL]`, `seccompProfile` —
+  Kubernetes Pod Security Standards (Restricted); EKS Best Practices — Security.
+- Image hygiene: pinned tags / digests, runtime-only images — learnk8s; Kubernetes images.
+- Availability: ≥ 2 replicas, PodDisruptionBudget, topology spread — EKS Best Practices —
+  Reliability.
+- Observability: structured logs to stdout, metrics, traces — EKS Best Practices —
+  Observability.
+- Beyond the JVM: GraalVM native image — the step-change in image size and startup, at
+  the cost of the dynamic JVM.
 
-Not scored (leaves the JVM): GraalVM native image — the real image-size/startup
-step-change, at the cost of the dynamic JVM.
-
-Not a scored practice (it's tooling): a continuous profiler sidecar. Attaching it is the
-opening session step so the sensor has profile samples; it is not a checklist item.
+A continuous profiler sidecar is tooling, not a practice: attaching it is how the
+sensor gets profile samples; it is not an item.

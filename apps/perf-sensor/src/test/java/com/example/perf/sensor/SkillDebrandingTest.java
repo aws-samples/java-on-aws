@@ -47,7 +47,7 @@ class SkillDebrandingTest {
     // truth. Guard the values so the file cannot silently drift from the policy the
     // SizeMemoryTest fixtures are pinned to.
     private static final Map<String, String> EXPECTED_POLICY = Map.of(
-        "floorFactor", "1.25", "peakFactor", "1.40", "floorSafetyFactor", "1.90",
+        "peakFactor", "1.40", "floorSafetyFactor", "1.90",
         "roundMi", "64", "warmSeconds", "120", "minSamples", "100",
         "minRequestRate", "1", "minDeltaMi", "64");
 
@@ -58,5 +58,6 @@ class SkillDebrandingTest {
         String text = Files.readString(policy);
         EXPECTED_POLICY.forEach((k, v) ->
             assertThat(text).as("policy %s: %s", k, v).containsPattern(k + ":\\s*" + v + "\\b"));
+        assertThat(text).as("floorFactor retired: requests == limits").doesNotContain("floorFactor");
     }
 }

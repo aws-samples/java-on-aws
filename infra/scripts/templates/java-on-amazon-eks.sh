@@ -89,28 +89,24 @@ else
     exit 1
 fi
 
-# Phase 4b: De-spoil the deployed manifest so the baseline is the honest, unoptimized
-# starting point the workshop then fixes. The lab-generated manifest ships resource
-# requests/limits and tuned probe delays; strip them so the "cloud-native" checklist
-# scores low-but-nonzero at the start (an unbounded, defaults-only JVM legitimately
-# fails the Performance/Cost items) and each module raises the score:
-#   - remove the whole `resources:` block  -> MaxRAMPercentage/GC-shape/requests-set/
-#     memory-right-sized all FAIL until Q1 (add requests/limits + MaxRAMPercentage).
-#   - drop the redundant probe initialDelaySeconds (startup:20 is an anti-pattern - the
-#     failureThreshold budget is the lever; readiness:10 never fires while a startupProbe
-#     exists) so the starting manifest is clean.
+# Phase 4b: Clean the deployed manifest's probes. The lab-generated manifest carries
+# redundant probe initialDelaySeconds (startup:20 — the failureThreshold budget is the
+# lever; readiness:10 never fires while a startupProbe exists); drop them so the starting
+# manifest is clean. Resource requests/limits (1 vCPU / 2Gi, Guaranteed) are KEPT: the
+# baseline must be a bounded JVM — without a CPU limit the pod boots on the whole node
+# (~6 s instead of ~13 s) and the startup story is wrong.
 # Must run AFTER Phase 4 (which regenerates the manifest) and BEFORE the Phase 5 commit,
-# so the participant's starting-point commit already carries the stripped manifest.
-# Non-fatal: the app still runs unbounded; a warning is enough.
-log_info "Phase 4b: De-spoiling deployed manifest (remove resources + redundant probe delays)..."
+# so the participant's starting-point commit already carries the cleaned manifest.
+# Non-fatal.
+log_info "Phase 4b: Cleaning deployed manifest (redundant probe delays)..."
 DEPLOY_MANIFEST="$HOME/environment/unicorn-store-spring/k8s/deployment.yaml"
 if [ -f "$DEPLOY_MANIFEST" ] \
-   && yq -i 'del(.spec.template.spec.containers[].resources, .spec.template.spec.containers[].startupProbe.initialDelaySeconds, .spec.template.spec.containers[].readinessProbe.initialDelaySeconds)' "$DEPLOY_MANIFEST" \
+   && yq -i 'del(.spec.template.spec.containers[].startupProbe.initialDelaySeconds, .spec.template.spec.containers[].readinessProbe.initialDelaySeconds)' "$DEPLOY_MANIFEST" \
    && kubectl -n unicorn-store-spring apply -f "$DEPLOY_MANIFEST" >/dev/null 2>&1 \
    && kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=240s >/dev/null 2>&1; then
-    log_success "Manifest de-spoiled (resources + redundant probe delays removed)"
+    log_success "Manifest cleaned (redundant probe delays removed)"
 else
-    log_warning "could not de-spoil the deployed manifest (baseline may score higher than intended)"
+    log_warning "could not clean the deployed manifest"
 fi
 
 # Phase 5: Commit the starting point into the participant's local repo.
