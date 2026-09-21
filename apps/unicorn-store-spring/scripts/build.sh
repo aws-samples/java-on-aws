@@ -11,6 +11,9 @@
 #   ./scripts/build.sh <tag> <Dockerfile.x>    # build a given Dockerfile  -> :<tag>
 #
 # The tag is arbitrary; pass the Dockerfile to build (defaults to ./Dockerfile).
+# Optional: EXTRA_BUILD_ARGS="JAR_FILE MAIN_CLASS" names ARGs whose values are read from the
+# environment and passed as --build-arg (used by the bootstrap prebuild to fill the generic
+# Dockerfiles' ARGs without editing them).
 # =============================================================================
 set -euo pipefail
 
@@ -44,10 +47,15 @@ aws ecr describe-repositories --repository-names "$APP" --region "$REGION" >/dev
   || aws ecr create-repository --repository-name "$APP" --region "$REGION" >/dev/null
 
 echo "[build] docker build -f $DOCKERFILE -> ${REPO}:${TAG} (build-args from SSM/Secrets)..." >&2
+# EXTRA_BUILD_ARGS: space-separated ARG names whose values are taken from the environment
+# (docker's `--build-arg NAME` form), so values with spaces survive.
+EXTRA_ARGS=()
+for name in ${EXTRA_BUILD_ARGS:-}; do EXTRA_ARGS+=(--build-arg "$name"); done
 docker build \
   --build-arg "SPRING_DATASOURCE_URL=${DB_URL}" \
   --build-arg "SPRING_DATASOURCE_USERNAME=${DB_USER}" \
   --build-arg "SPRING_DATASOURCE_PASSWORD=${DB_PASS}" \
+  "${EXTRA_ARGS[@]}" \
   -t "${REPO}:${TAG}" -f "$DOCKERFILE" .
 docker push "${REPO}:${TAG}"
 echo "[build] pushed ${REPO}:${TAG}" >&2

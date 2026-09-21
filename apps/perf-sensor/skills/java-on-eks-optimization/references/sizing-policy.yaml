@@ -11,7 +11,7 @@
 policy:
   peakFactor: 1.40          # memory limit >= peak * this — over the observed load peak
   floorSafetyFactor: 1.90   # memory limit >= floor * this — protects against an under-observed peak
-  roundMi: 64               # round memory up to a multiple of this many MiB (scheduler-friendly)
+  roundMi: 128              # round memory up to a multiple of this many MiB (scheduler-friendly, stable across runs)
   cpuFactor: 1.5            # cpu request = p95 usage * this — headroom over steady state
   roundMillicores: 50       # round cpu request up to a multiple of this many millicores
   warmSeconds: 120          # guard: min uptime before sizing; a 120 s load run after a restart satisfies it

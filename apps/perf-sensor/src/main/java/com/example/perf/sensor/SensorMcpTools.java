@@ -34,7 +34,7 @@ public class SensorMcpTools {
         cpu resizePolicy, JAVA_TOOL_OPTIONS, image tag, replicas, probes with paths/budgets/initial
         delays, terminationGracePeriodSeconds, preStop sleep, sidecars) plus measured runtime
         (working-set floor/peak MiB, heap committed MiB, observed MaxHeapSize/InitialHeapSize MiB,
-        GC name, effective CPUs, CPU usage p95 cores, CFS throttled ratio (last 5 min), startup
+        GC name, effective CPUs, CPU usage p95 cores, CFS throttled share (throttled s / used s, last 5 min, boot excluded), startup
         seconds, restarts, last termination reason, HTTP latency mean/max ms), a CPU/wall profile
         summary (jit/gc/futex shares, samples), the JVM's own JFR ring facts (jfr: container
         limits as the JVM read them incl. effectiveCpuCount, jvmArgs, GC pauses count/max/total,
@@ -63,7 +63,7 @@ public class SensorMcpTools {
         @ToolParam(description = "Look-back window in minutes") int windowMinutes,
         @ToolParam(description = "limit >= peak * this (e.g. 1.40)") double peakFactor,
         @ToolParam(description = "limit >= floor * this (e.g. 1.90), protects an under-observed peak") double floorSafetyFactor,
-        @ToolParam(description = "round memory up to a multiple of this many MiB (e.g. 64)") int roundMi,
+        @ToolParam(description = "round memory up to a multiple of this many MiB (e.g. 128)") int roundMi,
         @ToolParam(description = "guard: minimum uptime seconds before sizing (e.g. 120)") int warmSeconds,
         @ToolParam(description = "guard: minimum profile weight — Pyroscope numTicks, i.e. 'a real profile exists' (e.g. 100)") int minSamples,
         @ToolParam(description = "guard: minimum request rate rps that counts as load (e.g. 1)") double minRequestRate,

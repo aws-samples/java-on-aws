@@ -117,7 +117,7 @@ Read the file and pass the values through. The *why* for each:
   volume a cold start pays), `startupLog`; CRaC. Artifact:
   `org.crac` dependency in `pom.xml` (not present by default), `Dockerfile.crac` with
   `JAR_FILE` from `pom.xml` and `JAVA_HEAP_OPTS` from `workload.memLimitMi` × `cracHeap`
-  shares (whole MiB, e.g. 576 → `-Xmx432m -Xms288m`), and a CRaC `Resource` hook for each
+  shares (whole MiB, e.g. 640 → `-Xmx480m -Xms320m`), and a CRaC `Resource` hook for each
   class in `src/` holding network clients or file handles. Mention credentials-at-restore
   and that a later memory-limit change needs a rebuild. **Remove `JAVA_TOOL_OPTIONS` (GC/heap flags) from the
   Deployment for the CRaC image** — those are baked into the checkpoint; leaving them

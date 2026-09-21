@@ -33,7 +33,12 @@ public class K8sCollector {
     /** Workload facts plus the extras the other collectors need. */
     public record Snapshot(WorkloadFacts workload, Integer restarts, String appPodIP,
                            String appPodName, String appContainer, Double uptimeSeconds,
-                           String lastTerminationReason) {}
+                           String lastTerminationReason, List<String> readyPodNames) {
+        /** PromQL regex matching only the Ready pods, or null when none are known. */
+        public String readyPodRegex() {
+            return readyPodNames == null || readyPodNames.isEmpty() ? null : String.join("|", readyPodNames);
+        }
+    }
 
     /** A Ready pod's name + IP (for per-pod fan-out, e.g. thread-dump sampling). */
     public record PodRef(String name, String ip) {}
@@ -167,11 +172,14 @@ public class K8sCollector {
             String podName = null;
             Double uptimeSeconds = null;
             Integer readyPods = null;
+            List<String> readyPodNames = new ArrayList<>();
             String lastTermination = null;
             var pods = core.listNamespacedPod(namespace).labelSelector(selector).execute();
             if (pods.getItems() != null) {
                 var ready = pods.getItems().stream().filter(K8sCollector::isReady).toList();
                 readyPods = ready.size();
+                ready.stream().map(pp -> pp.getMetadata() == null ? null : pp.getMetadata().getName())
+                    .filter(java.util.Objects::nonNull).forEach(readyPodNames::add);
                 V1Pod pod = ready.stream().max(java.util.Comparator.comparing(K8sCollector::startTimeEpoch))
                     .orElse(null);
                 if (pod != null) {
@@ -214,10 +222,10 @@ public class K8sCollector {
                 runAsNonRoot, allowPrivilegeEscalation, sidecars, readyPods,
                 livenessProbe, livenessPath, readinessPath, livenessBudget, startupBudget,
                 startupInitialDelay, readinessInitialDelay, grace, preStopSleep);
-            return new Snapshot(workload, restarts, podIP, podName, workload.container(), uptimeSeconds, lastTermination);
+            return new Snapshot(workload, restarts, podIP, podName, workload.container(), uptimeSeconds, lastTermination, readyPodNames);
         } catch (Exception e) {
             logger.warn("K8s collect failed ns={} deploy={}: {}", namespace, deployment, e.toString(), e);
-            return new Snapshot(null, null, null, null, null, null, null);
+            return new Snapshot(null, null, null, null, null, null, null, null);
         }
     }
 

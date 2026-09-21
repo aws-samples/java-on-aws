@@ -21,7 +21,7 @@ package com.example.perf.sensor.facts;
  * @param maxHeapMi         observed JVM MaxHeapSize (VM.flags), MiB — the real heap ceiling, image-independent
  * @param initialHeapMi     observed JVM InitialHeapSize (VM.flags), MiB
  * @param cpuUsageP95Cores  p95 of the container CPU usage rate over the window, cores (cAdvisor)
- * @param cpuThrottledRatio CFS throttled periods / total periods over the last 5 minutes, 0..1 (cAdvisor)
+ * @param cpuThrottledRatio CFS throttled seconds / CPU seconds used, last ≤5 min of the current pod excluding its first 60 s; null while the pod is younger than 2 min (cAdvisor)
  * @param latencyMeanMs     mean HTTP request latency over the window, ms (Micrometer http_server_requests_seconds, non-actuator URIs)
  * @param latencyMaxMs      max HTTP request latency observed (Micrometer http_server_requests_seconds_max, non-actuator URIs), ms
  * @param lastTerminationReason reason of the app container's last termination (e.g. "OOMKilled"), or null

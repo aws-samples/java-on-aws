@@ -42,14 +42,17 @@ JDK `java` tool reference (container support, `MaxRAMPercentage`, `InitialRAMPer
 |---|---|---|---|
 | 5 | JVM sees its CPU and the GC fits it | `cpuLimitCores` set AND `effectiveCpuCount == ceil(cpuLimitCores)` (`effectiveCpuCount` is the JVM's own `jdk.ContainerConfiguration` value when the ring is present); AND (`effectiveCpuCount ≤ 1` → `gcName == SerialGC`) | `workload.cpuLimitCores`, `runtime.effectiveCpuCount`, `jfr.container`, `runtime.gcName` |
 | 6 | CPU request reflects steady state, not boot | `cpuRequestCores / cpuUsageP95Cores ≤ 2.0` *under load* | `workload.cpuRequestCores`, `runtime.cpuUsageP95Cores`, `window.requestRatePerSec` |
-| 7 | Not CFS-throttled under load | `cpuThrottledRatio ≤ 0.05` over the last 5 min *under load* | `runtime.cpuThrottledRatio`, `window.requestRatePerSec` |
+| 7 | Not CFS-throttled under load | `cpuThrottledRatio ≤ 0.10` (throttled seconds / CPU seconds used, last 5 min of the current pod, first 60 s excluded) *under load*; null → 🟡 "pod younger than 2 min" | `runtime.cpuThrottledRatio`, `runtime.uptimeSeconds`, `window.requestRatePerSec` |
 
 Why: GC, JIT and ForkJoin thread counts are fixed at JVM start from the processor
 count; a JVM that sees more cores than its quota over-threads and gets throttled, and
 G1's concurrent threads compete with the application on a single core (5). Java needs
 several times more CPU during boot than at steady state; a request sized for boot is
 paid forever — use a startup boost / in-place resize for the boot spike instead (6).
-CFS throttling stretches GC pauses and trips liveness probes (7).
+CFS throttling stretches GC pauses and trips liveness probes; the share is time-based
+(throttled seconds over CPU seconds used) because the classic throttled-periods ratio marks
+a whole 100 ms period as throttled when a bursty request used the quota in 5 ms, so it
+reads 20–30 % for a low-quota JVM that lost almost no wall time (7).
 Sources: AWS Containers blog (as above; CFS throttling, `ActiveProcessorCount`);
 HotSpot GC tuning guide (ergonomics: Serial below two CPUs); learnk8s — *Kubernetes
 production readiness checklist* (right-sizing); Kube Startup CPU Boost.

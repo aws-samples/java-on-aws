@@ -99,7 +99,7 @@ Three changes: (1) add the `org.crac` dependency to `pom.xml`; (2) add an
 `org.crac.Resource` hook to each FD-holding class found in `src/`; (3) use
 `Dockerfile.crac` verbatim, filling `JAR_FILE` from the app's `pom.xml` and
 `JAVA_HEAP_OPTS` from the pod's `limits.memory` (`measure` → `workload.memLimitMi`,
-× 0.75 / × 0.50, whole MiB, e.g. 576Mi → `-Xmx432m -Xms288m`). Verify with
+× 0.75 / × 0.50, whole MiB, e.g. 640Mi → `-Xmx480m -Xms320m`). Verify with
 `perf-sensor.startupLog` — `kind` should read **Restored** and seconds < 1.
 
 

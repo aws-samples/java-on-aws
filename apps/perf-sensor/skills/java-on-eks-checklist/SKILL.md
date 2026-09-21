@@ -23,7 +23,8 @@ under load and `diagnoseBlocking` samples live threads.
 3. Evaluate every item in `references/checklist.md` as **PASS / FAIL / UNKNOWN**
    from the named evidence fields. A fact that is absent (null) makes its item
    UNKNOWN, not FAIL. Items marked *under load* are UNKNOWN when
-   `window.requestRatePerSec` is 0 or null.
+   `window.requestRatePerSec` is null or below `minRequestRate` (probe traffic alone is
+   ≈ 0.5 rps and does not count as load); say "no load in window" as the reason.
 4. Report `Score: <passed>/12`, then the table in `references/checklist.md` order (1–12),
    each row with its icon, number, practice and **the named fact/signal and value that
    decided it** (e.g. `704 / peak 347 = 2.03× (bar 2.0)`). Every verdict must cite the

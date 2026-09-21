@@ -47,17 +47,28 @@ public class FactsCollector {
         var snap = k8s.collect(service, service);
         WorkloadFacts workload = snap.workload();
         String container = snap.appContainer() != null ? snap.appContainer() : service;
+        // Scope cAdvisor facts to the pods that exist NOW: a pod replaced by a rollout earlier
+        // in the window must not supply the peak, the p95 or the startup of the current one.
+        String pods = snap.readyPodRegex();
 
-        Double rssFloor = prometheus.workingSetFloorMi(service, container, mins);
-        Double rssPeak = prometheus.workingSetPeakMi(service, container, mins);
-        Double startup = prometheus.startupSeconds(service);
-        Double requestRate = prometheus.requestRatePerSec(service, mins);
-        Double cpuP95 = prometheus.cpuUsageP95Cores(service, container, mins);
-        // Throttling over the last 5 minutes only: a 15-minute window would fold the boot
-        // spike into a steady-state verdict.
-        Double throttled = prometheus.cpuThrottledRatio(service, container, Math.min(mins, 5));
-        Double latencyMean = prometheus.latencyMeanMs(service, mins);
-        Double latencyMax = prometheus.latencyMaxMs(service, mins);
+        Double rssFloor = prometheus.workingSetFloorMi(service, container, pods, mins);
+        Double rssPeak = prometheus.workingSetPeakMi(service, container, pods, mins);
+        Double startup = currentStartup(service, snap.readyPodNames());
+        // Traffic facts (Micrometer, fleet-wide) over the window clipped to the current pod's
+        // lifetime, so a pod that has seen no load yet does not inherit the previous pod's traffic.
+        int trafficMins = snap.uptimeSeconds() == null ? mins
+            : (int) Math.max(1, Math.min(mins, Math.floor(snap.uptimeSeconds() / 60.0)));
+        Double requestRate = prometheus.requestRatePerSec(service, trafficMins);
+        Double cpuP95 = prometheus.cpuUsageP95Cores(service, container, pods, mins);
+        // Throttling: last 5 minutes at most, and never the pod's first 60 s (boot JIT saturates
+        // the quota by design). Whole minutes; null while the pod is younger than 2 min.
+        Double throttled = null;
+        if (snap.uptimeSeconds() != null && snap.uptimeSeconds() >= 120) {
+            int throttleMins = (int) Math.min(Math.min(mins, 5), Math.floor((snap.uptimeSeconds() - 60) / 60.0));
+            throttled = prometheus.cpuThrottledRatio(service, container, pods, throttleMins);
+        }
+        Double latencyMean = prometheus.latencyMeanMs(service, trafficMins);
+        Double latencyMax = prometheus.latencyMaxMs(service, trafficMins);
         var heap = dump.heap(snap.appPodIP());
         var ring = jfr.collect(snap.appPodIP(), snap.appPodName());
         // effectiveCpuCount: what the JVM itself reported (jdk.ContainerConfiguration) when the
@@ -76,5 +87,22 @@ public class FactsCollector {
         logger.info("facts collected service={} window={}m workload={} rss=[{},{}] startup={} samples={}",
             service, mins, workload != null, rssFloor, rssPeak, startup, profile.samples());
         return new Facts(workload, runtime, profile, null, ring);
+    }
+
+    /**
+     * Startup of the slowest CURRENT pod (application.ready.time keyed by pod). Falls back to
+     * the fleet max when the per-pod series carry no matching pod label.
+     */
+    private Double currentStartup(String service, java.util.List<String> readyPods) {
+        if (readyPods != null && !readyPods.isEmpty()) {
+            var perPod = prometheus.perPodStartup(service);
+            var current = perPod.entrySet().stream()
+                .filter(e -> readyPods.contains(e.getKey()))
+                .mapToDouble(java.util.Map.Entry::getValue).max();
+            if (current.isPresent()) {
+                return current.getAsDouble();
+            }
+        }
+        return prometheus.startupSeconds(service);
     }
 }

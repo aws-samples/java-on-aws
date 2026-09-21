@@ -48,7 +48,7 @@ class SkillDebrandingTest {
     // SizeMemoryTest fixtures are pinned to.
     private static final Map<String, String> EXPECTED_POLICY = Map.of(
         "peakFactor", "1.40", "floorSafetyFactor", "1.90",
-        "roundMi", "64", "warmSeconds", "120", "minSamples", "100",
+        "roundMi", "128", "warmSeconds", "120", "minSamples", "100",
         "minRequestRate", "1", "minDeltaMi", "64");
 
     @Test

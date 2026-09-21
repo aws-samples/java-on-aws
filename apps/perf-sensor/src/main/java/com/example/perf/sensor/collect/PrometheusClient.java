@@ -34,20 +34,20 @@ public class PrometheusClient {
         this.restClient = RestClient.builder().baseUrl(this.promUrl).build();
     }
 
-    // Memory/startup series are PER POD. We aggregate across all pods of the workload
-    // to a fleet worst-case (the sizing-relevant envelope), so the value is correct at
-    // any replica count — not an arbitrary single pod. cAdvisor labels each series with
-    // its own pod, so min_over_time/max_over_time is per-pod; the outer max()/min()
-    // collapses across pods deterministically.
+    // cAdvisor series are PER POD. We aggregate across the workload's CURRENT pods to a
+    // fleet worst-case (the sizing-relevant envelope), so the value is correct at any
+    // replica count. {@code podRegex} (from the K8s snapshot's Ready pods) keeps pods
+    // that were replaced by a rollout inside the window out of the verdict; null means
+    // "all pods with that container name" (fallback when the API is unavailable).
 
     /** Fleet working-set floor (idle) over the window, MiB: the highest per-pod idle. */
-    public Double workingSetFloorMi(String namespace, String container, int mins) {
-        return toMi(scalar("max(min_over_time(container_memory_working_set_bytes" + sel(namespace, container) + win(mins) + "))"));
+    public Double workingSetFloorMi(String namespace, String container, String podRegex, int mins) {
+        return toMi(scalar("max(min_over_time(container_memory_working_set_bytes" + sel(namespace, container, podRegex) + win(mins) + "))"));
     }
 
     /** Fleet working-set peak over the window, MiB: the worst per-pod peak (limits basis). */
-    public Double workingSetPeakMi(String namespace, String container, int mins) {
-        return toMi(scalar("max(max_over_time(container_memory_working_set_bytes" + sel(namespace, container) + win(mins) + "))"));
+    public Double workingSetPeakMi(String namespace, String container, String podRegex, int mins) {
+        return toMi(scalar("max(max_over_time(container_memory_working_set_bytes" + sel(namespace, container, podRegex) + win(mins) + "))"));
     }
 
     /** Fleet startup in seconds: the slowest pod (application.ready.time, then started.time). */
@@ -70,15 +70,23 @@ public class PrometheusClient {
      * demand for the "CPU request reflects steady state" item; the 1m rate smooths scrape jitter,
      * the 95th percentile ignores the boot spike.
      */
-    public Double cpuUsageP95Cores(String namespace, String container, int mins) {
+    public Double cpuUsageP95Cores(String namespace, String container, String podRegex, int mins) {
         return scalar("max(quantile_over_time(0.95, rate(container_cpu_usage_seconds_total"
-            + sel(namespace, container) + "[1m])[" + mins + "m:30s]))");
+            + sel(namespace, container, podRegex) + "[1m])[" + mins + "m:30s]))");
     }
 
-    /** CFS throttled periods / total periods over the window, 0..1 (worst pod); null without cAdvisor. */
-    public Double cpuThrottledRatio(String namespace, String container, int mins) {
-        return scalar("max(increase(container_cpu_cfs_throttled_periods_total" + sel(namespace, container) + win(mins) + ")"
-            + " / increase(container_cpu_cfs_periods_total" + sel(namespace, container) + win(mins) + "))");
+    /**
+     * CFS throttled time as a share of CPU time used over the window, 0..1+ (worst pod);
+     * null without cAdvisor or without CPU usage. Time-based on purpose: the classic
+     * throttled-periods/periods ratio counts a 100 ms period as throttled even when a
+     * bursty request used the whole quota in 5 ms, so it reads 20-30 % for a low-quota
+     * JVM that lost almost no wall time. Throttled seconds over used seconds says how much
+     * the workload actually waited relative to the work it did.
+     */
+    public Double cpuThrottledRatio(String namespace, String container, String podRegex, int mins) {
+        Double r = scalar("max(increase(container_cpu_cfs_throttled_seconds_total" + sel(namespace, container, podRegex) + win(mins) + ")"
+            + " / increase(container_cpu_usage_seconds_total" + sel(namespace, container, podRegex) + win(mins) + "))");
+        return r == null || r.isNaN() || r.isInfinite() ? null : r;
     }
 
     /** Mean HTTP latency over the window, ms, non-actuator URIs (rate(sum)/rate(count)); null if no traffic. */
@@ -97,7 +105,7 @@ public class PrometheusClient {
     /** Per-pod working-set peak over the window, MiB (drill-down behind the fleet peak). */
     public java.util.Map<String, Double> perPodPeakMi(String namespace, String container, int mins) {
         var out = new java.util.LinkedHashMap<String, Double>();
-        vectorByPod("max_over_time(container_memory_working_set_bytes" + sel(namespace, container) + win(mins) + ")")
+        vectorByPod("max_over_time(container_memory_working_set_bytes" + sel(namespace, container, null) + win(mins) + ")")
             .forEach((pod, bytes) -> out.put(pod, bytes / MIB));
         return out;
     }
@@ -129,8 +137,9 @@ public class PrometheusClient {
         return out;
     }
 
-    private static String sel(String namespace, String container) {
-        return "{namespace=\"" + namespace + "\",container=\"" + container + "\"}";
+    private static String sel(String namespace, String container, String podRegex) {
+        return "{namespace=\"" + namespace + "\",container=\"" + container + "\""
+            + (podRegex == null ? "" : ",pod=~\"" + podRegex + "\"") + "}";
     }
 
     private static String win(int mins) {

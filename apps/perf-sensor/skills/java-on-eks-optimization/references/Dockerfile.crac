@@ -30,10 +30,10 @@ RUN mvn clean package -DskipTests -ntp && mv target/${JAR_FILE} app.jar
 # GC AND HEAP BOUNDS ARE BAKED INTO THE CHECKPOINT and cannot change at restore:
 #  - GC: SerialGC for a <= 1 vCPU pod (the CRaC JDK would otherwise default to G1).
 #  - Heap: JAVA_HEAP_OPTS sets -Xmx/-Xms from the pod's memory limit (sizing-policy.yaml
-#    cracHeap: 75% / 50% of limits.memory, e.g. limit 576Mi -> "-Xmx432m -Xms288m").
+#    cracHeap: 75% / 50% of limits.memory, e.g. limit 640Mi -> "-Xmx480m -Xms320m").
 #    Without it the heap is sized from the BUILD machine, not the pod. Resizing the pod
 #    later means rebuilding the checkpoint.
-ARG JAVA_HEAP_OPTS="-Xmx432m -Xms288m"
+ARG JAVA_HEAP_OPTS="-Xmx480m -Xms320m"
 RUN java -Dspring.context.checkpoint=onRefresh \
     -Djdk.crac.collect-fd-stacktraces=true \
     -XX:+UseSerialGC ${JAVA_HEAP_OPTS} \
