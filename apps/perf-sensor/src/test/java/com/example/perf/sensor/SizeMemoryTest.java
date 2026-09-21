@@ -80,7 +80,7 @@ class SizeMemoryTest {
 
     @Test
     void missingFacts_blocked() {
-        var r = sensor.sizeMemory(new Facts(null, null, null, null), POLICY);
+        var r = sensor.sizeMemory(new Facts(null, null, null, null, null), POLICY);
         assertThat(r.status()).isEqualTo("BLOCKED");
         assertThat(r.reason()).contains("insufficient measurement");
     }
@@ -98,9 +98,29 @@ class SizeMemoryTest {
             wl.livenessProbe(), wl.livenessPath(), wl.readinessPath(), wl.livenessBudgetSeconds(),
             wl.startupBudgetSeconds(), wl.startupInitialDelaySeconds(), wl.readinessInitialDelaySeconds(),
             wl.terminationGracePeriodSeconds(), wl.preStopSleepSeconds());
-        var r = sensor.sizeMemory(new Facts(twoCpu, base.runtime(), base.profile(), null), POLICY);
+        var r = sensor.sizeMemory(new Facts(twoCpu, base.runtime(), base.profile(), null, null), POLICY);
         assertThat(r.status()).isEqualTo("OK");
         assertThat(r.gc()).isEqualTo("G1GC");
+    }
+
+    private static final SensorService.CpuParams CPU_POLICY =
+        new SensorService.CpuParams(1.5, 50, 120, 100, 1, 64);
+
+    @Test
+    void sizeCpu_requestFromP95_limitUnchanged() throws IOException {
+        // p95 0.31 cores * 1.5 = 465m -> roundUp(50m) = 500m; limit 1 stays "1".
+        var r = sensor.sizeCpu(fixture("baseline"), CPU_POLICY);
+        assertThat(r.status()).isEqualTo("OK");
+        assertThat(r.requestsCpu()).isEqualTo("500m");
+        assertThat(r.limitsCpu()).isEqualTo("1");
+        assertThat(r.evidence().cpuUsageP95Cores()).isEqualTo(0.31);
+    }
+
+    @Test
+    void sizeCpu_blockedWithoutP95() throws IOException {
+        var r = sensor.sizeCpu(fixture("crac"), CPU_POLICY);   // fixture has no cpuUsageP95Cores
+        assertThat(r.status()).isEqualTo("BLOCKED");
+        assertThat(r.reason()).contains("CPU usage p95");
     }
 
     @Test

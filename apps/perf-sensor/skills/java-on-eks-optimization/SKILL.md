@@ -14,13 +14,20 @@ Rollout and verification belong to the operator.
 ## 1. Tools
 
 **perf-sensor** (deterministic measurement):
-- `measure <service>` — workload + runtime + profile summary + window. Start here.
+- `measure <service>` — workload + runtime + profile summary + `jfr` (the JVM's own 10-min
+  ring: container limits as the JVM read them, `jvmArgs`, GC pauses, pinning, monitors,
+  safepoints, JIT compilation) + window. Start here.
 - `sizeMemory <service> …params` — memory requests/limits/GC with a guard. See Hard rules.
+- `sizeCpu <service> …params` — steady-state CPU request from measured p95 usage, same guard;
+  limit unchanged.
 - `threadDump <service>` — summarized thread dump; request-path blocking, top frames.
-- `diagnoseBlocking <service>` — drives a bounded write load at the pod and samples the thread
-  dump over time; reports peak `requestThreadsBlockedInFutureGet` + summed `topBlockingFrames`.
-  The reliable way to find a request-path block (virtual threads hide it from the wall profile);
-  works on every image incl. CRaC and needs no benchmark timing.
+- `diagnoseBlocking <service> minRequestRate` — samples the JSON thread dump over time **while
+  the operator's load run is flowing** (the sensor drives no traffic); reports peak
+  `requestThreadsBlockedInFutureGet` + summed `topBlockingFrames`. Returns BLOCKED when no load
+  is flowing right now — then ask the operator to start the load run and call again during it.
+  The only way to find a request-path block on virtual threads: the wall profile cannot see a
+  parked virtual thread and JFR records `ThreadPark` only for platform threads. Works on every
+  image incl. CRaC.
 - `profileTop <service> cpu|wall` — hottest frames; `cpu` → jit/gc share (startup), `wall` → futex
   share. Note: on a virtual-thread app `wall` does NOT reveal request-path blocking (parked
   vthreads unmount); use it for CPU/GC, not for blocking.
@@ -53,11 +60,12 @@ Do not read desired-state that `measure` already returns via `read_k8s_resource`
 ## 3. Hard rules
 
 - **Every number comes from a tool result. Never estimate a size, share, or time.**
-- Call `sizeMemory` with the policy parameters from **`references/sizing-policy.yaml`**
-  (read the values from that file, pass them verbatim) — **never compute sizes yourself
-  and never retype the numbers from prose.** `sizeMemory` returns `requests == limits`
-  (Guaranteed memory QoS); keep them equal.
-- If `sizeMemory` returns `BLOCKED`, report the reason and **stop** (do not size).
+- Call `sizeMemory`, `sizeCpu` and `diagnoseBlocking` with the policy parameters from
+  **`references/sizing-policy.yaml`** (read the values from that file, pass them verbatim) —
+  **never compute sizes yourself and never retype the numbers from prose.** `sizeMemory`
+  returns `requests == limits` (Guaranteed memory QoS); keep them equal. `sizeCpu` changes
+  the request only; keep the limit.
+- If a tool returns `BLOCKED`, report the reason and **stop** (do not size, do not guess).
 - **Never recommend G1GC on ≤ 1 vCPU.** `sizeMemory` returns SerialGC there; keep it.
 - Use the reference Dockerfiles verbatim except the documented placeholders, filled
   from the app's `pom.xml` (`artifactId`, `version`, `build.finalName`, main class).
@@ -76,9 +84,11 @@ Do not read desired-state that `measure` already returns via `read_k8s_resource`
 (machine-readable, so they are used deterministically); the sensor owns the arithmetic.
 Read the file and pass the values through. The *why* for each:
 
-- `peakFactor` — limit over the observed load peak.
+- `peakFactor` — memory limit over the observed load peak.
 - `floorSafetyFactor` — protects against an under-observed peak.
 - `roundMi` — scheduler-friendly granularity.
+- `cpuFactor` / `roundMillicores` — CPU request as headroom over measured p95 steady-state usage.
+- `cracHeap` — `-Xmx`/`-Xms` baked into a CRaC checkpoint as a share of the pod memory limit.
 - `warmSeconds` — past the bulk of JIT warm-up; a 120 s load run after a restart satisfies it.
 - `minSamples` — enough profile samples for a floor/peak.
 - `minRequestRate` / `minDeltaMi` — what counts as "load observed".
@@ -90,26 +100,36 @@ Read the file and pass the values through. The *why* for each:
   `maxHeapMi`). Artifact: `deployment-resources.yaml` with the returned values. Say that
   a second pass after a load run is part of the method (the heap moves with the limit).
   Reference: `right-size-memory.md`.
-- **"start faster without changing the image"** → `measure`, `startupLog`. Artifact:
-  `startup-cpu-boost.yaml` `StartupCPUBoost` CR (the Kube Startup CPU Boost controller is
-  platform-installed): boots the container at higher CPU and resizes it down automatically
-  on Ready. Do not change the Deployment's CPU request or limit in this run. Reference
-  `deployment-cpu-boost.yaml` only to explain the underlying in-place resize.
-  Reference: `in-place-resize.md`.
+- **"start faster without changing the image"** → `measure`, `startupLog`, `sizeCpu`.
+  Three edits in one change: (a) `startup-cpu-boost.yaml` `StartupCPUBoost` CR (the Kube
+  Startup CPU Boost controller is platform-installed) — boots the container at higher CPU
+  and resizes it down automatically on Ready; (b) `requests.cpu` in the Deployment set to
+  `sizeCpu.requestsCpu`, `limits.cpu` unchanged — the boost supplies the boot CPU, so the
+  steady request no longer has to; (c) `-XX:ActiveProcessorCount=<ceil(limits.cpu)>` appended
+  to `JAVA_TOOL_OPTIONS` — the JVM sizes GC/JIT/ForkJoin threads once at start and would
+  otherwise keep the boosted count after the resize down (`jfr.container.effectiveCpuCount`
+  shows what it read). Reference `deployment-cpu-boost.yaml` only to explain the underlying
+  in-place resize. Reference: `in-place-resize.md`.
 - **"start faster without changing the application"** → `startupLog`, `profileTop cpu`
   (JIT / class-loading share). Artifact: `Dockerfile.aot` (Java 25) or CDS (older JDK) with
   placeholders filled. Reference: `build-time-cache.md`.
-- **"start even faster / under a second"** → `startupLog`; CRaC. Artifact: `org.crac`
-  dependency in `pom.xml` (not present by default), `Dockerfile.crac`, and a CRaC
-  `Resource` hook for each class in `src/` holding network clients or file handles.
-  Mention credentials-at-restore. **Remove `JAVA_TOOL_OPTIONS` (GC/heap flags) from the
+- **"start even faster / under a second"** → `measure` (`jfr.compilation` shows the JIT
+  volume a cold start pays), `startupLog`; CRaC. Artifact:
+  `org.crac` dependency in `pom.xml` (not present by default), `Dockerfile.crac` with
+  `JAR_FILE` from `pom.xml` and `JAVA_HEAP_OPTS` from `workload.memLimitMi` × `cracHeap`
+  shares (whole MiB, e.g. 576 → `-Xmx432m -Xms288m`), and a CRaC `Resource` hook for each
+  class in `src/` holding network clients or file handles. Mention credentials-at-restore
+  and that a later memory-limit change needs a rebuild. **Remove `JAVA_TOOL_OPTIONS` (GC/heap flags) from the
   Deployment for the CRaC image** — those are baked into the checkpoint; leaving them
   crash-loops the restore. Reference: `crac.md`.
-- **"fix latency under load"** → `diagnoseBlocking <service>`. It drives a bounded write
-  load and samples the thread dump, so it names the blocking frame and `file:line`
-  (`…CompletableFuture.get`) on **any image, including CRaC**. Do **not** use
-  `profileTop wall` to find this. Artifact: the non-blocking change plus a pool size from
-  evidence (`hikariPendingMax`). Reference: `blocking-calls.md`.
+- **"fix latency under load"** → `diagnoseBlocking <service>` while the operator's load
+  run is flowing (if BLOCKED: say "start the load run and ask again while it runs", stop);
+  `measure` for the in-JVM context (`jfr.pinned`, `jfr.monitorTop`, `jfr.gc.maxMs`,
+  `jfr.safepointTotalMs`, `latencyMeanMs`).
+  It names the blocking frame and `file:line` (`…CompletableFuture.get`) on **any image,
+  including CRaC**. Do **not** use `profileTop wall` to find this. Artifact: the
+  non-blocking change; if `carriersParkedInPoolWait > 0`, also size the connection pool to
+  the observed concurrency. Reference: `blocking-calls.md`.
 - **"how are we doing / score"** → run the `java-on-eks-checklist` skill.
 
 ## 5. Answer format

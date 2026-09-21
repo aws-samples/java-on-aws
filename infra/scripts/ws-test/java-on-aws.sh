@@ -260,10 +260,6 @@ spec:
     metadata:
       labels:
         app: unicorn-store-spring
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/path: "/actuator/prometheus"
-        prometheus.io/port: "8080"
     spec:
       serviceAccountName: unicorn-store-spring
       nodeSelector:
@@ -2976,8 +2972,25 @@ ws_begin_page 'Traces' 424 'observability/eks/traces/index.en.md'
 
 ws_skip_block 1 'Architecture' 'Architecture' 20 31 '' '' 'informational block without language'
 
-ws_run_block 2 'Updating the deployment' 'Add Kubernetes metadata via Downward API and OTEL endpoint overrides:' 43 63 'bash' '' <<'WS_TEST_BLOCK_424_2'
+ws_run_block 2 'Updating the deployment' 'Remove configuration from previous modules. Then add Kubernetes metadata via Downward API and OTEL endpoint overrides:' 43 80 'bash' '' <<'WS_TEST_BLOCK_424_2'
 cd ~/environment/unicorn-store-spring
+
+# Remove continuous profiling configuration
+# The observability image does not include async-profiler
+yq -i '
+  del(
+    .spec.template.spec.containers[0].command,
+    .spec.template.spec.containers[0].args
+  )
+  | del(
+      .spec.template.spec.containers[0].volumeMounts[]
+      | select(.name == "persistent-storage")
+    )
+  | del(
+      .spec.template.spec.volumes[]
+      | select(.name == "persistent-storage")
+    )
+' k8s/deployment.yaml
 
 # Add K8S_NAMESPACE env var with Downward API
 yq eval '.spec.template.spec.containers[0].env += [{"name": "K8S_NAMESPACE", "valueFrom": {"fieldRef": {"fieldPath": "metadata.namespace"}}}]' \
@@ -3000,22 +3013,22 @@ yq eval '.spec.template.spec.containers[0].env += [{"name": "OTEL_AWS_APPLICATIO
   -i k8s/deployment.yaml
 WS_TEST_BLOCK_424_2
 
-ws_run_block 3 'Re-deploying the application' 'Apply the updated deployment:' 78 80 'bash' '' <<'WS_TEST_BLOCK_424_3'
+ws_run_block 3 'Re-deploying the application' 'Apply the updated deployment:' 95 97 'bash' '' <<'WS_TEST_BLOCK_424_3'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_424_3
 
-ws_run_block 4 'Generating trace data' 'Generate traffic to create traces:' 90 93 'bash' '' <<'WS_TEST_BLOCK_424_4'
+ws_run_block 4 'Generating trace data' 'Generate traffic to create traces:' 107 110 'bash' '' <<'WS_TEST_BLOCK_424_4'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring \
   -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 ~/java-on-aws/infra/scripts/test/test.sh ${SVC_URL}
 WS_TEST_BLOCK_424_4
 
-ws_skip_block 5 'Viewing trace details' 'Filter expression:' 115 115 '' '' 'informational block without language'
+ws_skip_block 5 'Viewing trace details' 'Filter expression:' 132 132 '' '' 'informational block without language'
 
-ws_run_block 6 'Trace-to-log correlation' 'Check the application logs for trace IDs:' 152 152 'bash' '' <<'WS_TEST_BLOCK_424_6'
+ws_run_block 6 'Trace-to-log correlation' 'Check the application logs for trace IDs:' 169 169 'bash' '' <<'WS_TEST_BLOCK_424_6'
 kubectl logs -n unicorn-store-spring -l app=unicorn-store-spring --tail=100
 WS_TEST_BLOCK_424_6
 

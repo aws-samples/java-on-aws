@@ -66,23 +66,52 @@ while [ -z "$PID" ]; do
 done
 echo "[perf-profiler] target pid=$PID"
 
-# async-profiler loads its native agent from a path the *target* JVM can see, so
-# copy libasyncProfiler.so into the target's mount namespace (/proc/$PID/root/tmp).
-cp "$AP_HOME/lib/libasyncProfiler.so" "/proc/$PID/root/tmp/libasyncProfiler.so"
+# Where the TARGET JVM writes and where WE read it. Preferred: the dedicated emptyDir the
+# inject policy mounts at $PERF_DIR (/perf) in both containers — same path on both sides,
+# nothing touches the app image or its /tmp. Fallback (no volume): the target's /tmp,
+# reached from here through /proc/$PID/root.
+PERF_DIR="${PERF_DIR:-/perf}"
+if [ -d "$PERF_DIR" ] && [ -w "$PERF_DIR" ]; then
+  VIEW="$PERF_DIR"
+else
+  PERF_DIR="/tmp"
+  VIEW="/proc/$PID/root/tmp"
+  echo "[perf-profiler] no shared scratch volume; using the target's /tmp via $VIEW"
+fi
+
+# async-profiler loads its native agent from a path the *target* JVM can see.
+cp "$AP_HOME/lib/libasyncProfiler.so" "$VIEW/libasyncProfiler.so"
 ASPROF="$AP_HOME/bin/asprof"
+LIB="$PERF_DIR/libasyncProfiler.so"
 
 # Clear any prior session, then start a rotating ctimer+wall recording. Fall back
 # to ctimer-only if the kernel/container rejects the wall-clock engine.
-"$ASPROF" stop --libpath /tmp/libasyncProfiler.so "$PID" 2>/dev/null || true
+"$ASPROF" stop --libpath "$LIB" "$PID" 2>/dev/null || true
 "$ASPROF" start -e "$AP_EVENT" --wall "$AP_WALL" -i "$AP_INTERVAL" -o jfr \
-    -f "/tmp/perf-$PID-%t.jfr" --loop "$AP_LOOP" --libpath /tmp/libasyncProfiler.so "$PID" \
+    -f "$PERF_DIR/perf-$PID-%t.jfr" --loop "$AP_LOOP" --libpath "$LIB" "$PID" \
   || "$ASPROF" start -e "$AP_EVENT" -i "$AP_INTERVAL" -o jfr \
-    -f "/tmp/perf-$PID-%t.jfr" --loop "$AP_LOOP" --libpath /tmp/libasyncProfiler.so "$PID"
-echo "[perf-profiler] async-profiler attached (event=$AP_EVENT wall=$AP_WALL loop=$AP_LOOP)"
+    -f "$PERF_DIR/perf-$PID-%t.jfr" --loop "$AP_LOOP" --libpath "$LIB" "$PID"
+echo "[perf-profiler] async-profiler attached (event=$AP_EVENT wall=$AP_WALL loop=$AP_LOOP dir=$PERF_DIR)"
+
+# JVM-native JFR ring: the last 10 minutes of typed JVM events (ThreadPark with stacks —
+# incl. virtual threads —, VirtualThreadPinned, GCPhasePause, ContainerConfiguration,
+# JVMInformation, Compilation, monitor/safepoint) kept in the target JVM's own repository,
+# bounded by maxage. Started here via jcmd — no JVM flag, no image change, so it also runs
+# on a CRaC-restored process. The sensor fetches it through /dump?kind=jfr and parses it.
+# 'profile' settings lower the ThreadPark threshold to 10 ms. Log-and-continue if already
+# running (sidecar restart against a long-lived JVM).
+JFR_MAXAGE="${JFR_MAXAGE:-10m}"
+JFR_SETTINGS="${JFR_SETTINGS:-profile}"
+JAVA_TOOL_OPTIONS= jcmd "$PID" JFR.configure repositorypath="$PERF_DIR" >/tmp/jfr-start.log 2>&1 || true
+if JAVA_TOOL_OPTIONS= jcmd "$PID" JFR.start name=perf maxage="$JFR_MAXAGE" settings="$JFR_SETTINGS" >>/tmp/jfr-start.log 2>&1; then
+  echo "[perf-profiler] JFR ring started (name=perf maxage=$JFR_MAXAGE settings=$JFR_SETTINGS)"
+else
+  echo "[perf-profiler] JFR.start: $(tr '\n' ' ' </tmp/jfr-start.log)"
+fi
 
 # Ship completed (non-newest) rotated JFR files to Pyroscope, then delete them.
 # The newest file is skipped because async-profiler is still writing to it.
-TMP="/proc/$PID/root/tmp"
+TMP="$VIEW"
 while [ -d "/proc/$PID" ]; do
   sleep 5
   set -- $(ls -1 "$TMP"/perf-"$PID"-*.jfr 2>/dev/null | sort)

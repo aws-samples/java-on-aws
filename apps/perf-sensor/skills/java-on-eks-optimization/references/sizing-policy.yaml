@@ -1,19 +1,30 @@
 # Sizing policy — the machine-readable source of truth for the numbers passed to
-# perf-sensor.sizeMemory. The skill reads the VALUES from here (deterministic, no
-# risk of mis-copying a number from prose); SKILL.md carries the WHY as prose.
-# Pass these verbatim to sizeMemory; never invent or round them yourself.
+# perf-sensor.sizeMemory / sizeCpu / diagnoseBlocking. The skill reads the VALUES from
+# here (deterministic, no risk of mis-copying a number from prose); SKILL.md carries the
+# WHY as prose. Pass these verbatim; never invent or round them yourself.
 #
-# Result shape: limits = roundUp(max(peak * peakFactor, floor * floorSafetyFactor));
-# requests = limits (Guaranteed memory QoS — JVM memory is stable after warm-up, and a
-# Burstable JVM is the first OOM-kill candidate on a busy node).
+# sizeMemory: limits = roundUp(max(peak * peakFactor, floor * floorSafetyFactor));
+#             requests = limits (Guaranteed memory QoS — JVM memory is stable after warm-up,
+#             and a Burstable JVM is the first OOM-kill candidate on a busy node).
+# sizeCpu:    requests.cpu = roundUp(cpuUsageP95 * cpuFactor, roundMillicores); limits.cpu unchanged
+#             (the boot spike is the startup CPU boost's job, not the steady request's).
 policy:
-  peakFactor: 1.40          # limit >= peak * this — over the observed load peak
-  floorSafetyFactor: 1.90   # limit >= floor * this — protects against an under-observed peak
+  peakFactor: 1.40          # memory limit >= peak * this — over the observed load peak
+  floorSafetyFactor: 1.90   # memory limit >= floor * this — protects against an under-observed peak
   roundMi: 64               # round memory up to a multiple of this many MiB (scheduler-friendly)
-  warmSeconds: 120          # guard: min uptime before sizing; a 120 s load run after apply satisfies it
+  cpuFactor: 1.5            # cpu request = p95 usage * this — headroom over steady state
+  roundMillicores: 50       # round cpu request up to a multiple of this many millicores
+  warmSeconds: 120          # guard: min uptime before sizing; a 120 s load run after a restart satisfies it
   minSamples: 100           # guard: min profile samples for a floor/peak
-  minRequestRate: 1         # guard: rps that counts as "load observed"
+  minRequestRate: 1         # guard: rps that counts as "load observed" (sizing) / "load flowing" (diagnoseBlocking, last 1 min)
   minDeltaMi: 64            # guard: peak-floor MiB that counts as "load observed"
 
-# Default look-back window (minutes) for measure / sizeMemory / profileTop.
+# Heap flags baked into a CRaC checkpoint (Dockerfile.crac JAVA_HEAP_OPTS), as a share of
+# the pod memory limit. The checkpoint fixes MaxHeapSize/InitialHeapSize; MaxRAMPercentage
+# in the Deployment has no effect on a restored JVM.
+cracHeap:
+  xmxShareOfLimit: 0.75
+  xmsShareOfLimit: 0.50
+
+# Default look-back window (minutes) for measure / sizeMemory / sizeCpu / profileTop.
 windowMinutes: 15

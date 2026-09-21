@@ -12,39 +12,38 @@ fact — mark it UNKNOWN.
 
 ## Procedure
 
+Scoring needs a load run flowing (the operator's benchmark); five items are only decidable
+under load and `diagnoseBlocking` samples live threads.
+
 1. Call `perf-sensor.measure <service>`. It returns everything items 1–10 and 12 need
-   (workload, runtime, profile summary, window).
-2. Call `perf-sensor.diagnoseBlocking <service>` for item 11: it drives a bounded write
-   load and samples the thread dump. If the tool is unavailable, item 11 is UNKNOWN.
+   (workload, runtime, profile summary, `jfr` ring facts, window).
+2. Call `perf-sensor.diagnoseBlocking <service>` with `minRequestRate` from the optimization
+   skill's `references/sizing-policy.yaml` for item 11. It samples the thread dump while the
+   load flows and drives no traffic. If it returns BLOCKED, item 11 is UNKNOWN with its reason.
 3. Evaluate every item in `references/checklist.md` as **PASS / FAIL / UNKNOWN**
    from the named evidence fields. A fact that is absent (null) makes its item
-   UNKNOWN, not FAIL. Items marked "under load" are UNKNOWN when
+   UNKNOWN, not FAIL. Items marked *under load* are UNKNOWN when
    `window.requestRatePerSec` is 0 or null.
-4. Report `Score: <passed>/12`, then the UNKNOWN count, then the items grouped as in
-   `references/checklist.md` (Memory, CPU, Startup, Latency), each with its verdict and
-   **the named fact/signal and value that decided it** (e.g.
-   `workload.memLimitMi=2048 / runtime.rssPeakMi=366 = 5.6x`). Every verdict must cite
-   the signal it came from — never assert without one.
+4. Report `Score: <passed>/12`, then the table in `references/checklist.md` order (1–12),
+   each row with its icon, number, practice and **the named fact/signal and value that
+   decided it** (e.g. `704 / peak 347 = 2.03× (bar 2.0)`). Every verdict must cite the
+   signal it came from — never assert without one.
 
 ## Output format
 
-```
-Score: <passed>/12   (<n> UNKNOWN)
+No code fences. One markdown table, icon first: ✅ PASS, ❌ FAIL, 🟡 UNKNOWN (name the
+missing fact in Evidence). Evidence is one short clause with the deciding values and the bar.
 
-Memory
-  [PASS] 1 memory Guaranteed and honoured — memRequestMi=2048 == memLimitMi=2048, restarts=0
-  [FAIL] 2 limit sized from working set — memLimitMi=2048 / rssPeakMi=366 = 5.6x (bar 2.0x)
-  …
-CPU
-  …
-Startup
-  …
-Latency
-  …
-```
+Score: 6/12
 
-Report only what the facts support. When re-scoring after an applied change, run the
-identical procedure and show before → after per item that changed.
+| | # | Practice | Evidence |
+|---|---|---|---|
+| ✅ | 1 | Memory Guaranteed and honoured | request 704 == limit 704, restarts 0 |
+| ❌ | 2 | Limit sized from working set | 704 / peak 347 = 2.03× (bar 2.0) |
+| ❌ | 3 | Heap follows the container | maxHeap 3906 / 704 = 5.55× (bar 0.5–0.8) |
+| 🟡 | 12 | Pool not a bottleneck | hikariPendingMax null — metric not scraped |
+
+No before/after comparison with earlier scores: report the current state only.
 
 This skill **scores; it does not prescribe.** Report each item's verdict and the
 deciding evidence only. Do **not** append remediation steps, "how to fix", or

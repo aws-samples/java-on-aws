@@ -26,7 +26,8 @@
     "startupSeconds": 13.03,
     "restarts": 0,
     "uptimeSeconds": 3600.0,
-    "requestRatePerSec": 30
+    "requestRatePerSec": 30,
+    "cpuUsageP95Cores": 0.31
   },
   "profile": {
     "topCpu": [{"name": "com/unicorn/store/service/UnicornService.createUnicorn", "selfPct": 6.0}],

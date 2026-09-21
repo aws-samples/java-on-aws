@@ -18,10 +18,13 @@ normally), not a pointer to the blocking line. On CRaC the wall profile degrades
 (the restored JVM's stacks collapse to the native leaf, e.g. `libc.so.6`) — a second
 effect, not the cause.
 
-The tool that **names** the block is a **thread dump**: `jcmd Thread.dump` lists virtual
-threads and their stacks whether mounted or not. Use **`perf-sensor.diagnoseBlocking`** —
-it drives a bounded write load at the pod and samples the thread dump over time, so the
-block is caught reliably on any image without you having to time a benchmark. The **CPU**
+JFR does not help either: `jdk.ThreadPark` is recorded for platform threads only (verified
+on JDK 25), so a virtual thread parked in `Future.get()` leaves nothing in the ring. The tool
+that **names** the block is a **JSON thread dump**: `jcmd Thread.dump_to_file -format=json`
+lists virtual threads and their stacks whether mounted or not. Use **`perf-sensor.diagnoseBlocking`**
+**while a load run is flowing** — it samples the thread dump over time and aggregates, so the
+brief block is caught reliably on any image. It drives no traffic itself and returns BLOCKED
+when no requests are flowing. The **CPU**
 profile answers a different question (where cycles burn — startup/JIT/GC), and the **HTTP
 latency metric** is the authoritative "it is slow" signal on every image.
 
@@ -36,8 +39,7 @@ latency metric** is the authoritative "it is slow" signal on every image.
   threads sat on it (summed across samples); trace it to the `file:line` in `src/`.
 - `carriersParkedInPoolWait` — threads waiting on a connection pool; a sign the pool
   is undersized rather than the code blocking.
-- `loadSent/loadOk/loadFailed` (from `diagnoseBlocking`) — the load actually driven; a
-  rising `loadFailed` means the pod is saturating, so lower `ratePerSec`.
+- `requestRatePerSec` (from `diagnoseBlocking`) — the load that was flowing while it sampled.
 
 ## Key benefits of fixing it
 
@@ -55,8 +57,8 @@ latency metric** is the authoritative "it is slow" signal on every image.
 
 ## Same procedure on every image
 
-Diagnose the block the same way whatever image is deployed (plain, AOT, or CRaC): run
-`perf-sensor.diagnoseBlocking <service>`. Because it drives the load and reads the thread
+Diagnose the block the same way whatever image is deployed (plain, AOT, or CRaC): start the
+load run, then call `perf-sensor.diagnoseBlocking <service>`. Because it reads the thread
 dump — not the wall flame graph — it works identically on CRaC. There is no need to change
 the deployed image to diagnose: the block is a property of the code, and the thread dump
 names it on the CRaC-restored JVM just as on a plain one.
@@ -67,8 +69,8 @@ The **HTTP request-latency metric** is the authoritative before/after on every i
 including CRaC: `http_server_requests_seconds` (avg `sum(rate(_sum))/sum(rate(_count))`,
 or `_max`), filtered by the write method/URI. A blocking publish adds the downstream
 round-trip to every write; removing it drops that latency sharply. Confirm the code change
-with `diagnoseBlocking` again — `requestThreadsBlockedInFutureGet` should fall to 0 under
-the same driven load.
+with `diagnoseBlocking` again under the same load — `requestThreadsBlockedInFutureGet`
+should fall to 0.
 
 ## Artifact
 

@@ -81,9 +81,17 @@ public class PrometheusClient {
             + " / increase(container_cpu_cfs_periods_total" + sel(namespace, container) + win(mins) + "))");
     }
 
-    /** Max threads waiting for a pooled DB connection over the window (Micrometer hikaricp_connections_pending). */
-    public Double hikariPendingMax(String app, int mins) {
-        return scalar("max(max_over_time(hikaricp_connections_pending{application=\"" + app + "\"}" + win(mins) + "))");
+    /** Mean HTTP latency over the window, ms, non-actuator URIs (rate(sum)/rate(count)); null if no traffic. */
+    public Double latencyMeanMs(String app, int mins) {
+        Double s = scalar("sum(rate(http_server_requests_seconds_sum{application=\"" + app + "\",uri!~\"/actuator.*\"}" + win(mins) + "))"
+            + " / sum(rate(http_server_requests_seconds_count{application=\"" + app + "\",uri!~\"/actuator.*\"}" + win(mins) + "))");
+        return s == null || s.isNaN() ? null : s * 1000.0;
+    }
+
+    /** Max HTTP latency seen in the window, ms, non-actuator URIs (Micrometer decaying max). */
+    public Double latencyMaxMs(String app, int mins) {
+        Double s = scalar("max(max_over_time(http_server_requests_seconds_max{application=\"" + app + "\",uri!~\"/actuator.*\"}" + win(mins) + "))");
+        return s == null ? null : s * 1000.0;
     }
 
     /** Per-pod working-set peak over the window, MiB (drill-down behind the fleet peak). */

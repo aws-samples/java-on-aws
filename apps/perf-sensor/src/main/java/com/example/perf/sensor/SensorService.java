@@ -2,12 +2,13 @@ package com.example.perf.sensor;
 
 import com.example.perf.sensor.collect.DumpCollector;
 import com.example.perf.sensor.collect.FactsCollector;
+import com.example.perf.sensor.collect.JfrCollector;
 import com.example.perf.sensor.collect.K8sCollector;
-import com.example.perf.sensor.collect.LoadDriver;
 import com.example.perf.sensor.collect.LogCollector;
 import com.example.perf.sensor.collect.PrometheusClient;
 import com.example.perf.sensor.collect.PyroscopeClient;
 import com.example.perf.sensor.facts.Facts;
+import com.example.perf.sensor.facts.JfrFacts;
 import com.example.perf.sensor.facts.ProfileFacts;
 import com.example.perf.sensor.facts.RuntimeFacts;
 import com.example.perf.sensor.facts.ThreadFacts;
@@ -37,18 +38,18 @@ public class SensorService {
     private final PyroscopeClient pyroscope;
     private final DumpCollector dump;
     private final LogCollector logs;
-    private final LoadDriver loadDriver;
+    private final JfrCollector jfr;
 
     public SensorService(FactsCollector facts, K8sCollector k8s, PrometheusClient prometheus,
                          PyroscopeClient pyroscope, DumpCollector dump, LogCollector logs,
-                         LoadDriver loadDriver) {
+                         JfrCollector jfr) {
         this.facts = facts;
         this.k8s = k8s;
         this.prometheus = prometheus;
         this.pyroscope = pyroscope;
         this.dump = dump;
         this.logs = logs;
-        this.loadDriver = loadDriver;
+        this.jfr = jfr;
     }
 
     // --- records returned by the tools/endpoints -------------------------------
@@ -59,10 +60,10 @@ public class SensorService {
     /** Per-pod drill-down behind the fleet aggregate. */
     public record PodBreakdown(String pod, Double rssPeakMi, Double startupSeconds) {}
 
-    /** All fact groups the checklist needs, plus the window and per-pod breakdown. */
+    /** All fact groups the checklist needs, plus the JFR ring, the window and per-pod breakdown. */
     public record MeasureResult(String service, int windowMinutes,
                                 WorkloadFacts workload, RuntimeFacts runtime,
-                                ProfileFacts profile, Window window,
+                                ProfileFacts profile, JfrFacts jfr, Window window,
                                 java.util.List<PodBreakdown> pods) {}
 
     /** Caller-supplied sizing policy — all required, no defaults (the skill owns the numbers). */
@@ -98,7 +99,7 @@ public class SensorService {
             rt == null ? null : rt.uptimeSeconds(),
             f.profile() == null ? 0 : f.profile().samples(),
             rt == null ? null : rt.requestRatePerSec());
-        return new MeasureResult(service, norm(windowMinutes), f.workload(), rt, f.profile(), window,
+        return new MeasureResult(service, norm(windowMinutes), f.workload(), rt, f.profile(), f.jfr(), window,
             perPodBreakdown(service, norm(windowMinutes)));
     }
 
@@ -221,11 +222,10 @@ public class SensorService {
 
     /**
      * Sample the representative pod's thread dump {@code samples} times, {@code intervalMs} apart,
-     * and aggregate over TIME (not across pods). A request-path block on a virtual-thread app is
-     * brief — the vthread parks in {@code Future.get()} only for the downstream round-trip — so a
-     * single snapshot usually misses it. Sampling repeatedly under load reliably catches it.
-     * {@code requestThreadsBlockedInFutureGet} is the PEAK concurrent blocked across samples;
-     * {@code topBlockingFrames} counts are summed (recurrence). Must be taken WHILE load flows.
+     * and aggregate over TIME. A request-path block on a virtual-thread app is brief — the vthread
+     * parks in {@code Future.get()} only for the downstream round-trip — so a single snapshot
+     * usually misses it. {@code requestThreadsBlockedInFutureGet} is the PEAK concurrent blocked
+     * across samples; {@code topBlockingFrames} counts are summed. Must be taken WHILE load flows.
      */
     public ThreadFacts threadDumpOverTime(String service, int samples, long intervalMs) {
         int n = Math.max(1, Math.min(samples <= 0 ? 5 : samples, 30));
@@ -273,33 +273,99 @@ public class SensorService {
             last == null ? null : last.sample());
     }
 
-    /** A blocking diagnosis: thread facts aggregated over time under a driven load, plus load stats. */
-    public record BlockingDiagnosis(ThreadFacts threads, int ratePerSec, int durationSec,
-                                    int loadSent, int loadOk, int loadFailed) {}
+    /**
+     * A blocking diagnosis: thread facts sampled over time WHILE THE OPERATOR'S LOAD RUNS.
+     * status OK, or BLOCKED (threads null) when no load is flowing right now.
+     */
+    public record BlockingDiagnosis(String status, String reason, ThreadFacts threads,
+                                    int durationSec, Double requestRatePerSec) {}
 
     /**
-     * Deterministically diagnose a request-path block WITHOUT depending on the participant to
-     * time a benchmark: the sensor drives a bounded, rate-based write load directly at the pod
-     * and samples the thread dump over time while it runs. A blocked request thread
-     * (Future.get on a virtual thread) only exists while requests are in flight, so this makes
-     * the block reproducible on any image — including CRaC, where the wall profiler can't show it.
-     * Rate is clamped ([1,100]/sec) so it never saturates a small, right-sized pod.
+     * Diagnose a request-path block by sampling the JSON thread dump over {@code durationSec}
+     * seconds. The sensor drives NO traffic: a blocked request thread (Future.get on a virtual
+     * thread) exists only while requests are in flight, and JFR does not record virtual-thread
+     * parks, so the caller must have a load run going. Guard: BLOCKED unless the request rate
+     * over the last minute exceeds {@code minRequestRate}. Read-only on any image, including CRaC.
      */
-    public BlockingDiagnosis diagnoseBlocking(String service, int ratePerSec, int durationSec, long intervalMs) {
-        int rate = Math.max(1, Math.min(ratePerSec <= 0 ? 25 : ratePerSec, 100));
+    public BlockingDiagnosis diagnoseBlocking(String service, int durationSec, long intervalMs,
+                                              double minRequestRate) {
         int dur = Math.max(3, Math.min(durationSec <= 0 ? 12 : durationSec, 60));
         long gap = intervalMs <= 0 ? 1000L : Math.min(intervalMs, 5000L);
         int samples = Math.max(2, (int) ((dur * 1000L) / gap));
-        var snap = k8s.collect(service, service);
-        String ip = snap.appPodIP();
-        if (ip == null) {
-            // No pod IP to drive load at — still sample over time (participant may drive load).
-            return new BlockingDiagnosis(threadDumpOverTime(service, samples, gap), rate, dur, 0, 0, 0);
+        Double rateNow = prometheus == null ? null : prometheus.requestRatePerSec(service, 1);
+        if (rateNow == null || rateNow <= minRequestRate) {
+            return new BlockingDiagnosis("BLOCKED",
+                ("no load flowing now: requestRate(1m)=%s rps (need > %s). Start the load run, then retry "
+                    + "while it is running.").formatted(fmt(rateNow), fmt(minRequestRate)),
+                null, dur, rateNow);
         }
-        try (var load = loadDriver.start(ip, rate)) {
-            var threads = threadDumpOverTime(service, samples, gap);
-            return new BlockingDiagnosis(threads, rate, dur, load.sent(), load.ok(), load.failed());
+        return new BlockingDiagnosis("OK", null, threadDumpOverTime(service, samples, gap), dur, rateNow);
+    }
+
+    // --- sizeCpu (arithmetic + guard) ------------------------------------------
+
+    /** Caller-supplied CPU sizing policy — all required (the skill owns the numbers). */
+    public record CpuParams(double cpuFactor, int roundMillicores, int warmSeconds, int minSamples,
+                            double minRequestRate, double minDeltaMi) {}
+
+    public record CpuEvidence(Double cpuUsageP95Cores, Double cpuRequestCores, Double cpuLimitCores) {}
+
+    /** OK: requests.cpu computed, limits.cpu = current (unchanged). BLOCKED: reason set. */
+    public record CpuResult(String status, String reason, String requestsCpu, String limitsCpu,
+                            CpuEvidence evidence, CpuParams params) {}
+
+    public CpuResult sizeCpu(String service, int windowMinutes, CpuParams p) {
+        return sizeCpu(facts.collect(service, windowMinutes), p);
+    }
+
+    /**
+     * Pure CPU sizing over collected facts. Guard identical to sizeMemory (warm + load).
+     * Rule: requests.cpu = roundUp(cpuUsageP95 * cpuFactor, roundMillicores); limits.cpu unchanged
+     * — the boot spike is the startup boost's job, not the steady request's.
+     */
+    public CpuResult sizeCpu(Facts f, CpuParams p) {
+        var rt = f.runtime();
+        var wl = f.workload();
+        Double p95 = rt == null ? null : rt.cpuUsageP95Cores();
+        Double cpuReq = wl == null ? null : wl.cpuRequestCores();
+        Double cpuLim = wl == null ? null : wl.cpuLimitCores();
+        Double uptime = rt == null ? null : rt.uptimeSeconds();
+        Double reqRate = rt == null ? null : rt.requestRatePerSec();
+        Double floor = rt == null ? null : rt.rssFloorMi();
+        Double peak = rt == null ? null : rt.rssPeakMi();
+        long samples = f.profile() == null ? 0 : f.profile().samples();
+        var evidence = new CpuEvidence(p95, cpuReq, cpuLim);
+
+        if (p95 == null) {
+            return new CpuResult("BLOCKED", "insufficient measurement: missing CPU usage p95 from Prometheus",
+                null, null, evidence, p);
         }
+        boolean warm = uptime != null && uptime > p.warmSeconds() && samples > p.minSamples();
+        if (!warm) {
+            return new CpuResult("BLOCKED", ("profiling window not warm: uptime=%s (need > %ds), samples=%d (need > %d). "
+                + "Run a load phase after (re)start and retry.")
+                .formatted(fmt(uptime), p.warmSeconds(), samples, p.minSamples()), null, null, evidence, p);
+        }
+        boolean load = (reqRate != null && reqRate > p.minRequestRate())
+            || (floor != null && peak != null && peak - floor > p.minDeltaMi());
+        if (!load) {
+            return new CpuResult("BLOCKED", ("no load observed: requestRate=%s rps (need > %s). Drive traffic and retry.")
+                .formatted(fmt(reqRate), fmt(p.minRequestRate())), null, null, evidence, p);
+        }
+        long millis = (long) Math.ceil(p95 * p.cpuFactor() * 1000.0);
+        long rounded = ((millis + p.roundMillicores() - 1) / p.roundMillicores()) * p.roundMillicores();
+        String requests = rounded + "m";
+        String limits = cpuLim == null ? null : quantity(cpuLim);
+        logger.info("sizeCpu OK p95={} -> requests={} limits={} (unchanged)", p95, requests, limits);
+        return new CpuResult("OK", null, requests, limits, evidence, p);
+    }
+
+    /** Cores as a K8s quantity: whole cores as "1", fractions as millicores "500m". */
+    static String quantity(double cores) {
+        if (cores == Math.rint(cores)) {
+            return String.valueOf((long) cores);
+        }
+        return Math.round(cores * 1000.0) + "m";
     }
 
     public ProfileTop profileTop(String service, String type, int windowMinutes, int limit) {

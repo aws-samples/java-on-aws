@@ -89,22 +89,28 @@ else
     exit 1
 fi
 
-# Phase 4b: Clean the deployed manifest's probes. The lab-generated manifest carries
-# redundant probe initialDelaySeconds (startup:20 — the failureThreshold budget is the
-# lever; readiness:10 never fires while a startupProbe exists); drop them so the starting
-# manifest is clean. Resource requests/limits (1 vCPU / 2Gi, Guaranteed) are KEPT: the
-# baseline must be a bounded JVM — without a CPU limit the pod boots on the whole node
-# (~6 s instead of ~13 s) and the startup story is wrong.
+# Phase 4b: Clean the deployed manifest's probes and make the app scrapeable. The
+# lab-generated manifest carries redundant probe initialDelaySeconds (startup:20 — the
+# failureThreshold budget is the lever; readiness:10 never fires while a startupProbe
+# exists); drop them so the starting manifest is clean. Add the prometheus.io scrape
+# annotations: monitoring.sh's Prometheus discovers pods by annotation, and the sensor's
+# startup/latency/request-rate facts come from the app's /actuator/prometheus.
+# Resource requests/limits (1 vCPU / 2Gi, Guaranteed) are KEPT: the baseline must be a
+# bounded JVM — without a CPU limit the pod boots on the whole node (~6 s instead of
+# ~13 s) and the startup story is wrong.
 # Must run AFTER Phase 4 (which regenerates the manifest) and BEFORE the Phase 5 commit,
 # so the participant's starting-point commit already carries the cleaned manifest.
 # Non-fatal.
-log_info "Phase 4b: Cleaning deployed manifest (redundant probe delays)..."
+log_info "Phase 4b: Cleaning deployed manifest (probe delays, scrape annotations)..."
 DEPLOY_MANIFEST="$HOME/environment/unicorn-store-spring/k8s/deployment.yaml"
 if [ -f "$DEPLOY_MANIFEST" ] \
-   && yq -i 'del(.spec.template.spec.containers[].startupProbe.initialDelaySeconds, .spec.template.spec.containers[].readinessProbe.initialDelaySeconds)' "$DEPLOY_MANIFEST" \
+   && yq -i 'del(.spec.template.spec.containers[].startupProbe.initialDelaySeconds, .spec.template.spec.containers[].readinessProbe.initialDelaySeconds)
+             | .spec.template.metadata.annotations."prometheus.io/scrape" = "true"
+             | .spec.template.metadata.annotations."prometheus.io/path" = "/actuator/prometheus"
+             | .spec.template.metadata.annotations."prometheus.io/port" = "8080"' "$DEPLOY_MANIFEST" \
    && kubectl -n unicorn-store-spring apply -f "$DEPLOY_MANIFEST" >/dev/null 2>&1 \
    && kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=240s >/dev/null 2>&1; then
-    log_success "Manifest cleaned (redundant probe delays removed)"
+    log_success "Manifest cleaned (probe delays removed, scrape annotations added)"
 else
     log_warning "could not clean the deployed manifest"
 fi

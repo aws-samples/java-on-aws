@@ -5,12 +5,17 @@
 //
 //   GET /dump?kind=threads  -> jcmd <pid> Thread.print -e
 //   GET /dump?kind=heap     -> jcmd <pid> GC.heap_info + VM.flags
-//   GET /dump?kind=jfr      -> jcmd <pid> JFR.dump (best-effort; needs an active recording)
+//   GET /dump?kind=jfr      -> jcmd <pid> JFR.dump name=perf (the 10-min ring started by
+//                              profile-loop.sh) -> the .jfr file bytes (application/octet-stream)
 //   GET /healthz            -> ok
 //
 // Runs in the sidecar (root + SYS_PTRACE + shareProcessNamespace), so jcmd can
-// attach to the app JVM (PID 1). JAVA_TOOL_OPTIONS is nulled for each jcmd call —
+// attach to the app JVM. JAVA_TOOL_OPTIONS is nulled for each jcmd call —
 // otherwise the app's flags (e.g. -Xlog:gc) contaminate jcmd's own output.
+//
+// Files the TARGET writes (thread dump JSON, on-demand JFR) go to PERF_DIR (/perf), the
+// dedicated emptyDir the inject policy mounts in both containers — read here at the same
+// path. Fallback when the volume is absent: the target's /tmp via /proc/<pid>/root.
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -37,6 +42,22 @@ public class DumpServer {
         server.start();
     }
 
+    /** Directory the target writes to; the same path is mounted here when the scratch volume exists. */
+    private static String perfDir() {
+        String d = System.getenv("PERF_DIR");
+        d = (d == null || d.isBlank()) ? "/perf" : d;
+        return Files.isDirectory(Path.of(d)) ? d : "/tmp";
+    }
+
+    /** Where WE can read a file the target wrote at {@code targetPath}. */
+    private static Path readable(long pid, String targetPath) {
+        var direct = Path.of(targetPath);
+        if (Files.isReadable(direct) && !targetPath.startsWith("/tmp")) {
+            return direct;
+        }
+        return Path.of("/proc/" + pid + "/root" + targetPath);
+    }
+
     private static void handleDump(HttpExchange ex) throws IOException {
         String kind = query(ex.getRequestURI().getRawQuery()).getOrDefault("kind", "threads");
         long pid = targetPid();
@@ -48,13 +69,46 @@ public class DumpServer {
         switch (kind) {
             case "threads" -> body = threadDumpJson(pid);
             case "heap" -> body = jcmd(pid, "GC.heap_info") + "\n" + jcmd(pid, "VM.flags");
-            case "jfr" -> body = jcmd(pid, "JFR.dump", "filename=/tmp/ondemand-" + pid + ".jfr");
+            case "jfr" -> {
+                jfrDump(ex, pid);
+                return;
+            }
             default -> {
                 respond(ex, 400, "unknown kind: " + kind + " (threads|heap|jfr)\n");
                 return;
             }
         }
         respond(ex, 200, body);
+    }
+
+    /**
+     * Dump the JVM-native JFR ring (recording "perf", started by profile-loop.sh with
+     * maxage=10m) into the TARGET's /tmp, stream the file bytes back across the shared
+     * mount namespace (/proc/&lt;pid&gt;/root/...), then delete it. 503 with jcmd's output when
+     * there is no such recording.
+     */
+    private static void jfrDump(HttpExchange ex, long pid) throws IOException {
+        String path = perfDir() + "/perf-ondemand-" + pid + ".jfr";
+        String out = jcmd(pid, "JFR.dump", "name=perf", "filename=" + path);
+        var onSidecar = readable(pid, path);
+        if (!Files.isReadable(onSidecar)) {
+            respond(ex, 503, "JFR.dump produced no file: " + out);
+            return;
+        }
+        try {
+            byte[] bytes = Files.readAllBytes(onSidecar);
+            ex.getResponseHeaders().add("Content-Type", "application/octet-stream");
+            ex.sendResponseHeaders(200, bytes.length);
+            try (var os = ex.getResponseBody()) {
+                os.write(bytes);
+            }
+        } finally {
+            try {
+                Files.deleteIfExists(onSidecar);
+            } catch (IOException ignored) {
+                // best-effort cleanup in the target's /tmp
+            }
+        }
     }
 
     /** The app JVM: prefer PID 1 (the container entrypoint), else the lowest java pid that is not us. */
@@ -96,10 +150,10 @@ public class DumpServer {
      * /proc/&lt;pid&gt;/root/&lt;path&gt;. Falls back to Thread.print if anything fails.
      */
     private static String threadDumpJson(long pid) {
-        String path = "/tmp/po-threads-" + pid + ".json";
+        String path = perfDir() + "/po-threads-" + pid + ".json";
         String out = jcmd(pid, "Thread.dump_to_file", "-overwrite", "-format=json", path);
         try {
-            var onSidecar = Path.of("/proc/" + pid + "/root" + path);
+            var onSidecar = readable(pid, path);
             if (Files.isReadable(onSidecar)) {
                 return Files.readString(onSidecar);
             }

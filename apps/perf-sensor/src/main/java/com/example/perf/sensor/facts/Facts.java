@@ -9,5 +9,6 @@ public record Facts(
     WorkloadFacts workload,
     RuntimeFacts runtime,
     ProfileFacts profile,
-    ThreadFacts threads
+    ThreadFacts threads,
+    JfrFacts jfr
 ) {}

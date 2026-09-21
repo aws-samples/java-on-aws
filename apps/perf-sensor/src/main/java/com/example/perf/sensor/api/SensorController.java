@@ -62,10 +62,25 @@ public class SensorController {
     @GetMapping("/diagnoseBlocking/{service}")
     public com.example.perf.sensor.SensorService.BlockingDiagnosis diagnoseBlocking(
             @PathVariable String service,
-            @RequestParam(defaultValue = "25") int ratePerSec,
             @RequestParam(defaultValue = "12") int durationSec,
-            @RequestParam(defaultValue = "1000") long intervalMs) {
-        return sensor.diagnoseBlocking(service, ratePerSec, durationSec, intervalMs);
+            @RequestParam(defaultValue = "1000") long intervalMs,
+            @RequestParam(defaultValue = "1") double minRequestRate) {
+        return sensor.diagnoseBlocking(service, durationSec, intervalMs, minRequestRate);
+    }
+
+    @GetMapping("/sizeCpu/{service}")
+    public com.example.perf.sensor.SensorService.CpuResult sizeCpu(
+            @PathVariable String service,
+            @RequestParam(defaultValue = "15") int windowMinutes,
+            @RequestParam double cpuFactor,
+            @RequestParam int roundMillicores,
+            @RequestParam int warmSeconds,
+            @RequestParam int minSamples,
+            @RequestParam double minRequestRate,
+            @RequestParam double minDeltaMi) {
+        return sensor.sizeCpu(service, windowMinutes,
+            new com.example.perf.sensor.SensorService.CpuParams(cpuFactor, roundMillicores, warmSeconds,
+                minSamples, minRequestRate, minDeltaMi));
     }
 
     @GetMapping("/profileTop/{service}")
@@ -87,16 +102,19 @@ public class SensorController {
         return List.of(
             Map.of("name", "measure",
                 "input", "service, windowMinutes=15",
-                "output", "WorkloadFacts (incl. readyPods) + RuntimeFacts + ProfileFacts summary + window + per-pod breakdown"),
+                "output", "WorkloadFacts (incl. readyPods) + RuntimeFacts + ProfileFacts summary + JfrFacts (ring) + window + per-pod breakdown"),
             Map.of("name", "sizeMemory",
                 "input", "service, windowMinutes, peakFactor, floorSafetyFactor, roundMi, warmSeconds, minSamples, minRequestRate, minDeltaMi",
                 "output", "{status, reason, requests.memory (== limits), limits.memory, maxRamPercentage, initialRamPercentage, gc, evidence, params}"),
+            Map.of("name", "sizeCpu",
+                "input", "service, windowMinutes, cpuFactor, roundMillicores, warmSeconds, minSamples, minRequestRate, minDeltaMi",
+                "output", "{status, reason, requestsCpu, limitsCpu (unchanged), evidence, params}"),
             Map.of("name", "threadDump",
                 "input", "service, sampleN=1",
                 "output", "ThreadFacts {pod, total, byState, virtualThreads, requestThreadsBlockedInFutureGet, carriersParkedInPoolWait, topBlockingFrames, sample}"),
             Map.of("name", "diagnoseBlocking",
-                "input", "service, ratePerSec=25, durationSec=12, intervalMs=1000",
-                "output", "{threads: ThreadFacts (peak blocked + summed frames), ratePerSec, durationSec, loadSent, loadOk, loadFailed}"),
+                "input", "service, durationSec=12, intervalMs=1000, minRequestRate=1 — the operator's load run must be flowing",
+                "output", "{status OK|BLOCKED, reason, threads: ThreadFacts (peak blocked + summed frames), durationSec, requestRatePerSec}"),
             Map.of("name", "profileTop",
                 "input", "service, type=cpu|wall, windowMinutes=15, limit=15",
                 "output", "{frames, jitShare, gcShare, futexWallShare, samples}"),

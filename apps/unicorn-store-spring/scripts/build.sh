@@ -18,6 +18,10 @@ TAG="${1:?usage: build.sh <tag> [dockerfile]}"
 DOCKERFILE="${2:-Dockerfile}"
 APP="unicorn-store-spring"
 
+# Build from the app root regardless of the caller's cwd: the docker context is "."
+# and the Dockerfile argument is resolved next to pom.xml.
+cd "$(dirname "$0")/.."
+
 REGION="${AWS_REGION:-$(aws configure get region 2>/dev/null || echo us-east-1)}"
 ACCOUNT_ID="${ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}"
 ECR="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"

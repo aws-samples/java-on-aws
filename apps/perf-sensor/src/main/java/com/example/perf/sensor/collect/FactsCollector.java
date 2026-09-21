@@ -27,13 +27,15 @@ public class FactsCollector {
     private final PrometheusClient prometheus;
     private final PyroscopeClient pyroscope;
     private final DumpCollector dump;
+    private final JfrCollector jfr;
 
     public FactsCollector(K8sCollector k8s, PrometheusClient prometheus,
-                          PyroscopeClient pyroscope, DumpCollector dump) {
+                          PyroscopeClient pyroscope, DumpCollector dump, JfrCollector jfr) {
         this.k8s = k8s;
         this.prometheus = prometheus;
         this.pyroscope = pyroscope;
         this.dump = dump;
+        this.jfr = jfr;
     }
 
     /** Collect workload + runtime + profile facts (no thread dump). */
@@ -51,22 +53,28 @@ public class FactsCollector {
         Double startup = prometheus.startupSeconds(service);
         Double requestRate = prometheus.requestRatePerSec(service, mins);
         Double cpuP95 = prometheus.cpuUsageP95Cores(service, container, mins);
-        Double throttled = prometheus.cpuThrottledRatio(service, container, mins);
-        Double hikariPending = prometheus.hikariPendingMax(service, mins);
+        // Throttling over the last 5 minutes only: a 15-minute window would fold the boot
+        // spike into a steady-state verdict.
+        Double throttled = prometheus.cpuThrottledRatio(service, container, Math.min(mins, 5));
+        Double latencyMean = prometheus.latencyMeanMs(service, mins);
+        Double latencyMax = prometheus.latencyMaxMs(service, mins);
         var heap = dump.heap(snap.appPodIP());
-        // effectiveCpuCount: the JVM rounds the CPU limit up to whole processors.
-        Integer effectiveCpu = (workload != null && workload.cpuLimitCores() != null)
-            ? (int) Math.ceil(workload.cpuLimitCores()) : null;
+        var ring = jfr.collect(snap.appPodIP(), snap.appPodName());
+        // effectiveCpuCount: what the JVM itself reported (jdk.ContainerConfiguration) when the
+        // ring is available; otherwise the CPU limit rounded up to whole processors.
+        Integer effectiveCpu = ring != null && ring.container() != null && ring.container().effectiveCpuCount() != null
+            ? ring.container().effectiveCpuCount()
+            : (workload != null && workload.cpuLimitCores() != null) ? (int) Math.ceil(workload.cpuLimitCores()) : null;
         var runtime = new RuntimeFacts(rssFloor, rssPeak,
             heap.heapUsedMi(), heap.heapCommittedMi(), heap.gcName(),
             effectiveCpu, startup, snap.restarts(), snap.uptimeSeconds(), requestRate,
-            heap.maxHeapMi(), heap.initialHeapMi(), cpuP95, throttled, hikariPending,
+            heap.maxHeapMi(), heap.initialHeapMi(), cpuP95, throttled, latencyMean, latencyMax,
             snap.lastTerminationReason());
 
         ProfileFacts profile = pyroscope.summarize(service, from.toString(), to.toString(), 15);
 
         logger.info("facts collected service={} window={}m workload={} rss=[{},{}] startup={} samples={}",
             service, mins, workload != null, rssFloor, rssPeak, startup, profile.samples());
-        return new Facts(workload, runtime, profile, null);
+        return new Facts(workload, runtime, profile, null, ring);
     }
 }

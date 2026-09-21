@@ -34,10 +34,13 @@ public class SensorMcpTools {
         cpu resizePolicy, JAVA_TOOL_OPTIONS, image tag, replicas, probes with paths/budgets/initial
         delays, terminationGracePeriodSeconds, preStop sleep, sidecars) plus measured runtime
         (working-set floor/peak MiB, heap committed MiB, observed MaxHeapSize/InitialHeapSize MiB,
-        GC name, effective CPUs, CPU usage p95 cores, CFS throttled ratio, startup seconds, restarts,
-        last termination reason, max DB-pool waiters), a CPU/wall profile summary (jit/gc/futex
-        shares, samples), and the window {uptimeSeconds, samples, requestRatePerSec}. Facts only —
-        everything the checklist needs except the thread dump. Deterministic; no LLM.""")
+        GC name, effective CPUs, CPU usage p95 cores, CFS throttled ratio (last 5 min), startup
+        seconds, restarts, last termination reason, HTTP latency mean/max ms), a CPU/wall profile
+        summary (jit/gc/futex shares, samples), the JVM's own JFR ring facts (jfr: container
+        limits as the JVM read them incl. effectiveCpuCount, jvmArgs, GC pauses count/max/total,
+        VirtualThreadPinned, top monitors, safepoint total, JIT compilation count/time), and the
+        window {uptimeSeconds, samples, requestRatePerSec}. Facts only — everything the checklist
+        needs except the thread dump under load. Deterministic; no LLM.""")
     public MeasureResult measure(
         @ToolParam(description = "Pyroscope service_name = Deployment name") String service,
         @ToolParam(description = "Look-back window in minutes (default 15)", required = false) Integer windowMinutes) {
@@ -87,25 +90,48 @@ public class SensorMcpTools {
     }
 
     @Tool(description = """
-        Deterministically diagnose a request-path blocking call. The sensor drives a bounded,
-        rate-based write load directly at the pod and samples the thread dump over time while it
-        runs, then aggregates. Use this for "why is latency high" on a virtual-thread app: a
-        blocked request thread (Future.get on a virtual thread) exists only while requests are in
-        flight and is invisible to the wall flame graph (a parked virtual thread unmounts) — this
-        reproduces and catches it on any image, including CRaC. requestThreadsBlockedInFutureGet is
-        the PEAK concurrent blocked across samples; topBlockingFrames counts are summed. No need for
-        the participant to run a benchmark first. Rate is clamped to protect a small pod. Returns the
-        aggregated thread facts plus load stats (sent/ok/failed).""")
+        Diagnose a request-path blocking call by sampling the JSON thread dump over time WHILE THE
+        OPERATOR'S LOAD RUN IS FLOWING. The sensor drives no traffic. Use this for "why is latency
+        high" on a virtual-thread app: a blocked request thread (Future.get on a virtual thread)
+        exists only while requests are in flight, is invisible to the wall flame graph (a parked
+        virtual thread unmounts) and is NOT in the JFR ring (JFR records ThreadPark only for
+        platform threads) — sampling dumps under load catches it on any image, including CRaC.
+        Returns status OK with aggregated thread facts (requestThreadsBlockedInFutureGet = PEAK
+        concurrent blocked across samples; topBlockingFrames counts summed), or BLOCKED with a
+        reason when the request rate over the last minute is not above minRequestRate — then ask
+        the operator to start the load run and call again while it runs.""")
     public com.example.perf.sensor.SensorService.BlockingDiagnosis diagnoseBlocking(
         @ToolParam(description = "Pyroscope service_name = Deployment name") String service,
-        @ToolParam(description = "write requests per second to drive (default 25; clamped to 100)", required = false) Integer ratePerSec,
-        @ToolParam(description = "how long to drive load, seconds (default 12; clamped to 60)", required = false) Integer durationSec,
-        @ToolParam(description = "thread-dump sampling interval in ms (default 1000)", required = false) Integer intervalMs) {
-        logger.info("MCP diagnoseBlocking service={} rate={} dur={}", service, ratePerSec, durationSec);
+        @ToolParam(description = "how long to sample, seconds (default 12; clamped to 60)", required = false) Integer durationSec,
+        @ToolParam(description = "thread-dump sampling interval in ms (default 1000)", required = false) Integer intervalMs,
+        @ToolParam(description = "guard: request rate rps over the last minute that counts as load flowing (e.g. 1)") double minRequestRate) {
+        logger.info("MCP diagnoseBlocking service={} dur={}", service, durationSec);
         return sensor.diagnoseBlocking(service,
-            ratePerSec == null ? 25 : ratePerSec,
             durationSec == null ? 12 : durationSec,
-            intervalMs == null ? 1000L : intervalMs);
+            intervalMs == null ? 1000L : intervalMs,
+            minRequestRate);
+    }
+
+    @Tool(description = """
+        Compute the steady-state CPU request for a Java service from its MEASURED CPU usage, with
+        the same warm/load guard as sizeMemory. Returns status OK or BLOCKED. requests.cpu =
+        roundUp(cpuUsageP95Cores * cpuFactor, roundMillicores) as millicores; limits.cpu is
+        returned UNCHANGED (the boot spike is handled by a startup CPU boost / in-place resize,
+        not by a permanently high request). All policy parameters are REQUIRED and supplied by
+        the caller (the optimization skill owns the numbers).""")
+    public com.example.perf.sensor.SensorService.CpuResult sizeCpu(
+        @ToolParam(description = "Pyroscope service_name = Deployment name") String service,
+        @ToolParam(description = "Look-back window in minutes") int windowMinutes,
+        @ToolParam(description = "requests.cpu = p95 usage * this (e.g. 1.5)") double cpuFactor,
+        @ToolParam(description = "round requests.cpu up to a multiple of this many millicores (e.g. 50)") int roundMillicores,
+        @ToolParam(description = "guard: minimum uptime seconds before sizing (e.g. 120)") int warmSeconds,
+        @ToolParam(description = "guard: minimum profile weight (e.g. 100)") int minSamples,
+        @ToolParam(description = "guard: minimum request rate rps that counts as load (e.g. 1)") double minRequestRate,
+        @ToolParam(description = "guard: minimum peak-floor MiB delta that counts as load (e.g. 64)") double minDeltaMi) {
+        logger.info("MCP sizeCpu service={} window={}", service, windowMinutes);
+        return sensor.sizeCpu(service, windowMinutes,
+            new com.example.perf.sensor.SensorService.CpuParams(cpuFactor, roundMillicores, warmSeconds,
+                minSamples, minRequestRate, minDeltaMi));
     }
 
     @Tool(description = """

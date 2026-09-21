@@ -47,13 +47,18 @@ patch, and nothing scales it back down). Prefer the CR.
   percentage then supplies the boot CPU on top of the lower request.
 - Zero restarts: the resize is in place.
 
-## Trade-off
+## Trade-off, and the flag that goes with the boost
 
 - GC/heap ergonomics are fixed at JVM start; this lever targets CPU/startup, not heap.
-- The JVM's processor count is also fixed at start: it sees the boosted CPU, so GC and
-  JIT thread counts stay sized for boot after the resize down. On a one-core steady
-  state keep SerialGC explicit (`-XX:+UseSerialGC`) so the boot-time view does not
-  select G1.
+- The JVM's processor count is also fixed at start. Without help it reads the **boosted**
+  quota (e.g. 2 cores) and keeps GC, JIT and ForkJoin threads sized for it after the resize
+  down to 1 — `jdk.ContainerConfiguration.effectiveCpuCount` in the JFR ring shows exactly
+  what it read. Pin the steady-state count explicitly:
+  `-XX:ActiveProcessorCount=<ceil(limits.cpu)>` in `JAVA_TOOL_OPTIONS`, and keep SerialGC
+  explicit on one core. This is the container-JVM guidance for any environment where the
+  CPU quota differs from what the JVM should assume (fractional limits, shares, boosts).
+- Cost: with fewer compiler threads part of the boost's startup gain may shrink; the extra
+  boot quota still removes CFS throttling during class loading and JIT. Measure both.
 
 ## What the operator verifies afterwards
 

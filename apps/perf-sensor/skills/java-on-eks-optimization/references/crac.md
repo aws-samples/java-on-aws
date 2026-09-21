@@ -78,11 +78,12 @@ memory `requests`/`limits`; only the JVM-flag env must go.
 Consequences to state explicitly:
 - `Dockerfile.crac` sets `-XX:+UseSerialGC` on the checkpoint command, so the GC still
   fits a ≤ 1 vCPU pod after restore.
-- The heap ceiling (`MaxHeapSize`) is fixed at checkpoint time from the **build**
-  container, not from the pod's memory limit. `MaxRAMPercentage` in the Deployment has
-  no effect on a restored JVM. If the heap ceiling must match the pod, take the
-  checkpoint in a container with the same memory limit or pass an explicit `-Xmx` on
-  the checkpoint command. This is a CRaC trade-off, not a misconfiguration.
+- `Dockerfile.crac` sets the heap bounds on the checkpoint command (`JAVA_HEAP_OPTS`,
+  `-Xmx` = 75 % and `-Xms` = 50 % of the pod's `limits.memory`, from
+  `sizing-policy.yaml cracHeap`). Without them the heap is sized from the **build**
+  machine and `MaxRAMPercentage` in the Deployment has no effect on a restored JVM.
+  The checkpoint is therefore tied to that pod size: change the memory limit → rebuild
+  the image. This is a CRaC trade-off, not a misconfiguration.
 
 ## Trade-offs
 
@@ -96,7 +97,9 @@ Consequences to state explicitly:
 
 Three changes: (1) add the `org.crac` dependency to `pom.xml`; (2) add an
 `org.crac.Resource` hook to each FD-holding class found in `src/`; (3) use
-`Dockerfile.crac` verbatim, filling `JAR_FILE` from the app's `pom.xml`. Verify with
+`Dockerfile.crac` verbatim, filling `JAR_FILE` from the app's `pom.xml` and
+`JAVA_HEAP_OPTS` from the pod's `limits.memory` (`measure` → `workload.memLimitMi`,
+× 0.75 / × 0.50, whole MiB, e.g. 576Mi → `-Xmx432m -Xms288m`). Verify with
 `perf-sensor.startupLog` — `kind` should read **Restored** and seconds < 1.
 
 
