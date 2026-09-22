@@ -34,4 +34,5 @@ latency) exist only while requests flow. The service does not generate its own t
 service's Ingress and returns after 90 s with ~30 s of load still flowing — measure right
 after it returns. Run it when a measurement needs load and the current request rate is
 below 1 req/s (probe traffic alone is ≈ 0.5 req/s); once per question is enough, and not
-while a run is already flowing.
+while a run is already flowing. Invoke it by its path from the current directory, e.g.
+`unicorn-store-spring/scripts/load.sh` — no `cd`, no other command chained to it.

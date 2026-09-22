@@ -81,8 +81,13 @@ data["enabledMcpjsonServers"] = sorted(servers)
 perms = data.setdefault("permissions", {})
 allow = list(perms.get("allow", []))
 for rule in ["mcp__perf-sensor", "mcp__eks-mcp", "Read", "Grep", "Glob", "Edit", "Write",
+             # every spelling Claude uses for the one allowed command (prefix rules)
              "Bash(~/environment/unicorn-store-spring/scripts/load.sh:*)",
-             "Bash(" + os.path.expanduser("~") + "/environment/unicorn-store-spring/scripts/load.sh:*)"]:
+             "Bash(" + os.path.expanduser("~") + "/environment/unicorn-store-spring/scripts/load.sh:*)",
+             "Bash(bash ~/environment/unicorn-store-spring/scripts/load.sh:*)",
+             "Bash(bash " + os.path.expanduser("~") + "/environment/unicorn-store-spring/scripts/load.sh:*)",
+             "Bash(unicorn-store-spring/scripts/load.sh:*)",
+             "Bash(bash unicorn-store-spring/scripts/load.sh:*)"]:
     if rule not in allow:
         allow.append(rule)
 perms["allow"] = allow
