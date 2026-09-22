@@ -125,7 +125,9 @@ Read the file and pass the values through. The *why* for each:
   crash-loops the restore. Reference: `crac.md`.
 - **"fix latency under load" / "some requests take seconds" / "slow writes" / "tail latency"** →
   `diagnoseBlocking <service>` while the operator's load
-  run is flowing (if BLOCKED: say "start the load run and ask again while it runs", stop);
+  run is flowing (if BLOCKED: use the workspace's way to generate load when its `CLAUDE.md`
+  provides one, then call again; otherwise say "start the load run and ask again while it
+  runs" and stop);
   `measure` for the in-JVM context (`jfr.pinned`, `jfr.monitorTop`, `jfr.gc.maxMs`,
   `jfr.safepointTotalMs`, `latencyMeanMs`).
   It names the blocking frame and `file:line` (`…CompletableFuture.get`) on **any image,

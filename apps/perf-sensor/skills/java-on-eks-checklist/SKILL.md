@@ -19,7 +19,9 @@ under load and `diagnoseBlocking` samples live threads.
    (workload, runtime, profile summary, `jfr` ring facts, window).
 2. Call `perf-sensor.diagnoseBlocking <service>` with `minRequestRate` from the optimization
    skill's `references/sizing-policy.yaml` for item 11. It samples the thread dump while the
-   load flows and drives no traffic. If it returns BLOCKED, item 11 is UNKNOWN with its reason.
+   load flows and drives no traffic. If it returns BLOCKED and the workspace provides a way
+   to generate load (its `CLAUDE.md` says so), run that first and call again; otherwise item
+   11 is UNKNOWN with its reason.
 3. Evaluate every item in `references/checklist.md` as **PASS / FAIL / UNKNOWN**
    from the named evidence fields. A fact that is absent (null) makes its item
    UNKNOWN, not FAIL. Items marked *under load* are UNKNOWN when
