@@ -17,9 +17,11 @@ under load and `diagnoseBlocking` samples live threads.
 
 1. Call `perf-sensor.measure <service>` with `minUptimeSeconds = 120`. It returns everything
    items 1–10 and 12 need (workload, runtime, profile summary, `jfr` ring facts, window). A
-   pod younger than 120 s has no peak, p95 or throttle share yet, so the sensor waits until
-   it is 120 s old before measuring (at most 120 s). If the call takes a while, that is why;
-   tell the user "the pod is young — measuring once it is 2 min old" and do not re-call.
+   pod younger than 120 s has no peak, p95 or throttle share yet, so the sensor waits for it
+   in slices of ≤ 30 s: while `window.settleRemainingSeconds > 0`, write one line for the
+   user ("pod is N s old — measuring at 120 s, M s to go") and call `measure` again with the
+   same parameters; use the last response. If `window.settleNote` says no load is flowing,
+   stop waiting: report as in step 2.
 2. Call `perf-sensor.diagnoseBlocking <service>` with `minRequestRate` from the optimization
    skill's `references/sizing-policy.yaml` for item 11. It samples the thread dump while the
    load flows and drives no traffic. If it returns BLOCKED, or `window.requestRatePerSec`

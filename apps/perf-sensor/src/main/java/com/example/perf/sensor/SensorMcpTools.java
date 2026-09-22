@@ -41,13 +41,14 @@ public class SensorMcpTools {
         VirtualThreadPinned, top monitors, safepoint total, JIT compilation count/time), and the
         window {uptimeSeconds, samples, requestRatePerSec}. Facts only — everything the checklist
         needs except the thread dump under load. Deterministic; no LLM. minUptimeSeconds: if the
-        current pod is younger than this, the sensor waits (up to 120 s) until it is that old
-        before measuring — use 120 for a checklist score right after a rollout so the load-guarded
-        items have data instead of UNKNOWN.""")
+        current pod is younger than this, the sensor waits up to 30 s per call and reports
+        window.settleRemainingSeconds; while > 0, tell the user how long is left and call again
+        (facts are settled when it is 0). window.settleNote explains when it did not wait (no
+        load flowing). Use 120 for a checklist score so a freshly rolled pod has data.""")
     public MeasureResult measure(
         @ToolParam(description = "Pyroscope service_name = Deployment name") String service,
         @ToolParam(description = "Look-back window in minutes (default 15)", required = false) Integer windowMinutes,
-        @ToolParam(description = "wait until the current pod is at least this old, seconds (default 0 = no wait; max wait 120 s)", required = false) Integer minUptimeSeconds) {
+        @ToolParam(description = "wait until the current pod is at least this old, seconds (default 0 = no wait; waits at most 30 s per call, see window.settleRemainingSeconds)", required = false) Integer minUptimeSeconds) {
         logger.info("MCP measure service={} window={} minUptime={}", service, windowMinutes, minUptimeSeconds);
         return sensor.measure(service, orDefault(windowMinutes), minUptimeSeconds == null ? 0 : minUptimeSeconds);
     }

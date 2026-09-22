@@ -55,7 +55,15 @@ public class SensorService {
     // --- records returned by the tools/endpoints -------------------------------
 
     /** Look-back window context for a measurement. */
-    public record Window(Double uptimeSeconds, long samples, Double requestRatePerSec) {}
+    /**
+     * {@code waitedSeconds}: how long this call waited for the pod to age (see measure's
+     * minUptimeSeconds). {@code settleRemainingSeconds}: > 0 means the pod is still younger than
+     * requested — call again to keep waiting (each call waits at most 30 s so the caller can
+     * report progress); 0 means the facts are settled. {@code settleNote}: human-readable reason
+     * when the call did not wait (e.g. no load flowing — nothing to wait for).
+     */
+    public record Window(Double uptimeSeconds, long samples, Double requestRatePerSec,
+                         Integer waitedSeconds, Integer settleRemainingSeconds, String settleNote) {}
 
     /** Per-pod drill-down behind the fleet aggregate. */
     public record PodBreakdown(String pod, Double rssPeakMi, Double startupSeconds) {}
@@ -103,16 +111,28 @@ public class SensorService {
      * asked right after a rollout settles instead of returning UNKNOWNs.
      */
     public MeasureResult measure(String service, int windowMinutes, int minUptimeSeconds) {
+        int waited = 0, remaining = 0;
+        String note = null;
         if (minUptimeSeconds > 0) {
             var snap = k8s.collect(service, service);
+            Double rateNow = prometheus == null ? null : prometheus.requestRatePerSec(service, 1);
             if (snap.uptimeSeconds() != null && snap.uptimeSeconds() < minUptimeSeconds) {
-                long waitMs = Math.min(120, minUptimeSeconds - snap.uptimeSeconds().longValue()) * 1000L;
-                logger.info("measure service={} pod={} is {}s old, waiting {}s for minUptime {}s",
-                    service, snap.appPodName(), snap.uptimeSeconds().intValue(), waitMs / 1000, minUptimeSeconds);
-                try {
-                    Thread.sleep(waitMs);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+                if (rateNow == null || rateNow < 1.0) {
+                    note = "pod is " + snap.uptimeSeconds().intValue() + " s old but no load is flowing ("
+                        + (rateNow == null ? "no rate" : String.format("%.2f rps", rateNow))
+                        + ") — nothing to wait for; start the service's load and ask again";
+                } else {
+                    // Wait in slices of <= 30 s so the caller can narrate progress between calls.
+                    int need = minUptimeSeconds - snap.uptimeSeconds().intValue();
+                    waited = Math.min(30, need);
+                    remaining = need - waited;
+                    logger.info("measure service={} pod={} is {}s old, waiting {}s ({}s more after this call) for minUptime {}s",
+                        service, snap.appPodName(), snap.uptimeSeconds().intValue(), waited, remaining, minUptimeSeconds);
+                    try {
+                        Thread.sleep(waited * 1000L);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
                 }
             }
         }
@@ -121,7 +141,8 @@ public class SensorService {
         var window = new Window(
             rt == null ? null : rt.uptimeSeconds(),
             f.profile() == null ? 0 : f.profile().samples(),
-            rt == null ? null : rt.requestRatePerSec());
+            rt == null ? null : rt.requestRatePerSec(),
+            waited, remaining, note);
         return new MeasureResult(service, norm(windowMinutes), f.workload(), rt, f.profile(), f.jfr(), window,
             perPodBreakdown(service, norm(windowMinutes)));
     }
