@@ -82,13 +82,15 @@ pauses vs probe timing); learnk8s (SIGTERM handling, probe semantics).
 
 | # | Practice | Rule | Evidence |
 |---|---|---|---|
-| 11 | Request path does not block on downstream calls | `diagnoseBlocking` status OK and `threads.requestThreadsBlockedInFutureGet == 0` *under load* (UNKNOWN when BLOCKED) | `diagnoseBlocking.threads.requestThreadsBlockedInFutureGet`, `topBlockingFrames` |
+| 11 | Request path does not block on downstream calls | `diagnoseBlocking` status OK and `threads.requestThreadsBlockedInFutureGet == 0` and `threads.carriersParkedInPoolWait == 0` *under load* (UNKNOWN when BLOCKED); cite `blockedInsideTransaction` when > 0 — the block holds a DB connection | `diagnoseBlocking.threads.requestThreadsBlockedInFutureGet`, `blockedInsideTransaction`, `carriersParkedInPoolWait`, `topBlockingFrames` |
 | 12 | Latency under load is bounded | `latencyMeanMs ≤ 100` *under load*; cite `jfr.pinned`, `jfr.monitorTop`, `jfr.safepointTotalMs`, `jfr.gc.maxMs` as the in-JVM context | `runtime.latencyMeanMs`, `runtime.latencyMaxMs`, `window.requestRatePerSec`, `jfr.*` |
 
 Why: a request thread parked in `Future.get()` adds the downstream round-trip to every
 request and, on virtual threads, is invisible to a sampling profiler AND to JFR (which
 records `ThreadPark` only for platform threads) — only a JSON thread dump taken under load
-names it (11). Mean latency under a steady load is the symptom every request-path defect
+names it; a block that sits inside a transaction also holds a pooled connection for the
+round-trip, so the pool caps throughput and every request queues on it (11). Mean latency
+under a steady load is the symptom every request-path defect
 shares — a blocking call, a starved connection pool, GC pauses, pinning, contention,
 safepoints, CFS throttling; the thread dump and the ring say which (12).
 Sources: JDK *Virtual Threads* guide; Spring Boot Actuator — `http.server.requests` metrics;

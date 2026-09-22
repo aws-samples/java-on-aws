@@ -37,6 +37,11 @@ public class DumpCollector {
     private static final Pattern BLOCKING_GET =
         Pattern.compile("CompletableFuture\\.(get|join)|Future\\.get");
     private static final String[] POOL_WAIT_MARKERS = {"ConcurrentBag", "getConnection", "HikariPool"};
+    // A blocking wait with one of these below it on the stack runs INSIDE a managed transaction:
+    // the thread holds a pooled connection for the whole remote round-trip.
+    private static final String[] TRANSACTION_MARKERS = {
+        "TransactionInterceptor", "TransactionAspectSupport", "invokeWithinTransaction",
+        "TransactionTemplate", "jakarta.transaction", "TransactionalInterceptor"};
 
     /**
      * Heap/runtime facts scraped from GC.heap_info + VM.flags; fields null when not parseable.
@@ -78,7 +83,7 @@ public class DumpCollector {
             return parseThreads(body, podName, ts);
         } catch (Exception e) {
             logger.warn("thread dump parse failed: {}", e.getMessage());
-            return new ThreadFacts(podName, ts, 0, Map.of(), 0, 0, 0, List.of(), List.of());
+            return new ThreadFacts(podName, ts, 0, Map.of(), 0, 0, 0, 0, List.of(), List.of());
         }
     }
 
@@ -89,7 +94,7 @@ public class DumpCollector {
         var byState = new LinkedHashMap<String, Integer>();
         var blockingFrames = new LinkedHashMap<String, Integer>();
         var sample = new ArrayList<ThreadFacts.ThreadSample>();
-        int total = 0, virtual = 0, blockedGet = 0, poolWaiters = 0;
+        int total = 0, virtual = 0, blockedGet = 0, poolWaiters = 0, inTx = 0;
 
         for (var container : containers) {
             for (var t : container.path("threads")) {
@@ -110,6 +115,9 @@ public class DumpCollector {
                 boolean blocking = BLOCKING_GET.matcher(stackText).find();
                 if (blocking) {
                     blockedGet++;
+                    if (containsAny(stackText, TRANSACTION_MARKERS)) {
+                        inTx++;
+                    }
                     frames.stream().filter(f -> BLOCKING_GET.matcher(f).find()).findFirst()
                         .ifPresent(f -> blockingFrames.merge(trim(f), 1, Integer::sum));
                 }
@@ -127,7 +135,7 @@ public class DumpCollector {
             .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
             .map(e -> new ThreadFacts.FrameCount(e.getKey(), e.getValue()))
             .toList();
-        return new ThreadFacts(podName, ts, total, byState, virtual, blockedGet, poolWaiters,
+        return new ThreadFacts(podName, ts, total, byState, virtual, blockedGet, poolWaiters, inTx,
             topBlocking, sample);
     }
 

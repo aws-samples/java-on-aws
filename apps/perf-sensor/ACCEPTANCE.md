@@ -14,10 +14,13 @@ requests are in flight (neither the wall profile nor JFR records it), so the ite
 load (2, 6, 7, 11, 12) are decided only in the three **load runs**: baseline, the module 5
 latency question, and the final score. One block does load and question together: start the
 120 s benchmark in the background, wait 60 s for the window to have a peak, ask, then `wait`.
+Rate 50 writes/s: with one pooled connection held for the EventBridge round-trip the app
+saturates near 20 writes/s, so 50 makes the defect unmistakable (item 12 ❌ at baseline) and
+surfaces pool waits; 200 (the immersion-day rate) would time out and inflate the memory peak.
 
 **Load-run block** =
 ```bash
-~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 20 >/dev/null 2>&1 & sleep 60; cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"; wait
+~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 60; cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"; wait
 ```
 Every other score is the bare `claude -c -p "How is unicorn-store-spring doing against best practices?"`.
 
@@ -64,14 +67,14 @@ kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --tim
 kubectl -n unicorn-store-spring get pod -l app=unicorn-store-spring -o jsonpath='{.items[0].spec.containers[*].name}'; echo   # unicorn-store-spring perf-profiler
 kubectl -n unicorn-store-spring get pod -l app=unicorn-store-spring -o jsonpath='{.items[0].spec.volumes[?(@.name=="perf-scratch")].name}'; echo   # perf-scratch
 git -C ~/environment/unicorn-store-spring add -A && git -C ~/environment/unicorn-store-spring commit -q -m "baseline: profiler attached"
-~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 20 >/dev/null 2>&1 & sleep 60; cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"; wait
+~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 60; cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"; wait
 ```
 Load run 1 of 3. Expected **≈ 5/12**:
 
 | | # | Deciding signal |
 |---|---|---|
 | ✅ | 1 | request 2048 == limit 2048, restarts 0 |
-| ❌ | 2 | 2048 / peak ≈ 400 ≈ 5× (bar 2.5) |
+| ❌ | 2 | 2048 / peak ≈ 400–500 ≈ 4–5× (bar 2.5) — **record the peak**; it sets module 1's limit |
 | ❌ | 3 | maxHeap 512 / 2048 = 0.25 |
 | ❌ | 4 | initialHeap 32 / 512 = 0.06 |
 | ✅ | 5 | limit 1, sees 1, SerialGC |
@@ -80,8 +83,8 @@ Load run 1 of 3. Expected **≈ 5/12**:
 | ❌ | 8 | startup ≈ 13–15 s |
 | ✅ | 9 | startup budget 50 ≥ 2× startup, no initialDelay, liveness 30, distinct paths |
 | ❌ | 10 | grace 30 < preStop 10 + 30 |
-| ❌ | 11 | blocked ≥ 1 (diagnoseBlocking OK, load flowing) |
-| ✅ | 12 | mean latency ≈ 15 ms (bar 100) |
+| ❌ | 11 | blocked ≥ 1, blockedInsideTransaction ≥ 1, pool waits > 0 (diagnoseBlocking OK, load flowing) |
+| ❌ | 12 | mean latency in the seconds (bar 100) — **record it**; first run at 50 rps |
 
 If 11 shows 🟡 BLOCKED, the load was not flowing when Claude called the tool: rerun the
 load-run block. Save the output as `~/environment/baseline.txt`.
@@ -122,8 +125,9 @@ kubectl -n unicorn-store-spring exec deploy/unicorn-store-spring -c unicorn-stor
 ```bash
 cd ~/environment && claude -c -p "How can I reduce memory consumption of unicorn-store-spring?"
 ```
-Expected: `sizeMemory` with the policy values; `requests == limits = 640Mi` (peak ≈ 400–490 × 1.4,
-rounded up to 128Mi), SerialGC, `MaxRAMPercentage=75`, `InitialRAMPercentage=50`.
+Expected: `sizeMemory` with the policy values; `requests == limits = 640Mi` (peak × 1.4 rounded up
+to 128Mi — 640 holds for peaks up to 457 Mi; the first 50 rps run decides whether that is still
+the number), SerialGC, `MaxRAMPercentage=75`, `InitialRAMPercentage=50`.
 Review: only `resources` + `JAVA_TOOL_OPTIONS` changed. **If the limit is not 640Mi**, note it:
 the prebuilt `:crac` image (module 4) bakes `-Xmx480m -Xms320m` for 640Mi and module 4 must
 then build instead of deploying the prebuilt tag.
@@ -207,23 +211,29 @@ G1: the running image is not the skill build — the prebuild used another Docke
 ## 8. Module 5 — latency (code fix)
 
 ```bash
-~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 20 >/dev/null 2>&1 & sleep 60; cd ~/environment && claude -c -p "Why is unicorn-store-spring latency high under load and how do I fix it?"; wait
+~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 60; cd ~/environment && claude -c -p "Why is unicorn-store-spring latency high under load and how do I fix it?"; wait
 ```
 Load run 2 of 3. Expected: `diagnoseBlocking` status OK (not BLOCKED — if BLOCKED, Claude asks for
-the load run; start it and ask again); `requestThreadsBlockedInFutureGet ≥ 1` and frame
-`CompletableFuture.get` cited with `UnicornService.publishUnicornEvent:<line>`; non-blocking
-publish; pool sized if `carriersParkedInPoolWait > 0`; image not switched. Not `profileTop wall`.
-Review: `UnicornService.java` (+ `application.yaml` if the pool was sized).
+the load run; start it and ask again); `requestThreadsBlockedInFutureGet ≥ 1`,
+`blockedInsideTransaction ≥ 1`, frame `CompletableFuture.get` cited with
+`UnicornService.publishUnicornEvent:<line>` and the `@Transactional createUnicorn` named as the
+enclosing transaction. Solution: publish **after commit** (`@TransactionalEventListener(AFTER_COMMIT)`
+or `TransactionSynchronization`) and non-blocking; the pool is sized only if
+`carriersParkedInPoolWait` is expected to remain after the boundary fix, to the observed
+concurrency. Image not switched. Not `profileTop wall`.
+Review: `UnicornService.java` (+ a listener class if Claude chose the event form; `application.yaml`
+only if the pool was sized).
 ```bash
 ~/environment/unicorn-store-spring/scripts/build.sh crac Dockerfile.crac      # the code changed: rebuild the current image (≈ 3 min, warm cache)
 kubectl -n unicorn-store-spring rollout restart deploy/unicorn-store-spring
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 git -C ~/environment/unicorn-store-spring add -A && git -C ~/environment/unicorn-store-spring commit -q -m "non-blocking publish"
-~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 20 >/dev/null 2>&1 & sleep 60; cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"; wait
+~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 60; cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"; wait
 ```
-Load run 3 of 3 — the verdict. Expected **10–11/12**: 1–6, 8, 9, 11, 12 ✅; 10 ❌ (no module
-fixes the grace period); 7 is the open one — record `cpuThrottledRatio` on the CRaC pod under
-load; ≤ 0.10 makes it 11.
+Load run 3 of 3 — the verdict. Expected **10–11/12**: 1–6, 8, 9, 11, 12 ✅ (11: blocked 0,
+inside-transaction 0, pool waits 0; 12: mean latency well under 100 ms at 50 rps); 10 ❌ (no
+module fixes the grace period); 7 is the open one — record `cpuThrottledRatio` on the CRaC pod
+under load; ≤ 0.10 makes it 11.
 
 ---
 

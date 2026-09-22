@@ -17,6 +17,9 @@ import java.util.Map;
  * @param virtualThreads                   count of virtual threads
  * @param requestThreadsBlockedInFutureGet request-path threads parked in a blocking Future.get()/join()
  * @param carriersParkedInPoolWait         carrier/request threads parked in a connection-pool wait
+ * @param blockedInsideTransaction         of the blocked request threads, how many block while a
+ *                                         transaction interceptor is on the stack (remote I/O held
+ *                                         inside a DB transaction, i.e. while holding a connection)
  * @param topBlockingFrames                most common frames on blocked request-path threads
  * @param sample                           a small sample of request-path threads (name, state, top frames)
  */
@@ -28,6 +31,7 @@ public record ThreadFacts(
     int virtualThreads,
     int requestThreadsBlockedInFutureGet,
     int carriersParkedInPoolWait,
+    int blockedInsideTransaction,
     List<FrameCount> topBlockingFrames,
     List<ThreadSample> sample
 ) {

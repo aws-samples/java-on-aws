@@ -78,7 +78,9 @@ public class SensorMcpTools {
         Summarized thread dump for a Java service via the profiler sidecar /dump (JSON jcmd thread
         dump, never raw): total threads, count by state, virtual thread count,
         requestThreadsBlockedInFutureGet (request-path threads parked in a blocking Future.get/join),
-        carriersParkedInPoolWait, topBlockingFrames [{frame, count}] and a small thread sample.
+        carriersParkedInPoolWait, blockedInsideTransaction (blocked while a transaction interceptor
+        is on the stack: remote I/O inside a DB transaction, holding a pooled connection),
+        topBlockingFrames [{frame, count}] and a small thread sample.
         Includes pod(s) and timestamp. sampleN>1 samples that many Ready pods and aggregates
         (use it at higher replica counts so a blocking call on one pod is not missed). Use to
         confirm a blocking call on the request path.""")
@@ -96,8 +98,9 @@ public class SensorMcpTools {
         exists only while requests are in flight, is invisible to the wall flame graph (a parked
         virtual thread unmounts) and is NOT in the JFR ring (JFR records ThreadPark only for
         platform threads) — sampling dumps under load catches it on any image, including CRaC.
-        Returns status OK with aggregated thread facts (requestThreadsBlockedInFutureGet = PEAK
-        concurrent blocked across samples; topBlockingFrames counts summed), or BLOCKED with a
+        Returns status OK with aggregated thread facts (requestThreadsBlockedInFutureGet,
+        blockedInsideTransaction and carriersParkedInPoolWait = PEAK concurrent across samples;
+        topBlockingFrames counts summed), or BLOCKED with a
         reason when the request rate over the last minute is not above minRequestRate — then ask
         the operator to start the load run and call again while it runs.""")
     public com.example.perf.sensor.SensorService.BlockingDiagnosis diagnoseBlocking(

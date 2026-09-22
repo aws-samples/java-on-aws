@@ -128,8 +128,10 @@ Read the file and pass the values through. The *why* for each:
   `jfr.safepointTotalMs`, `latencyMeanMs`).
   It names the blocking frame and `file:line` (`…CompletableFuture.get`) on **any image,
   including CRaC**. Do **not** use `profileTop wall` to find this. Artifact: the
-  non-blocking change; if `carriersParkedInPoolWait > 0`, also size the connection pool to
-  the observed concurrency. Reference: `blocking-calls.md`.
+  non-blocking change; if `blockedInsideTransaction > 0`, also move the remote call out of
+  the transaction (after commit — the connection is held for the round-trip otherwise; read
+  the `@Transactional` method in `src/` to show it); if `carriersParkedInPoolWait > 0`, also
+  size the connection pool to the observed concurrency. Reference: `blocking-calls.md`.
 - **"how are we doing / score"** → run the `java-on-eks-checklist` skill.
 
 ## 5. Answer format

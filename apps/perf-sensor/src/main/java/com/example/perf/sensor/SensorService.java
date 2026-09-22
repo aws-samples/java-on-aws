@@ -198,12 +198,13 @@ public class SensorService {
         // Aggregate across the sampled pods: sum counts, merge states + blocking frames.
         var byState = new java.util.LinkedHashMap<String, Integer>();
         var frames = new java.util.LinkedHashMap<String, Integer>();
-        int total = 0, virtual = 0, blocked = 0, pool = 0;
+        int total = 0, virtual = 0, blocked = 0, pool = 0, inTx = 0;
         for (var d : dumps) {
             total += d.total();
             virtual += d.virtualThreads();
             blocked += d.requestThreadsBlockedInFutureGet();
             pool += d.carriersParkedInPoolWait();
+            inTx += d.blockedInsideTransaction();
             if (d.byState() != null) {
                 d.byState().forEach((k, v) -> byState.merge(k, v, Integer::sum));
             }
@@ -217,7 +218,7 @@ public class SensorService {
             .toList();
         var pods = dumps.stream().map(ThreadFacts::pod).toList();
         return new ThreadFacts(String.join(",", pods), Instant.now().toString(),
-            total, byState, virtual, blocked, pool, topFrames, dumps.getFirst().sample());
+            total, byState, virtual, blocked, pool, inTx, topFrames, dumps.getFirst().sample());
     }
 
     /**
@@ -234,7 +235,7 @@ public class SensorService {
         String ip = snap.appPodIP(), name = snap.appPodName();
         var byState = new java.util.LinkedHashMap<String, Integer>();
         var frames = new java.util.LinkedHashMap<String, Integer>();
-        int maxTotal = 0, maxVirtual = 0, maxBlocked = 0, maxPool = 0, taken = 0;
+        int maxTotal = 0, maxVirtual = 0, maxBlocked = 0, maxPool = 0, maxInTx = 0, taken = 0;
         ThreadFacts last = null;
         for (int i = 0; i < n; i++) {
             var d = dump.threads(ip, name);
@@ -245,6 +246,7 @@ public class SensorService {
                 maxVirtual = Math.max(maxVirtual, d.virtualThreads());
                 maxBlocked = Math.max(maxBlocked, d.requestThreadsBlockedInFutureGet());
                 maxPool = Math.max(maxPool, d.carriersParkedInPoolWait());
+                maxInTx = Math.max(maxInTx, d.blockedInsideTransaction());
                 if (d.byState() != null) {
                     d.byState().forEach((k, v) -> byState.merge(k, v, Integer::sum));
                 }
@@ -269,7 +271,7 @@ public class SensorService {
             .map(e -> new ThreadFacts.FrameCount(e.getKey(), e.getValue()))
             .toList();
         return new ThreadFacts(name, Instant.now().toString(),
-            maxTotal, byState, maxVirtual, maxBlocked, maxPool, topFrames,
+            maxTotal, byState, maxVirtual, maxBlocked, maxPool, maxInTx, topFrames,
             last == null ? null : last.sample());
     }
 

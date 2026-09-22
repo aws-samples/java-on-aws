@@ -71,5 +71,28 @@ class DumpParseTest {
             """;
         var t = dump.parseThreads(json, "pod-y", "2026-01-01T00:00:00Z");
         assertThat(t.requestThreadsBlockedInFutureGet()).isZero();
+        assertThat(t.blockedInsideTransaction()).isZero();
+    }
+
+    @Test
+    void threads_countsBlockingInsideTransaction() throws Exception {
+        // Blocked in Future.get with Spring's transaction interceptor below on the stack:
+        // the remote round-trip is held inside the DB transaction (connection held).
+        String json = """
+            {"threadDump":{"threadContainers":[{"threads":[
+              {"name":"tomcat-handler-7","virtual":true,"stack":[
+                 "java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2093)",
+                 "com.example.app.Service.publish(Service.java:126)",
+                 "com.example.app.Service.create(Service.java:42)",
+                 "org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)",
+                 "org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)"]},
+              {"name":"tomcat-handler-8","virtual":true,"stack":[
+                 "java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2093)",
+                 "com.example.app.Service.notify(Service.java:200)"]}
+            ]}]}}
+            """;
+        var t = dump.parseThreads(json, "pod-z", "2026-01-01T00:00:00Z");
+        assertThat(t.requestThreadsBlockedInFutureGet()).isEqualTo(2);
+        assertThat(t.blockedInsideTransaction()).isEqualTo(1);
     }
 }
