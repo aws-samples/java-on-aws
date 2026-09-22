@@ -113,7 +113,19 @@ class SizeMemoryTest {
         assertThat(r.status()).isEqualTo("OK");
         assertThat(r.requestsCpu()).isEqualTo("500m");
         assertThat(r.limitsCpu()).isEqualTo("1");
+        assertThat(r.clampedToLimit()).isFalse();
         assertThat(r.evidence().cpuUsageP95Cores()).isEqualTo(0.31);
+    }
+
+    @Test
+    void sizeCpu_clampsRequestToLimit() throws IOException {
+        // p95 0.667 * 1.5 = 1000.5m -> roundUp(50m) = 1050m > limit 1 -> capped to 1000m, flagged.
+        var r = sensor.sizeCpu(fixture("cpu-bound"), CPU_POLICY);
+        assertThat(r.status()).isEqualTo("OK");
+        assertThat(r.requestsCpu()).isEqualTo("1000m");
+        assertThat(r.limitsCpu()).isEqualTo("1");
+        assertThat(r.clampedToLimit()).isTrue();
+        assertThat(r.note()).contains("1050m").contains("CPU-bound");
     }
 
     @Test

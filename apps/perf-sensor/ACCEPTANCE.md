@@ -110,7 +110,7 @@ score     cd ~/environment && claude -c -p "How is unicorn-store-spring doing ag
 The sensor scopes facts to the current pod, and the load in terminal C never stops. A score
 asked right after a rollout waits inside `measure` until the pod is 2 min old (Claude says
 "the pod is young — measuring once it is 2 min old"); a score asked later returns at once.
-Per module, check the items named as flipping; the score in §8e is the verdict.
+Per module, check the items named as flipping; the score in §8d is the verdict.
 
 **Skill-boundary checks on every module** (fail the module if any is violated):
 - The turn edits only the listed files, does not `git add`/`commit`, runs no shell command
@@ -245,14 +245,17 @@ with `runtime.cpuThrottledRatio`, `jfr.monitorTop` (with the waiting frame) and 
 
 `cd ~/environment && claude -c -p "Blocking is fixed but writes to unicorn-store-spring are still slow under load. Why?"`
 
-## 8b. Re-size after the code fix
+## 8b. Re-size after the code fix and fix the shutdown budget
 
-`cd ~/environment && claude -c -p "Right-size unicorn-store-spring again."`
+`cd ~/environment && claude -c -p "Right-size unicorn-store-spring again and fix item 10."`
 
-Expected: one change from `sizeMemory` + `sizeCpu`: memory `requests == limits` ≈ 640Mi (peak
-≈ 400 × 1.4 → 640), CPU request ≈ 650m (p95 ≈ 0.4 × 1.5), old → new cited; `Dockerfile.crac`
-`JAVA_HEAP_OPTS` → `-Xmx480m -Xms320m` with "rebuild needed" stated. Review: `k8s/deployment.yaml`,
-`Dockerfile.crac`.
+Expected, from `sizeMemory` + `sizeCpu`: memory `requests == limits` ≈ 512Mi (peak ≈ 357 × 1.4 →
+512), CPU request ≈ 650m (p95 ≈ 0.39 × 1.5), old → new cited; `Dockerfile.crac` `JAVA_HEAP_OPTS`
+→ `-Xmx384m -Xms256m` (75 % / 50 % of the new limit) with "rebuild needed" stated if it changed.
+Plus `terminationGracePeriodSeconds: 40` under `spec.template.spec` (preStop 10 s + Spring Boot's
+30 s graceful-shutdown drain), the reasoning stated. Nothing else changed. Review:
+`k8s/deployment.yaml`, `Dockerfile.crac`.
+
 ```bash
 ~/environment/unicorn-store-spring/scripts/build.sh crac Dockerfile.crac
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
@@ -262,19 +265,7 @@ git -C ~/environment/unicorn-store-spring add -A && git -C ~/environment/unicorn
 The lesson for the page: had the code fix come first, modules 1–2 would have landed on these
 numbers directly. Sizing is a loop, not a step.
 
-## 8c. Shutdown budget
-
-`cd ~/environment && claude -c -p "How to fix item 10?"`
-
-Expected: `terminationGracePeriodSeconds: 40` added to `k8s/deployment.yaml` (preStop 10 s +
-Spring Boot's 30 s graceful-shutdown drain), the reasoning stated, nothing else changed.
-```bash
-kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
-kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
-git -C ~/environment/unicorn-store-spring add -A && git -C ~/environment/unicorn-store-spring commit -q -m "shutdown budget"
-```
-
-## 8d. Connection pool
+## 8c. Connection pool (only if item 11 still fails)
 
 `cd ~/environment && claude -c -p "Item 11 still fails — what now?"`
 
@@ -289,7 +280,7 @@ git -C ~/environment/unicorn-store-spring add -A && git -C ~/environment/unicorn
 ```
 If 11 was already ✅ after §8, skip this step and say so in the record.
 
-## 8e. Verdict and take-away
+## 8d. Verdict and take-away
 
 `cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"`
 
@@ -320,7 +311,7 @@ that are Ready now; traffic facts use the window clipped to the current pod's li
 replaced by a rollout does not leak into the verdict, and a freshly rolled pod without load
 reads 🟡 on the load-guarded items.
 
-Items 2, 6, 10 and 11 at the end are fixed by the closing questions (§8b–§8d), not by a
+Items 2, 6, 10 and 11 at the end are fixed by the closing questions (§8b–§8c), not by a
 module: the last red items are the participant's own loop.
 
 Verdict: 3/3 runs pass §3–§8 with the expected flips → adopt the skill flow and rewrite the

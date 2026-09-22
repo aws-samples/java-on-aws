@@ -1,0 +1,46 @@
+{
+  "workload": {
+    "namespace": "unicorn-store-spring",
+    "deployment": "unicorn-store-spring",
+    "container": "unicorn-store-spring",
+    "imageTag": "latest",
+    "replicas": 1,
+    "cpuRequestCores": 1.0,
+    "cpuLimitCores": 1.0,
+    "memRequestMi": 2048.0,
+    "memLimitMi": 2048.0,
+    "cpuResizePolicy": false,
+    "javaToolOptions": null,
+    "startupProbe": true,
+    "runAsNonRoot": true,
+    "allowPrivilegeEscalation": false,
+    "sidecars": ["perf-profiler"]
+  },
+  "runtime": {
+    "rssFloorMi": 377.0,
+    "rssPeakMi": 517.0,
+    "heapUsedMi": 55.0,
+    "heapCommittedMi": 86.0,
+    "gcName": "SerialGC",
+    "effectiveCpuCount": 1,
+    "startupSeconds": 13.03,
+    "restarts": 0,
+    "uptimeSeconds": 3600.0,
+    "requestRatePerSec": 30,
+    "cpuUsageP95Cores": 0.667
+  },
+  "profile": {
+    "topCpu": [{"name": "com/unicorn/store/service/UnicornService.createUnicorn", "selfPct": 6.0}],
+    "topWall": [{"name": "jdk/internal/misc/Unsafe.park", "selfPct": 12.0}],
+    "jitSharePct": 3.0,
+    "gcSharePct": 5.0,
+    "futexWallSharePct": 12.0,
+    "warmupWindow": false,
+    "samples": 4356
+  },
+  "threads": {
+    "threadCountByState": {"RUNNABLE": 8, "TIMED_WAITING": 20, "WAITING": 15},
+    "poolWaitCarriers": 0,
+    "futureGetOnRequestPath": false
+  }
+}

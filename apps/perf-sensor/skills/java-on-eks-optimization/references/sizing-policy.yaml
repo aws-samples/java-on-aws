@@ -6,8 +6,9 @@
 # sizeMemory: limits = roundUp(max(peak * peakFactor, floor * floorSafetyFactor));
 #             requests = limits (Guaranteed memory QoS — JVM memory is stable after warm-up,
 #             and a Burstable JVM is the first OOM-kill candidate on a busy node).
-# sizeCpu:    requests.cpu = roundUp(cpuUsageP95 * cpuFactor, roundMillicores); limits.cpu unchanged
-#             (the boot spike is the startup CPU boost's job, not the steady request's).
+# sizeCpu:    requests.cpu = min(roundUp(cpuUsageP95 * cpuFactor, roundMillicores), limits.cpu); limits.cpu unchanged
+#             (the boot spike is the startup CPU boost's job, not the steady request's;
+#             clampedToLimit=true means the pod is CPU-bound at this load).
 policy:
   peakFactor: 1.40          # memory limit >= peak * this — over the observed load peak
   floorSafetyFactor: 1.90   # memory limit >= floor * this — protects against an under-observed peak

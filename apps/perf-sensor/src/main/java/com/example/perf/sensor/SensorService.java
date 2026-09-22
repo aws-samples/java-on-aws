@@ -360,9 +360,12 @@ public class SensorService {
 
     public record CpuEvidence(Double cpuUsageP95Cores, Double cpuRequestCores, Double cpuLimitCores) {}
 
-    /** OK: requests.cpu computed, limits.cpu = current (unchanged). BLOCKED: reason set. */
+    /**
+     * OK: requests.cpu computed, limits.cpu = current (unchanged). BLOCKED: reason set.
+     * clampedToLimit: the computed request exceeded limits.cpu and was capped to it (note explains).
+     */
     public record CpuResult(String status, String reason, String requestsCpu, String limitsCpu,
-                            CpuEvidence evidence, CpuParams params) {}
+                            boolean clampedToLimit, String note, CpuEvidence evidence, CpuParams params) {}
 
     public CpuResult sizeCpu(String service, int windowMinutes, CpuParams p) {
         return sizeCpu(facts.collect(service, windowMinutes), p);
@@ -388,26 +391,35 @@ public class SensorService {
 
         if (p95 == null) {
             return new CpuResult("BLOCKED", "insufficient measurement: missing CPU usage p95 from Prometheus",
-                null, null, evidence, p);
+                null, null, false, null, evidence, p);
         }
         boolean warm = uptime != null && uptime > p.warmSeconds() && samples > p.minSamples();
         if (!warm) {
             return new CpuResult("BLOCKED", ("profiling window not warm: uptime=%s (need > %ds), samples=%d (need > %d). "
                 + "Run a load phase after (re)start and retry.")
-                .formatted(fmt(uptime), p.warmSeconds(), samples, p.minSamples()), null, null, evidence, p);
+                .formatted(fmt(uptime), p.warmSeconds(), samples, p.minSamples()), null, null, false, null, evidence, p);
         }
         boolean load = (reqRate != null && reqRate > p.minRequestRate())
             || (floor != null && peak != null && peak - floor > p.minDeltaMi());
         if (!load) {
             return new CpuResult("BLOCKED", ("no load observed: requestRate=%s rps (need > %s). Drive traffic and retry.")
-                .formatted(fmt(reqRate), fmt(p.minRequestRate())), null, null, evidence, p);
+                .formatted(fmt(reqRate), fmt(p.minRequestRate())), null, null, false, null, evidence, p);
         }
         long millis = (long) Math.ceil(p95 * p.cpuFactor() * 1000.0);
         long rounded = ((millis + p.roundMillicores() - 1) / p.roundMillicores()) * p.roundMillicores();
-        String requests = rounded + "m";
         String limits = cpuLim == null ? null : quantity(cpuLim);
-        logger.info("sizeCpu OK p95={} -> requests={} limits={} (unchanged)", p95, requests, limits);
-        return new CpuResult("OK", null, requests, limits, evidence, p);
+        boolean clamped = false;
+        String note = null;
+        if (cpuLim != null && rounded > Math.round(cpuLim * 1000.0)) {
+            clamped = true;
+            note = ("computed request %dm exceeds limits.cpu %s; capped to the limit. The container is "
+                + "CPU-bound at this load (p95 %.3f cores of %s): raise limits.cpu (and ActiveProcessorCount) "
+                + "or reduce CPU per request, then re-measure.").formatted(rounded, limits, p95, limits);
+            rounded = Math.round(cpuLim * 1000.0);
+        }
+        String requests = rounded + "m";
+        logger.info("sizeCpu OK p95={} -> requests={} limits={} (unchanged) clamped={}", p95, requests, limits, clamped);
+        return new CpuResult("OK", null, requests, limits, clamped, note, evidence, p);
     }
 
     /** Cores as a K8s quantity: whole cores as "1", fractions as millicores "500m". */

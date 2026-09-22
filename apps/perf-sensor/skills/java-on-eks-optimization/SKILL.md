@@ -64,7 +64,10 @@ Do not read desired-state that `measure` already returns via `read_k8s_resource`
   **`references/sizing-policy.yaml`** (read the values from that file, pass them verbatim) —
   **never compute sizes yourself and never retype the numbers from prose.** `sizeMemory`
   returns `requests == limits` (Guaranteed memory QoS); keep them equal. `sizeCpu` changes
-  the request only; keep the limit.
+  the request only; keep the limit. If `sizeCpu.clampedToLimit` is true, use `requestsCpu`
+  as returned (it equals the limit) and quote `note`: the container is CPU-bound at this
+  load, the request can't express headroom, and the real fix is a cheaper request path or a
+  higher limit — say which, don't change the limit on your own.
 - If a tool returns `BLOCKED`, report the reason and **stop** (do not size, do not guess).
 - **Never recommend G1GC on ≤ 1 vCPU.** `sizeMemory` returns SerialGC there; keep it.
 - Use the reference Dockerfiles verbatim except the documented placeholders, filled
