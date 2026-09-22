@@ -8,7 +8,10 @@
 #
 #   1. ~/environment/unicorn-store-spring: hard reset to the commit
 #      "Starting point: containerized + deployed to EKS", untracked files removed
-#      (Dockerfile.aot/.crac, startup-cpu-boost.yaml, listener classes ...).
+#      (Dockerfile.aot/.crac, startup-cpu-boost.yaml, listener classes ...); then
+#      scripts/load.sh, scripts/build.sh and CLAUDE.md are synced from the shared
+#      source (apps/unicorn-store-spring) and folded into that commit, so the
+#      starting point always carries the current versions.
 #   2. StartupCPUBoost CRs in the app namespace deleted (created in module 2;
 #      the CR outlives the manifest reset).
 #   3. Baseline manifest applied (:latest, 1 vCPU / 2Gi, no sidecar label) and
@@ -56,6 +59,25 @@ git -C "${APP_DIR}" reset -q --hard "${START_SHA}" \
   && git -C "${APP_DIR}" clean -fdq \
   && log_success "App repo at starting point ($(git -C "${APP_DIR}" status --porcelain | wc -l | tr -d ' ') changes left)" \
   || { log_error "git reset failed"; exit 1; }
+
+# 1b. The starting point must carry the CURRENT shared-source versions of the files the
+# workshop ships with the app (they change between runs; the participant copy was taken at
+# bootstrap). Sync them and fold them into the starting-point commit, so a later reset
+# never brings an old script back.
+SYNCED=""
+for f in scripts/load.sh scripts/build.sh CLAUDE.md; do
+  if [ -f "${SHARED_SRC}/${f}" ] && ! cmp -s "${SHARED_SRC}/${f}" "${APP_DIR}/${f}"; then
+    mkdir -p "$(dirname "${APP_DIR}/${f}")"
+    cp "${SHARED_SRC}/${f}" "${APP_DIR}/${f}"
+    SYNCED="${SYNCED} ${f}"
+  fi
+done
+if [ -n "${SYNCED}" ]; then
+  git -C "${APP_DIR}" add -A \
+    && git -C "${APP_DIR}" commit -q --amend --no-edit \
+    && log_success "Starting point updated from shared source:${SYNCED}" \
+    || { log_error "could not fold synced files into the starting-point commit"; exit 1; }
+fi
 
 # 2. Module 2's CR outlives the manifest.
 kubectl -n "${APP_NS}" delete startupcpuboost --all --ignore-not-found >/dev/null 2>&1 \
