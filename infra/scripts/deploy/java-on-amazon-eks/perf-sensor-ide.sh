@@ -63,8 +63,8 @@ echo "wrote ${ENV_DIR}/.mcp.json"
 # permissions.allow: pre-approve the read-only sensors (mcp__<server> = every tool on that
 # server), file reads, and edits so the investigate -> explain -> apply loop runs without
 # tool prompts. Bash is allowed for ONE command only: the app's own scripts/load.sh (the fixed
-# load run the "under load" facts need — see ~/environment/CLAUDE.md). kubectl/build/git still
-# prompt — rollout stays a participant action we don't block but don't auto-run.
+# load run the "under load" facts need — documented in the app's CLAUDE.md). kubectl/build/git
+# still prompt — rollout stays a participant action we don't block but don't auto-run.
 python3 - "${ENV_DIR}/.claude/settings.json" <<'PY'
 import json, os, sys
 path = sys.argv[1]
@@ -92,36 +92,9 @@ with open(path, "w") as f:
 PY
 echo "wrote ${ENV_DIR}/.claude/settings.json (enabledMcpjsonServers + permissions.allow for sensors, read, edit, load.sh)"
 
-# ~/environment/CLAUDE.md: what THIS environment expects from Claude on top of the generic
-# skills — how to get traffic for the facts that need it, and that nothing else is run here.
-# Workspace-level on purpose: the skills know no workshop, the app repo is a plain app.
-cat > "${ENV_DIR}/CLAUDE.md" <<'MD'
-# Working in this environment
-
-The Java service under study lives in `unicorn-store-spring/` (a plain Spring Boot app,
-deployed to the EKS cluster in namespace `unicorn-store-spring`). Its measurements come from
-the `perf-sensor` MCP tools; the skills in `.claude/skills/` say how to read them.
-
-## Load
-
-Some facts exist only while requests are flowing: memory peak, CPU p95, CFS throttling,
-blocked request threads, request latency. The sensor never generates traffic. The app knows
-how to load-test itself: when a checklist item or a question needs those facts and
-`window.requestRatePerSec` is below 1, or `diagnoseBlocking` returns BLOCKED, run
-
-    ~/environment/unicorn-store-spring/scripts/load.sh
-
-then call the tools. It drives the write path at 50 req/s for 120 s and returns after 90 s
-with ~30 s of load still flowing — measure right after it returns. Do not start it when the
-rate is already above 1 (a load run is flowing), and do not run it more than once per question.
-
-## Commands
-
-The app's `scripts/load.sh` is the only command to run here. Do not run `kubectl`, `docker`,
-`scripts/build.sh` or `git`: rolling out, building and committing are the developer's steps,
-done after the changes are reviewed.
-MD
-echo "wrote ${ENV_DIR}/CLAUDE.md"
+# No workspace CLAUDE.md: the app repo documents itself (unicorn-store-spring/CLAUDE.md,
+# incl. scripts/load.sh) and the skills tell Claude to look there. Remove a leftover.
+rm -f "${ENV_DIR}/CLAUDE.md"
 # --allow-sensitive-data-access is required for get_pod_logs / get_k8s_events (read-only;
 # write stays off). Auth uses the IDE role (default iam mode). uv/uvx and the eks-mcp
 # package are installed and prewarmed by ide/tools.sh (install_uv) during base bootstrap.

@@ -11,10 +11,10 @@ Two terminals: **A** for everything below, **B** for the port-forward (started o
 
 The sensor is read-only and drives no traffic, and a blocked virtual thread exists only while
 requests are in flight (neither the wall profile nor JFR records it), so the items that need
-load (2, 6, 7, 11, 12) need a load run. Claude starts it itself: `~/environment/CLAUDE.md`
-(written by `perf-sensor-ide.sh`) tells it to run `~/environment/unicorn-store-spring/scripts/load.sh`
-— the one Bash command in `permissions.allow` — when `requestRatePerSec` is below 1 or
-`diagnoseBlocking` is BLOCKED, then call the tools. `load.sh` sends 50 writes/s for 120 s and
+load (2, 6, 7, 11, 12) need a load run. Claude starts it itself: the skills say "the service's
+repo documents how it is load-tested", the app's `CLAUDE.md` names `scripts/load.sh` — the one
+Bash command in `permissions.allow` — and Claude runs it when `requestRatePerSec` is below 1
+or `diagnoseBlocking` is BLOCKED, then calls the tools. `load.sh` sends 50 writes/s for 120 s and
 returns after 90 s, so ~30 s of load remain for the dump samples and item 7 has ≥ 30 s past
 the pod's first minute. Rate 50: one pooled connection held for the ~10 ms EventBridge
 round-trip carries ~60 writes/s, so 50 keeps the mean low (≈ 12 ms) but shows the defect in
@@ -89,8 +89,8 @@ Expected: Claude runs `load.sh` first (new pod, no traffic), then scores **≈ 5
 | ❌ | 11 | blocked ≥ 1, blockedInsideTransaction ≥ 1, pool waits > 0 (diagnoseBlocking OK, load flowing) |
 | ✅ | 12 | mean ≈ 12 ms (bar 100) — the defect is in the tail (`latencyMaxMs` in the seconds), which 12 does not score |
 
-If 11 shows 🟡 BLOCKED, Claude did not run `load.sh` before `diagnoseBlocking` — a CLAUDE.md
-or skill defect; note it and ask again. Save the output as `~/environment/baseline.txt`.
+If 11 shows 🟡 BLOCKED, Claude did not run `scripts/load.sh` before `diagnoseBlocking` — a
+skill or app-CLAUDE.md defect; note it and ask again. Save the output as `~/environment/baseline.txt`.
 
 ---
 
