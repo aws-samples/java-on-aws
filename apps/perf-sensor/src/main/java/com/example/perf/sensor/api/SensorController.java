@@ -34,8 +34,9 @@ public class SensorController {
 
     @GetMapping("/measure/{service}")
     public MeasureResult measure(@PathVariable String service,
-                                 @RequestParam(defaultValue = "15") int windowMinutes) {
-        return sensor.measure(service, windowMinutes);
+                                 @RequestParam(defaultValue = "15") int windowMinutes,
+                                 @RequestParam(defaultValue = "0") int minUptimeSeconds) {
+        return sensor.measure(service, windowMinutes, minUptimeSeconds);
     }
 
     @GetMapping("/sizeMemory/{service}")

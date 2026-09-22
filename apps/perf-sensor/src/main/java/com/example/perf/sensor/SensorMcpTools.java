@@ -40,12 +40,16 @@ public class SensorMcpTools {
         limits as the JVM read them incl. effectiveCpuCount, jvmArgs, GC pauses count/max/total,
         VirtualThreadPinned, top monitors, safepoint total, JIT compilation count/time), and the
         window {uptimeSeconds, samples, requestRatePerSec}. Facts only — everything the checklist
-        needs except the thread dump under load. Deterministic; no LLM.""")
+        needs except the thread dump under load. Deterministic; no LLM. minUptimeSeconds: if the
+        current pod is younger than this, the sensor waits (up to 120 s) until it is that old
+        before measuring — use 120 for a checklist score right after a rollout so the load-guarded
+        items have data instead of UNKNOWN.""")
     public MeasureResult measure(
         @ToolParam(description = "Pyroscope service_name = Deployment name") String service,
-        @ToolParam(description = "Look-back window in minutes (default 15)", required = false) Integer windowMinutes) {
-        logger.info("MCP measure service={} window={}", service, windowMinutes);
-        return sensor.measure(service, orDefault(windowMinutes));
+        @ToolParam(description = "Look-back window in minutes (default 15)", required = false) Integer windowMinutes,
+        @ToolParam(description = "wait until the current pod is at least this old, seconds (default 0 = no wait; max wait 120 s)", required = false) Integer minUptimeSeconds) {
+        logger.info("MCP measure service={} window={} minUptime={}", service, windowMinutes, minUptimeSeconds);
+        return sensor.measure(service, orDefault(windowMinutes), minUptimeSeconds == null ? 0 : minUptimeSeconds);
     }
 
     @Tool(description = """
@@ -77,6 +81,7 @@ public class SensorMcpTools {
     @Tool(description = """
         Summarized thread dump for a Java service via the profiler sidecar /dump (JSON jcmd thread
         dump, never raw): total threads, count by state, virtual thread count,
+        requestThreadsActive (in-flight request threads = observed concurrency),
         requestThreadsBlockedInFutureGet (request-path threads parked in a blocking Future.get/join),
         carriersParkedInPoolWait, blockedInsideTransaction (blocked while a transaction interceptor
         is on the stack: remote I/O inside a DB transaction, holding a pooled connection),
@@ -98,8 +103,9 @@ public class SensorMcpTools {
         exists only while requests are in flight, is invisible to the wall flame graph (a parked
         virtual thread unmounts) and is NOT in the JFR ring (JFR records ThreadPark only for
         platform threads) — sampling dumps under load catches it on any image, including CRaC.
-        Returns status OK with aggregated thread facts (requestThreadsBlockedInFutureGet,
-        blockedInsideTransaction and carriersParkedInPoolWait = PEAK concurrent across samples;
+        Returns status OK with aggregated thread facts (requestThreadsActive,
+        requestThreadsBlockedInFutureGet, blockedInsideTransaction and carriersParkedInPoolWait =
+        PEAK concurrent across samples;
         topBlockingFrames counts summed), or BLOCKED with a
         reason when the request rate over the last minute is not above minRequestRate — then ask
         the operator to start the load run and call again while it runs.""")

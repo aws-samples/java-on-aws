@@ -15,8 +15,11 @@ fact — mark it UNKNOWN.
 Scoring needs a load run flowing (the operator's benchmark); five items are only decidable
 under load and `diagnoseBlocking` samples live threads.
 
-1. Call `perf-sensor.measure <service>`. It returns everything items 1–10 and 12 need
-   (workload, runtime, profile summary, `jfr` ring facts, window).
+1. Call `perf-sensor.measure <service>` with `minUptimeSeconds = 120`. It returns everything
+   items 1–10 and 12 need (workload, runtime, profile summary, `jfr` ring facts, window). A
+   pod younger than 120 s has no peak, p95 or throttle share yet, so the sensor waits until
+   it is 120 s old before measuring (at most 120 s). If the call takes a while, that is why;
+   tell the user "the pod is young — measuring once it is 2 min old" and do not re-call.
 2. Call `perf-sensor.diagnoseBlocking <service>` with `minRequestRate` from the optimization
    skill's `references/sizing-policy.yaml` for item 11. It samples the thread dump while the
    load flows and drives no traffic. If it returns BLOCKED, or `window.requestRatePerSec`

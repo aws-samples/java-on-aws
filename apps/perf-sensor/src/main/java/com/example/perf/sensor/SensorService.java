@@ -93,6 +93,29 @@ public class SensorService {
     // --- measure ---------------------------------------------------------------
 
     public MeasureResult measure(String service, int windowMinutes) {
+        return measure(service, windowMinutes, 0);
+    }
+
+    /**
+     * {@code minUptimeSeconds}: a freshly rolled pod has no peak, p95 or throttle share yet (the
+     * load-guarded checklist items need ~2 min of traffic on THAT pod). When the current pod is
+     * younger, wait until it reaches this age (at most 120 s) before collecting, so a question
+     * asked right after a rollout settles instead of returning UNKNOWNs.
+     */
+    public MeasureResult measure(String service, int windowMinutes, int minUptimeSeconds) {
+        if (minUptimeSeconds > 0) {
+            var snap = k8s.collect(service, service);
+            if (snap.uptimeSeconds() != null && snap.uptimeSeconds() < minUptimeSeconds) {
+                long waitMs = Math.min(120, minUptimeSeconds - snap.uptimeSeconds().longValue()) * 1000L;
+                logger.info("measure service={} pod={} is {}s old, waiting {}s for minUptime {}s",
+                    service, snap.appPodName(), snap.uptimeSeconds().intValue(), waitMs / 1000, minUptimeSeconds);
+                try {
+                    Thread.sleep(waitMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
         var f = facts.collect(service, windowMinutes);
         var rt = f.runtime();
         var window = new Window(
@@ -198,10 +221,11 @@ public class SensorService {
         // Aggregate across the sampled pods: sum counts, merge states + blocking frames.
         var byState = new java.util.LinkedHashMap<String, Integer>();
         var frames = new java.util.LinkedHashMap<String, Integer>();
-        int total = 0, virtual = 0, blocked = 0, pool = 0, inTx = 0;
+        int total = 0, virtual = 0, active = 0, blocked = 0, pool = 0, inTx = 0;
         for (var d : dumps) {
             total += d.total();
             virtual += d.virtualThreads();
+            active += d.requestThreadsActive();
             blocked += d.requestThreadsBlockedInFutureGet();
             pool += d.carriersParkedInPoolWait();
             inTx += d.blockedInsideTransaction();
@@ -218,7 +242,7 @@ public class SensorService {
             .toList();
         var pods = dumps.stream().map(ThreadFacts::pod).toList();
         return new ThreadFacts(String.join(",", pods), Instant.now().toString(),
-            total, byState, virtual, blocked, pool, inTx, topFrames, dumps.getFirst().sample());
+            total, byState, virtual, active, blocked, pool, inTx, topFrames, dumps.getFirst().sample());
     }
 
     /**
@@ -235,7 +259,7 @@ public class SensorService {
         String ip = snap.appPodIP(), name = snap.appPodName();
         var byState = new java.util.LinkedHashMap<String, Integer>();
         var frames = new java.util.LinkedHashMap<String, Integer>();
-        int maxTotal = 0, maxVirtual = 0, maxBlocked = 0, maxPool = 0, maxInTx = 0, taken = 0;
+        int maxTotal = 0, maxVirtual = 0, maxActive = 0, maxBlocked = 0, maxPool = 0, maxInTx = 0, taken = 0;
         ThreadFacts last = null;
         for (int i = 0; i < n; i++) {
             var d = dump.threads(ip, name);
@@ -244,6 +268,7 @@ public class SensorService {
                 last = d;
                 maxTotal = Math.max(maxTotal, d.total());
                 maxVirtual = Math.max(maxVirtual, d.virtualThreads());
+                maxActive = Math.max(maxActive, d.requestThreadsActive());
                 maxBlocked = Math.max(maxBlocked, d.requestThreadsBlockedInFutureGet());
                 maxPool = Math.max(maxPool, d.carriersParkedInPoolWait());
                 maxInTx = Math.max(maxInTx, d.blockedInsideTransaction());
@@ -271,7 +296,7 @@ public class SensorService {
             .map(e -> new ThreadFacts.FrameCount(e.getKey(), e.getValue()))
             .toList();
         return new ThreadFacts(name, Instant.now().toString(),
-            maxTotal, byState, maxVirtual, maxBlocked, maxPool, maxInTx, topFrames,
+            maxTotal, byState, maxVirtual, maxActive, maxBlocked, maxPool, maxInTx, topFrames,
             last == null ? null : last.sample());
     }
 

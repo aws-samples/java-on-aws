@@ -83,7 +83,7 @@ public class DumpCollector {
             return parseThreads(body, podName, ts);
         } catch (Exception e) {
             logger.warn("thread dump parse failed: {}", e.getMessage());
-            return new ThreadFacts(podName, ts, 0, Map.of(), 0, 0, 0, 0, List.of(), List.of());
+            return new ThreadFacts(podName, ts, 0, Map.of(), 0, 0, 0, 0, 0, List.of(), List.of());
         }
     }
 
@@ -94,7 +94,7 @@ public class DumpCollector {
         var byState = new LinkedHashMap<String, Integer>();
         var blockingFrames = new LinkedHashMap<String, Integer>();
         var sample = new ArrayList<ThreadFacts.ThreadSample>();
-        int total = 0, virtual = 0, blockedGet = 0, poolWaiters = 0, inTx = 0;
+        int total = 0, virtual = 0, active = 0, blockedGet = 0, poolWaiters = 0, inTx = 0;
 
         for (var container : containers) {
             for (var t : container.path("threads")) {
@@ -112,6 +112,7 @@ public class DumpCollector {
                 if (!isRequestPath(stackText)) {
                     continue;
                 }
+                active++;
                 boolean blocking = BLOCKING_GET.matcher(stackText).find();
                 if (blocking) {
                     blockedGet++;
@@ -135,7 +136,7 @@ public class DumpCollector {
             .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
             .map(e -> new ThreadFacts.FrameCount(e.getKey(), e.getValue()))
             .toList();
-        return new ThreadFacts(podName, ts, total, byState, virtual, blockedGet, poolWaiters, inTx,
+        return new ThreadFacts(podName, ts, total, byState, virtual, active, blockedGet, poolWaiters, inTx,
             topBlocking, sample);
     }
 

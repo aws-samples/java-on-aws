@@ -136,6 +136,21 @@ Read the file and pass the values through. The *why* for each:
   the transaction (after commit — the connection is held for the round-trip otherwise; read
   the `@Transactional` method in `src/` to show it); if `carriersParkedInPoolWait > 0`, also
   size the connection pool to the observed concurrency. Reference: `blocking-calls.md`.
+- **"right-size again" / "re-size" / "re-measure after the change" / "the sizing is stale"** →
+  `measure`, `sizeMemory` and `sizeCpu` in one pass (a code or runtime change moves the
+  working set and the CPU demand; the earlier numbers were right for the earlier code).
+  One change with everything the two tools returned: memory `requests == limits`, CPU
+  `requests` (limit unchanged), `MaxRAMPercentage`/`InitialRAMPercentage` when the image
+  reads them; on a CRaC image the heap bounds live in the checkpoint, so update
+  `JAVA_HEAP_OPTS` in `Dockerfile.crac` from the new limit and say the image must be
+  rebuilt. Cite old → new for each value. Reference: `right-size-memory.md`.
+- **"item 11 still fails" / "pool waits" / "connection pool"** → `diagnoseBlocking`. If
+  `requestThreadsBlockedInFutureGet == 0` and `blockedInsideTransaction == 0` but
+  `carriersParkedInPoolWait > 0`, the pool is smaller than the request concurrency: set the
+  pool's maximum size (Hikari `maximum-pool-size` in the app config) to
+  `requestThreadsActive` (peak in-flight request threads across the samples), not a round
+  number; say which value you read. If blocking is still > 0, fix that first
+  (previous bullet). Reference: `blocking-calls.md`.
 - **"how are we doing / score"** → run the `java-on-eks-checklist` skill.
 
 ## 5. Answer format

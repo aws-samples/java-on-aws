@@ -94,5 +94,6 @@ class DumpParseTest {
         var t = dump.parseThreads(json, "pod-z", "2026-01-01T00:00:00Z");
         assertThat(t.requestThreadsBlockedInFutureGet()).isEqualTo(2);
         assertThat(t.blockedInsideTransaction()).isEqualTo(1);
+        assertThat(t.requestThreadsActive()).isEqualTo(2);
     }
 }

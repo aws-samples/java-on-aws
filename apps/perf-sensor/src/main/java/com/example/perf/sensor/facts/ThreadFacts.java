@@ -15,6 +15,8 @@ import java.util.Map;
  * @param total                            total threads in the dump
  * @param byState                          thread count per {@code Thread.State}
  * @param virtualThreads                   count of virtual threads
+ * @param requestThreadsActive             request-path threads present in the dump (in-flight requests; the
+ *                                         observed concurrency a connection pool has to serve)
  * @param requestThreadsBlockedInFutureGet request-path threads parked in a blocking Future.get()/join()
  * @param carriersParkedInPoolWait         carrier/request threads parked in a connection-pool wait
  * @param blockedInsideTransaction         of the blocked request threads, how many block while a
@@ -29,6 +31,7 @@ public record ThreadFacts(
     int total,
     Map<String, Integer> byState,
     int virtualThreads,
+    int requestThreadsActive,
     int requestThreadsBlockedInFutureGet,
     int carriersParkedInPoolWait,
     int blockedInsideTransaction,

@@ -51,6 +51,8 @@ latency metric** is the authoritative "it is slow" signal on every image.
 - `carriersParkedInPoolWait` — threads waiting on a connection pool. > 0 with
   `blockedInsideTransaction > 0` is the transaction boundary starving the pool; > 0 with
   `blockedInsideTransaction == 0` is a pool genuinely too small for the concurrency.
+- `requestThreadsActive` — request-path threads in flight (peak across samples): the
+  concurrency a connection pool has to serve. The number to size a pool from.
 - `requestRatePerSec` (from `diagnoseBlocking`) — the load that was flowing while it sampled.
 
 ## Key benefits of fixing it
@@ -71,8 +73,8 @@ latency metric** is the authoritative "it is slow" signal on every image.
   For guaranteed delivery the full pattern is a transactional outbox; not needed here.
 - If a result is genuinely needed, bound it (timeout) and **size the pool from
   evidence** — set the pool to the measured concurrency, not a guess: only when
-  `carriersParkedInPoolWait > 0` remains after the boundary fix, and to the observed
-  concurrent request count, not a round number.
+  `carriersParkedInPoolWait > 0` remains after the boundary fix, and to
+  `requestThreadsActive` (peak in-flight requests), not a round number.
 - Virtual threads make blocking cheaper but do not make a needless block correct;
   remove the block first.
 
