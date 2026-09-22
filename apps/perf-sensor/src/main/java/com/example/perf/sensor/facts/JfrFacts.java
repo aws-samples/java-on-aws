@@ -18,7 +18,7 @@ import java.util.List;
  * @param jvmArgs          jdk.JVMInformation.jvmArguments (flags incl. ENTRYPOINT/JAVA_TOOL_OPTIONS)
  * @param gc               jdk.GCPhasePause aggregate
  * @param pinned           jdk.VirtualThreadPinned aggregate (synchronized blocks pinning carriers)
- * @param monitorTop       jdk.JavaMonitorEnter top monitors by total blocked time
+ * @param monitorTop       jdk.JavaMonitorEnter top monitors by total blocked time, with the waiting frame
  * @param safepointTotalMs jdk.SafepointBegin total stop-the-world time, ms
  * @param compilation      jdk.Compilation aggregate (JIT volume in the window)
  */
@@ -44,7 +44,8 @@ public record JfrFacts(
     /** jdk.VirtualThreadPinned: count, max duration, top pinning frames. */
     public record Pinned(int count, Double maxMs, List<FrameCount> topFrames) {}
 
-    public record MonitorWait(String monitorClass, int count, Double totalMs) {}
+    /** {@code topFrame}: the most frequent frame of the threads that waited (first app frame if any). */
+    public record MonitorWait(String monitorClass, int count, Double totalMs, String topFrame) {}
 
     public record Compilation(int count, Double totalMs, Double maxMs) {}
 

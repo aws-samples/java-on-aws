@@ -38,6 +38,8 @@ export JAR_FILE="store-spring-1.0.0-exec.jar"
 export MAIN_CLASS="com.unicorn.store.StoreApplication"
 export JAVA_HEAP_OPTS="-Xmx480m -Xms320m"   # 640Mi limit x 0.75 / 0.50 (sizing-policy.yaml cracHeap)
 export JAVA_CPU_OPTS="-XX:ActiveProcessorCount=1"   # ceil(limits.cpu) = 1
+# Warm-up request for the CRaC checkpoint: the app's write path.
+export WARMUP_CMD="curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -d '{\"name\":\"warmup\",\"age\":\"1\",\"type\":\"warmup\",\"size\":\"s\"}' http://localhost:8080/unicorns"
 
 [ -d "${APP_SRC}" ] || { log_error "App dir not found: ${APP_SRC} (run Phase 3 first)"; exit 1; }
 [ -x "${APP_SRC}/scripts/build.sh" ] || { log_error "scripts/build.sh missing in ${APP_SRC}"; exit 1; }
@@ -63,7 +65,7 @@ else
     log_error "UnicornPublisher.crac not found in ${PUBLISHER_DIR} — source is de-spoiled; prebuild must run BEFORE de-spoil"
     exit 1
 fi
-( cd "${BUILD_DIR}" && EXTRA_BUILD_ARGS="JAR_FILE JAVA_HEAP_OPTS JAVA_CPU_OPTS" ./scripts/build.sh crac Dockerfile.crac ) >"${CRAC_LOG}" 2>&1 \
+( cd "${BUILD_DIR}" && EXTRA_BUILD_ARGS="JAR_FILE JAVA_HEAP_OPTS JAVA_CPU_OPTS WARMUP_CMD" ./scripts/build.sh crac Dockerfile.crac ) >"${CRAC_LOG}" 2>&1 \
     && log_success "unicorn-store-spring:crac pushed" \
     || { log_error "CRaC prebuild failed — last 40 lines of ${CRAC_LOG}:"; tail -n 40 "${CRAC_LOG}"; exit 1; }
 

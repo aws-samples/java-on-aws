@@ -62,9 +62,10 @@ echo "wrote ${ENV_DIR}/.mcp.json"
 #
 # permissions.allow: pre-approve the read-only sensors (mcp__<server> = every tool on that
 # server), file reads, and edits so the investigate -> explain -> apply loop runs without
-# tool prompts. Bash is allowed for ONE command only: the app's own scripts/load.sh (the fixed
-# load run the "under load" facts need — documented in the app's CLAUDE.md). kubectl/build/git
-# still prompt — rollout stays a participant action we don't block but don't auto-run.
+# tool prompts. Bash is deliberately NOT listed: the service runs under steady load for the
+# whole session (the developer keeps scripts/load.sh running in its own terminal), so Claude
+# has nothing to run; kubectl/build/git still prompt — rollout stays a participant action we
+# don't block but don't auto-run.
 python3 - "${ENV_DIR}/.claude/settings.json" <<'PY'
 import json, os, sys
 path = sys.argv[1]
@@ -80,14 +81,7 @@ servers.update(["perf-sensor", "eks-mcp"])
 data["enabledMcpjsonServers"] = sorted(servers)
 perms = data.setdefault("permissions", {})
 allow = list(perms.get("allow", []))
-for rule in ["mcp__perf-sensor", "mcp__eks-mcp", "Read", "Grep", "Glob", "Edit", "Write",
-             # every spelling Claude uses for the one allowed command (prefix rules)
-             "Bash(~/environment/unicorn-store-spring/scripts/load.sh:*)",
-             "Bash(" + os.path.expanduser("~") + "/environment/unicorn-store-spring/scripts/load.sh:*)",
-             "Bash(bash ~/environment/unicorn-store-spring/scripts/load.sh:*)",
-             "Bash(bash " + os.path.expanduser("~") + "/environment/unicorn-store-spring/scripts/load.sh:*)",
-             "Bash(unicorn-store-spring/scripts/load.sh:*)",
-             "Bash(bash unicorn-store-spring/scripts/load.sh:*)"]:
+for rule in ["mcp__perf-sensor", "mcp__eks-mcp", "Read", "Grep", "Glob", "Edit", "Write"]:
     if rule not in allow:
         allow.append(rule)
 perms["allow"] = allow
@@ -95,10 +89,10 @@ os.makedirs(os.path.dirname(path), exist_ok=True)
 with open(path, "w") as f:
     json.dump(data, f, indent=2)
 PY
-echo "wrote ${ENV_DIR}/.claude/settings.json (enabledMcpjsonServers + permissions.allow for sensors, read, edit, load.sh)"
+echo "wrote ${ENV_DIR}/.claude/settings.json (enabledMcpjsonServers + permissions.allow for sensors, read, edit)"
 
-# No workspace CLAUDE.md: the app repo documents itself (unicorn-store-spring/CLAUDE.md,
-# incl. scripts/load.sh) and the skills tell Claude to look there. Remove a leftover.
+# No workspace CLAUDE.md: the app repo documents itself (unicorn-store-spring/CLAUDE.md).
+# Remove a leftover from earlier revisions.
 rm -f "${ENV_DIR}/CLAUDE.md"
 # --allow-sensitive-data-access is required for get_pod_logs / get_k8s_events (read-only;
 # write stays off). Auth uses the IDE role (default iam mode). uv/uvx and the eks-mcp

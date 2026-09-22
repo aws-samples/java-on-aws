@@ -117,6 +117,15 @@ public class PrometheusClient {
         return vectorByPod("application_ready_time_seconds{application=\"" + app + "\"}");
     }
 
+    /**
+     * Per-pod startup seconds as the sensor read them from each pod's log (Started/Restored),
+     * keyed by pod. Preferred over application.ready.time: a CRaC checkpoint taken after startup
+     * carries the BUILD-time ready metric into every restored pod, while the log names the restore.
+     */
+    public java.util.Map<String, Double> perPodStartupFromLog(String service) {
+        return vectorByPod("perf_sensor_startup_seconds{service=\"" + service + "\"}");
+    }
+
     /** Run an instant query and return value per {@code pod} label (skips series with no pod). */
     private java.util.Map<String, Double> vectorByPod(String query) {
         var out = new java.util.LinkedHashMap<String, Double>();

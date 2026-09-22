@@ -116,7 +116,8 @@ Read the file and pass the values through. The *why* for each:
 - **"start even faster / under a second"** → `measure` (`jfr.compilation` shows the JIT
   volume a cold start pays), `startupLog`; CRaC. Artifact:
   `org.crac` dependency in `pom.xml` (not present by default), `Dockerfile.crac` with
-  `JAR_FILE` from `pom.xml`, `JAVA_HEAP_OPTS` from `workload.memLimitMi` × `cracHeap`
+  `JAR_FILE` from `pom.xml`, `WARMUP_CMD` = one `curl` on the app's hot request path (the
+  checkpoint is taken after a warm-up), `JAVA_HEAP_OPTS` from `workload.memLimitMi` × `cracHeap`
   shares (whole MiB, e.g. 640 → `-Xmx480m -Xms320m`), `JAVA_CPU_OPTS` =
   `-XX:ActiveProcessorCount=<ceil(workload.cpuLimitCores)>`, and a CRaC `Resource` hook for each
   class in `src/` holding network clients or file handles. Mention credentials-at-restore
@@ -125,9 +126,8 @@ Read the file and pass the values through. The *why* for each:
   crash-loops the restore. Reference: `crac.md`.
 - **"fix latency under load" / "some requests take seconds" / "slow writes" / "tail latency"** →
   `diagnoseBlocking <service>` while the operator's load
-  run is flowing (if BLOCKED: the service's repo normally documents how it is load-tested —
-  its `CLAUDE.md`/`AGENTS.md`/`README`, a `scripts/load*.sh`; run that once and call again.
-  If the repo has none, say "start the load run and ask again while it runs" and stop);
+  run is flowing (if BLOCKED: say "the service's load must be running — start it and ask
+  again while it runs" and stop; do not start load yourself);
   `measure` for the in-JVM context (`jfr.pinned`, `jfr.monitorTop`, `jfr.gc.maxMs`,
   `jfr.safepointTotalMs`, `latencyMeanMs`).
   It names the blocking frame and `file:line` (`…CompletableFuture.get`) on **any image,

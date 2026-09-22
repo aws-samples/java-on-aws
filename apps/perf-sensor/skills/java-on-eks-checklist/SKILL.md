@@ -20,10 +20,9 @@ under load and `diagnoseBlocking` samples live threads.
 2. Call `perf-sensor.diagnoseBlocking <service>` with `minRequestRate` from the optimization
    skill's `references/sizing-policy.yaml` for item 11. It samples the thread dump while the
    load flows and drives no traffic. If it returns BLOCKED, or `window.requestRatePerSec`
-   from `measure` is below `minRequestRate`: the service's repo normally documents how it is
-   load-tested (its `CLAUDE.md`/`AGENTS.md`/`README`, a `scripts/load*.sh`). Read that, run
-   the documented command once, then call `measure` and `diagnoseBlocking` again. If the repo
-   has none, the load-dependent items are UNKNOWN with the reason "no load in window".
+   from `measure` is below `minRequestRate`, the load-dependent items are UNKNOWN with the
+   reason "no load in window"; say that the service's load (its repo documents how, e.g. a
+   `scripts/load*.sh`) must be running, and stop. Do not start load yourself.
 3. Evaluate every item in `references/checklist.md` as **PASS / FAIL / UNKNOWN**
    from the named evidence fields. A fact that is absent (null) makes its item
    UNKNOWN, not FAIL. Items marked *under load* are UNKNOWN when

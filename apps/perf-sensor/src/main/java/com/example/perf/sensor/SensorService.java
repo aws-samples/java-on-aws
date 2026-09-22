@@ -288,11 +288,13 @@ public class SensorService {
      * thread) exists only while requests are in flight, and JFR does not record virtual-thread
      * parks, so the caller must have a load run going. Guard: BLOCKED unless the request rate
      * over the last minute exceeds {@code minRequestRate}. Read-only on any image, including CRaC.
+     * Defaults 20 s at 500 ms = 40 dumps: a ~10 ms block at 50 rps is present in a given dump
+     * with p ≈ 0.4, so 12 dumps missed it once in ~25 runs; 40 dumps make a miss negligible.
      */
     public BlockingDiagnosis diagnoseBlocking(String service, int durationSec, long intervalMs,
                                               double minRequestRate) {
-        int dur = Math.max(3, Math.min(durationSec <= 0 ? 12 : durationSec, 60));
-        long gap = intervalMs <= 0 ? 1000L : Math.min(intervalMs, 5000L);
+        int dur = Math.max(3, Math.min(durationSec <= 0 ? 20 : durationSec, 60));
+        long gap = intervalMs <= 0 ? 500L : Math.min(intervalMs, 5000L);
         int samples = Math.max(2, (int) ((dur * 1000L) / gap));
         Double rateNow = prometheus == null ? null : prometheus.requestRatePerSec(service, 1);
         if (rateNow == null || rateNow <= minRequestRate) {

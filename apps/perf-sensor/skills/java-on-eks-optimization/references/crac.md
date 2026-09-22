@@ -63,7 +63,12 @@ Scan `src/` for every class that opens a client/connection/file and add a hook t
 
 - The fastest startup available — sub-second — ideal for scale-to-zero and fast
   scale-up.
-- The restored process is already warm: no JIT ramp, no cold-cache latency spike.
+- The restored process is as warm as the checkpoint was. A checkpoint taken after a
+  warm-up (requests driven through the hot path, then `jcmd JDK.checkpoint`) restores with
+  the request path already compiled; a checkpoint taken on context refresh has never served
+  a request, so the restored JVM JITs the whole path under production load — on a 1‑vCPU
+  quota that is seconds of compilation, visible as CFS throttling and latency in the first
+  minutes after every restore. `Dockerfile.crac` warms before it checkpoints.
 
 ## Gotcha: JVM flags live in the checkpoint, not in the Deployment
 
@@ -104,8 +109,9 @@ Consequences to state explicitly:
 
 Three changes: (1) add the `org.crac` dependency to `pom.xml`; (2) add an
 `org.crac.Resource` hook to each FD-holding class found in `src/`; (3) use
-`Dockerfile.crac` verbatim, filling `JAR_FILE` from the app's `pom.xml` and
-`JAVA_HEAP_OPTS` from the pod's `limits.memory` (`measure` → `workload.memLimitMi`,
+`Dockerfile.crac` verbatim, filling `JAR_FILE` from the app's `pom.xml`, `WARMUP_CMD` with
+one `curl` against the app's hot request path (method, path and body from the controller or
+the app's own docs), and `JAVA_HEAP_OPTS` from the pod's `limits.memory` (`measure` → `workload.memLimitMi`,
 × 0.75 / × 0.50, whole MiB, e.g. 640Mi → `-Xmx480m -Xms320m`) and `JAVA_CPU_OPTS` from
 `workload.cpuLimitCores` (`-XX:ActiveProcessorCount=<ceil>`, e.g. 1 → `-XX:ActiveProcessorCount=1`).
 Verify with `perf-sensor.startupLog` — `kind` should read **Restored** and seconds < 1 — and

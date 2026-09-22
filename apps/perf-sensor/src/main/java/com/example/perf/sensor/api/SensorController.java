@@ -62,8 +62,8 @@ public class SensorController {
     @GetMapping("/diagnoseBlocking/{service}")
     public com.example.perf.sensor.SensorService.BlockingDiagnosis diagnoseBlocking(
             @PathVariable String service,
-            @RequestParam(defaultValue = "12") int durationSec,
-            @RequestParam(defaultValue = "1000") long intervalMs,
+            @RequestParam(defaultValue = "20") int durationSec,
+            @RequestParam(defaultValue = "500") long intervalMs,
             @RequestParam(defaultValue = "1") double minRequestRate) {
         return sensor.diagnoseBlocking(service, durationSec, intervalMs, minRequestRate);
     }

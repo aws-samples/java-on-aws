@@ -3,6 +3,7 @@
 #   JAR_FILE       = <build.finalName>-exec.jar  (artifactId + version, e.g. myapp-1.0.0-exec.jar)
 #   JAVA_HEAP_OPTS = -Xmx<75% of limits.memory> -Xms<50% of limits.memory>  (see sizing-policy.yaml cracHeap)
 #   JAVA_CPU_OPTS  = -XX:ActiveProcessorCount=<ceil(limits.cpu)>
+#   WARMUP_CMD     = one curl against the app's hot request path (path + JSON body)
 # The checkpoint is taken at BUILD time with the Warp engine (no CRIU, no extra
 # container privileges). Restore is sub-second. Any class holding sockets/file
 # descriptors at checkpoint must implement org.crac.Resource (see crac.md).
@@ -25,10 +26,14 @@ COPY ./pom.xml ./pom.xml
 COPY src ./src/
 RUN mvn clean package -DskipTests -ntp && mv target/${JAR_FILE} app.jar
 
-# Take the checkpoint with the Warp engine. Spring refreshes the context, then
-# checkpoints on refresh; open FDs are reported (collect-fd-stacktraces) so a
+# Take the checkpoint with the Warp engine AFTER A WARM-UP. You restore exactly what you
+# checkpointed: a checkpoint taken on context refresh (spring.context.checkpoint=onRefresh)
+# has never served a request, so the restored JVM starts in 0.2 s and then JITs the whole
+# request path under production load (seconds of compilation on a 1-vCPU quota: throttling
+# and latency in the first minutes). Start the app, drive WARMUP_REQUESTS through the hot
+# path, then checkpoint with jcmd. Open FDs are reported (collect-fd-stacktraces) so a
 # missing Resource hook fails loudly.
-# GC AND HEAP BOUNDS ARE BAKED INTO THE CHECKPOINT and cannot change at restore:
+# GC, HEAP BOUNDS AND CPU COUNT ARE BAKED INTO THE CHECKPOINT and cannot change at restore:
 #  - GC: SerialGC for a <= 1 vCPU pod (the CRaC JDK would otherwise default to G1).
 #  - Heap: JAVA_HEAP_OPTS sets -Xmx/-Xms from the pod's memory limit (sizing-policy.yaml
 #    cracHeap: 75% / 50% of limits.memory, e.g. limit 640Mi -> "-Xmx480m -Xms320m").
@@ -38,15 +43,29 @@ RUN mvn clean package -DskipTests -ntp && mv target/${JAR_FILE} app.jar
 #    is active at that moment it reads the boosted count and keeps that many GC/JIT/
 #    carrier threads on the steady-state quota for life. JAVA_CPU_OPTS pins the count to
 #    ceil(limits.cpu); JAVA_TOOL_OPTIONS cannot carry it (flags there break the restore).
+# WARMUP_CMD is one request against the app's hot path (fill the path and body for the
+# app). The build host's IMDS/role is used for region and credentials during the warm-up
+# (as the app would at startup); nothing is baked — clients are closed before the
+# checkpoint and recreated in afterRestore with the pod's identity.
 ARG JAVA_HEAP_OPTS="-Xmx480m -Xms320m"
 ARG JAVA_CPU_OPTS="-XX:ActiveProcessorCount=1"
-RUN java -Dspring.context.checkpoint=onRefresh \
-    -Djdk.crac.collect-fd-stacktraces=true \
-    -XX:+UseSerialGC ${JAVA_HEAP_OPTS} ${JAVA_CPU_OPTS} \
-    -XX:CRaCEngine=warp \
-    -XX:CPUFeatures=generic \
-    -XX:CRaCCheckpointTo=/opt/crac-files \
-    -jar /app.jar & PID=$! && wait ${PID} || true
+ARG WARMUP_REQUESTS=200
+# Placeholder: replace with the app's hot request, e.g.
+#   curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -d '{...}' http://localhost:8080/<resource>
+ARG WARMUP_CMD="curl -s -o /dev/null http://localhost:8080/"
+RUN set -e; \
+    java \
+      -Djdk.crac.collect-fd-stacktraces=true \
+      -XX:+UseSerialGC ${JAVA_HEAP_OPTS} ${JAVA_CPU_OPTS} \
+      -XX:CRaCEngine=warp \
+      -XX:CPUFeatures=generic \
+      -XX:CRaCCheckpointTo=/opt/crac-files \
+      -jar /app.jar & PID=$!; \
+    for i in $(seq 1 90); do curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1 && break; sleep 1; done; \
+    curl -sf http://localhost:8080/actuator/health >/dev/null; \
+    for i in $(seq 1 ${WARMUP_REQUESTS}); do eval "${WARMUP_CMD}"; done; \
+    sleep 2; jcmd ${PID} JDK.checkpoint; wait ${PID} || true; \
+    test -d /opt/crac-files
 
 FROM azul/zulu-openjdk:25-jdk-crac-latest
 RUN apt-get -qq update && apt-get -qq install -y adduser \
@@ -56,5 +75,6 @@ COPY --from=builder --chown=1000:1000 /opt/crac-files /opt/crac-files
 COPY --from=builder --chown=1000:1000 /app.jar /app.jar
 USER 1000:1000
 EXPOSE 8080
-# Restore from the checkpoint — no cold JVM start, no class loading, no JIT warm-up.
+# Restore from the checkpoint — no cold JVM start, no class loading, and (because the
+# checkpoint was warmed) no JIT ramp on the request path either.
 ENTRYPOINT ["java", "-XX:CRaCEngine=warp", "-XX:CRaCRestoreFrom=/opt/crac-files", "-Dserver.port=8080"]

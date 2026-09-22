@@ -90,17 +90,19 @@ public class FactsCollector {
     }
 
     /**
-     * Startup of the slowest CURRENT pod (application.ready.time keyed by pod). Falls back to
-     * the fleet max when the per-pod series carry no matching pod label.
+     * Startup of the slowest CURRENT pod. Source order: the sensor's own log-derived gauge
+     * (Started/Restored line of each pod — the only source that is right for a CRaC restore),
+     * then application.ready.time per pod, then the fleet max.
      */
     private Double currentStartup(String service, java.util.List<String> readyPods) {
         if (readyPods != null && !readyPods.isEmpty()) {
-            var perPod = prometheus.perPodStartup(service);
-            var current = perPod.entrySet().stream()
-                .filter(e -> readyPods.contains(e.getKey()))
-                .mapToDouble(java.util.Map.Entry::getValue).max();
-            if (current.isPresent()) {
-                return current.getAsDouble();
+            for (var perPod : java.util.List.of(prometheus.perPodStartupFromLog(service), prometheus.perPodStartup(service))) {
+                var current = perPod.entrySet().stream()
+                    .filter(e -> readyPods.contains(e.getKey()))
+                    .mapToDouble(java.util.Map.Entry::getValue).max();
+                if (current.isPresent()) {
+                    return current.getAsDouble();
+                }
             }
         }
         return prometheus.startupSeconds(service);

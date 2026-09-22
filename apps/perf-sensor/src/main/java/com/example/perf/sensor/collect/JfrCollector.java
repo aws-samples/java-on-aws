@@ -101,6 +101,7 @@ public class JfrCollector {
         double pinMax = 0;
         var pinFrames = new LinkedHashMap<String, Integer>();
         var monitors = new LinkedHashMap<String, double[]>();   // class -> {count, totalMs}
+        var monitorFrames = new LinkedHashMap<String, LinkedHashMap<String, Integer>>();   // class -> frame -> count
         double safepointTotal = 0;
         boolean anySafepoint = false;
         int compCount = 0;
@@ -148,6 +149,13 @@ public class JfrCollector {
                         var acc = monitors.computeIfAbsent(cls, k -> new double[2]);
                         acc[0]++;
                         acc[1] += millis(e.getDuration());
+                        // The monitor class alone ("java.lang.Object", "[I") names nothing; the waiting
+                        // thread's frame does. Prefer the first app frame, else the top frame.
+                        var frames = frames(e.getStackTrace());
+                        frames.stream().filter(f -> f.startsWith(requestPackage)).findFirst()
+                            .or(() -> frames.stream().findFirst())
+                            .ifPresent(f -> monitorFrames.computeIfAbsent(cls, k -> new LinkedHashMap<>())
+                                .merge(f, 1, Integer::sum));
                     }
                     case "jdk.SafepointBegin" -> {
                         anySafepoint = true;
@@ -167,7 +175,9 @@ public class JfrCollector {
         var monitorTop = monitors.entrySet().stream()
             .sorted(Comparator.comparingDouble((Map.Entry<String, double[]> en) -> en.getValue()[1]).reversed())
             .limit(TOP)
-            .map(en -> new MonitorWait(en.getKey(), (int) en.getValue()[0], round(en.getValue()[1])))
+            .map(en -> new MonitorWait(en.getKey(), (int) en.getValue()[0], round(en.getValue()[1]),
+                monitorFrames.getOrDefault(en.getKey(), new LinkedHashMap<>()).entrySet().stream()
+                    .max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(null)))
             .toList();
 
         return new JfrFacts(podName,

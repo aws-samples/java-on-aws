@@ -41,7 +41,7 @@ JDK `java` tool reference (container support, `MaxRAMPercentage`, `InitialRAMPer
 | # | Practice | Rule | Evidence |
 |---|---|---|---|
 | 5 | JVM sees its CPU and the GC fits it | `cpuLimitCores` set AND `effectiveCpuCount == ceil(cpuLimitCores)` (`effectiveCpuCount` is the JVM's own `jdk.ContainerConfiguration` value when the ring is present); AND (`effectiveCpuCount ≤ 1` → `gcName == SerialGC`) | `workload.cpuLimitCores`, `runtime.effectiveCpuCount`, `jfr.container`, `runtime.gcName` |
-| 6 | CPU request reflects steady state, not boot | `cpuRequestCores / cpuUsageP95Cores ≤ 2.0` *under load* | `workload.cpuRequestCores`, `runtime.cpuUsageP95Cores`, `window.requestRatePerSec` |
+| 6 | CPU request reflects steady state, not boot | `cpuRequestCores / cpuUsageP95Cores ≤ 1.75` *under load* | `workload.cpuRequestCores`, `runtime.cpuUsageP95Cores`, `window.requestRatePerSec` |
 | 7 | Not CFS-throttled under load | `cpuThrottledRatio ≤ 0.10` (throttled seconds / CPU seconds used, the current pod's lifetime minus its first 60 s, capped at 5 min) *under load*; null → 🟡 "pod younger than 90 s" | `runtime.cpuThrottledRatio`, `runtime.uptimeSeconds`, `window.requestRatePerSec` |
 
 Why: GC, JIT and ForkJoin thread counts are fixed at JVM start from the processor

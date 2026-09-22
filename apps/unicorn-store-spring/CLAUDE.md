@@ -28,11 +28,8 @@ steps, done after a change has been reviewed.
 
 ## Load
 
-Under-load facts (memory peak, CPU p95, throttling, blocked request threads, request
-latency) exist only while requests flow. The service does not generate its own traffic;
-`scripts/load.sh` does: it drives `POST /unicorns` at 50 req/s for 120 s against the
-service's Ingress and returns after 90 s with ~30 s of load still flowing — measure right
-after it returns. Run it when a measurement needs load and the current request rate is
-below 1 req/s (probe traffic alone is ≈ 0.5 req/s); once per question is enough, and not
-while a run is already flowing. Invoke it by its path from the current directory, e.g.
-`unicorn-store-spring/scripts/load.sh` — no `cd`, no other command chained to it.
+`scripts/load.sh [duration] [rate]` drives `POST /unicorns` against the service's Ingress
+(default 50 req/s for 120 s). Under-load measurements (memory peak, CPU p95, throttling,
+blocked request threads, request latency) are only meaningful while it runs; keep it running
+in its own terminal for as long as the service should be treated as in production
+(`while true; do ./scripts/load.sh 600 50; done`). Probe traffic alone is ≈ 0.5 req/s.

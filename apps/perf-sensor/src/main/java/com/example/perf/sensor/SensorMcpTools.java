@@ -105,13 +105,13 @@ public class SensorMcpTools {
         the operator to start the load run and call again while it runs.""")
     public com.example.perf.sensor.SensorService.BlockingDiagnosis diagnoseBlocking(
         @ToolParam(description = "Pyroscope service_name = Deployment name") String service,
-        @ToolParam(description = "how long to sample, seconds (default 12; clamped to 60)", required = false) Integer durationSec,
-        @ToolParam(description = "thread-dump sampling interval in ms (default 1000)", required = false) Integer intervalMs,
+        @ToolParam(description = "how long to sample, seconds (default 20; clamped to 60)", required = false) Integer durationSec,
+        @ToolParam(description = "thread-dump sampling interval in ms (default 500)", required = false) Integer intervalMs,
         @ToolParam(description = "guard: request rate rps over the last minute that counts as load flowing (e.g. 1)") double minRequestRate) {
         logger.info("MCP diagnoseBlocking service={} dur={}", service, durationSec);
         return sensor.diagnoseBlocking(service,
-            durationSec == null ? 12 : durationSec,
-            intervalMs == null ? 1000L : intervalMs,
+            durationSec == null ? 20 : durationSec,
+            intervalMs == null ? 500L : intervalMs,
             minRequestRate);
     }
 
