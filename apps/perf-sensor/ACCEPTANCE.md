@@ -13,14 +13,15 @@ The sensor is read-only and drives no traffic, and a blocked virtual thread exis
 requests are in flight (neither the wall profile nor JFR records it), so the items that need
 load (2, 6, 7, 11, 12) are decided only in the three **load runs**: baseline, the module 5
 latency question, and the final score. One block does load and question together: start the
-120 s benchmark in the background, wait 60 s for the window to have a peak, ask, then `wait`.
-Rate 50 writes/s: with one pooled connection held for the EventBridge round-trip the app
-saturates near 20 writes/s, so 50 makes the defect unmistakable (item 12 ❌ at baseline) and
-surfaces pool waits; 200 (the immersion-day rate) would time out and inflate the memory peak.
+120 s benchmark in the background, wait 90 s (item 7 needs ≥ 30 s of the pod past its first
+minute), ask, then `wait`. Rate 50 writes/s: one pooled connection held for the ~10 ms
+EventBridge round-trip carries ~60 writes/s, so 50 keeps the mean low (≈ 12 ms) but shows the
+defect in the tail and the dump — max in the seconds, blocked threads, pool waits; 200 (the
+immersion-day rate) would time out and inflate the memory peak that sets module 1's limit.
 
 **Load-run block** =
 ```bash
-~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 60; cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"; wait
+~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 90; cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"; wait
 ```
 Every other score is the bare `claude -c -p "How is unicorn-store-spring doing against best practices?"`.
 
@@ -67,7 +68,7 @@ kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --tim
 kubectl -n unicorn-store-spring get pod -l app=unicorn-store-spring -o jsonpath='{.items[0].spec.containers[*].name}'; echo   # unicorn-store-spring perf-profiler
 kubectl -n unicorn-store-spring get pod -l app=unicorn-store-spring -o jsonpath='{.items[0].spec.volumes[?(@.name=="perf-scratch")].name}'; echo   # perf-scratch
 git -C ~/environment/unicorn-store-spring add -A && git -C ~/environment/unicorn-store-spring commit -q -m "baseline: profiler attached"
-~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 60; cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"; wait
+~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 90; cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"; wait
 ```
 Load run 1 of 3. Expected **≈ 5/12**:
 
@@ -79,12 +80,12 @@ Load run 1 of 3. Expected **≈ 5/12**:
 | ❌ | 4 | initialHeap 32 / 512 = 0.06 |
 | ✅ | 5 | limit 1, sees 1, SerialGC |
 | ❌/✅ | 6 | request 1.0 / p95 ≈ 0.5 ≈ 2.0× — sits on the bar, either verdict is fine |
-| ? | 7 | throttled s / used s over the last ≤ 5 min minus boot — **record the value**, bar 0.10 is uncalibrated |
+| ? | 7 | throttled s / used s over the pod's life minus its first minute — **record the value**, bar 0.10 is uncalibrated |
 | ❌ | 8 | startup ≈ 13–15 s |
 | ✅ | 9 | startup budget 50 ≥ 2× startup, no initialDelay, liveness 30, distinct paths |
 | ❌ | 10 | grace 30 < preStop 10 + 30 |
 | ❌ | 11 | blocked ≥ 1, blockedInsideTransaction ≥ 1, pool waits > 0 (diagnoseBlocking OK, load flowing) |
-| ❌ | 12 | mean latency in the seconds (bar 100) — **record it**; first run at 50 rps |
+| ✅ | 12 | mean ≈ 12 ms (bar 100) — the defect is in the tail (`latencyMaxMs` in the seconds), which 12 does not score |
 
 If 11 shows 🟡 BLOCKED, the load was not flowing when Claude called the tool: rerun the
 load-run block. Save the output as `~/environment/baseline.txt`.
@@ -211,7 +212,7 @@ G1: the running image is not the skill build — the prebuild used another Docke
 ## 8. Module 5 — latency (code fix)
 
 ```bash
-~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 60; cd ~/environment && claude -c -p "Why is unicorn-store-spring latency high under load and how do I fix it?"; wait
+~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 90; cd ~/environment && claude -c -p "Why do some writes to unicorn-store-spring take seconds under load and how do I fix it?"; wait
 ```
 Load run 2 of 3. Expected: `diagnoseBlocking` status OK (not BLOCKED — if BLOCKED, Claude asks for
 the load run; start it and ask again); `requestThreadsBlockedInFutureGet ≥ 1`,
@@ -228,18 +229,32 @@ only if the pool was sized).
 kubectl -n unicorn-store-spring rollout restart deploy/unicorn-store-spring
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 git -C ~/environment/unicorn-store-spring add -A && git -C ~/environment/unicorn-store-spring commit -q -m "non-blocking publish"
-~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 60; cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"; wait
+~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 90; cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"; wait
 ```
 Load run 3 of 3 — the verdict. Expected **10–11/12**: 1–6, 8, 9, 11, 12 ✅ (11: blocked 0,
-inside-transaction 0, pool waits 0; 12: mean latency well under 100 ms at 50 rps); 10 ❌ (no
-module fixes the grace period); 7 is the open one — record `cpuThrottledRatio` on the CRaC pod
-under load; ≤ 0.10 makes it 11.
+inside-transaction 0, pool waits 0; 12: mean latency well under 100 ms at 50 rps, `latencyMaxMs`
+no longer in the seconds); 10 ❌ (no module fixes the grace period); 7 is the open one — record
+`cpuThrottledRatio` on the CRaC pod under load; ≤ 0.10 makes it 11.
+
+**If 12 is still ❌ with 11 ✅** (open finding from run 2: the CRaC pod showed mean ≈ 400 ms and
+an 11 s flat max before *and* after the code fix, while the plain pod did 12 ms on the same
+code), the blocking fix was not the pod's bottleneck. Ask, on the same load run if it is still
+flowing, otherwise start one:
+```bash
+~/java-on-aws/infra/scripts/test/benchmark.sh $(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) 120 50 >/dev/null 2>&1 & sleep 90; cd ~/environment && claude -c -p "Blocking is fixed but writes to unicorn-store-spring are still slow under load. Why?"; wait
+```
+Record the answer, `runtime.cpuThrottledRatio`, `jfr.monitorTop` and `jfr.pinned` verbatim. The
+CRaC pod's checkpoint now pins `ActiveProcessorCount`; if the slowness is gone with that, the
+cause was the JVM sized for the boosted 2 CPUs on a 1-CPU quota.
 
 ---
 
 ## 9. Variance rule and verdict
 
-Run §3–§8 three times, each on a fresh env. Anything that differs between runs other than prose —
+Run §3–§8 three times, each on a fresh env or after
+`~/java-on-aws/infra/scripts/deploy/java-on-amazon-eks/reset-app.sh --prebuild` (hard-resets the
+app repo to the starting-point commit, deletes the boost CR, redeploys `:latest`, restores the
+prebuilt tags). Anything that differs between runs other than prose —
 tool choice, artifact content beyond measured values, an extra action after apply, a different
 checklist verdict on the same state — is a defect in a skill or a tool description. Fix it, re-run.
 

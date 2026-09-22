@@ -60,12 +60,12 @@ public class FactsCollector {
             : (int) Math.max(1, Math.min(mins, Math.floor(snap.uptimeSeconds() / 60.0)));
         Double requestRate = prometheus.requestRatePerSec(service, trafficMins);
         Double cpuP95 = prometheus.cpuUsageP95Cores(service, container, pods, mins);
-        // Throttling: last 5 minutes at most, and never the pod's first 60 s (boot JIT saturates
-        // the quota by design). Whole minutes; null while the pod is younger than 2 min.
+        // Throttling: the pod's lifetime minus its first 60 s (boot JIT saturates the quota by
+        // design), capped at 5 min; needs at least 30 s of steady state, else null.
         Double throttled = null;
-        if (snap.uptimeSeconds() != null && snap.uptimeSeconds() >= 120) {
-            int throttleMins = (int) Math.min(Math.min(mins, 5), Math.floor((snap.uptimeSeconds() - 60) / 60.0));
-            throttled = prometheus.cpuThrottledRatio(service, container, pods, throttleMins);
+        if (snap.uptimeSeconds() != null && snap.uptimeSeconds() >= 90) {
+            int throttleSecs = (int) Math.min(mins * 60L, Math.min(300, snap.uptimeSeconds() - 60));
+            throttled = prometheus.cpuThrottledRatio(service, container, pods, throttleSecs);
         }
         Double latencyMean = prometheus.latencyMeanMs(service, trafficMins);
         Double latencyMax = prometheus.latencyMaxMs(service, trafficMins);

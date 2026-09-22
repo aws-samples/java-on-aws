@@ -93,6 +93,28 @@ round-trip to every write; removing it drops that latency sharply. Confirm the c
 with `diagnoseBlocking` again under the same load — `requestThreadsBlockedInFutureGet`
 should fall to 0.
 
+## When the block is gone and latency is still high
+
+`requestThreadsBlockedInFutureGet == 0` and `carriersParkedInPoolWait == 0` under load, yet
+`latencyMeanMs` or `latencyMaxMs` stays high: the request path is no longer waiting on
+itself, so look at what the pod is waiting on. Read these from `measure`, in this order,
+and name the one that carries the number:
+
+- `runtime.cpuThrottledRatio` high (> 0.10) and `jfr.container.effectiveCpuCount` >
+  `ceil(cpuLimitCores)`: the JVM runs more threads than its quota and is CFS-throttled —
+  every throttled period adds up to 100 ms to whatever was running. Pin
+  `ActiveProcessorCount` (in the checkpoint for CRaC); do not touch the code.
+- `jfr.monitorTop` with a large `totalMs`: contention on a `synchronized` block, named by
+  class; `jfr.pinned` > 0: a virtual thread pinned its carrier inside `synchronized` or
+  native code (`pinned.top` names the frame). Fix at the frame named.
+- `jfr.gc.maxMs` ≥ 100 ms or `jfr.safepointTotalMs` high: pauses, not waiting — heap or
+  GC choice (see `right-size-memory.md`).
+- None of the above and `latencyMaxMs` ≫ `latencyMeanMs`: a downstream dependency
+  (database, remote API) is slow for some requests; the dump's `sample` shows the frame
+  those threads sit in (`SocketRead`, JDBC `execute`, HTTP client).
+
+Do not guess between these; each has its own number in the tool output.
+
 ## Artifact
 
 There is no golden file here — the change is in the app's source. Name the blocking

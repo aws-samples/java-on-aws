@@ -2,6 +2,7 @@
 # placeholders from the app's pom.xml and the pod's memory limit:
 #   JAR_FILE       = <build.finalName>-exec.jar  (artifactId + version, e.g. myapp-1.0.0-exec.jar)
 #   JAVA_HEAP_OPTS = -Xmx<75% of limits.memory> -Xms<50% of limits.memory>  (see sizing-policy.yaml cracHeap)
+#   JAVA_CPU_OPTS  = -XX:ActiveProcessorCount=<ceil(limits.cpu)>
 # The checkpoint is taken at BUILD time with the Warp engine (no CRIU, no extra
 # container privileges). Restore is sub-second. Any class holding sockets/file
 # descriptors at checkpoint must implement org.crac.Resource (see crac.md).
@@ -33,10 +34,15 @@ RUN mvn clean package -DskipTests -ntp && mv target/${JAR_FILE} app.jar
 #    cracHeap: 75% / 50% of limits.memory, e.g. limit 640Mi -> "-Xmx480m -Xms320m").
 #    Without it the heap is sized from the BUILD machine, not the pod. Resizing the pod
 #    later means rebuilding the checkpoint.
+#  - CPU: a restored JVM re-reads the cgroup CPU quota at restore. If a startup CPU boost
+#    is active at that moment it reads the boosted count and keeps that many GC/JIT/
+#    carrier threads on the steady-state quota for life. JAVA_CPU_OPTS pins the count to
+#    ceil(limits.cpu); JAVA_TOOL_OPTIONS cannot carry it (flags there break the restore).
 ARG JAVA_HEAP_OPTS="-Xmx480m -Xms320m"
+ARG JAVA_CPU_OPTS="-XX:ActiveProcessorCount=1"
 RUN java -Dspring.context.checkpoint=onRefresh \
     -Djdk.crac.collect-fd-stacktraces=true \
-    -XX:+UseSerialGC ${JAVA_HEAP_OPTS} \
+    -XX:+UseSerialGC ${JAVA_HEAP_OPTS} ${JAVA_CPU_OPTS} \
     -XX:CRaCEngine=warp \
     -XX:CPUFeatures=generic \
     -XX:CRaCCheckpointTo=/opt/crac-files \

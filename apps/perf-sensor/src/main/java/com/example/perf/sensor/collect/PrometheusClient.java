@@ -83,9 +83,11 @@ public class PrometheusClient {
      * JVM that lost almost no wall time. Throttled seconds over used seconds says how much
      * the workload actually waited relative to the work it did.
      */
-    public Double cpuThrottledRatio(String namespace, String container, String podRegex, int mins) {
-        Double r = scalar("max(increase(container_cpu_cfs_throttled_seconds_total" + sel(namespace, container, podRegex) + win(mins) + ")"
-            + " / increase(container_cpu_usage_seconds_total" + sel(namespace, container, podRegex) + win(mins) + "))");
+    public Double cpuThrottledRatio(String namespace, String container, String podRegex, int seconds) {
+        String w = "[" + seconds + "s]";
+        // on(pod): the usage series carries an extra cpu="total" label the throttled series lacks.
+        Double r = scalar("max(increase(container_cpu_cfs_throttled_seconds_total" + sel(namespace, container, podRegex) + w + ")"
+            + " / on(pod) increase(container_cpu_usage_seconds_total" + sel(namespace, container, podRegex) + w + "))");
         return r == null || r.isNaN() || r.isInfinite() ? null : r;
     }
 

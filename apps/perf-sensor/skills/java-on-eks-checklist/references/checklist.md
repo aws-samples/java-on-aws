@@ -21,7 +21,7 @@ thresholds are stated bars, not constants: 5 s for startup (12-factor: "a few se
 |---|---|---|---|
 | 1 | Memory is Guaranteed and honoured | `memRequestMi == memLimitMi`, both set; AND `restarts == 0` or `lastTerminationReason != OOMKilled` | `workload.memRequestMi`, `workload.memLimitMi`, `runtime.restarts`, `runtime.lastTerminationReason` |
 | 2 | Limit sized from the measured working set | `memLimitMi / rssPeakMi ≤ 2.5` *under load* | `workload.memLimitMi`, `runtime.rssPeakMi`, `window.requestRatePerSec` |
-| 3 | Heap follows the container | observed `maxHeapMi / memLimitMi` between 0.50 and 0.80; AND the JVM's arguments carry no `-Xmx` (`jfr.jvmArgs`; fall back to `workload.javaToolOptions` when the ring is absent) | `runtime.maxHeapMi`, `workload.memLimitMi`, `jfr.jvmArgs` |
+| 3 | Heap follows the container | observed `maxHeapMi / memLimitMi` between 0.50 and 0.80. How the bound was set does not matter: `MaxRAMPercentage`, ergonomics, or an `-Xmx` derived from the limit (a CRaC checkpoint has to bake `-Xmx`) all pass if the ratio holds; note the mechanism from `jfr.jvmArgs` | `runtime.maxHeapMi`, `workload.memLimitMi`, `jfr.jvmArgs` |
 | 4 | Heap starts near its steady size | observed `initialHeapMi / maxHeapMi ≥ 0.50` | `runtime.initialHeapMi`, `runtime.maxHeapMi` |
 
 Why: the JVM sizes heap and GC from the cgroup limit; a request below the limit makes
@@ -42,7 +42,7 @@ JDK `java` tool reference (container support, `MaxRAMPercentage`, `InitialRAMPer
 |---|---|---|---|
 | 5 | JVM sees its CPU and the GC fits it | `cpuLimitCores` set AND `effectiveCpuCount == ceil(cpuLimitCores)` (`effectiveCpuCount` is the JVM's own `jdk.ContainerConfiguration` value when the ring is present); AND (`effectiveCpuCount ≤ 1` → `gcName == SerialGC`) | `workload.cpuLimitCores`, `runtime.effectiveCpuCount`, `jfr.container`, `runtime.gcName` |
 | 6 | CPU request reflects steady state, not boot | `cpuRequestCores / cpuUsageP95Cores ≤ 2.0` *under load* | `workload.cpuRequestCores`, `runtime.cpuUsageP95Cores`, `window.requestRatePerSec` |
-| 7 | Not CFS-throttled under load | `cpuThrottledRatio ≤ 0.10` (throttled seconds / CPU seconds used, last 5 min of the current pod, first 60 s excluded) *under load*; null → 🟡 "pod younger than 2 min" | `runtime.cpuThrottledRatio`, `runtime.uptimeSeconds`, `window.requestRatePerSec` |
+| 7 | Not CFS-throttled under load | `cpuThrottledRatio ≤ 0.10` (throttled seconds / CPU seconds used, the current pod's lifetime minus its first 60 s, capped at 5 min) *under load*; null → 🟡 "pod younger than 90 s" | `runtime.cpuThrottledRatio`, `runtime.uptimeSeconds`, `window.requestRatePerSec` |
 
 Why: GC, JIT and ForkJoin thread counts are fixed at JVM start from the processor
 count; a JVM that sees more cores than its quota over-threads and gets throttled, and

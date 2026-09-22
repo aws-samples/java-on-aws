@@ -88,7 +88,10 @@ kubectl -n "${NS}" rollout status deploy/perf-sensor --timeout=200s || {
 # 5. Grafana dashboard — the sensor's numbers, plus the two panels the old
 #    Optimization dashboard lacked: p99 request latency (Q5 blocking-call fix) and
 #    fleet memory reserved-vs-used (the right-sizing cost story at N replicas).
-#    Shipped as a ConfigMap the Grafana sidecar imports (label grafana_dashboard=1).
+#    Working-set series are joined with kube_pod_container_status_running so a pod
+#    replaced by a rollout (cAdvisor keeps its series for a while) does not double
+#    the fleet figure. Shipped as a ConfigMap the Grafana sidecar imports
+#    (label grafana_dashboard=1).
 # -----------------------------------------------------------------------------
 log_info "Provisioning 'Java on EKS — Sensor' dashboard..."
 DASH=$(mktemp)
@@ -116,7 +119,7 @@ cat > "${DASH}" <<DASH_EOF
     { "type": "stat", "id": 4, "title": "Memory used (fleet)", "gridPos": {"x":15,"y":1,"w":5,"h":4},
       "datasource": {"type":"prometheus","uid":"promds"}, "fieldConfig": {"defaults":{"unit":"bytes"}},
       "targets": [{"refId":"A","datasource":{"type":"prometheus","uid":"promds"},
-        "expr":"sum(container_memory_working_set_bytes{namespace=\"${APP_NS}\",container=\"${APP_NS}\"})"}] },
+        "expr":"sum(container_memory_working_set_bytes{namespace=\"${APP_NS}\",container=\"${APP_NS}\"} and on(pod) (kube_pod_container_status_running{namespace=\"${APP_NS}\",container=\"${APP_NS}\"} == 1))"}] },
     { "type": "stat", "id": 5, "title": "Pods ready", "gridPos": {"x":20,"y":1,"w":4,"h":4},
       "datasource": {"type":"prometheus","uid":"promds"}, "fieldConfig": {"defaults":{"unit":"short"}},
       "targets": [{"refId":"A","datasource":{"type":"prometheus","uid":"promds"},
@@ -128,7 +131,7 @@ cat > "${DASH}" <<DASH_EOF
         {"refId":"A","datasource":{"type":"prometheus","uid":"promds"},
          "expr":"sum(kube_pod_container_resource_limits{namespace=\"${APP_NS}\",container=\"${APP_NS}\",resource=\"memory\"})","legendFormat":"reserved (limit x pods)"},
         {"refId":"B","datasource":{"type":"prometheus","uid":"promds"},
-         "expr":"sum(container_memory_working_set_bytes{namespace=\"${APP_NS}\",container=\"${APP_NS}\"})","legendFormat":"used (working set)"}] },
+         "expr":"sum(container_memory_working_set_bytes{namespace=\"${APP_NS}\",container=\"${APP_NS}\"} and on(pod) (kube_pod_container_status_running{namespace=\"${APP_NS}\",container=\"${APP_NS}\"} == 1))","legendFormat":"used (working set)"}] },
     { "type": "timeseries", "id": 7, "title": "Request latency (avg / max)", "gridPos": {"x":12,"y":6,"w":12,"h":8},
       "datasource": {"type":"prometheus","uid":"promds"}, "fieldConfig": {"defaults":{"unit":"s"}},
       "targets": [
@@ -144,7 +147,7 @@ cat > "${DASH}" <<DASH_EOF
       "datasource": {"type":"prometheus","uid":"promds"}, "fieldConfig": {"defaults":{"unit":"bytes"}},
       "targets": [
         {"refId":"A","datasource":{"type":"prometheus","uid":"promds"},
-         "expr":"sum by (pod)(container_memory_working_set_bytes{namespace=\"${APP_NS}\",container=\"${APP_NS}\"})","legendFormat":"working set {{pod}}"},
+         "expr":"sum by (pod)(container_memory_working_set_bytes{namespace=\"${APP_NS}\",container=\"${APP_NS}\"} and on(pod) (kube_pod_container_status_running{namespace=\"${APP_NS}\",container=\"${APP_NS}\"} == 1))","legendFormat":"working set {{pod}}"},
         {"refId":"B","datasource":{"type":"prometheus","uid":"promds"},
          "expr":"max(kube_pod_container_resource_limits{namespace=\"${APP_NS}\",container=\"${APP_NS}\",resource=\"memory\"})","legendFormat":"limit"}] }
   ]

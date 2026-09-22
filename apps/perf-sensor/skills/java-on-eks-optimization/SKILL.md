@@ -116,13 +116,15 @@ Read the file and pass the values through. The *why* for each:
 - **"start even faster / under a second"** → `measure` (`jfr.compilation` shows the JIT
   volume a cold start pays), `startupLog`; CRaC. Artifact:
   `org.crac` dependency in `pom.xml` (not present by default), `Dockerfile.crac` with
-  `JAR_FILE` from `pom.xml` and `JAVA_HEAP_OPTS` from `workload.memLimitMi` × `cracHeap`
-  shares (whole MiB, e.g. 640 → `-Xmx480m -Xms320m`), and a CRaC `Resource` hook for each
+  `JAR_FILE` from `pom.xml`, `JAVA_HEAP_OPTS` from `workload.memLimitMi` × `cracHeap`
+  shares (whole MiB, e.g. 640 → `-Xmx480m -Xms320m`), `JAVA_CPU_OPTS` =
+  `-XX:ActiveProcessorCount=<ceil(workload.cpuLimitCores)>`, and a CRaC `Resource` hook for each
   class in `src/` holding network clients or file handles. Mention credentials-at-restore
   and that a later memory-limit change needs a rebuild. **Remove `JAVA_TOOL_OPTIONS` (GC/heap flags) from the
   Deployment for the CRaC image** — those are baked into the checkpoint; leaving them
   crash-loops the restore. Reference: `crac.md`.
-- **"fix latency under load"** → `diagnoseBlocking <service>` while the operator's load
+- **"fix latency under load" / "some requests take seconds" / "slow writes" / "tail latency"** →
+  `diagnoseBlocking <service>` while the operator's load
   run is flowing (if BLOCKED: say "start the load run and ask again while it runs", stop);
   `measure` for the in-JVM context (`jfr.pinned`, `jfr.monitorTop`, `jfr.gc.maxMs`,
   `jfr.safepointTotalMs`, `latencyMeanMs`).

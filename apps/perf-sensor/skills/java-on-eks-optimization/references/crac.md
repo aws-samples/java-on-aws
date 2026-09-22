@@ -84,6 +84,13 @@ Consequences to state explicitly:
   machine and `MaxRAMPercentage` in the Deployment has no effect on a restored JVM.
   The checkpoint is therefore tied to that pod size: change the memory limit → rebuild
   the image. This is a CRaC trade-off, not a misconfiguration.
+- `Dockerfile.crac` pins the processor count on the checkpoint command (`JAVA_CPU_OPTS`,
+  `-XX:ActiveProcessorCount=<ceil(limits.cpu)>`). A restored JVM re-reads the cgroup CPU
+  quota at restore; with a startup CPU boost active at that moment it reads the boosted
+  count and keeps that many threads on the steady-state quota for life (`jfr.container.
+  effectiveCpuCount` 2 on a 1-CPU pod). The Deployment's `JAVA_TOOL_OPTIONS` pin is gone
+  for CRaC, so the checkpoint must carry it. A CRaC restore (≈ 0.1–0.3 s) gains nothing
+  from a startup boost; a production CRaC deployment would not carry one.
 
 ## Trade-offs
 
@@ -99,7 +106,9 @@ Three changes: (1) add the `org.crac` dependency to `pom.xml`; (2) add an
 `org.crac.Resource` hook to each FD-holding class found in `src/`; (3) use
 `Dockerfile.crac` verbatim, filling `JAR_FILE` from the app's `pom.xml` and
 `JAVA_HEAP_OPTS` from the pod's `limits.memory` (`measure` → `workload.memLimitMi`,
-× 0.75 / × 0.50, whole MiB, e.g. 640Mi → `-Xmx480m -Xms320m`). Verify with
-`perf-sensor.startupLog` — `kind` should read **Restored** and seconds < 1.
+× 0.75 / × 0.50, whole MiB, e.g. 640Mi → `-Xmx480m -Xms320m`) and `JAVA_CPU_OPTS` from
+`workload.cpuLimitCores` (`-XX:ActiveProcessorCount=<ceil>`, e.g. 1 → `-XX:ActiveProcessorCount=1`).
+Verify with `perf-sensor.startupLog` — `kind` should read **Restored** and seconds < 1 — and
+`measure` → `jfr.container.effectiveCpuCount == ceil(cpuLimitCores)`.
 
 
