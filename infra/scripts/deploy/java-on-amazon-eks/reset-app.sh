@@ -70,9 +70,14 @@ kubectl -n "${APP_NS}" apply -f "${MANIFEST}" >/dev/null \
   && kubectl -n "${APP_NS}" rollout status deploy/unicorn-store-spring --timeout=300s >/dev/null \
   || { log_error "baseline rollout failed"; exit 1; }
 
-IMAGE="$(kubectl -n "${APP_NS}" get deploy unicorn-store-spring -o jsonpath='{.spec.template.spec.containers[0].image}')"
-RES="$(kubectl -n "${APP_NS}" get pod -l app=unicorn-store-spring -o jsonpath='{.items[0].spec.containers[0].resources}')"
-CONTAINERS="$(kubectl -n "${APP_NS}" get pod -l app=unicorn-store-spring -o jsonpath='{.items[0].spec.containers[*].name}')"
+# Read the NEW pod: right after rollout status the old one is still Terminating and
+# sorts first, so filter on phase=Running and no deletionTimestamp, newest first.
+POD="$(kubectl -n "${APP_NS}" get pod -l app=unicorn-store-spring --field-selector=status.phase=Running -o json \
+  | jq -r '[.items[] | select(.metadata.deletionTimestamp == null)] | sort_by(.status.startTime) | last | .metadata.name')"
+IMAGE="$(kubectl -n "${APP_NS}" get pod "${POD}" -o jsonpath='{.spec.containers[0].image}')"
+RES="$(kubectl -n "${APP_NS}" get pod "${POD}" -o jsonpath='{.spec.containers[0].resources}')"
+CONTAINERS="$(kubectl -n "${APP_NS}" get pod "${POD}" -o jsonpath='{.spec.containers[*].name}')"
+log_info "pod:        ${POD}"
 log_info "image:      ${IMAGE}"
 log_info "resources:  ${RES}"
 log_info "containers: ${CONTAINERS}"
