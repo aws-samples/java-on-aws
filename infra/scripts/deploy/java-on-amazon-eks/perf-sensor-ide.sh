@@ -62,7 +62,7 @@ echo "wrote ${ENV_DIR}/.mcp.json"
 #
 # permissions.allow: pre-approve the read-only sensors (mcp__<server> = every tool on that
 # server), file reads, and edits so the investigate -> explain -> apply loop runs without
-# tool prompts. Bash is allowed for ONE command only: infra/scripts/test/load.sh (the fixed
+# tool prompts. Bash is allowed for ONE command only: the app's own scripts/load.sh (the fixed
 # load run the "under load" facts need — see ~/environment/CLAUDE.md). kubectl/build/git still
 # prompt — rollout stays a participant action we don't block but don't auto-run.
 python3 - "${ENV_DIR}/.claude/settings.json" <<'PY'
@@ -81,8 +81,8 @@ data["enabledMcpjsonServers"] = sorted(servers)
 perms = data.setdefault("permissions", {})
 allow = list(perms.get("allow", []))
 for rule in ["mcp__perf-sensor", "mcp__eks-mcp", "Read", "Grep", "Glob", "Edit", "Write",
-             "Bash(~/java-on-aws/infra/scripts/test/load.sh:*)",
-             "Bash(" + os.path.expanduser("~") + "/java-on-aws/infra/scripts/test/load.sh:*)"]:
+             "Bash(~/environment/unicorn-store-spring/scripts/load.sh:*)",
+             "Bash(" + os.path.expanduser("~") + "/environment/unicorn-store-spring/scripts/load.sh:*)"]:
     if rule not in allow:
         allow.append(rule)
 perms["allow"] = allow
@@ -105,21 +105,21 @@ the `perf-sensor` MCP tools; the skills in `.claude/skills/` say how to read the
 ## Load
 
 Some facts exist only while requests are flowing: memory peak, CPU p95, CFS throttling,
-blocked request threads, request latency. The sensor never generates traffic. When a
-checklist item or a question needs those facts and `window.requestRatePerSec` is below 1,
-or `diagnoseBlocking` returns BLOCKED, start the load yourself, then call the tools:
+blocked request threads, request latency. The sensor never generates traffic. The app knows
+how to load-test itself: when a checklist item or a question needs those facts and
+`window.requestRatePerSec` is below 1, or `diagnoseBlocking` returns BLOCKED, run
 
-    ~/java-on-aws/infra/scripts/test/load.sh
+    ~/environment/unicorn-store-spring/scripts/load.sh
 
-It sends 50 writes/s for 120 s and returns after 90 s with ~30 s of load still flowing —
-measure right after it returns. Do not start it when the rate is already above 1 (a load
-run is flowing), and do not run it more than once per question.
+then call the tools. It drives the write path at 50 req/s for 120 s and returns after 90 s
+with ~30 s of load still flowing — measure right after it returns. Do not start it when the
+rate is already above 1 (a load run is flowing), and do not run it more than once per question.
 
 ## Commands
 
-`load.sh` is the only command to run here. Do not run `kubectl`, `docker`, build scripts or
-`git`: rolling out, building and committing are the developer's steps, done after the
-changes are reviewed.
+The app's `scripts/load.sh` is the only command to run here. Do not run `kubectl`, `docker`,
+`scripts/build.sh` or `git`: rolling out, building and committing are the developer's steps,
+done after the changes are reviewed.
 MD
 echo "wrote ${ENV_DIR}/CLAUDE.md"
 # --allow-sensitive-data-access is required for get_pod_logs / get_k8s_events (read-only;

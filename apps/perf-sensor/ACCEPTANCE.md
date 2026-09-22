@@ -12,7 +12,7 @@ Two terminals: **A** for everything below, **B** for the port-forward (started o
 The sensor is read-only and drives no traffic, and a blocked virtual thread exists only while
 requests are in flight (neither the wall profile nor JFR records it), so the items that need
 load (2, 6, 7, 11, 12) need a load run. Claude starts it itself: `~/environment/CLAUDE.md`
-(written by `perf-sensor-ide.sh`) tells it to run `~/java-on-aws/infra/scripts/test/load.sh`
+(written by `perf-sensor-ide.sh`) tells it to run `~/environment/unicorn-store-spring/scripts/load.sh`
 — the one Bash command in `permissions.allow` — when `requestRatePerSec` is below 1 or
 `diagnoseBlocking` is BLOCKED, then call the tools. `load.sh` sends 50 writes/s for 120 s and
 returns after 90 s, so ~30 s of load remain for the dump samples and item 7 has ≥ 30 s past
