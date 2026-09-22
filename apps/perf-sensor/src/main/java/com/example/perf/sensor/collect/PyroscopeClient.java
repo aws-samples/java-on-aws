@@ -47,9 +47,9 @@ public class PyroscopeClient {
         "ConcurrentBag", "Park::");
 
     /** Ranked leaf functions (self%) plus the total sample count for the window. */
-    public record ProfileData(List<Frame> frames, long numTicks) {
+    public record ProfileData(List<Frame> frames, long samples) {
         public boolean hasSamples() {
-            return numTicks > 0 && !frames.isEmpty();
+            return samples > 0 && !frames.isEmpty();
         }
     }
 
@@ -81,13 +81,19 @@ public class PyroscopeClient {
             if (numTicks <= 0 || !names.isArray() || !levels.isArray()) {
                 return new ProfileData(List.of(), 0);
             }
+            // numTicks is in the profile's tick unit. For JFR-ingested async-profiler data the
+            // unit is time (metadata.sampleRate = ticks per second, 1e9 for nanoseconds), so
+            // numTicks / sampleRate is profiled seconds; at the profiler's 10 ms interval that is
+            // 100 samples per second. Report sample COUNTS, not nanoseconds.
+            long sampleRate = root.path("metadata").path("sampleRate").asLong(0);
+            long samples = sampleRate > 1 ? Math.round(100.0 * numTicks / sampleRate) : numTicks;
             var selfByName = selfByName(names, levels);
             var frames = new ArrayList<Frame>();
             selfByName.entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
                 .limit(n)
                 .forEach(e -> frames.add(new Frame(e.getKey(), round1((100.0 * e.getValue()) / numTicks))));
-            return new ProfileData(frames, numTicks);
+            return new ProfileData(frames, samples);
         } catch (Exception e) {
             logger.warn("Pyroscope profile failed service={} type={} window=[{}..{}]: {}",
                 service, profileType, fromIso, toIso, e.getMessage());
@@ -108,7 +114,7 @@ public class PyroscopeClient {
         Double jit = cpu.hasSamples() ? share(cpu.frames(), JIT) : null;
         Double gc = cpu.hasSamples() ? share(cpu.frames(), GC) : null;
         Double futex = wall.hasSamples() ? share(wall.frames(), FUTEX) : null;
-        return new ProfileFacts(cpu.frames(), wall.frames(), jit, gc, futex, cpu.numTicks());
+        return new ProfileFacts(cpu.frames(), wall.frames(), jit, gc, futex, cpu.samples());
     }
 
     /** JIT (cpu) / GC (cpu) / futex (wall) share for a single requested type, plus frames. */
@@ -120,7 +126,7 @@ public class PyroscopeClient {
         Double jit = cpu && data.hasSamples() ? share(data.frames(), JIT) : null;
         Double gc = cpu && data.hasSamples() ? share(data.frames(), GC) : null;
         Double futex = !cpu && data.hasSamples() ? share(data.frames(), FUTEX) : null;
-        return new TopResult(data.frames(), jit, gc, futex, data.numTicks());
+        return new TopResult(data.frames(), jit, gc, futex, data.samples());
     }
 
     /** Sum of self% over frames whose name contains any of the substrings. */
