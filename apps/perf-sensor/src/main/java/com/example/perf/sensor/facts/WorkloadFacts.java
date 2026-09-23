@@ -23,7 +23,7 @@ import java.util.List;
  * @param readinessProbe     true when the app container declares a readinessProbe
  * @param startupProbe       true when the app container declares a startupProbe
  * @param runAsNonRoot       true when the app container (or pod) securityContext sets runAsNonRoot: true
- * @param allowPrivilegeEscalation true when the app container ALLOWS privilege escalation (secure = false; defaults to false when unset)
+ * @param allowPrivilegeEscalation true when the app container ALLOWS privilege escalation (secure = false; Kubernetes defaults to true when unset)
  * @param sidecars           names of non-app containers in the representative pod (e.g. "perf-profiler")
  * @param readyPods          count of Running+Ready pods of the workload (fleet size actually measured)
  * @param livenessProbe      true when the app container declares a livenessProbe
@@ -64,9 +64,4 @@ public record WorkloadFacts(
     Integer readinessInitialDelaySeconds,
     Long terminationGracePeriodSeconds,
     Integer preStopSleepSeconds
-) {
-    /** True when at least one non-app (sidecar) container is present in the pod. */
-    public boolean sidecarsPresent() {
-        return sidecars != null && !sidecars.isEmpty();
-    }
-}
+) {}

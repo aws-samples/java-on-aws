@@ -1,22 +1,31 @@
 # Privilege-free profiler-sidecar injection (Kyverno MutatingPolicy, CEL API).
 #
 # Opt a workload in with the pod-template label `perf-profile/sidecar: "true"`
-# and a `kubectl rollout restart` — the one restart both injects the sidecar and
-# gives a fresh baseline. No Deployment edit, no privileged/hostPID container: the
-# sidecar uses only SYS_PTRACE + shareProcessNamespace and attaches async-profiler
-# (ctimer + wall) across the shared PID namespace, pushing JFR to Pyroscope. The
-# app image is untouched. Proven on Bottlerocket EKS Auto (K8s 1.34).
+# and apply — the pod-template change rolls the pods and the new ones get the
+# sidecar. No privileged/hostPID container, no root: the sidecar runs as the app's
+# UID (JVM dynamic attach requires the same UID as the target; the workshop app runs
+# as 1000, see __APP_UID__) with capabilities dropped except SYS_PTRACE, no
+# privilege escalation, the runtime seccomp profile and a read-only root filesystem,
+# and attaches async-profiler (ctimer + wall) across the shared PID namespace, pushing
+# JFR to Pyroscope. The app image is untouched. Proven on Bottlerocket EKS Auto (K8s 1.34).
 #
-# Scratch volume: a dedicated emptyDir (`perf-scratch`, sizeLimit 200Mi) is mounted at
+# The sidecar's requests equal its limits (CPU and memory) so that injecting it does
+# NOT change the pod's QoS class: a Guaranteed app pod stays Guaranteed. 250m CPU covers
+# diagnoseBlocking's 40 jcmd launches in 20 s without throttling the dumps; 384Mi holds
+# the /dump server JVM plus a 10-minute JFR ring read into memory.
+#
+# Scratch volumes: a dedicated emptyDir (`perf-scratch`, sizeLimit 200Mi) is mounted at
 # /perf in BOTH the app container and the sidecar. Everything the profiler makes the app
 # JVM write (async-profiler agent + rotation files, JFR ring repository, on-demand JFR and
 # thread dumps) lands there — never in the app image's filesystem or its /tmp — so the app
-# can run with readOnlyRootFilesystem: true and the sidecar reads the files directly.
+# can run with readOnlyRootFilesystem: true and the sidecar reads the files directly. A
+# second emptyDir (`perf-tmp`) backs the sidecar's own /tmp (its logs) behind its read-only
+# root filesystem.
 #
 # The profiler is a BAKED image (Amazon Corretto 25 + async-profiler, built from
-# apps/perf-profiler) — no runtime download and no init container. The image URI
-# placeholder below is substituted by deploy/java-on-amazon-eks/perf-profiler.sh
-# at apply time (account/region vary per participant).
+# apps/perf-profiler) — no runtime download and no init container. The placeholders
+# below (__PERF_PROFILER_IMAGE__ pinned by digest, __CLUSTER_NAME__, __APP_UID__,
+# __PYROSCOPE_URL__) are substituted by deploy/java-on-amazon-eks/perf-profiler.sh.
 #
 # CEL authoring notes (both verified on-cluster):
 #   1. patchType: ApplyConfiguration CANNOT set atomic fields (env.valueFrom.fieldRef,
@@ -71,6 +80,11 @@ spec:
             },
             JSONPatch{
               op: "add",
+              path: "/spec/volumes/-",
+              value: dyn({"name": dyn("perf-tmp"), "emptyDir": dyn({"sizeLimit": dyn("50Mi")})})
+            },
+            JSONPatch{
+              op: "add",
               path: has(object.spec.containers[0].volumeMounts) ? "/spec/containers/0/volumeMounts/-" : "/spec/containers/0/volumeMounts",
               value: has(object.spec.containers[0].volumeMounts)
                 ? dyn({"name": dyn("perf-scratch"), "mountPath": dyn("/perf")})
@@ -79,24 +93,31 @@ spec:
             JSONPatch{op: "add", path: "/spec/containers/-", value: dyn({
               "name": dyn("perf-profiler"),
               "image": dyn("__PERF_PROFILER_IMAGE__"),
-              "imagePullPolicy": dyn("Always"),
+              "imagePullPolicy": dyn("IfNotPresent"),
               "ports": dyn([dyn({"name": dyn("dump"), "containerPort": dyn(9100)})]),
               "securityContext": dyn({
-                "runAsUser": dyn(0),
-                "runAsNonRoot": dyn(false),
-                "capabilities": dyn({"add": dyn(["SYS_PTRACE"])})
+                "runAsUser": dyn(__APP_UID__),
+                "runAsGroup": dyn(__APP_UID__),
+                "runAsNonRoot": dyn(true),
+                "allowPrivilegeEscalation": dyn(false),
+                "readOnlyRootFilesystem": dyn(true),
+                "seccompProfile": dyn({"type": dyn("RuntimeDefault")}),
+                "capabilities": dyn({"drop": dyn(["ALL"]), "add": dyn(["SYS_PTRACE"])})
               }),
-              "volumeMounts": dyn([dyn({"name": dyn("perf-scratch"), "mountPath": dyn("/perf")})]),
+              "volumeMounts": dyn([
+                dyn({"name": dyn("perf-scratch"), "mountPath": dyn("/perf")}),
+                dyn({"name": dyn("perf-tmp"), "mountPath": dyn("/tmp")})
+              ]),
               "env": dyn([
                 dyn({"name": dyn("PERF_DIR"), "value": dyn("/perf")}),
                 dyn({"name": dyn("PROFILE_SERVICE"), "valueFrom": dyn({"fieldRef": dyn({"fieldPath": dyn("metadata.labels['app']")})})}),
                 dyn({"name": dyn("POD_NAMESPACE"), "valueFrom": dyn({"fieldRef": dyn({"fieldPath": dyn("metadata.namespace")})})}),
                 dyn({"name": dyn("CLUSTER_NAME"), "value": dyn("__CLUSTER_NAME__")}),
-                dyn({"name": dyn("PYROSCOPE_URL"), "value": dyn("http://pyroscope.monitoring:4040")})
+                dyn({"name": dyn("PYROSCOPE_URL"), "value": dyn("__PYROSCOPE_URL__")})
               ]),
               "resources": dyn({
-                "requests": dyn({"cpu": dyn("100m"), "memory": dyn("128Mi")}),
-                "limits": dyn({"memory": dyn("384Mi")})
+                "requests": dyn({"cpu": dyn("250m"), "memory": dyn("384Mi")}),
+                "limits": dyn({"cpu": dyn("250m"), "memory": dyn("384Mi")})
               })
             })}
           ]

@@ -10,18 +10,23 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Orchestrates the collectors into one {@link Facts} for a service over a window.
- * In this workshop the Pyroscope {@code service_name}, the Deployment name, the
- * namespace and the app container name are the same string. Every collector
- * degrades to nulls independently, so partial environments still measure.
- * Thread facts are collected separately (only when a dump is requested).
+ * Contract: the Pyroscope {@code service_name}, the Deployment name, the namespace and
+ * the app container name are the same string (see README). Every collector degrades to
+ * nulls independently, so partial environments still measure. Thread facts are collected
+ * separately (only when a dump is requested).
  */
 @Component
 public class FactsCollector {
 
     private static final Logger logger = LoggerFactory.getLogger(FactsCollector.class);
+    /** Seconds after container start that are boot ramp, excluded from floor and throttle windows. */
+    static final int BOOT_SECONDS = 60;
 
     private final K8sCollector k8s;
     private final PrometheusClient prometheus;
@@ -38,33 +43,45 @@ public class FactsCollector {
         this.jfr = jfr;
     }
 
-    /** Collect workload + runtime + profile facts (no thread dump). */
+    /** Collect workload + runtime + profile + JFR facts (no thread dump) from a fresh K8s snapshot. */
     public Facts collect(String service, int windowMinutes) {
+        return collect(service, windowMinutes, k8s.collect(service, service));
+    }
+
+    /** Same, over an already-taken K8s snapshot (avoids a second round of API reads). */
+    public Facts collect(String service, int windowMinutes, K8sCollector.Snapshot snap) {
         var mins = windowMinutes <= 0 ? 15 : windowMinutes;
         var to = Instant.now();
         var from = to.minus(Duration.ofMinutes(mins));
 
-        var snap = k8s.collect(service, service);
         WorkloadFacts workload = snap.workload();
         String container = snap.appContainer() != null ? snap.appContainer() : service;
         // Scope cAdvisor facts to the pods that exist NOW: a pod replaced by a rollout earlier
         // in the window must not supply the peak, the p95 or the startup of the current one.
         String pods = snap.readyPodRegex();
+        Double uptime = snap.uptimeSeconds();
 
-        Double rssFloor = prometheus.workingSetFloorMi(service, container, pods, mins);
-        Double rssPeak = prometheus.workingSetPeakMi(service, container, pods, mins);
+        // Floor: the window clipped to the pod's lifetime minus its boot ramp (needs >= 1 min of
+        // post-boot data, else null); the query itself takes a low quantile, not the minimum.
+        Double floor = null;
+        if (uptime != null && uptime >= BOOT_SECONDS + 60) {
+            int floorMins = (int) Math.min(mins, Math.floor((uptime - BOOT_SECONDS) / 60.0));
+            floor = prometheus.workingSetFloorMi(service, container, pods, floorMins);
+        } else if (uptime == null) {
+            floor = prometheus.workingSetFloorMi(service, container, pods, mins);
+        }
+        Double peak = prometheus.workingSetPeakMi(service, container, pods, mins);
         Double startup = currentStartup(service, snap.readyPodNames());
         // Traffic facts (Micrometer, fleet-wide) over the window clipped to the current pod's
         // lifetime, so a pod that has seen no load yet does not inherit the previous pod's traffic.
-        int trafficMins = snap.uptimeSeconds() == null ? mins
-            : (int) Math.max(1, Math.min(mins, Math.floor(snap.uptimeSeconds() / 60.0)));
+        int trafficMins = uptime == null ? mins : (int) Math.max(1, Math.min(mins, Math.floor(uptime / 60.0)));
         Double requestRate = prometheus.requestRatePerSec(service, trafficMins);
         Double cpuP95 = prometheus.cpuUsageP95Cores(service, container, pods, mins);
         // Throttling: the pod's lifetime minus its first 60 s (boot JIT saturates the quota by
         // design), capped at 5 min; needs at least 30 s of steady state, else null.
         Double throttled = null;
-        if (snap.uptimeSeconds() != null && snap.uptimeSeconds() >= 90) {
-            int throttleSecs = (int) Math.min(mins * 60L, Math.min(300, snap.uptimeSeconds() - 60));
+        if (uptime != null && uptime >= BOOT_SECONDS + 30) {
+            int throttleSecs = (int) Math.min(mins * 60L, Math.min(300, uptime - BOOT_SECONDS));
             throttled = prometheus.cpuThrottledRatio(service, container, pods, throttleSecs);
         }
         Double latencyMean = prometheus.latencyMeanMs(service, trafficMins);
@@ -76,17 +93,17 @@ public class FactsCollector {
         Integer effectiveCpu = ring != null && ring.container() != null && ring.container().effectiveCpuCount() != null
             ? ring.container().effectiveCpuCount()
             : (workload != null && workload.cpuLimitCores() != null) ? (int) Math.ceil(workload.cpuLimitCores()) : null;
-        var runtime = new RuntimeFacts(rssFloor, rssPeak,
+        var runtime = new RuntimeFacts(floor, peak,
             heap.heapUsedMi(), heap.heapCommittedMi(), heap.gcName(),
-            effectiveCpu, startup, snap.restarts(), snap.uptimeSeconds(), requestRate,
+            effectiveCpu, startup, snap.restarts(), uptime, requestRate,
             heap.maxHeapMi(), heap.initialHeapMi(), cpuP95, throttled, latencyMean, latencyMax,
             snap.lastTerminationReason());
 
         ProfileFacts profile = pyroscope.summarize(service, from.toString(), to.toString(), 15);
 
-        logger.info("facts collected service={} window={}m workload={} rss=[{},{}] startup={} samples={}",
-            service, mins, workload != null, rssFloor, rssPeak, startup, profile.samples());
-        return new Facts(workload, runtime, profile, null, ring);
+        logger.info("facts collected service={} window={}m workload={} workingSet=[{},{}] startup={} samples={}",
+            service, mins, workload != null, floor, peak, startup, profile.samples());
+        return new Facts(workload, runtime, profile, ring);
     }
 
     /**
@@ -94,17 +111,31 @@ public class FactsCollector {
      * (Started/Restored line of each pod — the only source that is right for a CRaC restore),
      * then application.ready.time per pod, then the fleet max.
      */
-    private Double currentStartup(String service, java.util.List<String> readyPods) {
+    Double currentStartup(String service, List<String> readyPods) {
         if (readyPods != null && !readyPods.isEmpty()) {
-            for (var perPod : java.util.List.of(prometheus.perPodStartupFromLog(service), prometheus.perPodStartup(service))) {
+            for (var perPod : List.of(prometheus.perPodStartupFromLog(service), prometheus.perPodStartup(service))) {
                 var current = perPod.entrySet().stream()
                     .filter(e -> readyPods.contains(e.getKey()))
-                    .mapToDouble(java.util.Map.Entry::getValue).max();
+                    .mapToDouble(Map.Entry::getValue).max();
                 if (current.isPresent()) {
                     return current.getAsDouble();
                 }
             }
         }
         return prometheus.startupSeconds(service);
+    }
+
+    /** Per-pod startup, same source order as {@link #currentStartup}, restricted to the given pods. */
+    public Map<String, Double> perPodStartup(String service, List<String> readyPods) {
+        var fromLog = prometheus.perPodStartupFromLog(service);
+        var fromMetric = prometheus.perPodStartup(service);
+        var out = new LinkedHashMap<String, Double>();
+        for (var pod : readyPods) {
+            Double s = fromLog.containsKey(pod) ? fromLog.get(pod) : fromMetric.get(pod);
+            if (s != null) {
+                out.put(pod, s);
+            }
+        }
+        return out;
     }
 }

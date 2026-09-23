@@ -22,7 +22,13 @@ and inflate the memory peak that sets module 1's limit.
 Every question is a plain `claude -c -p "<question>"` on its own line; in an interactive
 `claude` session type the same text. Shell blocks hold only the developer's steps.
 
-Image tags are fixed: `:latest`, `:aot`, `:crac` in the workshop ECR repo. No variables.
+Image tags are fixed: `:latest`, `:aot`, `:crac` in the workshop ECR repo. No variables. The
+bootstrap also pushes `:aot-prebuilt` and `:crac-prebuilt` (same Dockerfiles, module-1 heap
+values baked in): if a participant build fails, point the Deployment at the `-prebuilt` tag
+(`yq -i '.spec.template.spec.containers[0].image |= sub(":[^:]+$"; ":crac-prebuilt")' …`) and continue.
+
+Reference numbers below are from the 2026-09 run recorded in the workshop content
+(`content/*/index.en.md`); the content is the source of truth when they disagree.
 
 ---
 
@@ -74,22 +80,22 @@ until the pod is 2 min old (peak, p95 and throttle share need that) and Claude s
 
 `cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"`
 
-Expected **≈ 5/12**:
+Expected **6/12**:
 
 | | # | Deciding signal |
 |---|---|---|
 | ✅ | 1 | request 2048 == limit 2048, restarts 0 |
-| ❌ | 2 | 2048 / peak ≈ 740 ≈ 2.8× (bar 2.5) — blocked requests pile up state under steady load; **record the peak**, it sets module 1's first limit |
+| ❌ | 2 | 2048 / peak ≈ 480–490 ≈ 4.3× (bar 2.5) — **record the peak**, it sets module 1's first limit |
 | ❌ | 3 | maxHeap 512 / 2048 = 0.25 |
 | ❌ | 4 | initialHeap 32 / 512 = 0.06 |
 | ✅ | 5 | limit 1, sees 1, SerialGC |
-| ✅ | 6 | request 1.0 / p95 ≈ 0.6–0.75 ≈ 1.3–1.7× (bar 1.75) — the saturated app burns CPU |
-| ✅ | 7 | ≈ 0.03 — the pod has been under load for minutes, JIT is done |
+| ✅ | 6 | request 1.0 / p95 ≈ 0.65 ≈ 1.55× (bar 1.75) |
+| ✅ | 7 | ≈ 0.07 — the pod has been under load for minutes, JIT is done |
 | ❌ | 8 | startup ≈ 13–15 s |
 | ✅ | 9 | startup budget 50 ≥ 2× startup, no initialDelay, liveness 30, distinct paths |
 | ❌ | 10 | grace 30 < preStop 10 + 30 |
-| ❌ | 11 | blocked ≥ 1, blockedInsideTransaction ≥ 1, pool waits ≈ 3 |
-| ❌ | 12 | mean in the seconds (≈ 2 s at 50 rps: one connection held per write, the queue never drains) |
+| ❌ | 11 | blocked ≥ 1, blockedInsideTransaction ≥ 1, requestThreadsWaitingForConnection ≈ 2–3 |
+| ✅ | 12 | mean ≈ 10 ms at 50 rps (bar 100 ms); the defect shows in the tail (latencyMax ≈ 1 s) and in item 11, not in the mean |
 
 If 11 shows 🟡 BLOCKED, terminal C is not running. Save the output as `~/environment/baseline.txt`.
 
@@ -129,9 +135,9 @@ kubectl -n unicorn-store-spring exec deploy/unicorn-store-spring -c unicorn-stor
 `cd ~/environment && claude -c -p "How can I reduce memory consumption of unicorn-store-spring?"`
 
 Expected: `sizeMemory` with the policy values; `requests == limits` = peak × 1.4 rounded up to
-128Mi — **≈ 1152Mi** from the saturated baseline's peak ≈ 740 (this is the right number for
-the code as it is; §8b shrinks it after the code fix), SerialGC, `MaxRAMPercentage=75`,
-`InitialRAMPercentage=50`.
+128Mi — **768Mi** from the baseline's peak ≈ 490 (§8b shrinks it after the code fix),
+SerialGC, `MaxRAMPercentage=75`, `InitialRAMPercentage=50`. The floor is a 5th percentile
+after the pod's first minute, so `workingSetFloorMi` reads a few hundred MiB, not single digits.
 Review: only `resources` + `JAVA_TOOL_OPTIONS` changed.
 ```bash
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
@@ -141,7 +147,7 @@ git -C ~/environment/unicorn-store-spring add -A && git -C ~/environment/unicorn
 ```
 `cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"`
 
-Expected: 2, 3, 4 ✅; 7 lower than baseline (record).
+Expected **9/12**: 2, 3, 4 ✅ (768 / peak ≈ 515 = 1.5×; maxHeap 576 / 768 = 0.75; initialHeap 384 / 576 = 0.67).
 
 ## 5. Module 2 — start faster without changing the image
 
@@ -149,7 +155,7 @@ Expected: 2, 3, 4 ✅; 7 lower than baseline (record).
 
 Expected: `sizeCpu` called with the policy values; three edits: `k8s/startup-cpu-boost.yaml`
 (`StartupCPUBoost`, `<app>`/`<namespace>` filled); in `k8s/deployment.yaml` `requests.cpu` set to
-`sizeCpu.requestsCpu` (≈ 950m from p95 ≈ 0.6 on the saturated app) with `limits.cpu` unchanged at 1, and
+`sizeCpu.requestsCpu` (p95 ≈ 0.67 × 1.5 → 1050m → **clamped to the 1-core limit**, `clampedToLimit true` quoted) with `limits.cpu` unchanged at 1, and
 `-XX:ActiveProcessorCount=1` appended to `JAVA_TOOL_OPTIONS`. Review: those two files only.
 ```bash
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/startup-cpu-boost.yaml
@@ -157,12 +163,12 @@ kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 curl -s localhost:8090/api/v1/startupLog/unicorn-store-spring | jq -r .line                # record it: boost + ActiveProcessorCount=1 (≈ 7 s, was ≈ 13)
 curl -s localhost:8090/api/v1/measure/unicorn-store-spring | jq '.jfr.container'           # effectiveCpuCount 1, cpuQuotaCores 2.0 (boosted at boot)
-sleep 30; kubectl -n unicorn-store-spring get pod -l app=unicorn-store-spring -o jsonpath='{.items[0].spec.containers[0].resources}'; echo   # request ≈ 950m / limit 1 once the boost controller has resized down
+sleep 30; kubectl -n unicorn-store-spring get pod -l app=unicorn-store-spring -o jsonpath='{.items[0].spec.containers[0].resources}'; echo   # request back at the manifest value / limit 1 once the boost controller has resized down
 git -C ~/environment/unicorn-store-spring add -A && git -C ~/environment/unicorn-store-spring commit -q -m "startup cpu boost + cpu request"
 ```
 `cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"`
 
-Expected: 5 ✅, 6 stays ✅ with the smaller request; 8 still ❌ (≈ 7 s > 5).
+Expected: 9/12 unchanged; 8 still ❌ but ≈ 7 s (was ≈ 14); `jfr.container.effectiveCpuCount` 1 with `cpuQuotaCores` 2.0 (boosted at boot, pinned by the flag).
 Once, for the page: remove `-XX:ActiveProcessorCount=1`, `rollout restart`, read `startupLog`
 (expect ≈ 7 s) and `jfr.container.effectiveCpuCount` (expect 2); put the flag back, restart. The
 two numbers are the trade-off the page states.
@@ -179,12 +185,12 @@ Review: `Dockerfile.aot` only.
 yq -i '.spec.template.spec.containers[0].image |= sub(":[^:]+$"; ":aot")' ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
-curl -s localhost:8090/api/v1/startupLog/unicorn-store-spring | jq -r .line                # ≈ 3 s
+curl -s localhost:8090/api/v1/startupLog/unicorn-store-spring | jq -r .line                # ≈ 2.7 s
 git -C ~/environment/unicorn-store-spring add -A && git -C ~/environment/unicorn-store-spring commit -q -m "aot cache"
 ```
 `cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"`
 
-Expected: 8 ✅ (≤ 5 s); 11 still ❌ (if it reads ✅ here the dump sampling missed the block — a
+Expected **10/12**: 8 ✅ (≈ 2.7 s ≤ 5); 11 still ❌ (if it reads ✅ here the dump sampling missed the block — a
 sensor defect, record it).
 
 ## 7. Module 4 — under a second (CRaC)
@@ -194,7 +200,7 @@ sensor defect, record it).
 Expected: `org.crac` dependency in `pom.xml`; `Resource` hook for the class holding the
 EventBridge client (found by scanning `src/`), credentials-at-restore mentioned;
 `Dockerfile.crac` identical to the reference with `JAR_FILE`, `WARMUP_CMD` (a `POST /unicorns`),
-`JAVA_HEAP_OPTS` from the current limit (1152Mi → `-Xmx864m -Xms576m`) and `JAVA_CPU_OPTS`
+`JAVA_HEAP_OPTS` from the current limit (768Mi → `-Xmx576m -Xms384m`) and `JAVA_CPU_OPTS`
 (`-XX:ActiveProcessorCount=1`) filled; `JAVA_TOOL_OPTIONS` removed from the Deployment.
 Review: `pom.xml`, one Java file, `Dockerfile.crac`, `k8s/deployment.yaml`.
 ```bash
@@ -208,10 +214,12 @@ git -C ~/environment/unicorn-store-spring add -A && git -C ~/environment/unicorn
 ```
 `cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"`
 
-Expected: 8 ✅ (Restored, < 0.1 s); 3, 4, 5 stay ✅ (checkpoint carries heap bounds, SerialGC
-and the processor count); 7 as after module 3 — **record it**: with a warmed checkpoint the
-restored pod must not JIT the write path under load (`jfr.compilation` in the window small,
-`gc.maxMs` single digits). If 7 is worse than after module 3, the warm-up missed the hot path.
+Expected **9/12**: 8 ✅ (Restored, ≈ 0.05 s); 3, 4, 5 stay ✅ (checkpoint carries heap bounds,
+SerialGC and the processor count); **6 goes ❌** because the fix worked — the restored JVM
+skips the JIT ramp, p95 falls to ≈ 0.45 and the boosted request (0.85–1.0) is now ≈ 1.9× (bar
+1.75); 7 as after module 3 — **record it**: with a warmed checkpoint the restored pod must not
+JIT the write path under load (`jfr.compilation` in the window small, `gc.maxMs` single
+digits). If 7 is worse than after module 3, the warm-up missed the hot path.
 
 ## 8. Module 5 — latency (code fix)
 
@@ -222,8 +230,8 @@ Expected: `diagnoseBlocking` status OK; `requestThreadsBlockedInFutureGet ≥ 1`
 `UnicornService.publishUnicornEvent:<line>` and the `@Transactional createUnicorn` named as the
 enclosing transaction. Solution: publish **after commit** (`@TransactionalEventListener(AFTER_COMMIT)`
 or `TransactionSynchronization`) and non-blocking; the pool is sized only if
-`carriersParkedInPoolWait` is expected to remain after the boundary fix, to the observed
-concurrency. Image not switched. Not `profileTop wall`.
+`requestThreadsWaitingForConnection` is expected to remain after the boundary fix, to the observed
+concurrency (`requestThreadsActive` ≈ 3 at 50 rps). Image not switched. Not `profileTop wall`.
 Review: `UnicornService.java` (+ a listener class if Claude chose the event form; `application.yaml`
 only if the pool was sized).
 ```bash
@@ -234,11 +242,10 @@ git -C ~/environment/unicorn-store-spring add -A && git -C ~/environment/unicorn
 ```
 `cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"`
 
-Expected: 12 ✅ (mean from seconds to single-digit ms), blocking 0 and inside-transaction 0.
-Two things go **red because the fix worked** — record both: 2 (peak fell to ≈ 400, the 1152Mi
-limit is now 2.9×) and 6 (p95 fell to ≈ 0.4, the 950m request is now 2.3×); 11 may stay ❌ with
-`carriersParkedInPoolWait ≥ 1` and `blockedInsideTransaction 0` — the pool itself is now the
-limit. Those are the closing questions.
+Expected **10/12**: 11 ✅ (blocking 0, inside-transaction 0, pool waits 0), 12 ✅ with the mean
+down from ≈ 10 ms to ≈ 4 ms and `latencyMax` from ≈ 1 s to tens of ms. 6 stays ❌ and drifts
+further (p95 ≈ 0.4, the request is now ≈ 2.1×) and 2 tightens (peak ≈ 335, 768 is 2.3×) —
+both **because the fix worked**; 10 still ❌. Those are the closing questions.
 
 **If 12 is still ❌**: the blocking fix was not the pod's bottleneck. Ask, and record the answer
 with `runtime.cpuThrottledRatio`, `jfr.monitorTop` (with the waiting frame) and `jfr.pinned`:
@@ -249,9 +256,9 @@ with `runtime.cpuThrottledRatio`, `jfr.monitorTop` (with the waiting frame) and 
 
 `cd ~/environment && claude -c -p "Right-size unicorn-store-spring again and fix item 10."`
 
-Expected, from `sizeMemory` + `sizeCpu`: memory `requests == limits` ≈ 512Mi (peak ≈ 357 × 1.4 →
-512), CPU request ≈ 650m (p95 ≈ 0.39 × 1.5), old → new cited; `Dockerfile.crac` `JAVA_HEAP_OPTS`
-→ `-Xmx384m -Xms256m` (75 % / 50 % of the new limit) with "rebuild needed" stated if it changed.
+Expected, from `sizeMemory` + `sizeCpu`: memory `requests == limits` **512Mi** (peak ≈ 357 × 1.4 →
+512), CPU request **600m** (p95 ≈ 0.40 × 1.5 → 597 → 600), old → new cited; `Dockerfile.crac`
+`JAVA_HEAP_OPTS` → `-Xmx384m -Xms256m` (75 % / 50 % of the new limit) with "rebuild needed" stated.
 Plus `terminationGracePeriodSeconds: 40` under `spec.template.spec` (preStop 10 s + Spring Boot's
 30 s graceful-shutdown drain), the reasoning stated. Nothing else changed. Review:
 `k8s/deployment.yaml`, `Dockerfile.crac`.
@@ -269,7 +276,7 @@ numbers directly. Sizing is a loop, not a step.
 
 `cd ~/environment && claude -c -p "Item 11 still fails — what now?"`
 
-Expected: `diagnoseBlocking` shows blocking 0, inside-transaction 0, `carriersParkedInPoolWait ≥ 1`;
+Expected: `diagnoseBlocking` shows blocking 0, inside-transaction 0, `requestThreadsWaitingForConnection ≥ 1`;
 `maximum-pool-size` in `application.yaml` set to `requestThreadsActive` (peak in-flight requests,
 a small single-digit number at 50 rps — **record it**), the value cited. Review: `application.yaml`.
 ```bash
@@ -296,9 +303,9 @@ during the session.
 ## 9. Variance rule and verdict
 
 Run §3–§8 three times, each on a fresh env or after
-`~/java-on-aws/infra/scripts/deploy/java-on-amazon-eks/reset-app.sh --prebuild` (hard-resets the
-app repo to the starting-point commit, deletes the boost CR, redeploys `:latest`, restores the
-prebuilt tags). Anything that differs between runs other than prose —
+`~/java-on-aws/infra/scripts/deploy/java-on-amazon-eks/reset-app.sh` (hard-resets the app repo
+to the starting-point commit, deletes the boost CR, redeploys `:latest`; `--prebuild` only if
+the `-prebuilt` fallback tags must be rebuilt). Anything that differs between runs other than prose —
 tool choice, artifact content beyond measured values, an extra action after apply, a different
 checklist verdict on the same state — is a defect in a skill or a tool description. Fix it, re-run.
 
@@ -307,9 +314,11 @@ passes (`sizeMemory`, `sizeCpu` before and after the code fix), `requestThreadsA
 the `-p` wall time per call.
 
 Sensor scoping: cAdvisor facts (peak, floor, p95, throttling) and startup come from the pods
-that are Ready now; traffic facts use the window clipped to the current pod's lifetime. A pod
-replaced by a rollout does not leak into the verdict, and a freshly rolled pod without load
-reads 🟡 on the load-guarded items.
+that are Ready now; the floor and the throttle ratio skip the pod's first minute; traffic facts
+use the window clipped to the current pod's lifetime. A pod replaced by a rollout does not
+leak into the verdict, and a freshly rolled pod without load reads 🟡 on the load-guarded items.
+`threadDump`/`diagnoseBlocking` return null/BLOCKED when no dump can be taken (sidecar not
+attached) — never "0 blocked".
 
 Items 2, 6, 10 and 11 at the end are fixed by the closing questions (§8b–§8c), not by a
 module: the last red items are the participant's own loop.

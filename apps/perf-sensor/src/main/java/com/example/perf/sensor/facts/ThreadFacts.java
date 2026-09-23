@@ -5,9 +5,11 @@ import java.util.Map;
 
 /**
  * Thread-dump-derived facts from the sidecar {@code /dump?kind=threads}
- * ({@code jcmd Thread.dump_to_file -format=json}), summarized — never the raw
- * dump. A "request-path" thread is one whose stack runs the app's request
- * package or a Tomcat http-nio worker. No MCP server can reach an in-pod endpoint,
+ * ({@code jcmd Thread.dump_to_file -format=json}), summarized — never the raw dump.
+ * A "request-path" thread is one whose stack runs the app's request package
+ * ({@code REQUEST_PACKAGE}). The pool and transaction markers recognise HikariCP and
+ * Spring / Jakarta transaction interceptors; other stacks are supported by extending
+ * the marker lists in {@code DumpCollector}. No MCP server can reach an in-pod endpoint,
  * so the sensor is the only source.
  *
  * @param pod                              pod the dump was taken from
@@ -18,7 +20,8 @@ import java.util.Map;
  * @param requestThreadsActive             request-path threads present in the dump (in-flight requests; the
  *                                         observed concurrency a connection pool has to serve)
  * @param requestThreadsBlockedInFutureGet request-path threads parked in a blocking Future.get()/join()
- * @param carriersParkedInPoolWait         carrier/request threads parked in a connection-pool wait
+ * @param requestThreadsWaitingForConnection request-path threads in a WAITING/TIMED_WAITING state inside the
+ *                                         connection pool's borrow (HikariCP {@code ConcurrentBag.borrow})
  * @param blockedInsideTransaction         of the blocked request threads, how many block while a
  *                                         transaction interceptor is on the stack (remote I/O held
  *                                         inside a DB transaction, i.e. while holding a connection)
@@ -33,7 +36,7 @@ public record ThreadFacts(
     int virtualThreads,
     int requestThreadsActive,
     int requestThreadsBlockedInFutureGet,
-    int carriersParkedInPoolWait,
+    int requestThreadsWaitingForConnection,
     int blockedInsideTransaction,
     List<FrameCount> topBlockingFrames,
     List<ThreadSample> sample

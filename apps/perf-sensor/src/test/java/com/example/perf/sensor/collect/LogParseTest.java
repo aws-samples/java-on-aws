@@ -4,7 +4,15 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** The Spring Boot startup line regex, including the CRaC restore forms and the no-line case. */
 class LogParseTest {
+
+    @Test
+    void noLine_isNull() {
+        assertThat(LogCollector.parse(null)).isNull();
+        assertThat(LogCollector.parse("")).isNull();
+        assertThat(LogCollector.parse("INFO  Tomcat started on port 8080")).isNull();
+    }
 
     @Test
     void started_line() {

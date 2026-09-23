@@ -101,6 +101,13 @@ Consequences to state explicitly:
 
 - **Credentials at restore**: a client closed before checkpoint must fetch fresh
   credentials/config in `afterRestore` — do not bake secrets into the checkpoint.
+- **What the checkpoint contains**: the whole JVM heap at checkpoint time. Anything the
+  application held in memory then — including a datasource password read from the
+  environment during the build's warm-up — is in `/opt/crac-files` and therefore in the
+  pushed image. Treat a CRaC image as you would a heap dump: private registry, no
+  long-lived secrets during the checkpoint run (a throwaway build database or short-lived
+  credentials), and pass build inputs with `docker build --secret`, not `--build-arg`
+  (build-args stay visible in the builder stage's history).
 - Requires a CRaC-enabled JDK (e.g. Azul Zulu CRaC) and the `org.crac` API.
 - Every FD-holding class needs a hook; missing one breaks restore.
 - The checkpoint is environment-sensitive; rebuild it when the app or JDK changes.

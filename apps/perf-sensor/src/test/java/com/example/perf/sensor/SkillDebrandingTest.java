@@ -60,4 +60,24 @@ class SkillDebrandingTest {
             assertThat(text).as("policy %s: %s", k, v).containsPattern(k + ":\\s*" + v + "\\b"));
         assertThat(text).as("floorFactor retired: requests == limits").doesNotContain("floorFactor");
     }
+
+    // Fact names the sensor no longer returns; a skill that still cites one reads null and
+    // scores UNKNOWN. Keep this list in sync with renames in the facts records.
+    private static final List<String> RETIRED_FIELDS = List.of(
+        "rssPeakMi", "rssFloorMi", "carriersParkedInPoolWait", "poolWaitCarriers", "futureGetOnRequestPath");
+
+    @Test
+    void skillsCiteNoRetiredFactNames() throws IOException {
+        try (Stream<Path> files = Files.walk(Path.of("skills"))) {
+            var offenders = files.filter(Files::isRegularFile).flatMap(p -> {
+                try {
+                    String text = Files.readString(p);
+                    return RETIRED_FIELDS.stream().filter(text::contains).map(f -> p + " cites retired field " + f);
+                } catch (IOException e) {
+                    return Stream.of(p + " unreadable: " + e.getMessage());
+                }
+            }).toList();
+            assertThat(offenders).isEmpty();
+        }
+    }
 }

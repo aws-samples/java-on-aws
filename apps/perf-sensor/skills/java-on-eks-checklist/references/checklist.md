@@ -20,7 +20,7 @@ thresholds are stated bars, not constants: 5 s for startup (12-factor: "a few se
 | # | Practice | Rule | Evidence |
 |---|---|---|---|
 | 1 | Memory is Guaranteed and honoured | `memRequestMi == memLimitMi`, both set; AND `restarts == 0` or `lastTerminationReason != OOMKilled` | `workload.memRequestMi`, `workload.memLimitMi`, `runtime.restarts`, `runtime.lastTerminationReason` |
-| 2 | Limit sized from the measured working set | `memLimitMi / rssPeakMi ≤ 2.5` *under load* | `workload.memLimitMi`, `runtime.rssPeakMi`, `window.requestRatePerSec` |
+| 2 | Limit sized from the measured working set | `memLimitMi / workingSetPeakMi ≤ 2.5` *under load* | `workload.memLimitMi`, `runtime.workingSetPeakMi`, `window.requestRatePerSec` |
 | 3 | Heap follows the container | observed `maxHeapMi / memLimitMi` between 0.50 and 0.80. How the bound was set does not matter: `MaxRAMPercentage`, ergonomics, or an `-Xmx` derived from the limit (a CRaC checkpoint has to bake `-Xmx`) all pass if the ratio holds; note the mechanism from `jfr.jvmArgs` | `runtime.maxHeapMi`, `workload.memLimitMi`, `jfr.jvmArgs` |
 | 4 | Heap starts near its steady size | observed `initialHeapMi / maxHeapMi ≥ 0.50` | `runtime.initialHeapMi`, `runtime.maxHeapMi` |
 
@@ -82,7 +82,7 @@ pauses vs probe timing); learnk8s (SIGTERM handling, probe semantics).
 
 | # | Practice | Rule | Evidence |
 |---|---|---|---|
-| 11 | Request path does not block on downstream calls | `diagnoseBlocking` status OK and `threads.requestThreadsBlockedInFutureGet == 0` and `threads.carriersParkedInPoolWait == 0` *under load* (UNKNOWN when BLOCKED); cite `blockedInsideTransaction` when > 0 — the block holds a DB connection | `diagnoseBlocking.threads.requestThreadsBlockedInFutureGet`, `blockedInsideTransaction`, `carriersParkedInPoolWait`, `topBlockingFrames` |
+| 11 | Request path does not block on downstream calls | `diagnoseBlocking` status OK and `threads.requestThreadsBlockedInFutureGet == 0` and `threads.requestThreadsWaitingForConnection == 0` *under load* (UNKNOWN when BLOCKED); cite `blockedInsideTransaction` when > 0 — the block holds a DB connection | `diagnoseBlocking.threads.requestThreadsBlockedInFutureGet`, `blockedInsideTransaction`, `requestThreadsWaitingForConnection`, `topBlockingFrames` |
 | 12 | Latency under load is bounded | `latencyMeanMs ≤ 100` *under load*; cite `jfr.pinned`, `jfr.monitorTop`, `jfr.safepointTotalMs`, `jfr.gc.maxMs` as the in-JVM context | `runtime.latencyMeanMs`, `runtime.latencyMaxMs`, `window.requestRatePerSec`, `jfr.*` |
 
 Why: a request thread parked in `Future.get()` adds the downstream round-trip to every

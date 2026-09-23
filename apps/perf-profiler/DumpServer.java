@@ -1,17 +1,18 @@
-// perf-profiler /dump endpoint — a tiny single-file HTTP server (run in JDK 25
-// source mode: `java DumpServer.java [port]`). It exposes on-demand JVM diagnostics
-// for the APP process across the shared PID namespace via `jcmd`, so the optimizer
-// can collect ThreadFacts/heap without a collector or `kubectl exec`.
+// perf-profiler /dump endpoint — a tiny single-file HTTP server (run in JDK 25 source mode:
+// `java DumpServer.java [port]`). It exposes on-demand JVM diagnostics for the APP process
+// across the shared PID namespace via `jcmd`, so perf-sensor can build thread/heap/JFR facts
+// without a collector or `kubectl exec`.
 //
-//   GET /dump?kind=threads  -> jcmd <pid> Thread.print -e
-//   GET /dump?kind=heap     -> jcmd <pid> GC.heap_info + VM.flags
+//   GET /dump?kind=threads  -> jcmd <pid> Thread.dump_to_file -format=json  (virtual threads
+//                              included) -> the JSON file; 503 if the JVM did not write it
+//   GET /dump?kind=heap     -> jcmd <pid> GC.heap_info + VM.flags (text)
 //   GET /dump?kind=jfr      -> jcmd <pid> JFR.dump name=perf (the 10-min ring started by
 //                              profile-loop.sh) -> the .jfr file bytes (application/octet-stream)
 //   GET /healthz            -> ok
 //
-// Runs in the sidecar (root + SYS_PTRACE + shareProcessNamespace), so jcmd can
-// attach to the app JVM. JAVA_TOOL_OPTIONS is nulled for each jcmd call —
-// otherwise the app's flags (e.g. -Xlog:gc) contaminate jcmd's own output.
+// Runs in the sidecar (same UID as the app + SYS_PTRACE + shareProcessNamespace), so jcmd can
+// attach to the app JVM. JAVA_TOOL_OPTIONS is nulled for each jcmd call — otherwise the app's
+// flags (e.g. -Xlog:gc) contaminate jcmd's own output.
 //
 // Files the TARGET writes (thread dump JSON, on-demand JFR) go to PERF_DIR (/perf), the
 // dedicated emptyDir the inject policy mounts in both containers — read here at the same
@@ -67,7 +68,13 @@ public class DumpServer {
         }
         String body;
         switch (kind) {
-            case "threads" -> body = threadDumpJson(pid);
+            case "threads" -> {
+                body = threadDumpJson(pid);
+                if (body == null) {
+                    respond(ex, 503, "Thread.dump_to_file produced no JSON file (is the app JVM attachable?)\n");
+                    return;
+                }
+            }
             case "heap" -> body = jcmd(pid, "GC.heap_info") + "\n" + jcmd(pid, "VM.flags");
             case "jfr" -> {
                 jfrDump(ex, pid);
@@ -78,14 +85,15 @@ public class DumpServer {
                 return;
             }
         }
-        respond(ex, 200, body);
+        ex.getResponseHeaders().add("Content-Type",
+            "threads".equals(kind) ? "application/json; charset=utf-8" : "text/plain; charset=utf-8");
+        respondRaw(ex, 200, body);
     }
 
     /**
      * Dump the JVM-native JFR ring (recording "perf", started by profile-loop.sh with
-     * maxage=10m) into the TARGET's /tmp, stream the file bytes back across the shared
-     * mount namespace (/proc/&lt;pid&gt;/root/...), then delete it. 503 with jcmd's output when
-     * there is no such recording.
+     * maxage=10m) into PERF_DIR, stream the file bytes back, then delete it. 503 with jcmd's
+     * output when there is no such recording.
      */
     private static void jfrDump(HttpExchange ex, long pid) throws IOException {
         String path = perfDir() + "/perf-ondemand-" + pid + ".jfr";
@@ -111,7 +119,7 @@ public class DumpServer {
         }
     }
 
-    /** The app JVM: prefer PID 1 (the container entrypoint), else the lowest java pid that is not us. */
+    /** The app JVM: TARGET_PID if set, else PID 1 when it is a JVM, else the lowest JVM pid that is not us. */
     private static long targetPid() {
         String override = System.getenv("TARGET_PID");
         if (override != null && !override.isBlank()) {
@@ -144,28 +152,21 @@ public class DumpServer {
     }
 
     /**
-     * Full JSON thread dump (jcmd Thread.dump_to_file -format=json) — enumerates
-     * VIRTUAL threads and their stacks, unlike Thread.print. jcmd writes the file in
-     * the TARGET's filesystem; we read it back across the shared mount namespace at
-     * /proc/&lt;pid&gt;/root/&lt;path&gt;. Falls back to Thread.print if anything fails.
+     * Full JSON thread dump (jcmd Thread.dump_to_file -format=json) — enumerates VIRTUAL
+     * threads and their stacks, unlike Thread.print. jcmd writes the file in the TARGET's
+     * filesystem; we read it back at the shared /perf path (or /proc/&lt;pid&gt;/root/&lt;path&gt;).
+     * Returns null when the JVM did not write the file: the caller answers 503 so the sensor
+     * reports UNKNOWN instead of parsing a non-JSON fallback as "no blocked threads".
      */
     private static String threadDumpJson(long pid) {
-        String path = perfDir() + "/po-threads-" + pid + ".json";
-        String out = jcmd(pid, "Thread.dump_to_file", "-overwrite", "-format=json", path);
+        String path = perfDir() + "/perf-threads-" + pid + ".json";
+        jcmd(pid, "Thread.dump_to_file", "-overwrite", "-format=json", path);
         try {
             var onSidecar = readable(pid, path);
-            if (Files.isReadable(onSidecar)) {
-                return Files.readString(onSidecar);
-            }
+            return Files.isReadable(onSidecar) ? Files.readString(onSidecar) : null;
         } catch (Exception e) {
-            // fall through
+            return null;
         }
-        // Fallback: platform-thread text dump (jcmd output + a marker).
-        return "{\"fallback\":\"Thread.print\",\"note\":" + jsonString(out) + "}\n" + jcmd(pid, "Thread.print", "-e");
-    }
-
-    private static String jsonString(String s) {
-        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").trim() + "\"";
     }
 
     /** Run jcmd against the target with JAVA_TOOL_OPTIONS nulled (per the gotcha). */
@@ -206,8 +207,12 @@ public class DumpServer {
     }
 
     private static void respond(HttpExchange ex, int code, String body) throws IOException {
-        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         ex.getResponseHeaders().add("Content-Type", "text/plain; charset=utf-8");
+        respondRaw(ex, code, body);
+    }
+
+    private static void respondRaw(HttpExchange ex, int code, String body) throws IOException {
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         ex.sendResponseHeaders(code, bytes.length);
         try (var os = ex.getResponseBody()) {
             os.write(bytes);

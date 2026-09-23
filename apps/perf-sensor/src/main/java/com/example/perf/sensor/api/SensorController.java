@@ -1,6 +1,9 @@
 package com.example.perf.sensor.api;
 
 import com.example.perf.sensor.SensorService;
+import com.example.perf.sensor.SensorService.BlockingResult;
+import com.example.perf.sensor.SensorService.CpuParams;
+import com.example.perf.sensor.SensorService.CpuResult;
 import com.example.perf.sensor.SensorService.MeasureResult;
 import com.example.perf.sensor.SensorService.ProfileTop;
 import com.example.perf.sensor.SensorService.SizeParams;
@@ -17,10 +20,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * REST facade exposing the same operations as the MCP tools, returning structured
- * JSON records. Deterministic; no LLM. Used for the implementer verification
- * (spec 4a) and as a fallback surface. Health is served by Actuator at
- * {@code /actuator/health}.
+ * REST facade exposing the same seven operations as the MCP tools, returning the same JSON
+ * records, so an operator can check a number with {@code curl} next to what Claude sees.
+ * Deterministic; no LLM. Health is served by Actuator at {@code /actuator/health}.
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -54,6 +56,19 @@ public class SensorController {
                 minSamples, minRequestRate, minDeltaMi));
     }
 
+    @GetMapping("/sizeCpu/{service}")
+    public CpuResult sizeCpu(@PathVariable String service,
+                             @RequestParam(defaultValue = "15") int windowMinutes,
+                             @RequestParam double cpuFactor,
+                             @RequestParam int roundMillicores,
+                             @RequestParam int warmSeconds,
+                             @RequestParam int minSamples,
+                             @RequestParam double minRequestRate,
+                             @RequestParam double minDeltaMi) {
+        return sensor.sizeCpu(service, windowMinutes,
+            new CpuParams(cpuFactor, roundMillicores, warmSeconds, minSamples, minRequestRate, minDeltaMi));
+    }
+
     @GetMapping("/threadDump/{service}")
     public ThreadFacts threadDump(@PathVariable String service,
                                   @RequestParam(defaultValue = "1") int sampleN) {
@@ -61,27 +76,11 @@ public class SensorController {
     }
 
     @GetMapping("/diagnoseBlocking/{service}")
-    public com.example.perf.sensor.SensorService.BlockingDiagnosis diagnoseBlocking(
-            @PathVariable String service,
-            @RequestParam(defaultValue = "20") int durationSec,
-            @RequestParam(defaultValue = "500") long intervalMs,
-            @RequestParam(defaultValue = "1") double minRequestRate) {
+    public BlockingResult diagnoseBlocking(@PathVariable String service,
+                                           @RequestParam(defaultValue = "20") int durationSec,
+                                           @RequestParam(defaultValue = "500") long intervalMs,
+                                           @RequestParam(defaultValue = "1") double minRequestRate) {
         return sensor.diagnoseBlocking(service, durationSec, intervalMs, minRequestRate);
-    }
-
-    @GetMapping("/sizeCpu/{service}")
-    public com.example.perf.sensor.SensorService.CpuResult sizeCpu(
-            @PathVariable String service,
-            @RequestParam(defaultValue = "15") int windowMinutes,
-            @RequestParam double cpuFactor,
-            @RequestParam int roundMillicores,
-            @RequestParam int warmSeconds,
-            @RequestParam int minSamples,
-            @RequestParam double minRequestRate,
-            @RequestParam double minDeltaMi) {
-        return sensor.sizeCpu(service, windowMinutes,
-            new com.example.perf.sensor.SensorService.CpuParams(cpuFactor, roundMillicores, warmSeconds,
-                minSamples, minRequestRate, minDeltaMi));
     }
 
     @GetMapping("/profileTop/{service}")
@@ -97,30 +96,30 @@ public class SensorController {
         return sensor.startupLog(service);
     }
 
-    /** List the sensor tools for the fallback page blocks. */
+    /** The seven operations with their inputs and outputs (the MCP tool descriptions carry the detail). */
     @GetMapping("/tools")
     public List<Map<String, String>> tools() {
         return List.of(
             Map.of("name", "measure",
-                "input", "service, windowMinutes=15",
-                "output", "WorkloadFacts (incl. readyPods) + RuntimeFacts + ProfileFacts summary + JfrFacts (ring) + window + per-pod breakdown"),
+                "input", "service, windowMinutes=15, minUptimeSeconds=0",
+                "output", "{service, windowMinutes, workload, runtime, profile, jfr, window{uptimeSeconds, samples, requestRatePerSec, waitedSeconds, settleRemainingSeconds, settleNote}, pods[{pod, workingSetPeakMi, startupSeconds}]}"),
             Map.of("name", "sizeMemory",
                 "input", "service, windowMinutes, peakFactor, floorSafetyFactor, roundMi, warmSeconds, minSamples, minRequestRate, minDeltaMi",
-                "output", "{status, reason, requests.memory (== limits), limits.memory, maxRamPercentage, initialRamPercentage, gc, evidence, params}"),
+                "output", "{status OK|BLOCKED, reason, requests.memory (== limits), limits.memory, maxRamPercentage, initialRamPercentage, gc, evidence, params}"),
             Map.of("name", "sizeCpu",
                 "input", "service, windowMinutes, cpuFactor, roundMillicores, warmSeconds, minSamples, minRequestRate, minDeltaMi",
-                "output", "{status, reason, requestsCpu, limitsCpu (unchanged), evidence, params}"),
+                "output", "{status OK|BLOCKED, reason, requestsCpu, limitsCpu (unchanged), clampedToLimit, note, evidence, params}"),
             Map.of("name", "threadDump",
                 "input", "service, sampleN=1",
-                "output", "ThreadFacts {pod, total, byState, virtualThreads, requestThreadsBlockedInFutureGet, carriersParkedInPoolWait, topBlockingFrames, sample}"),
+                "output", "ThreadFacts {pod, timestamp, total, byState, virtualThreads, requestThreadsActive, requestThreadsBlockedInFutureGet, requestThreadsWaitingForConnection, blockedInsideTransaction, topBlockingFrames, sample} or null"),
             Map.of("name", "diagnoseBlocking",
-                "input", "service, durationSec=12, intervalMs=1000, minRequestRate=1 — the operator's load run must be flowing",
-                "output", "{status OK|BLOCKED, reason, threads: ThreadFacts (peak blocked + summed frames), durationSec, requestRatePerSec}"),
+                "input", "service, durationSec=20, intervalMs=500, minRequestRate=1 — the operator's load run must be flowing",
+                "output", "{status OK|BLOCKED, reason, threads: ThreadFacts (peaks across samples, frames summed), durationSec, requestRatePerSec}"),
             Map.of("name", "profileTop",
                 "input", "service, type=cpu|wall, windowMinutes=15, limit=15",
-                "output", "{frames, jitShare, gcShare, futexWallShare, samples}"),
+                "output", "{frames[{name, selfPct}], jitShare, gcShare, futexWallShare, samples}"),
             Map.of("name", "startupLog",
                 "input", "service",
-                "output", "{pod, line, seconds, kind}"));
+                "output", "{pod, line, seconds, kind Started|Restored}"));
     }
 }

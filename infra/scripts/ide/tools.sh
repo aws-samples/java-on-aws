@@ -174,7 +174,7 @@ install_uv() {
     grep -q '.local/bin' /etc/profile.d/workshop.sh 2>/dev/null \
         || echo "export PATH=\$PATH:\$HOME/.local/bin" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
     if command -v uvx >/dev/null 2>&1; then
-        uvx awslabs.eks-mcp-server@latest --help >/dev/null 2>&1 \
+        uvx "awslabs.eks-mcp-server@${EKS_MCP_VERSION:-0.2.1}" --help >/dev/null 2>&1 \
             && echo "✅ Success: uv $(uv --version 2>/dev/null | awk '{print $2}') (eks-mcp-server prewarmed)" \
             || echo "⚠️  Warning: uv installed but eks-mcp-server prewarm failed"
     else

@@ -48,7 +48,7 @@ latency metric** is the authoritative "it is slow" signal on every image.
   `TransactionAspectSupport.invokeWithinTransaction`, Jakarta `TransactionalInterceptor`,
   `TransactionTemplate`). **> 0 means the remote call runs inside the transaction and holds
   a pooled connection for its duration.** Fix the transaction boundary, not only the block.
-- `carriersParkedInPoolWait` — threads waiting on a connection pool. > 0 with
+- `requestThreadsWaitingForConnection` — threads waiting on a connection pool. > 0 with
   `blockedInsideTransaction > 0` is the transaction boundary starving the pool; > 0 with
   `blockedInsideTransaction == 0` is a pool genuinely too small for the concurrency.
 - `requestThreadsActive` — request-path threads in flight (peak across samples): the
@@ -73,7 +73,7 @@ latency metric** is the authoritative "it is slow" signal on every image.
   For guaranteed delivery the full pattern is a transactional outbox; not needed here.
 - If a result is genuinely needed, bound it (timeout) and **size the pool from
   evidence** — set the pool to the measured concurrency, not a guess: only when
-  `carriersParkedInPoolWait > 0` remains after the boundary fix, and to
+  `requestThreadsWaitingForConnection > 0` remains after the boundary fix, and to
   `requestThreadsActive` (peak in-flight requests), not a round number.
 - Virtual threads make blocking cheaper but do not make a needless block correct;
   remove the block first.
@@ -97,7 +97,7 @@ should fall to 0.
 
 ## When the block is gone and latency is still high
 
-`requestThreadsBlockedInFutureGet == 0` and `carriersParkedInPoolWait == 0` under load, yet
+`requestThreadsBlockedInFutureGet == 0` and `requestThreadsWaitingForConnection == 0` under load, yet
 `latencyMeanMs` or `latencyMaxMs` stays high: the request path is no longer waiting on
 itself, so look at what the pod is waiting on. Read these from `measure`, in this order,
 and name the one that carries the number:
@@ -122,5 +122,5 @@ Do not guess between these; each has its own number in the tool output.
 There is no golden file here — the change is in the app's source. Name the blocking
 frame and `file:line` from `diagnoseBlocking`; if `blockedInsideTransaction > 0`, move the
 remote call after commit (framework pattern above) AND make it non-blocking; otherwise make
-it non-blocking. Size the pool only from `carriersParkedInPoolWait`, to the observed
+it non-blocking. Size the pool only from `requestThreadsWaitingForConnection`, to the observed
 concurrency.

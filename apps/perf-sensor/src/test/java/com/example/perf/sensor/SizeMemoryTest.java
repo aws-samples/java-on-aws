@@ -1,42 +1,62 @@
 package com.example.perf.sensor;
 
+import com.example.perf.sensor.SensorService.CpuParams;
 import com.example.perf.sensor.SensorService.SizeParams;
 import com.example.perf.sensor.SensorService.SizeResult;
 import com.example.perf.sensor.facts.Facts;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * sizeMemory arithmetic + guard over JSON fact fixtures. Pins the acceptance
- * numbers and determinism (identical output across repeated runs). No collectors,
- * no LLM. Uses the SOP policy parameters (the skill owns the numbers).
+ * sizeMemory / sizeCpu arithmetic + guard over JSON fact fixtures. Pins the numbers the
+ * workshop content shows and determinism (identical output across repeated runs). No
+ * collectors, no LLM. The policy values are the ones in
+ * {@code skills/java-on-eks-optimization/references/sizing-policy.yaml} (guarded by
+ * {@link SkillDebrandingTest}). Fixtures are parsed strictly so a renamed or removed fact
+ * field fails here instead of silently reading as null.
  */
 class SizeMemoryTest {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    // Strict on unknown fields (drift), lenient on absent primitives (fixtures list only the
+    // facts a test needs; Jackson 3 fails on those by default).
+    static final JsonMapper MAPPER = JsonMapper.builder()
+        .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+        .build();
 
-    // The java-on-eks-optimization SOP policy parameters.
-    private static final SizeParams POLICY =
-        new SizeParams(1.40, 1.90, 64, 120, 100, 1, 64);
+    // sizing-policy.yaml: peakFactor, floorSafetyFactor, roundMi, warmSeconds, minSamples, minRequestRate, minDeltaMi
+    static final SizeParams POLICY = new SizeParams(1.40, 1.90, 128, 120, 100, 1, 64);
+    // sizing-policy.yaml: cpuFactor, roundMillicores, warmSeconds, minSamples, minRequestRate, minDeltaMi
+    static final CpuParams CPU_POLICY = new CpuParams(1.5, 50, 120, 100, 1, 64);
 
-    private final SensorService sensor = new SensorService(null, null, null, null, null, null, null);
+    private final SensorService sensor = new SensorService(null, null, null, null, null, null);
 
-    private Facts fixture(String name) throws IOException {
-        try (var in = getClass().getResourceAsStream("/fixtures/" + name + ".json")) {
+    static Facts fixture(String name) throws IOException {
+        try (var in = SizeMemoryTest.class.getResourceAsStream("/fixtures/" + name + ".json")) {
             assertThat(in).as("fixture %s", name).isNotNull();
             return MAPPER.readValue(in, Facts.class);
         }
     }
 
+    /** The fixture with one workload field overridden, without spelling out the 27-field record. */
+    private static Facts fixtureWithWorkload(String name, String field, double value) throws IOException {
+        try (var in = SizeMemoryTest.class.getResourceAsStream("/fixtures/" + name + ".json")) {
+            var tree = (ObjectNode) MAPPER.readTree(in);
+            ((ObjectNode) tree.get("workload")).put(field, value);
+            return MAPPER.treeToValue(tree, Facts.class);
+        }
+    }
+
     @Test
-    void baseline_sizesToAcceptanceRange_serialGc() throws IOException {
-        // floor 377, peak 517: limits = roundUp(max(723.8, 716.3), 64) = 768; requests == limits.
+    void baseline_sizesToTheWorkshopNumber_serialGc() throws IOException {
+        // floor 377, peak 517: limits = roundUp(max(723.8, 716.3), 128) = 768; requests == limits.
         var r = sensor.sizeMemory(fixture("baseline"), POLICY);
         assertThat(r.status()).isEqualTo("OK");
         assertThat(r.requests().memory()).isEqualTo("768Mi");
@@ -44,8 +64,15 @@ class SizeMemoryTest {
         assertThat(r.maxRamPercentage()).isEqualTo(75);
         assertThat(r.initialRamPercentage()).isEqualTo(50);
         assertThat(r.gc()).isEqualTo("SerialGC");
-        assertThat(r.evidence().rssFloorMi()).isEqualTo(377.0);
-        assertThat(r.evidence().rssPeakMi()).isEqualTo(517.0);
+        assertThat(r.evidence().workingSetFloorMi()).isEqualTo(377.0);
+        assertThat(r.evidence().workingSetPeakMi()).isEqualTo(517.0);
+    }
+
+    @Test
+    void genericApp_sameArithmetic_noAppNameInvolved() throws IOException {
+        var r = sensor.sizeMemory(fixture("generic-app"), POLICY);
+        assertThat(r.status()).isEqualTo("OK");
+        assertThat(r.limits().memory()).isEqualTo("768Mi");
     }
 
     @Test
@@ -59,7 +86,7 @@ class SizeMemoryTest {
 
     @Test
     void crac_sizesSmall_floorSafetyDominates() throws IOException {
-        // floor 190, peak 210: limits=roundUp(max(294,361),64)=384; requests == limits.
+        // floor 190, peak 210: limits = roundUp(max(294, 361), 128) = 384; requests == limits.
         var r = sensor.sizeMemory(fixture("crac"), POLICY);
         assertThat(r.status()).isEqualTo("OK");
         assertThat(r.requests().memory()).isEqualTo("384Mi");
@@ -75,36 +102,22 @@ class SizeMemoryTest {
         assertThat(r.requests()).isNull();
         assertThat(r.limits()).isNull();
         // evidence still reported for the operator.
-        assertThat(r.evidence().rssFloorMi()).isEqualTo(400.0);
+        assertThat(r.evidence().workingSetFloorMi()).isEqualTo(400.0);
     }
 
     @Test
     void missingFacts_blocked() {
-        var r = sensor.sizeMemory(new Facts(null, null, null, null, null), POLICY);
+        var r = sensor.sizeMemory(new Facts(null, null, null, null), POLICY);
         assertThat(r.status()).isEqualTo("BLOCKED");
         assertThat(r.reason()).contains("insufficient measurement");
     }
 
     @Test
     void gcIsG1_whenMoreThanOneCpu() throws IOException {
-        // Same facts but > 1 vCPU would flip GC. Verify the rule directly via a crafted fixture.
-        var base = fixture("baseline");
-        var wl = base.workload();
-        var twoCpu = new com.example.perf.sensor.facts.WorkloadFacts(
-            wl.namespace(), wl.deployment(), wl.container(), wl.imageTag(), wl.replicas(),
-            wl.cpuRequestCores(), 2.0, wl.memRequestMi(), wl.memLimitMi(), wl.cpuResizePolicy(),
-            wl.cpuResizeRestartPolicy(), wl.javaToolOptions(), wl.readinessProbe(), wl.startupProbe(),
-            wl.runAsNonRoot(), wl.allowPrivilegeEscalation(), wl.sidecars(), wl.readyPods(),
-            wl.livenessProbe(), wl.livenessPath(), wl.readinessPath(), wl.livenessBudgetSeconds(),
-            wl.startupBudgetSeconds(), wl.startupInitialDelaySeconds(), wl.readinessInitialDelaySeconds(),
-            wl.terminationGracePeriodSeconds(), wl.preStopSleepSeconds());
-        var r = sensor.sizeMemory(new Facts(twoCpu, base.runtime(), base.profile(), null, null), POLICY);
+        var r = sensor.sizeMemory(fixtureWithWorkload("baseline", "cpuLimitCores", 2.0), POLICY);
         assertThat(r.status()).isEqualTo("OK");
         assertThat(r.gc()).isEqualTo("G1GC");
     }
-
-    private static final SensorService.CpuParams CPU_POLICY =
-        new SensorService.CpuParams(1.5, 50, 120, 100, 1, 64);
 
     @Test
     void sizeCpu_requestFromP95_limitUnchanged() throws IOException {
@@ -142,5 +155,20 @@ class SizeMemoryTest {
         for (int i = 0; i < 10; i++) {
             assertThat(sensor.sizeMemory(facts, POLICY)).isEqualTo(first);
         }
+    }
+
+    @Test
+    void fixturesAreParsedStrictly_unknownFieldFails() {
+        assertThatThrownBy(() -> MAPPER.readValue("{\"runtime\":{\"rssPeakMi\":1}}", Facts.class))
+            .hasMessageContaining("rssPeakMi");
+    }
+
+    @Test
+    void quantities() {
+        assertThat(SensorService.quantity(1.0)).isEqualTo("1");
+        assertThat(SensorService.quantity(0.25)).isEqualTo("250m");
+        assertThat(SensorService.roundUpMi(689.0, 128)).isEqualTo("768Mi");
+        assertThat(SensorService.roundUpMi(768.0, 128)).isEqualTo("768Mi");
+        assertThat(SensorService.roundUpMi(768.1, 128)).isEqualTo("896Mi");
     }
 }

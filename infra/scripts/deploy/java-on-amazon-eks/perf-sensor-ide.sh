@@ -4,14 +4,13 @@
 # Claude Code (started from ~/environment) can drive the sensors + EKS MCP Server.
 #
 # Copies the two skills to ~/environment/.claude/skills/, writes ~/environment/.mcp.json
-# (perf-sensor over streamable-http on the port-forward; eks-mcp read-only), and
-# prints the port-forward command. Idempotent.
+# (perf-sensor over streamable-http on the port-forward; eks-mcp read-only), writes the
+# project permissions, and prints the port-forward command. Idempotent.
 #
-# EKS MCP Server: this writes the awslabs eks-mcp-server over local stdio in
-# READ-ONLY mode (the spec's fallback), which needs no SigV4 signing in Claude
-# Code and works with the IDE role's default credentials. If Claude Code on the
-# IDE can sign SigV4 to a managed EKS MCP endpoint natively, swap the "eks-mcp"
-# block for that endpoint. Record which one you used.
+# EKS MCP Server: the awslabs eks-mcp-server over local stdio, pinned to a version,
+# WITHOUT --allow-write (the server refuses mutations). Its tool list still shows the
+# write tools (apply_yaml, manage_k8s_resource, ...), so the permissions below allow
+# only the read tools by name; anything else prompts.
 # =============================================================================
 set -euo pipefail
 
@@ -22,6 +21,7 @@ ENV_DIR="${ENVIRONMENT_DIR:-${HOME}/environment}"
 SKILLS_DST="${ENV_DIR}/.claude/skills"
 REGION="${AWS_REGION:-us-east-1}"
 NS="monitoring"
+EKS_MCP_VERSION="${EKS_MCP_VERSION:-0.2.1}"   # pinned; bump deliberately (ide/tools.sh prewarms the same version)
 
 # 1. Skills -> ~/environment/.claude/skills/
 mkdir -p "${SKILLS_DST}"
@@ -42,7 +42,7 @@ cat > "${ENV_DIR}/.mcp.json" <<EOF
     "eks-mcp": {
       "command": "uvx",
       "args": [
-        "awslabs.eks-mcp-server@latest",
+        "awslabs.eks-mcp-server@${EKS_MCP_VERSION}",
         "--allow-sensitive-data-access"
       ],
       "env": {
@@ -60,12 +60,11 @@ echo "wrote ${ENV_DIR}/.mcp.json"
 # perf-sensor + eks-mcp, only for this workspace. Relies on folder trust pre-accepted by
 # ide/tools.sh. Merge so we don't clobber any existing project settings.
 #
-# permissions.allow: pre-approve the read-only sensors (mcp__<server> = every tool on that
-# server), file reads, and edits so the investigate -> explain -> apply loop runs without
-# tool prompts. Bash is deliberately NOT listed: the service runs under steady load for the
-# whole session (the developer keeps scripts/load.sh running in its own terminal), so Claude
-# has nothing to run; kubectl/build/git still prompt — rollout stays a participant action we
-# don't block but don't auto-run.
+# permissions.allow: the read-only sensor (every perf-sensor tool), the eks-mcp READ tools by
+# name, file reads, and edits — so the investigate -> explain -> apply loop runs without
+# prompts. permissions.deny closes the two ways the agent could widen its own scope: Bash
+# (the participant rolls out; the load runs in its own terminal), and edits to the Claude
+# configuration itself (.claude/**, .mcp.json) or to .git/**. Everything not listed prompts.
 python3 - "${ENV_DIR}/.claude/settings.json" <<'PY'
 import json, os, sys
 path = sys.argv[1]
@@ -80,23 +79,38 @@ servers = set(data.get("enabledMcpjsonServers", []))
 servers.update(["perf-sensor", "eks-mcp"])
 data["enabledMcpjsonServers"] = sorted(servers)
 perms = data.setdefault("permissions", {})
-allow = list(perms.get("allow", []))
-for rule in ["mcp__perf-sensor", "mcp__eks-mcp", "Read", "Grep", "Glob", "Edit", "Write"]:
+allow = [r for r in perms.get("allow", []) if r != "mcp__eks-mcp"]   # replace the blanket eks-mcp grant
+for rule in ["mcp__perf-sensor",
+             "mcp__eks-mcp__list_k8s_resources", "mcp__eks-mcp__get_pod_logs", "mcp__eks-mcp__get_k8s_events",
+             "mcp__eks-mcp__get_eks_insights", "mcp__eks-mcp__get_eks_metrics_guidance",
+             "mcp__eks-mcp__get_cloudwatch_logs", "mcp__eks-mcp__get_cloudwatch_metrics",
+             "mcp__eks-mcp__search_eks_troubleshoot_guide", "mcp__eks-mcp__list_api_versions",
+             "Read", "Grep", "Glob", "Edit", "Write"]:
     if rule not in allow:
         allow.append(rule)
 perms["allow"] = allow
+deny = list(perms.get("deny", []))
+for rule in ["Bash",
+             "Edit(.claude/**)", "Write(.claude/**)", "Edit(.mcp.json)", "Write(.mcp.json)",
+             "Edit(**/.git/**)", "Write(**/.git/**)",
+             "mcp__eks-mcp__apply_yaml", "mcp__eks-mcp__manage_k8s_resource", "mcp__eks-mcp__manage_eks_stacks",
+             "mcp__eks-mcp__add_inline_policy", "mcp__eks-mcp__generate_app_manifest"]:
+    if rule not in deny:
+        deny.append(rule)
+perms["deny"] = deny
 os.makedirs(os.path.dirname(path), exist_ok=True)
 with open(path, "w") as f:
     json.dump(data, f, indent=2)
 PY
-echo "wrote ${ENV_DIR}/.claude/settings.json (enabledMcpjsonServers + permissions.allow for sensors, read, edit)"
+echo "wrote ${ENV_DIR}/.claude/settings.json (MCP servers enabled; allow: sensor, eks-mcp read tools, read, edit; deny: Bash, config edits, eks-mcp write tools)"
 
 # No workspace CLAUDE.md: the app repo documents itself (unicorn-store-spring/CLAUDE.md).
 # Remove a leftover from earlier revisions.
 rm -f "${ENV_DIR}/CLAUDE.md"
 # --allow-sensitive-data-access is required for get_pod_logs / get_k8s_events (read-only;
-# write stays off). Auth uses the IDE role (default iam mode). uv/uvx and the eks-mcp
-# package are installed and prewarmed by ide/tools.sh (install_uv) during base bootstrap.
+# --allow-write is NOT passed, so the server refuses mutations even if a write tool is
+# called). Auth uses the IDE role (default iam mode). uv/uvx and the eks-mcp package are
+# installed and prewarmed by ide/tools.sh (install_uv) during base bootstrap.
 
 echo
 echo "Next:"

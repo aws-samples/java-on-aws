@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -13,7 +13,7 @@
     <artifactId>perf-sensor</artifactId>
     <version>1.0.0</version>
     <name>perf-sensor</name>
-    <description>Deterministic performance sensors for a Java workload on EKS, exposed over
+    <description>Deterministic performance sensors for Java workloads on EKS, exposed over
         MCP (streamable-http) and REST. Measures only — no LLM, no AWS SDK. Judgement lives in
         the java-on-eks-optimization / java-on-eks-checklist skills.</description>
 
@@ -21,7 +21,7 @@
         <java.version>25</java.version>
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spring-ai.version>2.0.0</spring-ai.version>
+        <spring-ai.version>2.0.1</spring-ai.version>
         <kubernetes-client.version>27.0.0</kubernetes-client.version>
     </properties>
 
@@ -58,12 +58,6 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
-        </dependency>
-
-        <!-- JSON parsing for Prometheus / Pyroscope / thread-dump responses -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
         </dependency>
 
         <!-- Kubernetes API client (read-only): WorkloadFacts from deployments and

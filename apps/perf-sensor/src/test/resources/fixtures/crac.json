@@ -14,11 +14,13 @@
     "startupProbe": true,
     "runAsNonRoot": true,
     "allowPrivilegeEscalation": false,
-    "sidecars": ["perf-profiler"]
+    "sidecars": [
+      "perf-profiler"
+    ]
   },
   "runtime": {
-    "rssFloorMi": 190.0,
-    "rssPeakMi": 210.0,
+    "workingSetFloorMi": 190.0,
+    "workingSetPeakMi": 210.0,
     "heapUsedMi": 45.0,
     "heapCommittedMi": 70.0,
     "gcName": "SerialGC",
@@ -29,17 +31,21 @@
     "requestRatePerSec": 5
   },
   "profile": {
-    "topCpu": [{"name": "com/unicorn/store/service/UnicornService.createUnicorn", "selfPct": 7.0}],
-    "topWall": [{"name": "jdk/internal/misc/Unsafe.park", "selfPct": 9.0}],
+    "topCpu": [
+      {
+        "name": "com/unicorn/store/service/UnicornService.createUnicorn",
+        "selfPct": 7.0
+      }
+    ],
+    "topWall": [
+      {
+        "name": "jdk/internal/misc/Unsafe.park",
+        "selfPct": 9.0
+      }
+    ],
     "jitSharePct": 2.0,
     "gcSharePct": 4.0,
     "futexWallSharePct": 9.0,
-    "warmupWindow": false,
     "samples": 5200
-  },
-  "threads": {
-    "threadCountByState": {"RUNNABLE": 8, "TIMED_WAITING": 18},
-    "poolWaitCarriers": 0,
-    "futureGetOnRequestPath": false
   }
 }

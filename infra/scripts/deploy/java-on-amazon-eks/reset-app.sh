@@ -21,9 +21,10 @@
 #      `-c` would resume + auto-memory, sessions/, session-env/, shell-snapshots/,
 #      backups/, downloads/). KEPT: ~/.claude/settings.json, ~/.claude.json, and the
 #      workshop wiring in ~/environment/.claude/ + ~/environment/.mcp.json.
-#   6. --prebuild: rebuild :aot and :crac from the SHARED source
-#      (~/java-on-aws/apps/unicorn-store-spring, which still carries the CRaC hook)
-#      because the run's own builds overwrote the prebuilt tags. Several minutes.
+#   6. --prebuild: rebuild the :aot-prebuilt / :crac-prebuilt fallback tags from the
+#      SHARED source (~/java-on-aws/apps/unicorn-store-spring, which still carries the
+#      CRaC hook). Participant builds push :aot / :crac, so the fallbacks survive a run;
+#      pass this only when the shared source changed. Several minutes.
 #
 # NOT touched: the Aurora rows the load runs inserted (nothing reads them) and the
 # Prometheus/Pyroscope history (the sensor scopes to the current pod).
@@ -126,7 +127,7 @@ if ${PREBUILD}; then
     && log_success "Prebuilt tags restored" \
     || { log_error "prebuild failed"; exit 1; }
 else
-  log_warning ":aot/:crac in ECR are the last run's builds — pass --prebuild to restore the bootstrap tags"
+  log_info ":aot-prebuilt/:crac-prebuilt fallbacks untouched by the run (pass --prebuild to rebuild them from the shared source)"
 fi
 
 log_success "Environment at starting point. Next: ACCEPTANCE.md §2 (claude -p, not -c)."

@@ -1,6 +1,19 @@
 # =============================================================================
-# perf-sensor — Spring Boot 4.1 / Spring AI 2.0 MCP server (streamable-http) + REST.
+# perf-sensor — Spring Boot 4 / Spring AI 2 MCP server (streamable-http) + REST.
 # Deterministic sensors only: no Bedrock, no Spring AI chat, no AWS SDK.
+#
+# Environment (set in k8s/deployment.yaml by deploy/java-on-amazon-eks/perf-sensor.sh):
+#   PROMETHEUS_URL       default http://prometheus-server.monitoring
+#   PYROSCOPE_URL        default http://pyroscope.monitoring:4040
+#   DUMP_PORT            profiler sidecar /dump port, default 9100
+#   SERVICE_LABEL        pod label carrying the service name, default app
+#   REQUEST_PACKAGE      REQUIRED — the app's request-path package (e.g. com.example.shop);
+#                        a thread is "request path" when this package is on its stack
+#   PROFILED_POD_LABEL   selector for pods whose startup the sensor publishes,
+#                        default perf-profile/sidecar=true (the profiler opt-in label)
+#   PROFILER_CONTAINER   sidecar container name to skip when finding the app container,
+#                        default perf-profiler
+# Contract: namespace == Deployment == app container == Pyroscope service_name (see README).
 # =============================================================================
 spring:
   application:
@@ -18,20 +31,9 @@ spring:
         # ToolCallbackProvider bean in SensorApplication.
         protocol: STREAMABLE
 
-# Endpoints the sensors query in-cluster (overridable via env).
-PROMETHEUS_URL: ${PROMETHEUS_URL:http://prometheus-server.monitoring}
-PYROSCOPE_URL: ${PYROSCOPE_URL:http://pyroscope.monitoring:4040}
-# Profiler sidecar /dump port and the label used to select the app pod.
-DUMP_PORT: ${DUMP_PORT:9100}
-SERVICE_LABEL: ${SERVICE_LABEL:app}
-
 server:
   port: 8080
   shutdown: graceful
-
-# Which workload's startup time to publish as perf_sensor_startup_seconds (per Ready
-# pod) is set via the STARTUP_METRIC_SERVICE env var (default in StartupMetrics:
-# unicorn-store-spring). Namespace == service == container name by convention.
 
 management:
   endpoints:

@@ -11,7 +11,7 @@
 # This script consumes those (CloudWatch datasource for the Latency dashboard,
 # Pyroscope Service for the NLB) and does not install or configure them itself.
 #
-# The EKS-only CON405 template does NOT run this script — it drives optimization
+# The java-on-amazon-eks template does NOT run this script — it drives optimization
 # from the read-only perf-sensor, which brings its own SA, dashboard, and
 # read-only RBAC (see deploy/java-on-amazon-eks/perf-sensor.sh).
 # =============================================================================

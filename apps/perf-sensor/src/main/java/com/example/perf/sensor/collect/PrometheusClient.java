@@ -1,29 +1,36 @@
 package com.example.perf.sensor.collect;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
- * Query Prometheus (in-cluster) for the app container's MEASURED memory footprint
- * over a window: working-set floor (idle) and peak (the OOM-relevant figure
- * Kubernetes evicts on), the app's measured startup (Micrometer
- * {@code application.ready.time}), and the request rate (signals whether the
- * window saw real load). Read-only; every accessor degrades to null when
- * Prometheus is unavailable or has no series for the container.
+ * Query Prometheus (in-cluster) for the app container's MEASURED footprint over a window:
+ * working-set floor and peak (the figure Kubernetes evicts on), CPU usage p95, CFS
+ * throttling, HTTP request rate and latency (Micrometer), and the startup gauges. Read-only;
+ * every accessor degrades to null when Prometheus is unavailable or has no series.
+ *
+ * <p>cAdvisor series are PER POD. Fleet values aggregate across the workload's CURRENT pods
+ * to a worst case (the sizing-relevant envelope), so they are correct at any replica count.
+ * {@code podRegex} (from the K8s snapshot's Ready pods) keeps pods replaced by a rollout
+ * inside the window out of the verdict; null means "all pods with that container name"
+ * (fallback when the API is unavailable).
  */
 @Component
 public class PrometheusClient {
 
     private static final Logger logger = LoggerFactory.getLogger(PrometheusClient.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.builder().build();
     private static final double MIB = 1024.0 * 1024.0;
 
     private final RestClient restClient;
@@ -34,20 +41,22 @@ public class PrometheusClient {
         this.restClient = RestClient.builder().baseUrl(this.promUrl).build();
     }
 
-    // cAdvisor series are PER POD. We aggregate across the workload's CURRENT pods to a
-    // fleet worst-case (the sizing-relevant envelope), so the value is correct at any
-    // replica count. {@code podRegex} (from the K8s snapshot's Ready pods) keeps pods
-    // that were replaced by a rollout inside the window out of the verdict; null means
-    // "all pods with that container name" (fallback when the API is unavailable).
-
-    /** Fleet working-set floor (idle) over the window, MiB: the highest per-pod idle. */
+    /**
+     * Fleet working-set floor over the window, MiB: the highest per-pod idle footprint. The
+     * 5th percentile, not the minimum: a pod's first seconds after start have a near-zero
+     * working set, and a minimum over a window that includes the start reads a few MiB —
+     * which would make the floor safety factor and the peak-floor load signal meaningless.
+     * The caller also clips {@code mins} to the pod's lifetime minus its first minute.
+     */
     public Double workingSetFloorMi(String namespace, String container, String podRegex, int mins) {
-        return toMi(scalar("max(min_over_time(container_memory_working_set_bytes" + sel(namespace, container, podRegex) + win(mins) + "))"));
+        return toMi(scalar("max(quantile_over_time(0.05, container_memory_working_set_bytes"
+            + sel(namespace, container, podRegex) + win(mins) + "))"));
     }
 
     /** Fleet working-set peak over the window, MiB: the worst per-pod peak (limits basis). */
     public Double workingSetPeakMi(String namespace, String container, String podRegex, int mins) {
-        return toMi(scalar("max(max_over_time(container_memory_working_set_bytes" + sel(namespace, container, podRegex) + win(mins) + "))"));
+        return toMi(scalar("max(max_over_time(container_memory_working_set_bytes"
+            + sel(namespace, container, podRegex) + win(mins) + "))"));
     }
 
     /** Fleet startup in seconds: the slowest pod (application.ready.time, then started.time). */
@@ -104,16 +113,16 @@ public class PrometheusClient {
         return s == null ? null : s * 1000.0;
     }
 
-    /** Per-pod working-set peak over the window, MiB (drill-down behind the fleet peak). */
-    public java.util.Map<String, Double> perPodPeakMi(String namespace, String container, int mins) {
-        var out = new java.util.LinkedHashMap<String, Double>();
-        vectorByPod("max_over_time(container_memory_working_set_bytes" + sel(namespace, container, null) + win(mins) + ")")
+    /** Per-pod working-set peak over the window, MiB, for the given pods (drill-down behind the fleet peak). */
+    public Map<String, Double> perPodPeakMi(String namespace, String container, String podRegex, int mins) {
+        var out = new LinkedHashMap<String, Double>();
+        vectorByPod("max_over_time(container_memory_working_set_bytes" + sel(namespace, container, podRegex) + win(mins) + ")")
             .forEach((pod, bytes) -> out.put(pod, bytes / MIB));
         return out;
     }
 
-    /** Per-pod startup seconds (application.ready.time), keyed by pod. */
-    public java.util.Map<String, Double> perPodStartup(String app) {
+    /** Per-pod startup seconds (Micrometer application.ready.time), keyed by pod. */
+    public Map<String, Double> perPodStartup(String app) {
         return vectorByPod("application_ready_time_seconds{application=\"" + app + "\"}");
     }
 
@@ -122,13 +131,13 @@ public class PrometheusClient {
      * keyed by pod. Preferred over application.ready.time: a CRaC checkpoint taken after startup
      * carries the BUILD-time ready metric into every restored pod, while the log names the restore.
      */
-    public java.util.Map<String, Double> perPodStartupFromLog(String service) {
+    public Map<String, Double> perPodStartupFromLog(String service) {
         return vectorByPod("perf_sensor_startup_seconds{service=\"" + service + "\"}");
     }
 
     /** Run an instant query and return value per {@code pod} label (skips series with no pod). */
-    private java.util.Map<String, Double> vectorByPod(String query) {
-        var out = new java.util.LinkedHashMap<String, Double>();
+    private Map<String, Double> vectorByPod(String query) {
+        var out = new LinkedHashMap<String, Double>();
         try {
             var url = promUrl + "/api/v1/query?query=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
             var body = restClient.get().uri(URI.create(url)).retrieve().body(String.class);

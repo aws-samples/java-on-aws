@@ -1,16 +1,16 @@
 {
   "workload": {
-    "namespace": "unicorn-store-spring",
-    "deployment": "unicorn-store-spring",
-    "container": "unicorn-store-spring",
-    "imageTag": "latest",
+    "namespace": "shop",
+    "deployment": "shop",
+    "container": "shop",
+    "imageTag": "1.4.2",
     "replicas": 1,
-    "cpuRequestCores": 0.25,
+    "cpuRequestCores": 1.0,
     "cpuLimitCores": 1.0,
-    "memRequestMi": 512.0,
-    "memLimitMi": 768.0,
-    "cpuResizePolicy": true,
-    "javaToolOptions": "-XX:+UseSerialGC -XX:MaxRAMPercentage=75",
+    "memRequestMi": 2048.0,
+    "memLimitMi": 2048.0,
+    "cpuResizePolicy": false,
+    "javaToolOptions": null,
     "startupProbe": true,
     "runAsNonRoot": true,
     "allowPrivilegeEscalation": false,
@@ -25,27 +25,28 @@
     "heapCommittedMi": 86.0,
     "gcName": "SerialGC",
     "effectiveCpuCount": 1,
-    "startupSeconds": 12.7,
+    "startupSeconds": 13.03,
     "restarts": 0,
     "uptimeSeconds": 3600.0,
-    "requestRatePerSec": 30
+    "requestRatePerSec": 30,
+    "cpuUsageP95Cores": 0.31
   },
   "profile": {
     "topCpu": [
       {
-        "name": "com/unicorn/store/service/UnicornService.createUnicorn",
+        "name": "com/example/shop/OrderService.place",
         "selfPct": 6.0
       }
     ],
     "topWall": [
       {
         "name": "jdk/internal/misc/Unsafe.park",
-        "selfPct": 10.0
+        "selfPct": 12.0
       }
     ],
     "jitSharePct": 3.0,
     "gcSharePct": 5.0,
-    "futexWallSharePct": 10.0,
-    "samples": 5000
+    "futexWallSharePct": 12.0,
+    "samples": 4356
   }
 }

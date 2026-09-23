@@ -6,15 +6,24 @@ import io.kubernetes.client.openapi.apis.AppsV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.models.V1Container;
 import io.kubernetes.client.openapi.models.V1Deployment;
+import io.kubernetes.client.openapi.models.V1DeploymentSpec;
+import io.kubernetes.client.openapi.models.V1EnvVar;
 import io.kubernetes.client.openapi.models.V1Pod;
+import io.kubernetes.client.openapi.models.V1Probe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Reads desired-state {@link WorkloadFacts} from the Kubernetes API (read-only):
@@ -43,6 +52,20 @@ public class K8sCollector {
     /** A Ready pod's name + IP (for per-pod fan-out, e.g. thread-dump sampling). */
     public record PodRef(String name, String ip) {}
 
+    /** A Ready pod of a profiled workload: where it runs, what it is called, which container is the app. */
+    public record ProfiledPod(String namespace, String pod, String service, String appContainer) {}
+
+    private final CoreV1Api core;
+    private final AppsV1Api apps;
+    private final String serviceLabel;
+
+    public K8sCollector(CoreV1Api core, AppsV1Api apps,
+                        @Value("${SERVICE_LABEL:app}") String serviceLabel) {
+        this.core = core;
+        this.apps = apps;
+        this.serviceLabel = serviceLabel;
+    }
+
     /**
      * Ready pod name+IP for a workload, newest first — for tools that must fan out
      * across pods (thread dumps). Empty when the workload/API is unavailable.
@@ -57,7 +80,7 @@ public class K8sCollector {
             }
             return pods.getItems().stream()
                 .filter(K8sCollector::isReady)
-                .sorted(java.util.Comparator.comparingLong(K8sCollector::startTimeEpoch).reversed())
+                .sorted(Comparator.comparingLong(K8sCollector::startTimeEpoch).reversed())
                 .map(p -> new PodRef(
                     p.getMetadata() == null ? null : p.getMetadata().getName(),
                     p.getStatus() == null ? null : p.getStatus().getPodIP()))
@@ -69,15 +92,34 @@ public class K8sCollector {
         }
     }
 
-    private final CoreV1Api core;
-    private final AppsV1Api apps;
-    private final String serviceLabel;
-
-    public K8sCollector(CoreV1Api core, AppsV1Api apps,
-                        @Value("${SERVICE_LABEL:app}") String serviceLabel) {
-        this.core = core;
-        this.apps = apps;
-        this.serviceLabel = serviceLabel;
+    /**
+     * Ready pods across all namespaces matching {@code labelSelector} (e.g. the profiler opt-in
+     * label), with the service name from {@code serviceLabel} and the app container = the first
+     * container that is not the given sidecar. Empty when the API is unavailable.
+     */
+    public List<ProfiledPod> readyPodsByLabel(String labelSelector, String sidecarName) {
+        try {
+            var pods = core.listPodForAllNamespaces().labelSelector(labelSelector).execute();
+            if (pods.getItems() == null) {
+                return List.of();
+            }
+            return pods.getItems().stream()
+                .filter(K8sCollector::isReady)
+                .map(p -> {
+                    var meta = p.getMetadata();
+                    String service = meta.getLabels() == null ? null : meta.getLabels().get(serviceLabel);
+                    String container = p.getSpec() == null || p.getSpec().getContainers() == null ? null
+                        : p.getSpec().getContainers().stream().map(V1Container::getName)
+                            .filter(n -> !sidecarName.equals(n)).findFirst().orElse(null);
+                    return new ProfiledPod(meta.getNamespace(), meta.getName(),
+                        service != null ? service : meta.getNamespace(), container);
+                })
+                .filter(pp -> pp.appContainer() != null)
+                .toList();
+        } catch (Exception e) {
+            logger.warn("readyPodsByLabel failed selector={}: {}", labelSelector, e.getMessage());
+            return List.of();
+        }
     }
 
     public Snapshot collect(String namespace, String deployment) {
@@ -138,7 +180,7 @@ public class K8sCollector {
                     javaToolOptions = app.getEnv().stream()
                         .filter(e -> "JAVA_TOOL_OPTIONS".equals(e.getName()))
                         .findFirst()
-                        .map(io.kubernetes.client.openapi.models.V1EnvVar::getValue)
+                        .map(V1EnvVar::getValue)
                         .orElse(null);
                 }
                 readinessProbe = app.getReadinessProbe() != null;
@@ -179,8 +221,8 @@ public class K8sCollector {
                 var ready = pods.getItems().stream().filter(K8sCollector::isReady).toList();
                 readyPods = ready.size();
                 ready.stream().map(pp -> pp.getMetadata() == null ? null : pp.getMetadata().getName())
-                    .filter(java.util.Objects::nonNull).forEach(readyPodNames::add);
-                V1Pod pod = ready.stream().max(java.util.Comparator.comparing(K8sCollector::startTimeEpoch))
+                    .filter(Objects::nonNull).forEach(readyPodNames::add);
+                V1Pod pod = ready.stream().max(Comparator.comparing(K8sCollector::startTimeEpoch))
                     .orElse(null);
                 if (pod != null) {
                     if (pod.getMetadata() != null) {
@@ -189,8 +231,9 @@ public class K8sCollector {
                     if (pod.getStatus() != null) {
                         podIP = pod.getStatus().getPodIP();
                         if (pod.getStatus().getContainerStatuses() != null) {
+                            String appName = app == null ? deployment : app.getName();
                             var appStatus = pod.getStatus().getContainerStatuses().stream()
-                                .filter(cs -> deployment.equals(cs.getName()))
+                                .filter(cs -> appName.equals(cs.getName()))
                                 .findFirst().orElse(null);
                             if (appStatus != null) {
                                 restarts = appStatus.getRestartCount();
@@ -200,16 +243,17 @@ public class K8sCollector {
                                 if (appStatus.getState() != null && appStatus.getState().getRunning() != null
                                     && appStatus.getState().getRunning().getStartedAt() != null) {
                                     var startedAt = appStatus.getState().getRunning().getStartedAt();
-                                    uptimeSeconds = (double) java.time.Duration
-                                        .between(startedAt.toInstant(), java.time.Instant.now()).getSeconds();
+                                    uptimeSeconds = (double) Duration
+                                        .between(startedAt.toInstant(), Instant.now()).getSeconds();
                                 }
                             }
                         }
                     }
                     if (pod.getSpec() != null && pod.getSpec().getContainers() != null) {
+                        String appName = app == null ? deployment : app.getName();
                         pod.getSpec().getContainers().stream()
                             .map(V1Container::getName)
-                            .filter(n -> !deployment.equals(n))
+                            .filter(n -> !appName.equals(n))
                             .forEach(sidecars::add);
                     }
                 }
@@ -230,19 +274,19 @@ public class K8sCollector {
     }
 
     /** httpGet path of a probe, or null when absent / not an HTTP probe. */
-    private static String httpPath(io.kubernetes.client.openapi.models.V1Probe probe) {
+    static String httpPath(V1Probe probe) {
         return probe == null || probe.getHttpGet() == null ? null : probe.getHttpGet().getPath();
     }
 
     /** failureThreshold x periodSeconds with the K8s defaults (3 x 10), or null when no probe. */
-    private static Integer budget(io.kubernetes.client.openapi.models.V1Probe probe) {
+    static Integer budget(V1Probe probe) {
         if (probe == null) return null;
         int failures = probe.getFailureThreshold() == null ? 3 : probe.getFailureThreshold();
         int period = probe.getPeriodSeconds() == null ? 10 : probe.getPeriodSeconds();
         return failures * period;
     }
 
-    private static Integer initialDelay(io.kubernetes.client.openapi.models.V1Probe probe) {
+    static Integer initialDelay(V1Probe probe) {
         if (probe == null) return null;
         return probe.getInitialDelaySeconds() == null ? 0 : probe.getInitialDelaySeconds();
     }
@@ -256,7 +300,7 @@ public class K8sCollector {
             return (int) pre.getSleep().getSeconds().longValue();
         }
         if (pre.getExec() != null && pre.getExec().getCommand() != null) {
-            var m = java.util.regex.Pattern.compile("sleep\\s+(\\d+)")
+            var m = Pattern.compile("sleep\\s+(\\d+)")
                 .matcher(String.join(" ", pre.getExec().getCommand()));
             if (m.find()) return Integer.parseInt(m.group(1));
         }
@@ -264,18 +308,18 @@ public class K8sCollector {
     }
 
     /** Label selector from the Deployment's own matchLabels; falls back to serviceLabel=deployment. */
-    private String selector(io.kubernetes.client.openapi.models.V1DeploymentSpec spec, String deployment) {
+    String selector(V1DeploymentSpec spec, String deployment) {
         if (spec != null && spec.getSelector() != null && spec.getSelector().getMatchLabels() != null
             && !spec.getSelector().getMatchLabels().isEmpty()) {
             return spec.getSelector().getMatchLabels().entrySet().stream()
                 .map(e -> e.getKey() + "=" + e.getValue())
-                .collect(java.util.stream.Collectors.joining(","));
+                .collect(Collectors.joining(","));
         }
         return serviceLabel + "=" + deployment;
     }
 
     /** Running, Ready, and not being deleted. */
-    private static boolean isReady(V1Pod pod) {
+    static boolean isReady(V1Pod pod) {
         if (pod.getMetadata() != null && pod.getMetadata().getDeletionTimestamp() != null) {
             return false;
         }

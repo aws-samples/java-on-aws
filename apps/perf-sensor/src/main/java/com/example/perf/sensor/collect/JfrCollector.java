@@ -29,11 +29,13 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Fetches the app JVM's JFR ring through the profiler sidecar ({@code /dump?kind=jfr}) and
  * reduces it to {@link JfrFacts} with the JDK's own {@code jdk.jfr.consumer}. Read-only,
- * best-effort: null when the sidecar or the recording is unavailable. The ring is the
+ * best-effort: null when the sidecar or the recording is unavailable. Credential-looking
+ * system properties in {@code jvmArgs} are masked before the facts leave the sensor. The ring is the
  * retrospective source for what the JVM itself saw: container limits, its arguments, GC
  * pauses, pinning, contention, safepoints, JIT volume. It does NOT carry virtual-thread
  * parks (JFR emits jdk.ThreadPark only for platform threads), so request-path blocking
@@ -51,7 +53,10 @@ public class JfrCollector {
     private final String requestPackage;
 
     public JfrCollector(@Value("${DUMP_PORT:9100}") int dumpPort,
-                        @Value("${REQUEST_PACKAGE:com.unicorn.store}") String requestPackage) {
+                        @Value("${REQUEST_PACKAGE}") String requestPackage) {
+        if (requestPackage == null || requestPackage.isBlank()) {
+            throw new IllegalStateException("REQUEST_PACKAGE must name the app's request package (e.g. com.example.shop)");
+        }
         this.dumpPort = dumpPort;
         this.requestPackage = requestPackage;
         var factory = new SimpleClientHttpRequestFactory();
@@ -125,7 +130,7 @@ public class JfrCollector {
                         // null when the JVM was started without -XX flags: keep "" so the caller can tell
                         // "event seen, no args" from "ring unavailable" (null).
                         String a = e.getString("jvmArguments");
-                        jvmArgs = a == null ? "" : a;
+                        jvmArgs = a == null ? "" : redact(a);
                     }
                     case "jdk.GCPhasePause" -> {
                         double ms = millis(e.getDuration());
@@ -210,6 +215,16 @@ public class JfrCollector {
             .limit(TOP)
             .map(en -> new FrameCount(en.getKey(), en.getValue()))
             .toList();
+    }
+
+    // -Dspring.datasource.password=..., -Dapi.token=... : the flag name stays (it tells the
+    // reader what was configured), the value is masked before it leaves the sensor.
+    private static final Pattern SECRET_FLAG =
+        Pattern.compile("(?i)(-D[\\w.\\-]*(password|passwd|secret|token|credential|apikey|api[._-]?key)[\\w.\\-]*=)\\S+");
+
+    /** Mask the value of any system property whose name suggests a credential (package-visible for tests). */
+    static String redact(String jvmArgs) {
+        return SECRET_FLAG.matcher(jvmArgs).replaceAll("$1***");
     }
 
     private static Double quotaCores(RecordedEvent e) {

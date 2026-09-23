@@ -1,14 +1,15 @@
 package com.example.perf.sensor.collect;
 
 import com.example.perf.sensor.facts.ThreadFacts;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.net.URI;
 import java.time.Duration;
@@ -17,28 +18,34 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Reaches the perf-profiler sidecar's {@code /dump} HTTP endpoint (port
- * {@code DUMP_PORT}) via the app pod IP and turns {@code jcmd Thread.dump_to_file}
- * / {@code GC.heap_info} output into summarized typed facts (never the raw dump).
+ * Reaches the perf-profiler sidecar's {@code /dump} HTTP endpoint (port {@code DUMP_PORT})
+ * via the app pod IP and turns {@code jcmd Thread.dump_to_file -format=json} /
+ * {@code GC.heap_info + VM.flags} output into summarized typed facts (never the raw dump).
  * No MCP server can reach an in-pod endpoint, so the sensor is the only source.
- * Best-effort: any failure yields null facts.
+ * Best-effort: an unreachable sidecar or an unparseable dump yields {@code null} thread
+ * facts so the caller reports UNKNOWN, never a false "nothing is blocked".
  */
 @Component
 public class DumpCollector {
 
     private static final Logger logger = LoggerFactory.getLogger(DumpCollector.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.builder().build();
     private static final int SAMPLE_LIMIT = 5;
     private static final int STACK_DEPTH = 8;
 
     private static final Pattern BLOCKING_GET =
         Pattern.compile("CompletableFuture\\.(get|join)|Future\\.get");
-    private static final String[] POOL_WAIT_MARKERS = {"ConcurrentBag", "getConnection", "HikariPool"};
-    // A blocking wait with one of these below it on the stack runs INSIDE a managed transaction:
-    // the thread holds a pooled connection for the whole remote round-trip.
+    // HikariCP: a thread waiting for a pooled connection sits in ConcurrentBag.borrow (WAITING /
+    // TIMED_WAITING). A RUNNABLE thread passing through getConnection is NOT a pool wait.
+    private static final String POOL_BORROW_FRAME = "ConcurrentBag.borrow";
+    private static final Set<String> WAITING_STATES = Set.of("WAITING", "TIMED_WAITING", "BLOCKED");
+    // Spring / Jakarta transaction interceptors. A blocking wait with one of these below it on
+    // the stack runs INSIDE a managed transaction: the thread holds a pooled connection for the
+    // whole remote round-trip.
     private static final String[] TRANSACTION_MARKERS = {
         "TransactionInterceptor", "TransactionAspectSupport", "invokeWithinTransaction",
         "TransactionTemplate", "jakarta.transaction", "TransactionalInterceptor"};
@@ -58,12 +65,16 @@ public class DumpCollector {
 
     private final RestClient http;
     private final int dumpPort;
-    // A stack is "request path" if it runs the app's request package (works for
-    // virtual threads / ForkJoin carriers too) or is a Tomcat http-nio worker.
+    // A stack is "request path" if it runs the app's request package (works for virtual
+    // threads and ForkJoin carriers alike). Required: without it no thread is request path
+    // and every blocking count would read 0.
     private final String requestPackage;
 
     public DumpCollector(@Value("${DUMP_PORT:9100}") int dumpPort,
-                         @Value("${REQUEST_PACKAGE:com.unicorn.store}") String requestPackage) {
+                         @Value("${REQUEST_PACKAGE}") String requestPackage) {
+        if (requestPackage == null || requestPackage.isBlank()) {
+            throw new IllegalStateException("REQUEST_PACKAGE must name the app's request package (e.g. com.example.shop)");
+        }
         this.dumpPort = dumpPort;
         this.requestPackage = requestPackage;
         var factory = new SimpleClientHttpRequestFactory();
@@ -72,25 +83,27 @@ public class DumpCollector {
         this.http = RestClient.builder().requestFactory(factory).build();
     }
 
-    /** Summarized thread facts from the sidecar, or null if the dump is unavailable. */
+    /** Summarized thread facts from the sidecar, or null if the dump is unavailable or unparseable. */
     public ThreadFacts threads(String podIP, String podName) {
         var body = get(podIP, "threads");
         if (body == null) {
             return null;
         }
-        String ts = Instant.now().toString();
         try {
-            return parseThreads(body, podName, ts);
+            return parseThreads(body, podName, Instant.now().toString());
         } catch (Exception e) {
-            logger.warn("thread dump parse failed: {}", e.getMessage());
-            return new ThreadFacts(podName, ts, 0, Map.of(), 0, 0, 0, 0, 0, List.of(), List.of());
+            logger.warn("thread dump parse failed pod={}: {}", podName, e.getMessage());
+            return null;
         }
     }
 
     /** Parse a JSON jcmd thread dump into summarized facts (package-visible for tests). */
-    ThreadFacts parseThreads(String body, String podName, String ts) throws Exception {
+    ThreadFacts parseThreads(String body, String podName, String ts) {
         var root = MAPPER.readTree(body);
         var containers = root.path("threadDump").path("threadContainers");
+        if (!containers.isArray()) {
+            throw new IllegalArgumentException("not a JSON thread dump (threadDump.threadContainers missing)");
+        }
         var byState = new LinkedHashMap<String, Integer>();
         var blockingFrames = new LinkedHashMap<String, Integer>();
         var sample = new ArrayList<ThreadFacts.ThreadSample>();
@@ -109,7 +122,7 @@ public class DumpCollector {
                 }
                 var frames = stackFrames(t.path("stack"));
                 String stackText = String.join("\n", frames);
-                if (!isRequestPath(stackText)) {
+                if (!stackText.contains(requestPackage)) {
                     continue;
                 }
                 active++;
@@ -122,7 +135,7 @@ public class DumpCollector {
                     frames.stream().filter(f -> BLOCKING_GET.matcher(f).find()).findFirst()
                         .ifPresent(f -> blockingFrames.merge(trim(f), 1, Integer::sum));
                 }
-                if (containsAny(stackText, POOL_WAIT_MARKERS)) {
+                if (WAITING_STATES.contains(state) && stackText.contains(POOL_BORROW_FRAME)) {
                     poolWaiters++;
                 }
                 if (sample.size() < SAMPLE_LIMIT) {
@@ -150,10 +163,6 @@ public class DumpCollector {
         return frames;
     }
 
-    private boolean isRequestPath(String stack) {
-        return stack.contains(requestPackage) || stack.contains("http-nio");
-    }
-
     public HeapInfo heap(String podIP) {
         var body = get(podIP, "heap");
         return body == null ? HeapInfo.empty() : parseHeap(body);
@@ -162,10 +171,10 @@ public class DumpCollector {
     /** Parse GC.heap_info + VM.flags into heap facts (package-visible for tests). */
     HeapInfo parseHeap(String body) {
         String gc = null;
-        if (body.contains("UseSerialGC") || body.toLowerCase().contains("serial")) gc = "SerialGC";
-        else if (body.contains("UseG1GC") || body.contains("G1 ")) gc = "G1GC";
-        else if (body.contains("UseParallelGC")) gc = "ParallelGC";
-        else if (body.contains("UseZGC")) gc = "ZGC";
+        if (body.contains("+UseSerialGC") || body.contains("DefNew") || body.contains("Tenured")) gc = "SerialGC";
+        else if (body.contains("+UseG1GC") || body.contains("garbage-first")) gc = "G1GC";
+        else if (body.contains("+UseParallelGC") || body.contains("PSYoungGen")) gc = "ParallelGC";
+        else if (body.contains("+UseZGC") || body.contains("ZHeap")) gc = "ZGC";
         // GC.heap_info prints one "total <n>K, used <n>K" per generation/region and
         // has no "committed" keyword for the heap. Committed heap = sum of the
         // per-region totals; used heap = sum of the per-region used. (An explicit

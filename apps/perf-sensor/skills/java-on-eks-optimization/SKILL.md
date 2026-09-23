@@ -33,13 +33,15 @@ Rollout and verification belong to the operator.
   vthreads unmount); use it for CPU/GC, not for blocking.
 - `startupLog <service>` — last `Started`/`Restored` line; verifies a CRaC restore.
 
-**EKS MCP Server** (everything not scored/gated):
-- `read_k8s_resource` — resources the sensor does not model (HPA, ConfigMap, ad-hoc reads).
+**EKS MCP Server** (read tools only; everything not scored/gated):
+- `list_k8s_resources` — resources the sensor does not model (HPA, ConfigMap, StartupCPUBoost, ad-hoc reads).
 - `get_pod_logs` — logs beyond the startup line (errors, stack traces).
 - `get_k8s_events` — restart/OOMKilled/scheduling narrative.
-- `search_eks_documentation`, `search_eks_troubleshooting_guide` — EKS guidance.
+- `search_eks_troubleshoot_guide`, `get_eks_insights` — EKS guidance.
+- Its write tools (`apply_yaml`, `manage_k8s_resource`, `manage_eks_stacks`, `add_inline_policy`,
+  `generate_app_manifest`) are denied and the server runs without `--allow-write`: never call them.
 
-Do not read desired-state that `measure` already returns via `read_k8s_resource` —
+Do not read desired-state that `measure` already returns via `list_k8s_resources` —
 `measure` extracts it deterministically for scoring.
 
 ## 2. Procedure — every question follows these five steps
@@ -48,7 +50,7 @@ Do not read desired-state that `measure` already returns via `read_k8s_resource`
    app's `pom.xml` / `k8s/` / `src/` only for what the change needs.
 2. **Root cause.** One line: what the evidence shows and why it costs memory,
    startup time or latency. Name the tool and the signal
-   (e.g. "from `sizeMemory`: rssPeak 366 Mi vs limit 2048 Mi").
+   (e.g. "from `sizeMemory`: workingSetPeak 366 Mi vs limit 2048 Mi").
 3. **Solution.** Why this change resolves that root cause, 3–5 lines from the
    matching `references/*.md`. Link the reference file.
 4. **Apply.** Edit the files in the working tree. Do not stage or commit — the
@@ -137,7 +139,7 @@ Read the file and pass the values through. The *why* for each:
   including CRaC**. Do **not** use `profileTop wall` to find this. Artifact: the
   non-blocking change; if `blockedInsideTransaction > 0`, also move the remote call out of
   the transaction (after commit — the connection is held for the round-trip otherwise; read
-  the `@Transactional` method in `src/` to show it); if `carriersParkedInPoolWait > 0`, also
+  the `@Transactional` method in `src/` to show it); if `requestThreadsWaitingForConnection > 0`, also
   size the connection pool to the observed concurrency. Reference: `blocking-calls.md`.
 - **"right-size again" / "re-size" / "re-measure after the change" / "the sizing is stale"** →
   `measure`, `sizeMemory` and `sizeCpu` in one pass (a code or runtime change moves the
@@ -149,7 +151,7 @@ Read the file and pass the values through. The *why* for each:
   rebuilt. Cite old → new for each value. Reference: `right-size-memory.md`.
 - **"item 11 still fails" / "pool waits" / "connection pool"** → `diagnoseBlocking`. If
   `requestThreadsBlockedInFutureGet == 0` and `blockedInsideTransaction == 0` but
-  `carriersParkedInPoolWait > 0`, the pool is smaller than the request concurrency: set the
+  `requestThreadsWaitingForConnection > 0`, the pool is smaller than the request concurrency: set the
   pool's maximum size (Hikari `maximum-pool-size` in the app config) to
   `requestThreadsActive` (peak in-flight request threads across the samples), not a round
   number; say which value you read. If blocking is still > 0, fix that first

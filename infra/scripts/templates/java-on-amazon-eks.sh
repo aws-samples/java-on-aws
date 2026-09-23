@@ -25,6 +25,24 @@ else
     exit 1
 fi
 
+# Phase 1b: Pin the workshop NodePool to one instance family (m6a) so startup timings
+# are comparable across the session. java-on-amazon-eks-specific; setup/eks.sh stays shared.
+log_info "Phase 1b: Pinning NodePool to m6a..."
+if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/nodepool-pin.sh"; then
+    log_success "NodePool pinned"
+else
+    log_warning "NodePool pin failed (startup numbers may vary with the instance type)"
+fi
+
+# Phase 1c: metrics-server, for kubectl top and eks-node-viewer's utilization column.
+# java-on-amazon-eks-specific; nothing in the sensor path depends on it.
+log_info "Phase 1c: Installing metrics-server..."
+if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/metrics-server.sh"; then
+    log_success "metrics-server installed"
+else
+    log_warning "metrics-server install failed (eks-node-viewer shows requests only)"
+fi
+
 # Phase 2: Monitoring stack (Prometheus + Grafana)
 log_info "Phase 2: Setting up monitoring stack..."
 if bash "$SCRIPT_DIR/../setup/monitoring.sh"; then
@@ -43,12 +61,12 @@ else
     exit 1
 fi
 
-# Phase 3a: Prebuild the optimized app images (:crac, :aot) so the session deploys
-# them without waiting on a multi-minute CRaC/AOT build. MUST run BEFORE Phase 3b:
+# Phase 3a: Prebuild the fallback app images (:crac-prebuilt, :aot-prebuilt) so a failed
+# participant build does not stall the session. MUST run BEFORE Phase 3b:
 # the CRaC checkpoint needs org.crac + the UnicornPublisher.crac hook, which de-spoil
 # strips out. prebuild-images.sh builds from a throwaway copy, so it leaves the
 # participant dir untouched — de-spoil and the clean starting-point commit stay correct.
-log_info "Phase 3a: Prebuilding unicorn-store-spring:{crac,aot}..."
+log_info "Phase 3a: Prebuilding unicorn-store-spring:{crac,aot}-prebuilt fallbacks..."
 if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/prebuild-images.sh"; then
     log_success "Optimized images prebuilt"
 else
@@ -125,9 +143,9 @@ log_info "Phase 5: Committing workshop starting point..."
     && log_success "Starting point committed" \
     || log_warning "Nothing to commit (starting point already committed)"
 
-# Phase 6: Privilege-free profiler (build/push image, install Kyverno + metrics-server,
-# apply the sidecar-injection MutatingPolicy). Pyroscope + Grafana wiring already
-# came up in Phase 2 (monitoring.sh); CON405 does NOT run perf-platform.sh.
+# Phase 6: Privilege-free profiler (build/push image, install Kyverno, apply the
+# sidecar-injection MutatingPolicy). Pyroscope + Grafana wiring already came up in
+# Phase 2 (monitoring.sh); java-on-amazon-eks does NOT run perf-platform.sh.
 log_info "Phase 6: Deploying perf-profiler..."
 if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/perf-profiler.sh"; then
     log_success "perf-profiler deployed"
@@ -171,7 +189,7 @@ else
 fi
 
 # Phase 7: perf-sensor — deterministic sensors (MCP + REST). Primary optimization
-# path for CON405. Fatal: the session depends on it.
+# path for java-on-amazon-eks. Fatal: the session depends on it.
 log_info "Phase 7: Deploying perf-sensor..."
 if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/perf-sensor.sh"; then
     log_success "perf-sensor deployed"

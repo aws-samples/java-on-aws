@@ -1,6 +1,12 @@
-# perf-sensor ServiceAccount + read-only ClusterRole. No write verbs — the sensor
-# never mutates the cluster. No Pod Identity (no AWS calls). pods/log is needed for
-# the startupLog tool. __NS__ is substituted by perf-sensor.sh (monitoring).
+# perf-sensor ServiceAccount + read-only ClusterRole. Exactly what the collectors read:
+#   deployments   K8sCollector  (desired state: resources, env, probes, selector)
+#   pods          K8sCollector  (Ready pods, IPs, restarts, uptime), StartupMetrics
+#   pods/log      LogCollector  (the Started/Restored line)
+# No write verbs, no nodes/namespaces/replicasets, no Pod Identity (no AWS calls).
+# Cluster-scoped because one sensor serves every workload carrying the profiler label,
+# in any namespace. To confine it to one namespace, replace the ClusterRole with a Role
+# in that namespace and the ClusterRoleBinding with a RoleBinding to this ServiceAccount.
+# __NS__ is substituted by perf-sensor.sh (monitoring).
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -13,11 +19,11 @@ metadata:
   name: perf-sensor
 rules:
   - apiGroups: [""]
-    resources: ["pods", "pods/log", "namespaces", "nodes"]
-    verbs: ["get", "list", "watch"]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list"]
   - apiGroups: ["apps"]
-    resources: ["deployments", "replicasets"]
-    verbs: ["get", "list", "watch"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

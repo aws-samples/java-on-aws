@@ -14,11 +14,13 @@
     "startupProbe": true,
     "runAsNonRoot": true,
     "allowPrivilegeEscalation": false,
-    "sidecars": ["perf-profiler"]
+    "sidecars": [
+      "perf-profiler"
+    ]
   },
   "runtime": {
-    "rssFloorMi": 400.0,
-    "rssPeakMi": 480.0,
+    "workingSetFloorMi": 400.0,
+    "workingSetPeakMi": 480.0,
     "heapUsedMi": 60.0,
     "heapCommittedMi": 90.0,
     "gcName": "SerialGC",
@@ -30,19 +32,24 @@
   },
   "profile": {
     "topCpu": [
-      {"name": "PhaseIdealLoop::build_loop_tree", "selfPct": 22.0},
-      {"name": "Compile::Optimize", "selfPct": 20.0}
+      {
+        "name": "PhaseIdealLoop::build_loop_tree",
+        "selfPct": 22.0
+      },
+      {
+        "name": "Compile::Optimize",
+        "selfPct": 20.0
+      }
     ],
-    "topWall": [{"name": "jdk/internal/misc/Unsafe.park", "selfPct": 25.0}],
+    "topWall": [
+      {
+        "name": "jdk/internal/misc/Unsafe.park",
+        "selfPct": 25.0
+      }
+    ],
     "jitSharePct": 42.0,
     "gcSharePct": 6.0,
     "futexWallSharePct": 30.0,
-    "warmupWindow": true,
     "samples": 2000
-  },
-  "threads": {
-    "threadCountByState": {"RUNNABLE": 12, "TIMED_WAITING": 10},
-    "poolWaitCarriers": 0,
-    "futureGetOnRequestPath": false
   }
 }
