@@ -231,7 +231,7 @@ EOF
     # doesn't prompt: theme (hasCompletedOnboarding), Shift+Enter terminal setup
     # (shiftEnterKeyBindingInstalled), and folder trust (projects[dir].hasTrustDialogAccepted).
     # Generic to all workshops (they all open ~/environment). Project MCP-server enablement is
-    # workshop-specific and lives with each workshop's .mcp.json (e.g. perf-sensor-ide.sh), NOT here.
+    # workshop-specific and lives with each workshop's .mcp.json (e.g. claude-code.sh), NOT here.
     # Merge instead of overwrite — Claude Code owns ~/.claude.json and writes session state there.
     log_info "Pre-accepting Claude Code onboarding + folder trust for ~/environment..."
     python3 - "$HOME/.claude.json" "$HOME/environment" <<'PY'

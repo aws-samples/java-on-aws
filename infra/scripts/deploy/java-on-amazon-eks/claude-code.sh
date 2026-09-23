@@ -1,7 +1,8 @@
 #!/bin/bash
 # =============================================================================
-# perf-sensor (IDE side) — install the skill pack and the workspace MCP config so
-# Claude Code (started from ~/environment) can drive the sensors + EKS MCP Server.
+# claude-code.sh — configure Claude Code on the IDE for this workshop: the skill pack,
+# the workspace MCP config (perf-sensor + EKS MCP Server) and the project permissions,
+# so Claude Code started from ~/environment finds all three. No cluster needed.
 #
 # Copies the two skills to ~/environment/.claude/skills/, writes ~/environment/.mcp.json
 # (perf-sensor over streamable-http on the port-forward; eks-mcp read-only), writes the
@@ -105,8 +106,6 @@ PY
 echo "wrote ${ENV_DIR}/.claude/settings.json (MCP servers enabled; allow: sensor, eks-mcp read tools, read, edit; deny: Bash, config edits, eks-mcp write tools)"
 
 # No workspace CLAUDE.md: the app repo documents itself (unicorn-store-spring/CLAUDE.md).
-# Remove a leftover from earlier revisions.
-rm -f "${ENV_DIR}/CLAUDE.md"
 # --allow-sensitive-data-access is required for get_pod_logs / get_k8s_events (read-only;
 # --allow-write is NOT passed, so the server refuses mutations even if a write tool is
 # called). Auth uses the IDE role (default iam mode). uv/uvx and the eks-mcp package are

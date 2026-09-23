@@ -7,7 +7,7 @@
 # profiler policy, sensor, boost controller, skills) is left as bootstrapped.
 #
 #   1. ~/environment/unicorn-store-spring: hard reset to the commit
-#      "Starting point: containerized + deployed to EKS", untracked files removed
+#      "Starting point: containerized + deployed to EKS" (made by app-prepare.sh), untracked files removed
 #      (Dockerfile.aot/.crac, startup-cpu-boost.yaml, listener classes ...); then
 #      scripts/load.sh, scripts/build.sh and CLAUDE.md are synced from the shared
 #      source (apps/unicorn-store-spring) and folded into that commit, so the

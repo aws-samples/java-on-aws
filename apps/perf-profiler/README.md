@@ -33,8 +33,8 @@ The app image is never modified: one label on the pod template opts a workload i
 
 ## Deploy
 
-`infra/scripts/deploy/java-on-amazon-eks/perf-profiler.sh` builds and pushes the image,
-installs Kyverno (chart pinned), and applies the policy with the image pinned by digest,
+`infra/scripts/deploy/java-on-amazon-eks/perf-profiler.sh` (`build`, `install`, or both)
+builds and pushes the image, installs Kyverno (chart pinned), and applies the policy with the image pinned by digest,
 the cluster name, the app UID (`APP_UID`, default 1000) and the Pyroscope URL substituted.
 Then opt a workload in:
 

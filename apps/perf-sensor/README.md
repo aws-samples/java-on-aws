@@ -63,14 +63,14 @@ Environment variables are listed in `src/main/resources/application.yaml`.
 
 ```bash
 mvn -o test                                             # 51 unit tests, no cluster needed
-infra/scripts/deploy/java-on-amazon-eks/perf-sensor.sh  # build + push (jib), RBAC, Deployment, policies, dashboard
-infra/scripts/deploy/java-on-amazon-eks/perf-sensor-ide.sh   # skills + .mcp.json + Claude permissions on the IDE
+infra/scripts/deploy/java-on-amazon-eks/perf-sensor.sh  # build (jib, push, digest) then install (RBAC, Deployment, dashboard); or `build` / `install` alone
+infra/scripts/deploy/java-on-amazon-eks/claude-code.sh   # skills + .mcp.json + Claude permissions on the IDE
 kubectl -n monitoring port-forward svc/perf-sensor 8090:8080
 curl -s localhost:8090/api/v1/measure/<service> | jq .
 ```
 
-`perf-sensor.sh` takes `APP_NS`, `APP_PORT` and `REQUEST_PACKAGE` for the workload; the
-Grafana dashboard is `k8s/dashboard.json`.
+`perf-sensor.sh` takes `APP_NS` and `REQUEST_PACKAGE` for the workload; the Grafana
+dashboard is `k8s/dashboard.json`.
 
 ## Layout
 

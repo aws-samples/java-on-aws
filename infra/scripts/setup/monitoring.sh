@@ -37,8 +37,10 @@ VALUES_FILE="prometheus-values.yaml"
 DATASOURCE_FILE="grafana-datasource.yaml"
 GRAFANA_VALUES_FILE="grafana-values.yaml"
 
+WORK=""
 cleanup() {
   rm -f "$VALUES_FILE" "$DATASOURCE_FILE" "$GRAFANA_VALUES_FILE"
+  [[ -n "$WORK" ]] && rm -rf "$WORK"
 }
 trap cleanup EXIT
 
@@ -88,8 +90,8 @@ kubectl wait --for=condition=available --timeout=300s deployment/prometheus-serv
 # Verify Prometheus is responding
 kubectl port-forward -n "$NAMESPACE" svc/prometheus-server 9090:80 &
 PF_PID=$!
-# Ensure port-forward is killed on exit
-trap 'kill $PF_PID 2>/dev/null || true' EXIT
+# Ensure port-forward is killed on exit (alongside the temp-file cleanup)
+trap 'kill $PF_PID 2>/dev/null || true; cleanup' EXIT
 sleep 5
 if curl -s http://localhost:9090/-/healthy > /dev/null 2>&1; then
     log_success "Prometheus is healthy"
@@ -99,7 +101,107 @@ else
     exit 1
 fi
 kill $PF_PID 2>/dev/null || true
-trap - EXIT
+trap cleanup EXIT
+
+# =============================================================================
+# Pyroscope (S3-backed). Shared by both workshops (java-on-aws and
+# java-on-amazon-eks). Installed BEFORE Grafana and without --wait: Pyroscope
+# does not depend on Grafana, and its start-up overlaps the Grafana LoadBalancer
+# provisioning below (the longest wait in this script). Readiness is checked
+# after Grafana is up, before its datasource is provisioned.
+# =============================================================================
+
+CLUSTER_NAME="${PREFIX}-eks"
+WORKSHOP_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name \
+    --query 'Parameter.Value' --output text --no-cli-pager)
+if [[ -z "${WORKSHOP_BUCKET}" || "${WORKSHOP_BUCKET}" == "None" ]]; then
+    log_error "SSM parameter workshop-bucket-name is not set. Aborting."
+    exit 1
+fi
+
+WORK=$(mktemp -d)
+
+# -----------------------------------------------------------------------------
+# Pyroscope Pod Identity — bind the Pyroscope ServiceAccount to the CDK-managed
+# pyroscope-eks-pod-role BEFORE installing Pyroscope, so the very first pod boot
+# has S3 creds. Pyroscope writes blocks to S3 from boot, so it cannot follow the
+# Grafana pattern (install first, attach identity, restart) — it would fail
+# health checks before the restart.
+# -----------------------------------------------------------------------------
+log_info "Binding Pyroscope ServiceAccount to pyroscope-eks-pod-role..."
+# Pre-create the SA with Helm 3 adoption metadata so `helm install pyroscope`
+# adopts it instead of erroring on missing app.kubernetes.io/managed-by.
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pyroscope
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: pyroscope
+    meta.helm.sh/release-namespace: ${NAMESPACE}
+EOF
+
+if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
+        --query "associations[?serviceAccount=='pyroscope' && namespace=='${NAMESPACE}']" \
+        --output text --no-cli-pager | grep -q .; then
+    aws eks create-pod-identity-association \
+        --cluster-name "${CLUSTER_NAME}" \
+        --namespace "${NAMESPACE}" \
+        --service-account pyroscope \
+        --role-arn "$(aws iam get-role --role-name pyroscope-eks-pod-role \
+            --query 'Role.Arn' --output text --no-cli-pager)" \
+        --no-cli-pager
+    log_success "Pyroscope pod identity association created"
+    sleep 10
+else
+    log_info "Pyroscope pod identity association already exists"
+fi
+
+# -----------------------------------------------------------------------------
+# Pyroscope install (S3-backed single-binary; blocks under s3://<bucket>/pyroscope/)
+# -----------------------------------------------------------------------------
+log_info "Installing Pyroscope (no wait)..."
+cat > "${WORK}/pyroscope-values.yaml" <<EOF
+pyroscope:
+  service:
+    type: ClusterIP
+    port: 4040
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "4040"
+      prometheus.io/path: /metrics
+  persistence:
+    enabled: false
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 2Gi
+  # Pyroscope 2.x top-level keys only (1.x auth_enabled/recording_rules removed).
+  structuredConfig:
+    storage:
+      backend: s3
+      prefix: pyroscope
+      s3:
+        bucket_name: ${WORKSHOP_BUCKET}
+        region: ${AWS_REGION}
+        endpoint: s3.${AWS_REGION}.amazonaws.com
+        native_aws_auth_enabled: true
+    limits:
+      retention_period: 168h
+EOF
+
+helm upgrade --install pyroscope grafana/pyroscope \
+    --namespace "${NAMESPACE}" \
+    --values "${WORK}/pyroscope-values.yaml" >>"$LOG" 2>&1 \
+    || { log_error "Pyroscope helm install failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
+log_info "Pyroscope install submitted (readiness checked after Grafana)"
 
 # Grafana values
 cat > "$GRAFANA_VALUES_FILE" <<EOF
@@ -111,6 +213,12 @@ cat > "$GRAFANA_VALUES_FILE" <<EOF
 # 1.17.0 is the combination that loads over HTTP.
 image:
   tag: "12.3.1"
+
+# Profiles Drilldown, pinned to 1.17.0: the 2.x line calls crypto.randomUUID()
+# at load, which browsers expose only over HTTPS/localhost, so it fails over the
+# workshop's plain-HTTP Grafana. Installed with the chart so Grafana starts once.
+plugins:
+  - grafana-pyroscope-app@1.17.0
 
 admin:
   existingSecret: grafana-admin
@@ -257,140 +365,15 @@ if [[ -z "$FOLDER_UID" ]]; then
 fi
 log_success "Workshop Dashboards folder ready: $FOLDER_UID"
 
-# =============================================================================
-# Pyroscope (S3-backed) + Grafana profiling wiring
-# Shared by both workshops (java-on-aws and java-on-amazon-eks). Runs here, in
-# monitoring.sh, so the profiling backend and Grafana datasources come up with
-# the monitoring stack. Grafana is already up (checked above) before we install
-# the plugin / provision datasources. No dashboards are created here — only the
-# shared folder above; module scripts (analysis.sh, perf-platform.sh) and the
-# perf-sensor deploy add their own dashboards.
-# =============================================================================
-
-CLUSTER_NAME="${PREFIX}-eks"
-WORKSHOP_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name \
-    --query 'Parameter.Value' --output text --no-cli-pager)
-if [[ -z "${WORKSHOP_BUCKET}" || "${WORKSHOP_BUCKET}" == "None" ]]; then
-    log_error "SSM parameter workshop-bucket-name is not set. Aborting."
-    exit 1
-fi
-
-WORK=$(mktemp -d)
-trap 'rm -rf "$WORK" "$VALUES_FILE" "$DATASOURCE_FILE" "$GRAFANA_VALUES_FILE"' EXIT
-
 # -----------------------------------------------------------------------------
-# Pyroscope Pod Identity — bind the Pyroscope ServiceAccount to the CDK-managed
-# pyroscope-eks-pod-role BEFORE installing Pyroscope, so the very first pod boot
-# has S3 creds. Pyroscope writes blocks to S3 from boot, so it cannot follow the
-# Grafana pattern (install first, attach identity, restart) — it would fail
-# health checks before the restart.
+# Pyroscope readiness (installed above, before Grafana) + its Grafana datasource
 # -----------------------------------------------------------------------------
-log_info "Binding Pyroscope ServiceAccount to pyroscope-eks-pod-role..."
-# Pre-create the SA with Helm 3 adoption metadata so `helm install pyroscope`
-# adopts it instead of erroring on missing app.kubernetes.io/managed-by.
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: pyroscope
-  namespace: ${NAMESPACE}
-  labels:
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/managed-by: Helm
-  annotations:
-    meta.helm.sh/release-name: pyroscope
-    meta.helm.sh/release-namespace: ${NAMESPACE}
-EOF
-
-if ! aws eks list-pod-identity-associations --cluster-name "${CLUSTER_NAME}" \
-        --query "associations[?serviceAccount=='pyroscope' && namespace=='${NAMESPACE}']" \
-        --output text --no-cli-pager | grep -q .; then
-    aws eks create-pod-identity-association \
-        --cluster-name "${CLUSTER_NAME}" \
-        --namespace "${NAMESPACE}" \
-        --service-account pyroscope \
-        --role-arn "$(aws iam get-role --role-name pyroscope-eks-pod-role \
-            --query 'Role.Arn' --output text --no-cli-pager)" \
-        --no-cli-pager
-    log_success "Pyroscope pod identity association created"
-    sleep 10
-else
-    log_info "Pyroscope pod identity association already exists"
-fi
-
-# -----------------------------------------------------------------------------
-# Pyroscope install (S3-backed single-binary; blocks under s3://<bucket>/pyroscope/)
-# -----------------------------------------------------------------------------
-log_info "Installing Pyroscope..."
-cat > "${WORK}/pyroscope-values.yaml" <<EOF
-pyroscope:
-  service:
-    type: ClusterIP
-    port: 4040
-    annotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/port: "4040"
-      prometheus.io/path: /metrics
-  persistence:
-    enabled: false
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: 1
-      memory: 2Gi
-  # Pyroscope 2.x top-level keys only (1.x auth_enabled/recording_rules removed).
-  structuredConfig:
-    storage:
-      backend: s3
-      prefix: pyroscope
-      s3:
-        bucket_name: ${WORKSHOP_BUCKET}
-        region: ${AWS_REGION}
-        endpoint: s3.${AWS_REGION}.amazonaws.com
-        native_aws_auth_enabled: true
-    limits:
-      retention_period: 168h
-EOF
-
-helm upgrade --install pyroscope grafana/pyroscope \
-    --namespace "${NAMESPACE}" \
-    --values "${WORK}/pyroscope-values.yaml" \
-    --wait --timeout 10m >>"$LOG" 2>&1 \
-    || { log_error "Pyroscope helm install failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
-
+log_info "Waiting for Pyroscope to be ready..."
 kubectl wait --for=condition=ready pod \
     -l app.kubernetes.io/name=pyroscope \
-    -n "${NAMESPACE}" --timeout=600s
+    -n "${NAMESPACE}" --timeout=600s >>"$LOG" 2>&1 \
+    || { log_error "Pyroscope not ready — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 log_success "Pyroscope installed"
-
-# -----------------------------------------------------------------------------
-# Grafana Profiles Drilldown plugin (pinned) + Pyroscope datasource
-# -----------------------------------------------------------------------------
-log_info "Installing Grafana Profiles Drilldown plugin..."
-# Pin grafana-pyroscope-app to 1.17.0. The workshop serves Grafana over plain
-# HTTP (not a secure context); the 2.x plugin line calls crypto.randomUUID() at
-# load, which browsers only expose over HTTPS/localhost, so 2.x fails with
-# "crypto.randomUUID is not a function". 1.17.0 is the last release whose entry
-# bundle avoids that call. It targets React 18 -> requires Grafana 12.x (see the
-# image.tag pin above); Grafana 13 ships React 19 and breaks the 1.x plugin.
-helm upgrade --install grafana grafana-community/grafana \
-    --namespace "${NAMESPACE}" \
-    --reuse-values \
-    --set "plugins={grafana-pyroscope-app@1.17.0}" \
-    --wait --timeout 10m >>"$LOG" 2>&1 \
-    || { log_error "Grafana plugin helm upgrade failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
-log_success "Profiles Drilldown plugin installed"
-
-log_info "Waiting for Grafana API after plugin upgrade..."
-for i in {1..40}; do
-    STATUS=$(curl -s -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" "${GRAFANA_URL}/api/health" \
-        | jq -r .database 2>/dev/null || true)
-    [[ "${STATUS}" == "ok" ]] && break
-    [[ $i -eq 40 ]] && { log_error "Grafana API not ready after 200s"; exit 1; }
-    sleep 5
-done
 
 log_info "Provisioning Grafana Pyroscope datasource..."
 cat > "${WORK}/pyroscope-datasource.yaml" <<EOF
@@ -414,8 +397,7 @@ log_success "Grafana Pyroscope datasource provisioned"
 
 log_success "Monitoring stack deployed"
 log_info "Grafana: http://$GRAFANA_LB"
-log_info "Username: $GRAFANA_USER"
-log_info "Password: $GRAFANA_PASSWORD"
+log_info "Username: $GRAFANA_USER (password: Secrets Manager ${SECRET_NAME}, or kubectl -n ${NAMESPACE} get secret ${GRAFANA_SECRET_NAME})"
 log_info "Prometheus: http://prometheus-server.monitoring.svc.cluster.local (internal)"
 log_info "Pyroscope: http://pyroscope.monitoring.svc.cluster.local:4040 (S3-backed, prefix s3://${WORKSHOP_BUCKET}/pyroscope/)"
 log_info "Grafana datasources: Prometheus (promds), Pyroscope"
