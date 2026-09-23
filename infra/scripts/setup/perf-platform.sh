@@ -12,8 +12,8 @@
 # Pyroscope Service for the NLB) and does not install or configure them itself.
 #
 # The EKS-only CON405 template does NOT run this script — it drives optimization
-# from the perf-optimizer MCP agent, which brings its own SA, dashboard, and
-# read-only RBAC (see deploy/java-on-amazon-eks/perf-optimizer.sh).
+# from the read-only perf-sensor, which brings its own SA, dashboard, and
+# read-only RBAC (see deploy/java-on-amazon-eks/perf-sensor.sh).
 # =============================================================================
 
 set -eo pipefail

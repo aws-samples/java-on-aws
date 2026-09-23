@@ -31,7 +31,6 @@ public class PerfPlatform extends Construct {
     private final Role perfCollectorEksPodRole;
     private final Role pyroscopeEksPodRole;
     private final Role grafanaEksPodRole;
-    // perf-optimizer roles removed: CON405 uses perf-sensor (no AWS calls, no IAM).
 
     public static class PerfPlatformProps {
         private Bucket workshopBucket;

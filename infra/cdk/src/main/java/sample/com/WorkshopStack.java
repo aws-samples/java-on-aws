@@ -115,7 +115,7 @@ public class WorkshopStack extends Stack {
 
         // ECR Registry settings (Repository Creation Template for create-on-push)
         List<String> ecrRepositoryNames = (isJavaOnAws || isEks)
-            ? List.of("ai-jvm-analyzer", "perf-analyzer", "perf-collector", "perf-optimizer", "perf-profiler")
+            ? List.of("ai-jvm-analyzer", "perf-analyzer", "perf-collector", "perf-profiler")
             : isSpringAi
                 ? List.of("aiagent", "mcpserver")
                 : (isAiAgents || isAiAgentsAdvanced)

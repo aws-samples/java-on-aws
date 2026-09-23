@@ -30,7 +30,7 @@ source mode) on **port 9100** (exposed as `containerPort` by the inject policy):
 
 `jcmd` targets the app JVM across the shared PID namespace (root + `SYS_PTRACE`),
 with `JAVA_TOOL_OPTIONS` nulled per call so the app's flags don't contaminate the
-output. `perf-optimizer` reads this via the pod IP to build ThreadFacts/heap — no
+output. `perf-sensor` reads this via the pod IP to build ThreadFacts/heap — no
 collector, no `kubectl exec`.
 
 ## Deploy

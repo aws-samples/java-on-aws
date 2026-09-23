@@ -156,7 +156,7 @@ sidecar:
     label: grafana_dashboard
     searchNamespace: ALL
     # Let a ConfigMap choose its Grafana folder via the grafana_folder annotation
-    # (perf-optimizer.sh ships the Optimization dashboard into "Workshop Dashboards").
+    # (perf-sensor.sh ships the Sensor dashboard into "Workshop Dashboards").
     # foldersFromFilesStructure makes the sidecar create/route by that folder name.
     folderAnnotation: grafana_folder
     provider:
@@ -264,7 +264,7 @@ log_success "Workshop Dashboards folder ready: $FOLDER_UID"
 # the monitoring stack. Grafana is already up (checked above) before we install
 # the plugin / provision datasources. No dashboards are created here — only the
 # shared folder above; module scripts (analysis.sh, perf-platform.sh) and the
-# perf-optimizer deploy add their own dashboards.
+# perf-sensor deploy add their own dashboards.
 # =============================================================================
 
 CLUSTER_NAME="${PREFIX}-eks"

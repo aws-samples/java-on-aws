@@ -171,8 +171,7 @@ else
 fi
 
 # Phase 7: perf-sensor — deterministic sensors (MCP + REST). Primary optimization
-# path for CON405 (replaces the retired perf-optimizer agent). Fatal: the session
-# depends on it.
+# path for CON405. Fatal: the session depends on it.
 log_info "Phase 7: Deploying perf-sensor..."
 if bash "$SCRIPT_DIR/../deploy/java-on-amazon-eks/perf-sensor.sh"; then
     log_success "perf-sensor deployed"
