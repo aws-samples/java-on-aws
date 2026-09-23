@@ -532,7 +532,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1790139703202"
+      ContentHash: "1790160751034"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -695,12 +695,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: riv26-cns405
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-on-amazon-eks
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: riv26-cns405
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -4790,7 +4790,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260923070143"
+            - "-20260923125231"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -4874,7 +4874,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260923070143"
+            - "-20260923125231"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

@@ -65,7 +65,8 @@ echo "wrote ${ENV_DIR}/.mcp.json"
 # name, file reads, and edits — so the investigate -> explain -> apply loop runs without
 # prompts. permissions.deny closes the two ways the agent could widen its own scope: Bash
 # (the participant rolls out; the load runs in its own terminal), and edits to the Claude
-# configuration itself (.claude/**, .mcp.json) or to .git/**. Everything not listed prompts.
+# configuration itself (.claude/**, .mcp.json) or to .git/** — Edit(path) rules cover the
+# Write tool too. Everything not listed prompts.
 python3 - "${ENV_DIR}/.claude/settings.json" <<'PY'
 import json, os, sys
 path = sys.argv[1]
@@ -90,10 +91,11 @@ for rule in ["mcp__perf-sensor",
     if rule not in allow:
         allow.append(rule)
 perms["allow"] = allow
-deny = list(perms.get("deny", []))
+# Path deny rules are Edit(path) only: they cover every file-editing tool, and Claude Code
+# rejects Write(path) rules at startup. Drop any Write(...) entries left by an earlier run.
+deny = [r for r in perms.get("deny", []) if not r.startswith("Write(")]
 for rule in ["Bash",
-             "Edit(.claude/**)", "Write(.claude/**)", "Edit(.mcp.json)", "Write(.mcp.json)",
-             "Edit(**/.git/**)", "Write(**/.git/**)",
+             "Edit(.claude/**)", "Edit(.mcp.json)", "Edit(**/.git/**)",
              "mcp__eks-mcp__apply_yaml", "mcp__eks-mcp__manage_k8s_resource", "mcp__eks-mcp__manage_eks_stacks",
              "mcp__eks-mcp__add_inline_policy", "mcp__eks-mcp__generate_app_manifest"]:
     if rule not in deny:
