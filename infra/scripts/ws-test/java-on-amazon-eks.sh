@@ -111,11 +111,11 @@ WS_TEST_BLOCK_200_5
 
 ws_skip_block 6 'Verify' 'Verify' 123 129 'text' '' 'copy action disabled'
 
-ws_run_block 7 'Check against best practices' 'Give the new pod two minutes under load, then ask:' 148 148 'bash' '' <<'WS_TEST_BLOCK_200_7'
+ws_run_block 7 'Check against best practices' 'Check against best practices' 146 146 'bash' '' <<'WS_TEST_BLOCK_200_7'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_200_7
 
-ws_skip_block 8 'Check against best practices' 'Check against best practices' 155 174 'text' '' 'copy action disabled'
+ws_skip_block 8 'Check against best practices' 'Check against best practices' 153 172 'text' '' 'copy action disabled'
 
 ws_end_page
 
@@ -155,11 +155,11 @@ WS_TEST_BLOCK_300_6
 
 ws_skip_block 7 'Verify' 'Verify' 153 163 'text' '' 'copy action disabled'
 
-ws_run_block 8 'Check against best practices' 'Give the pod two minutes under load, then ask:' 182 182 'bash' '' <<'WS_TEST_BLOCK_300_8'
+ws_run_block 8 'Check against best practices (optional)' 'Check against best practices (optional)' 180 180 'bash' '' <<'WS_TEST_BLOCK_300_8'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_300_8
 
-ws_skip_block 9 'Check against best practices' 'Check against best practices' 187 202 'text' '' 'copy action disabled'
+ws_skip_block 9 'Check against best practices (optional)' 'Check against best practices (optional)' 185 200 'text' '' 'copy action disabled'
 
 ws_end_page
 
@@ -195,11 +195,11 @@ WS_TEST_BLOCK_400_5
 
 ws_skip_block 6 'Verify' 'Verify' 240 249 'text' '' 'copy action disabled'
 
-ws_run_block 7 'Check against best practices' 'Give the pod two minutes under load, then ask:' 267 267 'bash' '' <<'WS_TEST_BLOCK_400_7'
+ws_run_block 7 'Check against best practices (optional)' 'Check against best practices (optional)' 266 266 'bash' '' <<'WS_TEST_BLOCK_400_7'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_400_7
 
-ws_skip_block 8 'Check against best practices' 'Check against best practices' 272 290 'text' '' 'copy action disabled'
+ws_skip_block 8 'Check against best practices (optional)' 'Check against best practices (optional)' 271 289 'text' '' 'copy action disabled'
 
 ws_end_page
 
@@ -242,11 +242,11 @@ WS_TEST_BLOCK_500_6
 
 ws_skip_block 7 'Verify' 'Verify' 226 239 'text' '' 'copy action disabled'
 
-ws_run_block 8 'Check against best practices' 'Give the pod two minutes under load, then ask:' 257 257 'bash' '' <<'WS_TEST_BLOCK_500_8'
+ws_run_block 8 'Check against best practices' 'Check against best practices' 256 256 'bash' '' <<'WS_TEST_BLOCK_500_8'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_500_8
 
-ws_skip_block 9 'Check against best practices' 'Check against best practices' 262 283 'text' '' 'copy action disabled'
+ws_skip_block 9 'Check against best practices' 'Check against best practices' 261 282 'text' '' 'copy action disabled'
 
 ws_end_page
 
@@ -275,11 +275,11 @@ WS_TEST_BLOCK_600_4
 
 ws_skip_block 5 'Verify' 'Verify' 109 115 'text' '' 'copy action disabled'
 
-ws_run_block 6 'Check against best practices' 'Give the pod two minutes under load, then ask:' 130 130 'bash' '' <<'WS_TEST_BLOCK_600_6'
+ws_run_block 6 'Check against best practices' 'Check against best practices' 128 128 'bash' '' <<'WS_TEST_BLOCK_600_6'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_600_6
 
-ws_skip_block 7 'Check against best practices' 'Check against best practices' 135 155 'text' '' 'copy action disabled'
+ws_skip_block 7 'Check against best practices' 'Check against best practices' 133 153 'text' '' 'copy action disabled'
 
 ws_end_page
 
@@ -301,7 +301,7 @@ WS_TEST_BLOCK_650_3
 ws_run_block 4 'Verify' 'Verify' 68 76 'bash' '' <<'WS_TEST_BLOCK_650_4'
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 
-# heap flags from the new checkpoint: 384 Mi / 256 Mi
+# heap flags from the new checkpoint: 75 % / 50 % of the new limit
 kubectl -n unicorn-store-spring exec deploy/unicorn-store-spring -c unicorn-store-spring -- \
   sh -c 'JAVA_TOOL_OPTIONS= jcmd $(jcmd -l | grep -v JCmd | cut -d" " -f1) VM.flags' \
   | tr ' ' '\n' | grep -E 'MaxHeapSize|InitialHeapSize'
@@ -312,7 +312,7 @@ WS_TEST_BLOCK_650_4
 
 ws_skip_block 5 'Verify' 'Verify' 81 87 'text' '' 'copy action disabled'
 
-ws_run_block 6 'Check against best practices' 'Give the pod two minutes under load, then ask one last time:' 106 106 'bash' '' <<'WS_TEST_BLOCK_650_6'
+ws_run_block 6 'Check against best practices' 'Ask one last time:' 106 106 'bash' '' <<'WS_TEST_BLOCK_650_6'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_650_6
 
