@@ -32,7 +32,7 @@ class SizeMemoryTest {
         .build();
 
     // sizing-policy.yaml: peakFactor, floorSafetyFactor, roundMi, warmSeconds, minSamples, minRequestRate, minDeltaMi
-    static final SizeParams POLICY = new SizeParams(1.40, 1.90, 128, 120, 100, 1, 64);
+    static final SizeParams POLICY = new SizeParams(1.40, 1.50, 128, 120, 100, 1, 64);
     // sizing-policy.yaml: cpuFactor, roundMillicores, warmSeconds, minSamples, minRequestRate, minDeltaMi
     static final CpuParams CPU_POLICY = new CpuParams(1.5, 50, 120, 100, 1, 64);
 
@@ -56,7 +56,7 @@ class SizeMemoryTest {
 
     @Test
     void baseline_sizesToTheWorkshopNumber_serialGc() throws IOException {
-        // floor 377, peak 517: limits = roundUp(max(723.8, 716.3), 128) = 768; requests == limits.
+        // floor 377, peak 517: limits = roundUp(max(723.8, 565.5), 128) = 768; requests == limits.
         var r = sensor.sizeMemory(fixture("baseline"), POLICY);
         assertThat(r.status()).isEqualTo("OK");
         assertThat(r.requests().memory()).isEqualTo("768Mi");
@@ -85,8 +85,8 @@ class SizeMemoryTest {
     }
 
     @Test
-    void crac_sizesSmall_floorSafetyDominates() throws IOException {
-        // floor 190, peak 210: limits = roundUp(max(294, 361), 128) = 384; requests == limits.
+    void crac_sizesSmall_peakFactorDominates() throws IOException {
+        // floor 190, peak 210: limits = roundUp(max(294, 285), 128) = 384; requests == limits.
         var r = sensor.sizeMemory(fixture("crac"), POLICY);
         assertThat(r.status()).isEqualTo("OK");
         assertThat(r.requests().memory()).isEqualTo("384Mi");

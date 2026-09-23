@@ -19,9 +19,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Window scoping rules: cAdvisor queries are scoped to the Ready pods, the floor and the
- * throttle ratio exclude the pod's boot minute, traffic windows are clipped to the pod's
- * lifetime, and startup prefers the log-derived gauge over application.ready.time.
+ * Window scoping rules: cAdvisor queries are scoped to the Ready pods; the floor, CPU p95,
+ * latency and throttle ratio exclude the pod's boot minute; the request rate is clipped to the
+ * pod's lifetime; and startup prefers the log-derived gauge over application.ready.time.
  */
 @ExtendWith(MockitoExtension.class)
 class FactsCollectorTest {
@@ -50,7 +50,9 @@ class FactsCollectorTest {
         verify(prometheus, never()).workingSetFloorMi(any(), any(), any(), anyInt());
         verify(prometheus, never()).cpuThrottledRatio(any(), any(), any(), anyInt());
         verify(prometheus).requestRatePerSec("shop", 1);
+        verify(prometheus).latencyMeanMs("shop", 1);
         verify(prometheus).workingSetPeakMi("shop", "shop", "p1", 15);
+        verify(prometheus).cpuUsageP95Cores("shop", "shop", "p1", 15);
         assertThat(f.runtime().workingSetFloorMi()).isNull();
         assertThat(f.runtime().cpuThrottledRatio()).isNull();
     }
@@ -58,17 +60,22 @@ class FactsCollectorTest {
     @Test
     void settledPod_floorAndThrottleExcludeTheBootMinute_windowsClipToUptime() {
         collector().collect("shop", 15, snap(600.0, List.of("p1", "p2")));
-        // floor: (600 - 60) / 60 = 9 min, throttle: min(300, 600 - 60) = 300 s, traffic: 10 min
+        // floor, cpu p95, latency: (600 - 60) / 60 = 9 min; throttle: min(300, 600 - 60) = 300 s;
+        // request rate: lifetime, 10 min
         verify(prometheus).workingSetFloorMi("shop", "shop", "p1|p2", 9);
+        verify(prometheus).cpuUsageP95Cores("shop", "shop", "p1|p2", 9);
+        verify(prometheus).latencyMeanMs("shop", 9);
+        verify(prometheus).latencyMaxMs("shop", 9);
         verify(prometheus).cpuThrottledRatio("shop", "shop", "p1|p2", 300);
         verify(prometheus).requestRatePerSec("shop", 10);
-        verify(prometheus).latencyMeanMs("shop", 10);
     }
 
     @Test
     void oldPod_windowsAreTheRequestedWindow() {
         collector().collect("shop", 15, snap(3600.0, List.of("p1")));
         verify(prometheus).workingSetFloorMi("shop", "shop", "p1", 15);
+        verify(prometheus).cpuUsageP95Cores("shop", "shop", "p1", 15);
+        verify(prometheus).latencyMeanMs("shop", 15);
         verify(prometheus).requestRatePerSec("shop", 15);
         verify(prometheus).cpuThrottledRatio("shop", "shop", "p1", 300);
     }

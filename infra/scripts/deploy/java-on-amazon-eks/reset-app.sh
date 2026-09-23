@@ -130,4 +130,4 @@ else
   log_info ":aot-prebuilt/:crac-prebuilt fallbacks untouched by the run (pass --prebuild to rebuild them from the shared source)"
 fi
 
-log_success "Environment at starting point. Next: ACCEPTANCE.md §2 (claude -p, not -c)."
+log_success "Environment at starting point. Next: bash ~/java-on-aws/infra/scripts/ws-test/java-on-amazon-eks.sh (see apps/perf-sensor/ACCEPTANCE.md)."

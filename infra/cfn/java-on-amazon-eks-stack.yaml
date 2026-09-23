@@ -532,7 +532,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1790160751034"
+      ContentHash: "1790173297238"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2799,6 +2799,11 @@ Resources:
                   - ""
                   - - "arn:aws:events:*:"
                     - Ref: AWS::AccountId
+                    - :event-bus/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:events:*:"
+                    - Ref: AWS::AccountId
                     - :rule/*
               - Fn::Join:
                   - ""
@@ -4790,7 +4795,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260923125231"
+            - "-20260923162137"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -4874,7 +4879,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260923125231"
+            - "-20260923162137"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

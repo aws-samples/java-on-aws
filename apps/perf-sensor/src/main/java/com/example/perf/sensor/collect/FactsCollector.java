@@ -63,10 +63,12 @@ public class FactsCollector {
 
         // Floor: the window clipped to the pod's lifetime minus its boot ramp (needs >= 1 min of
         // post-boot data, else null); the query itself takes a low quantile, not the minimum.
+        // steadyMins is that same post-boot window; -1 means the pod is too young to have one.
+        int steadyMins = -1;
         Double floor = null;
         if (uptime != null && uptime >= BOOT_SECONDS + 60) {
-            int floorMins = (int) Math.min(mins, Math.floor((uptime - BOOT_SECONDS) / 60.0));
-            floor = prometheus.workingSetFloorMi(service, container, pods, floorMins);
+            steadyMins = (int) Math.min(mins, Math.floor((uptime - BOOT_SECONDS) / 60.0));
+            floor = prometheus.workingSetFloorMi(service, container, pods, steadyMins);
         } else if (uptime == null) {
             floor = prometheus.workingSetFloorMi(service, container, pods, mins);
         }
@@ -76,7 +78,12 @@ public class FactsCollector {
         // lifetime, so a pod that has seen no load yet does not inherit the previous pod's traffic.
         int trafficMins = uptime == null ? mins : (int) Math.max(1, Math.min(mins, Math.floor(uptime / 60.0)));
         Double requestRate = prometheus.requestRatePerSec(service, trafficMins);
-        Double cpuP95 = prometheus.cpuUsageP95Cores(service, container, pods, mins);
+        // CPU p95 and latency describe steady state: exclude the boot minute once the pod has one,
+        // so a boosted boot spike or the first slow requests do not size the request or fail the
+        // latency bar. Younger pods fall back to the lifetime window.
+        int cpuMins = steadyMins > 0 ? steadyMins : mins;
+        int latencyMins = steadyMins > 0 ? steadyMins : trafficMins;
+        Double cpuP95 = prometheus.cpuUsageP95Cores(service, container, pods, cpuMins);
         // Throttling: the pod's lifetime minus its first 60 s (boot JIT saturates the quota by
         // design), capped at 5 min; needs at least 30 s of steady state, else null.
         Double throttled = null;
@@ -84,8 +91,8 @@ public class FactsCollector {
             int throttleSecs = (int) Math.min(mins * 60L, Math.min(300, uptime - BOOT_SECONDS));
             throttled = prometheus.cpuThrottledRatio(service, container, pods, throttleSecs);
         }
-        Double latencyMean = prometheus.latencyMeanMs(service, trafficMins);
-        Double latencyMax = prometheus.latencyMaxMs(service, trafficMins);
+        Double latencyMean = prometheus.latencyMeanMs(service, latencyMins);
+        Double latencyMax = prometheus.latencyMaxMs(service, latencyMins);
         var heap = dump.heap(snap.appPodIP());
         var ring = jfr.collect(snap.appPodIP(), snap.appPodName());
         // effectiveCpuCount: what the JVM itself reported (jdk.ContainerConfiguration) when the

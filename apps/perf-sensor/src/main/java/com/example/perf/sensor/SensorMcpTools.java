@@ -71,7 +71,7 @@ public class SensorMcpTools {
         @ToolParam(description = SERVICE_PARAM) String service,
         @ToolParam(description = "Look-back window in minutes") int windowMinutes,
         @ToolParam(description = "limit >= peak * this (e.g. 1.40)") double peakFactor,
-        @ToolParam(description = "limit >= floor * this (e.g. 1.90), protects an under-observed peak") double floorSafetyFactor,
+        @ToolParam(description = "limit >= floor * this (e.g. 1.50), protects an under-observed peak") double floorSafetyFactor,
         @ToolParam(description = "round memory up to a multiple of this many MiB (e.g. 128)") int roundMi,
         @ToolParam(description = "guard: minimum uptime seconds before sizing (e.g. 120)") int warmSeconds,
         @ToolParam(description = "guard: minimum CPU profile samples in the window, i.e. 'a real profile exists' (e.g. 100)") int minSamples,

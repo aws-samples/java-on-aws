@@ -85,5 +85,5 @@ src/main/java/com/example/perf/sensor/
   facts/                 the typed result records
 skills/                  java-on-eks-checklist, java-on-eks-optimization (+ references)
 k8s/                     rbac, deployment, dashboard.json
-ACCEPTANCE.md            end-to-end runbook on a live environment
+ACCEPTANCE.md            acceptance criteria for a ws-test run of the workshop content
 ```

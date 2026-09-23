@@ -66,11 +66,15 @@ latency metric** is the authoritative "it is slow" signal on every image.
   async result, not on the request thread.
 - If `blockedInsideTransaction > 0`, **move the remote call out of the transaction** so
   the connection is released before the round-trip starts. Framework-generic patterns:
-  Spring — publish an `ApplicationEvent` and handle it with
-  `@TransactionalEventListener(phase = AFTER_COMMIT)`, or register a
-  `TransactionSynchronization` `afterCommit`; Jakarta CDI — `@Observes(during = AFTER_SUCCESS)`;
-  plain JDBC — commit, then call. This also stops publishing events for work that rolled back.
-  For guaranteed delivery the full pattern is a transactional outbox; not needed here.
+  Spring — register a `TransactionSynchronization` `afterCommit` inline
+  (`TransactionSynchronizationManager.registerSynchronization(...)`), or publish an
+  `ApplicationEvent` and handle it with `@TransactionalEventListener(phase = AFTER_COMMIT)`;
+  Jakarta CDI — `@Observes(during = AFTER_SUCCESS)`; plain JDBC — commit, then call. This
+  also stops publishing events for work that rolled back. For guaranteed delivery the full
+  pattern is a transactional outbox; not needed here.
+  **In this repository use the inline `afterCommit` synchronization in the service method
+  that holds the transaction.** It keeps the change to the service class and its
+  configuration and adds no new class; do not introduce an event type or a listener.
 - If a result is genuinely needed, bound it (timeout) and **size the pool from
   evidence** — set the pool to the measured concurrency, not a guess: only when
   `requestThreadsWaitingForConnection > 0` remains after the boundary fix, and to
@@ -121,6 +125,6 @@ Do not guess between these; each has its own number in the tool output.
 
 There is no golden file here — the change is in the app's source. Name the blocking
 frame and `file:line` from `diagnoseBlocking`; if `blockedInsideTransaction > 0`, move the
-remote call after commit (framework pattern above) AND make it non-blocking; otherwise make
-it non-blocking. Size the pool only from `requestThreadsWaitingForConnection`, to the observed
-concurrency.
+remote call after commit (inline `afterCommit` synchronization, see above) AND make it
+non-blocking; otherwise make it non-blocking. Size the pool only from
+`requestThreadsWaitingForConnection`, to the observed concurrency.

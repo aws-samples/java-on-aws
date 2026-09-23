@@ -11,7 +11,7 @@
 #             clampedToLimit=true means the pod is CPU-bound at this load).
 policy:
   peakFactor: 1.40          # memory limit >= peak * this — over the observed load peak
-  floorSafetyFactor: 1.90   # memory limit >= floor * this — protects against an under-observed peak
+  floorSafetyFactor: 1.50   # memory limit >= floor * this — protects against an under-observed peak; under steady load floor ≈ peak, so keep this below 1.4 × (peak/floor) or it always wins
   roundMi: 128              # round memory up to a multiple of this many MiB (scheduler-friendly, stable across runs)
   cpuFactor: 1.5            # cpu request = p95 usage * this — headroom over steady state
   roundMillicores: 50       # round cpu request up to a multiple of this many millicores

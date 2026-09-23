@@ -47,7 +47,7 @@ class SkillDebrandingTest {
     // truth. Guard the values so the file cannot silently drift from the policy the
     // SizeMemoryTest fixtures are pinned to.
     private static final Map<String, String> EXPECTED_POLICY = Map.of(
-        "peakFactor", "1.40", "floorSafetyFactor", "1.90",
+        "peakFactor", "1.40", "floorSafetyFactor", "1.50",
         "roundMi", "128", "warmSeconds", "120", "minSamples", "100",
         "minRequestRate", "1", "minDeltaMi", "64");
 
