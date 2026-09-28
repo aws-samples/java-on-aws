@@ -9,7 +9,7 @@
     { "type": "stat", "id": 1, "title": "Startup (ready time)", "gridPos": {"x":0,"y":1,"w":5,"h":4},
       "datasource": {"type":"prometheus","uid":"promds"}, "fieldConfig": {"defaults":{"unit":"s"}},
       "targets": [{"refId":"A","datasource":{"type":"prometheus","uid":"promds"},
-        "expr":"max(perf_sensor_startup_seconds{service=\"__APP_NS__\"})"}] },
+        "expr":"max(perf_sensor_startup_seconds{service=\"__APP_NS__\"}) or max(application_ready_time_seconds{application=\"__APP_NS__\"})"}] },
     { "type": "stat", "id": 2, "title": "Request latency (max)", "gridPos": {"x":5,"y":1,"w":5,"h":4},
       "datasource": {"type":"prometheus","uid":"promds"}, "fieldConfig": {"defaults":{"unit":"s"}},
       "targets": [{"refId":"A","datasource":{"type":"prometheus","uid":"promds"},
@@ -44,7 +44,7 @@
     { "type": "timeseries", "id": 8, "title": "Startup per pod (ready time)", "gridPos": {"x":0,"y":14,"w":12,"h":8},
       "datasource": {"type":"prometheus","uid":"promds"}, "fieldConfig": {"defaults":{"unit":"s"}},
       "targets": [{"refId":"A","datasource":{"type":"prometheus","uid":"promds"},
-        "expr":"perf_sensor_startup_seconds{service=\"__APP_NS__\"}","legendFormat":"{{pod}}"}] },
+        "expr":"max by (pod)(perf_sensor_startup_seconds{service=\"__APP_NS__\"}) or max by (pod)(application_ready_time_seconds{application=\"__APP_NS__\"})","legendFormat":"{{pod}}"}] },
     { "type": "timeseries", "id": 9, "title": "Working set vs limit (per pod)", "gridPos": {"x":12,"y":14,"w":12,"h":8},
       "datasource": {"type":"prometheus","uid":"promds"}, "fieldConfig": {"defaults":{"unit":"bytes"}},
       "targets": [

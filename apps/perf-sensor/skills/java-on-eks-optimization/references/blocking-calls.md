@@ -75,10 +75,14 @@ latency metric** is the authoritative "it is slow" signal on every image.
   **In this repository use the inline `afterCommit` synchronization in the service method
   that holds the transaction.** It keeps the change to the service class and its
   configuration and adds no new class; do not introduce an event type or a listener.
-- If a result is genuinely needed, bound it (timeout) and **size the pool from
-  evidence** — set the pool to the measured concurrency, not a guess: only when
-  `requestThreadsWaitingForConnection > 0` remains after the boundary fix, and to
-  `requestThreadsActive` (peak in-flight requests), not a round number.
+- **Size the pool in the same change when the measurement already shows it is short.**
+  Read the configured `spring.datasource.hikari.maximum-pool-size` from the source. When
+  `requestThreadsWaitingForConnection > 0` and the configured size is below
+  `requestThreadsActive` (peak in-flight requests), set it to `requestThreadsActive`: each
+  in-flight write needs its own connection for its database work even after the remote call
+  leaves the transaction. The target comes from the measured concurrency, not a round
+  number; when the configured size already covers it, leave the pool alone.
+- If a result is genuinely needed, bound it (timeout) rather than waiting without limit.
 - Virtual threads make blocking cheaper but do not make a needless block correct;
   remove the block first.
 
@@ -126,5 +130,6 @@ Do not guess between these; each has its own number in the tool output.
 There is no golden file here — the change is in the app's source. Name the blocking
 frame and `file:line` from `diagnoseBlocking`; if `blockedInsideTransaction > 0`, move the
 remote call after commit (inline `afterCommit` synchronization, see above) AND make it
-non-blocking; otherwise make it non-blocking. Size the pool only from
-`requestThreadsWaitingForConnection`, to the observed concurrency.
+non-blocking; otherwise make it non-blocking. When `requestThreadsWaitingForConnection > 0`
+and the configured pool is smaller than `requestThreadsActive`, size the pool to
+`requestThreadsActive` in the same change.

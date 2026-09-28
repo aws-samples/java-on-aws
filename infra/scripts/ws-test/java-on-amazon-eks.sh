@@ -24,15 +24,15 @@ curl --location --request POST $SVC_URL'/unicorns' --header 'Content-Type: appli
 }' | jq
 WS_TEST_BLOCK_50_1
 
-ws_skip_block 2 'Test the application' 'Test the application' 51 58 'json' '' 'copy action disabled'
+ws_skip_block 2 'Test the application' 'Sample output:' 53 60 'json' '' 'copy action disabled'
 
-ws_run_block 3 'Start the load' 'Start the load' 66 66 'bash' '' <<'WS_TEST_BLOCK_50_3'
+ws_run_block 3 'Start the load' 'Start the load' 68 68 'bash' '' <<'WS_TEST_BLOCK_50_3'
 nohup bash -c 'while true; do ~/environment/unicorn-store-spring/scripts/load.sh 600 50; done' > ~/environment/load.log 2>&1 &
 WS_TEST_BLOCK_50_3
 
-ws_skip_block 4 'Start the load' 'Start the load' 72 72 'bash' '' 'follows the load log until Ctrl+C'
+ws_skip_block 4 'Start the load' 'Start the load' 74 74 'bash' '' 'follows the load log until Ctrl+C'
 
-ws_run_block 5 'Open Grafana' 'Back in your first terminal, the one you work in:' 80 84 'bash' '' <<'WS_TEST_BLOCK_50_5'
+ws_run_block 5 'Open Grafana' 'Back in your first terminal, the one you work in:' 84 88 'bash' '' <<'WS_TEST_BLOCK_50_5'
 GRAFANA_URL=$(kubectl -n monitoring get svc grafana -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 GRAFANA_PASSWORD=$(kubectl -n monitoring get secret grafana-admin -o jsonpath="{.data.password}" | base64 --decode)
 echo "URL:      http://${GRAFANA_URL}"
@@ -44,7 +44,7 @@ ws_end_page
 
 ws_begin_page 'Measure the baseline' 100 'baseline/index.en.md'
 
-ws_run_block 1 'Attach the profiler' 'The change is one label on the pod template. A cluster policy injects a profiler sidecar into any pod that carries it, and apply rolls the pod:' 13 21 'bash' '' <<'WS_TEST_BLOCK_100_1'
+ws_run_block 1 'Attach the profiler' 'The change is one label on the pod template. A cluster policy injects a profiler sidecar into any pod that carries it, and apply rolls the pod:' 19 27 'bash' '' <<'WS_TEST_BLOCK_100_1'
 yq -i '.spec.template.metadata.labels."perf-profile/sidecar" = "true"' ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
@@ -56,48 +56,48 @@ git -C ~/environment/unicorn-store-spring add -A \
   && git -C ~/environment/unicorn-store-spring commit -q -m "baseline: profiler attached"
 WS_TEST_BLOCK_100_1
 
-ws_run_block 2 'Connect the sensor' 'The sensor runs in the monitoring namespace. Forward it to the IDE in the background; the loop reconnects if the pod moves:' 31 32 'bash' '' <<'WS_TEST_BLOCK_100_2'
+ws_run_block 2 'Connect the sensor' 'The sensor runs in the monitoring namespace. Forward it to the IDE in the background; the loop reconnects if the pod moves:' 37 38 'bash' '' <<'WS_TEST_BLOCK_100_2'
 nohup bash -c 'while true; do kubectl -n monitoring port-forward svc/perf-sensor 8090:8080; sleep 2; done' > ~/environment/port-forward.log 2>&1 &
 sleep 3; curl -sf localhost:8090/actuator/health && echo
 WS_TEST_BLOCK_100_2
 
-ws_skip_block 3 'Connect the sensor' 'Open a third terminal and watch the log there; leave it open for the whole session:' 38 38 'bash' '' 'follows the port-forward log until Ctrl+C'
+ws_skip_block 3 'Connect the sensor' 'Open a third terminal and watch the log there; leave it open for the whole session:' 44 44 'bash' '' 'follows the port-forward log until Ctrl+C'
 
-ws_skip_block 4 'Start Claude Code' 'In your first terminal, from ~/environment, where the session'"'"'s Claude Code configuration lives:' 48 48 'bash' '' 'interactive terminal UI'
+ws_skip_block 4 'Start Claude Code' 'In your first terminal, from ~/environment, where the session'"'"'s Claude Code configuration lives:' 54 54 'bash' '' 'interactive terminal UI'
 
-ws_run_block 5 'Start Claude Code' 'Or non-interactively from the terminal. With -p, Claude Code prints the answer and exits; later calls with -c continue the same session:' 60 60 'bash' '' <<'WS_TEST_BLOCK_100_5'
+ws_run_block 5 'Start Claude Code' 'With -p, Claude Code prints the answer and exits; later calls with -c continue the same session:' 74 74 'bash' 'non-interactive' <<'WS_TEST_BLOCK_100_5'
 cd ~/environment && claude -p "List the MCP tools you can see from perf-sensor and eks-mcp, names only."
 WS_TEST_BLOCK_100_5
 
-ws_run_block 6 'Ask for the baseline' 'Ask for the baseline' 74 74 'bash' '' <<'WS_TEST_BLOCK_100_6'
+ws_run_block 6 'Ask for the baseline' 'In the terminal:' 101 101 'bash' 'non-interactive' <<'WS_TEST_BLOCK_100_6'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_100_6
 
-ws_run_block 7 'What is behind the question' '- unicorn-store-spring/CLAUDE.md: how the repository builds and deploys, for the agent' 98 100 'bash' '' <<'WS_TEST_BLOCK_100_7'
+ws_run_block 7 'What is behind the question' '- unicorn-store-spring/CLAUDE.md: how the repository builds and deploys, for the agent' 128 130 'bash' '' <<'WS_TEST_BLOCK_100_7'
 cat ~/environment/.mcp.json
 ls ~/environment/.claude/skills/*/ ~/environment/.claude/skills/*/references/
 cat ~/environment/.claude/skills/java-on-eks-optimization/references/sizing-policy.yaml
 WS_TEST_BLOCK_100_7
 
-ws_skip_block 8 'The baseline score' 'The baseline score' 109 125 'text' '' 'copy action disabled'
+ws_skip_block 8 'The baseline score' 'The baseline score' 139 155 'text' '' 'copy action disabled'
 
 ws_end_page
 
 ws_begin_page 'Right-size memory' 200 'right-size-memory/index.en.md'
 
-ws_run_block 1 'Right-size memory' 'Or non-interactively from the terminal:' 13 13 'bash' '' <<'WS_TEST_BLOCK_200_1'
+ws_run_block 1 'Right-size memory' 'In the terminal:' 21 21 'bash' 'non-interactive' <<'WS_TEST_BLOCK_200_1'
 cd ~/environment && claude -c -p "How can I reduce memory consumption of unicorn-store-spring?"
 WS_TEST_BLOCK_200_1
 
-ws_skip_block 2 'Right-size memory' 'Claude measures the pod under the running load, computes the new sizes with a fixed policy, and edits one file. It edits and stops; nothing is deployed.' 22 44 'text' '' 'copy action disabled'
+ws_skip_block 2 'Right-size memory' 'Claude measures the pod under the running load, computes the new sizes with a fixed policy, and edits one file. It edits and stops; nothing is deployed.' 33 55 'text' '' 'copy action disabled'
 
-ws_run_block 3 'Roll out' 'In your first terminal, not in Claude Code. The pod template changed, so apply rolls out a new pod:' 55 55 'bash' '' <<'WS_TEST_BLOCK_200_3'
+ws_run_block 3 'Roll out' 'In your first terminal, not in Claude Code. The pod template changed, so apply rolls out a new pod:' 66 66 'bash' '' <<'WS_TEST_BLOCK_200_3'
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_200_3
 
-ws_skip_block 4 'What changed' 'Claude changed one file, k8s/deployment.yaml, in two blocks. The sizes come from sizeMemory with a fixed policy: limits = max(1.4 × peak, 1.5 × floor) rounded up to 128 MiB, and requests = limits.' 83 92 'yaml' '' 'copy action disabled'
+ws_skip_block 4 'What changed' 'Claude changed one file, k8s/deployment.yaml, in two blocks. The sizes come from sizeMemory with a fixed policy: limits = max(1.4 × peak, 1.5 × floor) rounded up to 128 MiB, and requests = limits.' 94 103 'yaml' '' 'copy action disabled'
 
-ws_run_block 5 'Verify' 'Verify' 108 116 'bash' '' <<'WS_TEST_BLOCK_200_5'
+ws_run_block 5 'Verify' 'Verify' 119 127 'bash' '' <<'WS_TEST_BLOCK_200_5'
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 
 # did the heap follow the container? 75 % / 50 % of the limit, SerialGC
@@ -109,34 +109,34 @@ git -C ~/environment/unicorn-store-spring add -A \
   && git -C ~/environment/unicorn-store-spring commit -q -m "right-size memory"
 WS_TEST_BLOCK_200_5
 
-ws_skip_block 6 'Verify' 'Verify' 123 129 'text' '' 'copy action disabled'
+ws_skip_block 6 'Verify' 'Verify' 134 140 'text' '' 'copy action disabled'
 
-ws_run_block 7 'Check against best practices' 'Check against best practices' 146 146 'bash' '' <<'WS_TEST_BLOCK_200_7'
+ws_run_block 7 'Check against best practices' 'In the terminal:' 167 167 'bash' 'non-interactive' <<'WS_TEST_BLOCK_200_7'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_200_7
 
-ws_skip_block 8 'Check against best practices' 'Check against best practices' 153 172 'text' '' 'copy action disabled'
+ws_skip_block 8 'Check against best practices' 'Check against best practices' 177 196 'text' '' 'copy action disabled'
 
 ws_end_page
 
 ws_begin_page 'Boost startup CPU' 300 'boost-startup-cpu/index.en.md'
 
-ws_run_block 1 'Boost startup CPU' 'Or non-interactively from the terminal:' 13 13 'bash' '' <<'WS_TEST_BLOCK_300_1'
+ws_run_block 1 'Boost startup CPU' 'In the terminal:' 21 21 'bash' 'non-interactive' <<'WS_TEST_BLOCK_300_1'
 cd ~/environment && claude -c -p "How can unicorn-store-spring start faster without changing the image?"
 WS_TEST_BLOCK_300_1
 
-ws_skip_block 2 'Boost startup CPU' 'Claude measures the pod, computes the steady-state CPU request, and edits two files. It edits and stops; nothing is deployed.' 20 44 'text' '' 'copy action disabled'
+ws_skip_block 2 'Boost startup CPU' 'Claude measures the pod, computes the steady-state CPU request, and edits two files. It edits and stops; nothing is deployed.' 31 55 'text' '' 'copy action disabled'
 
-ws_run_block 3 'Roll out' 'In your first terminal, not in Claude Code:' 55 56 'bash' '' <<'WS_TEST_BLOCK_300_3'
+ws_run_block 3 'Roll out' 'In your first terminal, not in Claude Code:' 66 67 'bash' '' <<'WS_TEST_BLOCK_300_3'
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/startup-cpu-boost.yaml
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_300_3
 
-ws_skip_block 4 'What changed' 'Claude changed two files. A new StartupCPUBoost resource doubles CPU until the pod is Ready; the Deployment lowers the steady request and pins the JVM'"'"'s processor count.' 86 107 'yaml' '' 'copy action disabled'
+ws_skip_block 4 'What changed' 'Claude changed two files. A new StartupCPUBoost resource doubles CPU until the pod is Ready; the Deployment lowers the steady request and pins the JVM'"'"'s processor count.' 97 118 'yaml' '' 'copy action disabled'
 
-ws_skip_block 5 'What changed' '- Lines 19–22: the controller removes the boost, in place, the moment the pod reports Ready' 116 125 'yaml' '' 'copy action disabled'
+ws_skip_block 5 'What changed' '- Lines 19–22: the controller removes the boost, in place, the moment the pod reports Ready' 127 136 'yaml' '' 'copy action disabled'
 
-ws_run_block 6 'Verify' 'Verify' 135 148 'bash' '' <<'WS_TEST_BLOCK_300_6'
+ws_run_block 6 'Verify' 'Verify' 146 159 'bash' '' <<'WS_TEST_BLOCK_300_6'
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 
 # startup line: about 7 s, was about 14
@@ -153,25 +153,25 @@ git -C ~/environment/unicorn-store-spring add -A \
   && git -C ~/environment/unicorn-store-spring commit -q -m "startup cpu boost + cpu request"
 WS_TEST_BLOCK_300_6
 
-ws_skip_block 7 'Verify' 'Verify' 153 163 'text' '' 'copy action disabled'
+ws_skip_block 7 'Verify' 'Verify' 164 174 'text' '' 'copy action disabled'
 
-ws_run_block 8 'Check against best practices (optional)' 'Check against best practices (optional)' 180 180 'bash' '' <<'WS_TEST_BLOCK_300_8'
+ws_run_block 8 'Check against best practices (optional)' 'In the terminal:' 201 201 'bash' 'non-interactive' <<'WS_TEST_BLOCK_300_8'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_300_8
 
-ws_skip_block 9 'Check against best practices (optional)' 'Check against best practices (optional)' 185 200 'text' '' 'copy action disabled'
+ws_skip_block 9 'Check against best practices (optional)' 'Check against best practices (optional)' 209 224 'text' '' 'copy action disabled'
 
 ws_end_page
 
 ws_begin_page 'Cache startup at build time' 400 'cache-startup/index.en.md'
 
-ws_run_block 1 'Cache startup at build time' 'Or non-interactively from the terminal:' 13 13 'bash' '' <<'WS_TEST_BLOCK_400_1'
+ws_run_block 1 'Cache startup at build time' 'In the terminal:' 21 21 'bash' 'non-interactive' <<'WS_TEST_BLOCK_400_1'
 cd ~/environment && claude -c -p "How can unicorn-store-spring start faster without changing the application?"
 WS_TEST_BLOCK_400_1
 
-ws_skip_block 2 'Cache startup at build time' 'Claude measures the running pod, reads pom.xml, and writes one file. It edits and stops; nothing is built or deployed.' 20 45 'text' '' 'copy action disabled'
+ws_skip_block 2 'Cache startup at build time' 'Claude measures the running pod, reads pom.xml, and writes one file. It edits and stops; nothing is built or deployed.' 31 56 'text' '' 'copy action disabled'
 
-ws_run_block 3 'Build and roll out' 'In your first terminal, not in Claude Code:' 56 62 'bash' '' 1200 <<'WS_TEST_BLOCK_400_3'
+ws_run_block 3 'Build and roll out' 'In your first terminal, not in Claude Code:' 67 73 'bash' '' 1200 <<'WS_TEST_BLOCK_400_3'
 # ≈ 1 min on the warm cache, ≈ 3 min cold; two training runs; pushes :aot
 ~/environment/unicorn-store-spring/scripts/build.sh aot Dockerfile.aot
 
@@ -181,9 +181,9 @@ yq -i '.spec.template.spec.containers[0].image |= sub(":[^:]+$"; ":aot")' \
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_400_3
 
-ws_skip_block 4 'What changed' 'The copy in your repository carries the explanatory comments Claude kept from its reference. They are omitted here.' 156 212 'dockerfile' '' 'copy action disabled'
+ws_skip_block 4 'What changed' 'The copy in your repository carries the explanatory comments Claude kept from its reference. They are omitted here.' 178 234 'dockerfile' '' 'copy action disabled'
 
-ws_run_block 5 'Verify' 'Verify' 229 235 'bash' '' <<'WS_TEST_BLOCK_400_5'
+ws_run_block 5 'Verify' 'Verify' 251 257 'bash' '' <<'WS_TEST_BLOCK_400_5'
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 
 # startup line, about 3 s
@@ -193,25 +193,25 @@ git -C ~/environment/unicorn-store-spring add -A \
   && git -C ~/environment/unicorn-store-spring commit -q -m "aot cache"
 WS_TEST_BLOCK_400_5
 
-ws_skip_block 6 'Verify' 'Verify' 240 249 'text' '' 'copy action disabled'
+ws_skip_block 6 'Verify' 'Verify' 262 271 'text' '' 'copy action disabled'
 
-ws_run_block 7 'Check against best practices (optional)' 'Check against best practices (optional)' 266 266 'bash' '' <<'WS_TEST_BLOCK_400_7'
+ws_run_block 7 'Check against best practices (optional)' 'In the terminal:' 298 298 'bash' 'non-interactive' <<'WS_TEST_BLOCK_400_7'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_400_7
 
-ws_skip_block 8 'Check against best practices (optional)' 'Check against best practices (optional)' 271 289 'text' '' 'copy action disabled'
+ws_skip_block 8 'Check against best practices (optional)' 'Check against best practices (optional)' 306 324 'text' '' 'copy action disabled'
 
 ws_end_page
 
 ws_begin_page 'Restore instead of start' 500 'restore-not-start/index.en.md'
 
-ws_run_block 1 'Restore instead of start' 'Or non-interactively from the terminal:' 13 13 'bash' '' <<'WS_TEST_BLOCK_500_1'
+ws_run_block 1 'Restore instead of start' 'In the terminal:' 21 21 'bash' 'non-interactive' <<'WS_TEST_BLOCK_500_1'
 cd ~/environment && claude -c -p "How can unicorn-store-spring start in under a second?"
 WS_TEST_BLOCK_500_1
 
-ws_skip_block 2 'Restore instead of start' 'Claude measures the running pod, reads the source, and edits four files. It edits and stops; nothing is built or deployed.' 20 49 'text' '' 'copy action disabled'
+ws_skip_block 2 'Restore instead of start' 'Claude measures the running pod, reads the source, and edits four files. It edits and stops; nothing is built or deployed.' 31 60 'text' '' 'copy action disabled'
 
-ws_run_block 3 'Build and roll out' 'In your first terminal, not in Claude Code. The build starts the application inside Docker, warms it up, checkpoints, and pushes the :crac tag:' 60 66 'bash' '' 1200 <<'WS_TEST_BLOCK_500_3'
+ws_run_block 3 'Build and roll out' 'In your first terminal, not in Claude Code. The build starts the application inside Docker, warms it up, checkpoints, and pushes the :crac tag:' 71 77 'bash' '' 1200 <<'WS_TEST_BLOCK_500_3'
 # ≈ 3 min: builds, starts, warms up, checkpoints; pushes :crac
 ~/environment/unicorn-store-spring/scripts/build.sh crac Dockerfile.crac
 
@@ -221,11 +221,11 @@ yq -i '.spec.template.spec.containers[0].image |= sub(":[^:]+$"; ":crac")' \
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_500_3
 
-ws_skip_block 4 'What changed' '- k8s/deployment.yaml: JAVATOOLOPTIONS removed, because a restored JVM ignores MaxRAMPercentage and GC flags there crash the restore. The image tag changes to :crac in the build block below' 103 147 'dockerfile' '' 'copy action disabled'
+ws_skip_block 4 'What changed' '- k8s/deployment.yaml: JAVATOOLOPTIONS removed, because a restored JVM ignores MaxRAMPercentage and GC flags there crash the restore. The image tag changes to :crac in the build block above' 114 158 'dockerfile' '' 'copy action disabled'
 
-ws_skip_block 5 'What changed' '- Line 45: -XX:CRaCRestoreFrom restores instead of starting. There are no GC or heap flags here; they came with the checkpoint' 167 198 'java' '' 'copy action disabled'
+ws_skip_block 5 'What changed' '- Line 45: -XX:CRaCRestoreFrom restores instead of starting. There are no GC or heap flags here; they came with the checkpoint' 178 209 'java' '' 'copy action disabled'
 
-ws_run_block 6 'Verify' 'Verify' 210 221 'bash' '' <<'WS_TEST_BLOCK_500_6'
+ws_run_block 6 'Verify' 'Verify' 221 232 'bash' '' <<'WS_TEST_BLOCK_500_6'
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 
 # startup line: "restored", well under a second
@@ -240,25 +240,25 @@ git -C ~/environment/unicorn-store-spring add -A \
   && git -C ~/environment/unicorn-store-spring commit -q -m "crac"
 WS_TEST_BLOCK_500_6
 
-ws_skip_block 7 'Verify' 'Verify' 226 239 'text' '' 'copy action disabled'
+ws_skip_block 7 'Verify' 'Verify' 237 250 'text' '' 'copy action disabled'
 
-ws_run_block 8 'Check against best practices' 'Check against best practices' 256 256 'bash' '' <<'WS_TEST_BLOCK_500_8'
+ws_run_block 8 'Check against best practices' 'In the terminal:' 277 277 'bash' 'non-interactive' <<'WS_TEST_BLOCK_500_8'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_500_8
 
-ws_skip_block 9 'Check against best practices' 'Check against best practices' 261 282 'text' '' 'copy action disabled'
+ws_skip_block 9 'Check against best practices' 'Check against best practices' 285 306 'text' '' 'copy action disabled'
 
 ws_end_page
 
 ws_begin_page 'Unblock the request path' 600 'unblock-requests/index.en.md'
 
-ws_run_block 1 'Unblock the request path' 'Or non-interactively from the terminal:' 13 13 'bash' '' <<'WS_TEST_BLOCK_600_1'
+ws_run_block 1 'Unblock the request path' 'In the terminal:' 21 21 'bash' 'non-interactive' <<'WS_TEST_BLOCK_600_1'
 cd ~/environment && claude -c -p "Why do some writes to unicorn-store-spring take seconds under load and how do I fix it?"
 WS_TEST_BLOCK_600_1
 
-ws_skip_block 2 'Unblock the request path' 'Claude takes thread dumps of the pod under the running load, finds the frame, reads the source, and edits two to four files. It edits and stops; nothing is built or deployed.' 20 48 'text' '' 'copy action disabled'
+ws_skip_block 2 'Unblock the request path' 'Claude takes thread dumps of the pod under the running load, finds the frame, reads the source, and edits a few files. It edits and stops; nothing is built or deployed.' 31 59 'text' '' 'copy action disabled'
 
-ws_run_block 3 'Build and roll out' 'In your first terminal, not in Claude Code. The code changed, so you rebuild the current image. It is the CRaC image, so the build retakes the checkpoint with the fixed code:' 59 63 'bash' '' 1200 <<'WS_TEST_BLOCK_600_3'
+ws_run_block 3 'Build and roll out' 'In your first terminal, not in Claude Code. The code changed, so you rebuild the current image. It is the CRaC image, so the build retakes the checkpoint with the fixed code:' 70 74 'bash' '' 1200 <<'WS_TEST_BLOCK_600_3'
 # the code changed: rebuild the current image (≈ 2 min)
 ~/environment/unicorn-store-spring/scripts/build.sh crac Dockerfile.crac
 
@@ -266,39 +266,39 @@ ws_run_block 3 'Build and roll out' 'In your first terminal, not in Claude Code.
 kubectl -n unicorn-store-spring rollout restart deploy/unicorn-store-spring
 WS_TEST_BLOCK_600_3
 
-ws_run_block 4 'Verify' 'Verify' 101 104 'bash' '' <<'WS_TEST_BLOCK_600_4'
+ws_run_block 4 'Verify' 'Verify' 120 123 'bash' '' <<'WS_TEST_BLOCK_600_4'
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 
 git -C ~/environment/unicorn-store-spring add -A \
   && git -C ~/environment/unicorn-store-spring commit -q -m "non-blocking publish"
 WS_TEST_BLOCK_600_4
 
-ws_skip_block 5 'Verify' 'Verify' 109 115 'text' '' 'copy action disabled'
+ws_skip_block 5 'Verify' 'Verify' 128 134 'text' '' 'copy action disabled'
 
-ws_run_block 6 'Check against best practices' 'Check against best practices' 128 128 'bash' '' <<'WS_TEST_BLOCK_600_6'
+ws_run_block 6 'Check against best practices' 'In the terminal:' 157 157 'bash' 'non-interactive' <<'WS_TEST_BLOCK_600_6'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_600_6
 
-ws_skip_block 7 'Check against best practices' 'Check against best practices' 133 153 'text' '' 'copy action disabled'
+ws_skip_block 7 'Check against best practices' 'Check against best practices' 165 185 'text' '' 'copy action disabled'
 
 ws_end_page
 
 ws_begin_page 'Close the loop' 650 'close-the-loop/index.en.md'
 
-ws_run_block 1 'Close the loop' 'Or non-interactively from the terminal:' 13 13 'bash' '' <<'WS_TEST_BLOCK_650_1'
+ws_run_block 1 'Close the loop' 'In the terminal:' 21 21 'bash' 'non-interactive' <<'WS_TEST_BLOCK_650_1'
 cd ~/environment && claude -c -p "Right-size unicorn-store-spring again and fix item 10."
 WS_TEST_BLOCK_650_1
 
-ws_skip_block 2 'Close the loop' 'Claude re-runs sizeMemory and sizeCpu against the pod as it is now, and edits two files. It edits and stops.' 20 39 'text' '' 'copy action disabled'
+ws_skip_block 2 'Close the loop' 'Claude re-runs sizeMemory and sizeCpu against the pod as it is now, and edits two files. It edits and stops.' 31 50 'text' '' 'copy action disabled'
 
-ws_run_block 3 'Build and roll out' 'In your first terminal, not in Claude Code. The heap changed, so the build retakes the checkpoint:' 50 53 'bash' '' 1200 <<'WS_TEST_BLOCK_650_3'
+ws_run_block 3 'Build and roll out' 'In your first terminal, not in Claude Code. The heap changed, so the build retakes the checkpoint:' 61 64 'bash' '' 1200 <<'WS_TEST_BLOCK_650_3'
 # heap flags changed: rebuild the checkpoint (≈ 1 min, the JAR is cached)
 ~/environment/unicorn-store-spring/scripts/build.sh crac Dockerfile.crac
 
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_650_3
 
-ws_run_block 4 'Verify' 'Verify' 68 76 'bash' '' <<'WS_TEST_BLOCK_650_4'
+ws_run_block 4 'Verify' 'Verify' 79 87 'bash' '' <<'WS_TEST_BLOCK_650_4'
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 
 # heap flags from the new checkpoint: 75 % / 50 % of the new limit
@@ -310,15 +310,15 @@ git -C ~/environment/unicorn-store-spring add -A \
   && git -C ~/environment/unicorn-store-spring commit -q -m "re-size after code fix, shutdown budget"
 WS_TEST_BLOCK_650_4
 
-ws_skip_block 5 'Verify' 'Verify' 81 87 'text' '' 'copy action disabled'
+ws_skip_block 5 'Verify' 'Verify' 92 98 'text' '' 'copy action disabled'
 
-ws_run_block 6 'Check against best practices' 'Ask one last time:' 106 106 'bash' '' <<'WS_TEST_BLOCK_650_6'
+ws_run_block 6 'Check against best practices' 'In the terminal:' 127 127 'bash' 'non-interactive' <<'WS_TEST_BLOCK_650_6'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_650_6
 
-ws_skip_block 7 'Check against best practices' 'Check against best practices' 111 126 'text' '' 'copy action disabled'
+ws_skip_block 7 'Check against best practices' 'Check against best practices' 135 150 'text' '' 'copy action disabled'
 
-ws_skip_block 8 'Choosing for your own workloads' 'Choosing for your own workloads' 135 150 '' '' 'informational block without language'
+ws_skip_block 8 'Choosing for your own workloads' 'Choosing for your own workloads' 159 174 '' '' 'informational block without language'
 
 ws_end_page
 
