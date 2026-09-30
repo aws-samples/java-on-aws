@@ -45,8 +45,8 @@ public class Eks extends Construct {
 
         cluster = clusterBuilder.build();
 
-        // Create CloudWatch Agent Pod Identity role
-        cloudwatchAgentRole = createCloudWatchAgentRole(prefix);
+        // Create CloudWatch Agent Pod Identity role (for the CloudWatch Observability add-on)
+        cloudwatchAgentRole = props.isCloudWatchAgentRole() ? createCloudWatchAgentRole(prefix) : null;
 
         // Add EKS add-ons
         createAddons();
@@ -161,12 +161,14 @@ public class Eks extends Construct {
         private final IVpc vpc;
         private final IRole ideInstanceRole;
         private final ISecurityGroup ideInternalSecurityGroup;
+        private final boolean cloudWatchAgentRole;
 
         private EksProps(Builder builder) {
             this.prefix = builder.prefix;
             this.vpc = builder.vpc;
             this.ideInstanceRole = builder.ideInstanceRole;
             this.ideInternalSecurityGroup = builder.ideInternalSecurityGroup;
+            this.cloudWatchAgentRole = builder.cloudWatchAgentRole;
         }
 
         public static Builder builder() {
@@ -189,11 +191,16 @@ public class Eks extends Construct {
             return ideInternalSecurityGroup;
         }
 
+        public boolean isCloudWatchAgentRole() {
+            return cloudWatchAgentRole;
+        }
+
         public static class Builder {
             private String prefix = "workshop";
             private IVpc vpc;
             private IRole ideInstanceRole;
             private ISecurityGroup ideInternalSecurityGroup;
+            private boolean cloudWatchAgentRole = true;
 
             public Builder prefix(String prefix) {
                 this.prefix = prefix;
@@ -212,6 +219,11 @@ public class Eks extends Construct {
 
             public Builder ideInternalSecurityGroup(ISecurityGroup ideInternalSecurityGroup) {
                 this.ideInternalSecurityGroup = ideInternalSecurityGroup;
+                return this;
+            }
+
+            public Builder cloudWatchAgentRole(boolean cloudWatchAgentRole) {
+                this.cloudWatchAgentRole = cloudWatchAgentRole;
                 return this;
             }
 

@@ -57,7 +57,9 @@ public class Unicorn extends Construct {
         createEksRoles(props);
 
         // === ECS ROLES ===
-        createEcsRoles(props);
+        if (props.isEcsRoles()) {
+            createEcsRoles(props);
+        }
 
         // === DATABASE SETUP ===
         if (props.getDatabase() != null) {
@@ -257,11 +259,13 @@ public class Unicorn extends Construct {
         private final Database database;
         private final IBucket workshopBucket;
         private final software.amazon.awscdk.services.ec2.IVpc vpc;
+        private final boolean ecsRoles;
 
         private UnicornProps(Builder builder) {
             this.database = builder.database;
             this.workshopBucket = builder.workshopBucket;
             this.vpc = builder.vpc;
+            this.ecsRoles = builder.ecsRoles;
         }
 
         public static Builder builder() {
@@ -280,10 +284,15 @@ public class Unicorn extends Construct {
             return vpc;
         }
 
+        public boolean isEcsRoles() {
+            return ecsRoles;
+        }
+
         public static class Builder {
             private Database database;
             private IBucket workshopBucket;
             private software.amazon.awscdk.services.ec2.IVpc vpc;
+            private boolean ecsRoles = true;
 
             public Builder database(Database database) {
                 this.database = database;
@@ -297,6 +306,11 @@ public class Unicorn extends Construct {
 
             public Builder vpc(software.amazon.awscdk.services.ec2.IVpc vpc) {
                 this.vpc = vpc;
+                return this;
+            }
+
+            public Builder ecsRoles(boolean ecsRoles) {
+                this.ecsRoles = ecsRoles;
                 return this;
             }
 

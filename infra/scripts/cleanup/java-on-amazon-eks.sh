@@ -419,7 +419,7 @@ print_plan() {
 confirm_cleanup() {
     [[ "$MODE" == "confirmed" ]] && return
     local confirmation
-    printf 'This permanently deletes java-on-amazon-eks runtime resources and stack %s.\n' "$WORKSHOP_STACK_NAME"
+    printf 'This permanently deletes java-on-amazon-eks runtime resources of stack %s (the stack itself is kept).\n' "$WORKSHOP_STACK_NAME"
     read -r -p "Type the exact stack name to continue: " confirmation
     [[ "$confirmation" == "$WORKSHOP_STACK_NAME" ]] || {
         log_error "Confirmation did not match; nothing was deleted"
@@ -625,13 +625,16 @@ cleanup_security_groups() {
     done
 }
 
-request_stack_deletion() {
+# The stack is not deleted here: the IDE role cannot delete the stack's IAM roles and
+# would delete itself mid-way. Delete it with your own credentials once this succeeds.
+report_stack_retained() {
     if (( ERRORS > 0 )); then
-        log_error "$ERRORS cleanup operation(s) failed; stack deletion was not requested"
+        log_error "$ERRORS cleanup operation(s) failed; fix them before deleting the stack"
         exit 1
     fi
-    aws_cli cloudformation delete-stack --stack-name "$WORKSHOP_DEPLOYMENT_ID"
-    log_info "CloudFormation deletion requested for validated stack $WORKSHOP_DEPLOYMENT_ID"
+    log_success "Runtime resources removed; stack $WORKSHOP_STACK_NAME is kept"
+    log_info "Delete it from the CloudFormation console or CloudShell with your own credentials:"
+    log_info "  aws cloudformation delete-stack --stack-name $WORKSHOP_STACK_NAME --region $AWS_REGION"
 }
 
 main() {
@@ -665,7 +668,7 @@ main() {
     cleanup_runtime_ecr
     cleanup_named_ecr
     cleanup_security_groups
-    request_stack_deletion
+    report_stack_retained
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

@@ -11,12 +11,16 @@ import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.constructs.Construct;
 import sample.com.constructs.*;
 import sample.com.constructs.Ide.IdeProps;
+import org.json.JSONObject;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
 public class WorkshopStack extends Stack {
 
-    private final String buildSpec = """
+    private final String buildSpecTemplate = """
         version: 0.2
         env:
           shell: bash
@@ -32,11 +36,32 @@ public class WorkshopStack extends Stack {
             commands:
               - |
                 # Resolution for when creating the first service in the account
-                aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
-                aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
-                aws iam create-service-linked-role --aws-service-name network.bedrock-agentcore.amazonaws.com 2>/dev/null || true
-                aws iam create-service-linked-role --aws-service-name runtime-identity.bedrock-agentcore.amazonaws.com 2>/dev/null || true
-        """;
+        %s""";
+
+    private static String buildSpec(String template, List<String> serviceLinkedRoles) {
+        StringBuilder commands = new StringBuilder();
+        for (String service : serviceLinkedRoles) {
+            commands.append("        aws iam create-service-linked-role --aws-service-name ")
+                .append(service).append(" 2>/dev/null || true\n");
+        }
+        return template.formatted(commands);
+    }
+
+    /** Policy names for the template from ../workshops.json ("policies"); empty if not migrated yet. */
+    private static List<String> loadIamPolicies(String templateType) {
+        try {
+            var workshops = new JSONObject(Files.readString(Path.of("..", "workshops.json"))).getJSONArray("workshops");
+            for (int i = 0; i < workshops.length(); i++) {
+                var workshop = workshops.getJSONObject(i);
+                if (templateType.equals(workshop.getString("template")) && workshop.has("policies")) {
+                    return workshop.getJSONArray("policies").toList().stream().map(Object::toString).toList();
+                }
+            }
+            return List.of();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read ../workshops.json", e);
+        }
+    }
 
     public WorkshopStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
@@ -83,10 +108,20 @@ public class WorkshopStack extends Stack {
             .templateType(templateType)
             .workshopId(workshopId)
             .ideArch((isAiAgents || isAiAgentsAdvanced) ? Ide.IdeArch.ARM64 : Ide.IdeArch.X86_64_AMD)
+            .iamPolicies(loadIamPolicies(templateType))
+            // Boundary for roles created from the IDE; java-on-amazon-eks creates none
+            .permissionsBoundary(!isEks)
             .build();
         Ide ide = new Ide(this, "Ide", ideProps);
 
         // CodeBuild for workshop setup (service-linked role creation)
+        List<String> serviceLinkedRoles = isEks
+            ? List.of("elasticloadbalancing.amazonaws.com")
+            : List.of(
+                "ecs.amazonaws.com",
+                "elasticloadbalancing.amazonaws.com",
+                "network.bedrock-agentcore.amazonaws.com",
+                "runtime-identity.bedrock-agentcore.amazonaws.com");
         new CodeBuild(this, "CodeBuild",
             CodeBuild.CodeBuildProps.builder()
                 .projectName(prefix + "-setup")
@@ -97,14 +132,9 @@ public class WorkshopStack extends Stack {
                     .effect(Effect.ALLOW)
                     .actions(List.of("iam:CreateServiceLinkedRole"))
                     .resources(List.of("arn:aws:iam::*:role/aws-service-role/*"))
-                    .conditions(Map.of("StringEquals", Map.of("iam:AWSServiceName", List.of(
-                        "ecs.amazonaws.com",
-                        "elasticloadbalancing.amazonaws.com",
-                        "network.bedrock-agentcore.amazonaws.com",
-                        "runtime-identity.bedrock-agentcore.amazonaws.com"
-                    ))))
+                    .conditions(Map.of("StringEquals", Map.of("iam:AWSServiceName", serviceLinkedRoles)))
                     .build()))
-                .buildSpec(buildSpec)
+                .buildSpec(buildSpec(buildSpecTemplate, serviceLinkedRoles))
                 .build());
 
         // Shared workshop bucket
@@ -114,8 +144,10 @@ public class WorkshopStack extends Stack {
                 .build());
 
         // ECR Registry settings (Repository Creation Template for create-on-push)
-        List<String> ecrRepositoryNames = (isJavaOnAws || isEks)
-            ? List.of("ai-jvm-analyzer", "perf-analyzer", "perf-collector", "perf-profiler", "perf-sensor")
+        List<String> ecrRepositoryNames = isJavaOnAws
+            ? List.of("ai-jvm-analyzer", "perf-analyzer", "perf-collector")
+            : isEks
+            ? List.of("perf-profiler", "perf-sensor")
             : isSpringAi
                 ? List.of("aiagent", "mcpserver")
                 : (isAiAgents || isAiAgentsAdvanced)
@@ -169,6 +201,7 @@ public class WorkshopStack extends Stack {
                 .vpc(vpc.getVpc())
                 .ideInstanceRole(ideProps.getIdeRole())
                 .ideInternalSecurityGroup(ide.getIdeInternalSecurityGroup())
+                .cloudWatchAgentRole(!isEks)
                 .build());
 
             // Unicorn construct: EventBus, Roles, DB Setup (uses unicorn* naming for workshop content compatibility)
@@ -176,6 +209,7 @@ public class WorkshopStack extends Stack {
                 .vpc(vpc.getVpc())
                 .database(database)
                 .workshopBucket(workshopBucket.getBucket())
+                .ecsRoles(!isEks)
                 .build());
 
             // java-on-aws & java-on-amazon-eks specific resources
@@ -188,27 +222,31 @@ public class WorkshopStack extends Stack {
                     .emptyOnDelete(true)
                     .build();
 
-                // Thread Analysis (thread dump Lambda + API Gateway)
-                new ThreadAnalysis(this, "ThreadAnalysis",
-                    ThreadAnalysis.ThreadAnalysisProps.builder()
-                        .prefix(prefix)
-                        .vpc(vpc.getVpc())
-                        .eksCluster(eks.getCluster())
-                        .eksClusterName(eks.getClusterName())
-                        .workshopBucket(workshopBucket.getBucket())
-                        .build());
+                if (isJavaOnAws) {
+                    // Thread Analysis (thread dump Lambda + API Gateway)
+                    new ThreadAnalysis(this, "ThreadAnalysis",
+                        ThreadAnalysis.ThreadAnalysisProps.builder()
+                            .prefix(prefix)
+                            .vpc(vpc.getVpc())
+                            .eksCluster(eks.getCluster())
+                            .eksClusterName(eks.getClusterName())
+                            .workshopBucket(workshopBucket.getBucket())
+                            .build());
 
-                // AI JVM Analyzer (Pod Identity role for ai-jvm-analyzer)
-                new AiJvmAnalyzer(this, "AiJvmAnalyzer",
-                    AiJvmAnalyzer.AiJvmAnalyzerProps.builder()
-                        .workshopBucket(workshopBucket.getBucket())
-                        .build());
+                    // AI JVM Analyzer (Pod Identity role for ai-jvm-analyzer)
+                    new AiJvmAnalyzer(this, "AiJvmAnalyzer",
+                        AiJvmAnalyzer.AiJvmAnalyzerProps.builder()
+                            .workshopBucket(workshopBucket.getBucket())
+                            .build());
+                }
 
-                // Perf Platform (Pod Identity / Task roles for perf-analyzer + perf-collector)
+                // Perf Platform (Pod Identity / Task roles for perf-analyzer + perf-collector;
+                // java-on-amazon-eks only needs the Pyroscope role)
                 new PerfPlatform(this, "PerfPlatform",
                     PerfPlatform.PerfPlatformProps.builder()
                         .workshopBucket(workshopBucket.getBucket())
                         .unicornEcsTaskRole(unicorn.getEcsTaskRole())
+                        .perfAnalyzer(isJavaOnAws)
                         .build());
             }
 

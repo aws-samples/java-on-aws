@@ -38,7 +38,9 @@ infra/
 │   │       └── CfnPreDeleteCleanup.java  # Stack cleanup Lambda
 │   ├── src/main/resources/
 │   │   ├── userdata.sh               # EC2 UserData bootstrap script
-│   │   ├── iam-policy.json           # Shared IAM policy
+│   │   ├── iam/                      # Per-workshop IAM policies (workshops.json "policies"),
+│   │   │                             # same files for the IDE and Participant roles
+│   │   ├── iam-policy.json           # Legacy shared IAM policy (workshops without "policies")
 │   │   ├── unicorns.sql              # Database schema
 │   │   └── lambda/                   # Python Lambda functions
 │   │       ├── ec2-launcher.py       # EC2 instance launching with failover

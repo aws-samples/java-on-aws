@@ -96,6 +96,9 @@ public class Ide extends Construct {
         private String templateType = "base";
         private String workshopId = "base";
         private Role ideRole;
+        // Policy names from workshops.json, loaded from /iam/<name>.json. Empty = legacy shared policies.
+        private List<String> iamPolicies = List.of();
+        private boolean permissionsBoundary = true;
 
         // Architecture-specific instance type lists
         private static final List<String> ARM64_INSTANCE_TYPES =
@@ -122,6 +125,8 @@ public class Ide extends Construct {
             public Builder templateType(String templateType) { props.templateType = templateType; return this; }
             public Builder workshopId(String workshopId) { props.workshopId = workshopId; return this; }
             public Builder ideRole(Role ideRole) { props.ideRole = ideRole; return this; }
+            public Builder iamPolicies(List<String> iamPolicies) { props.iamPolicies = iamPolicies; return this; }
+            public Builder permissionsBoundary(boolean permissionsBoundary) { props.permissionsBoundary = permissionsBoundary; return this; }
             public IdeProps build() { return props; }
         }
 
@@ -154,6 +159,8 @@ public class Ide extends Construct {
         public String getTemplateType() { return templateType; }
         public String getWorkshopId() { return workshopId; }
         public Role getIdeRole() { return ideRole; }
+        public List<String> getIamPolicies() { return iamPolicies; }
+        public boolean isPermissionsBoundary() { return permissionsBoundary; }
     }
 
     public Ide(final Construct scope, final String id, final IVpc vpc) {
@@ -183,9 +190,19 @@ public class Ide extends Construct {
         }
         this.ideRole = props.getIdeRole();
 
-        // Load IAM policy: base template uses AdministratorAccess, others use iam-policy.json
+        // Load IAM policy: base template uses AdministratorAccess, templates with a policy list in
+        // workshops.json use /iam/<name>.json (same files as the Participant role), others use iam-policy.json
         if ("base".equals(props.getTemplateType())) {
             this.ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
+        } else if (!props.getIamPolicies().isEmpty()) {
+            for (String policyName : props.getIamPolicies()) {
+                String policyJson = loadFile("/iam/" + policyName + ".json")
+                    .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
+                var policy = ManagedPolicy.Builder.create(this, "Policy-" + policyName)
+                    .document(PolicyDocument.fromJson(new JSONObject(policyJson).toMap()))
+                    .build();
+                this.ideRole.addManagedPolicy(policy);
+            }
         } else {
             String policyDocumentJson = loadFile("/iam-policy.json")
                 .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
@@ -240,7 +257,9 @@ public class Ide extends Construct {
                     .build();
                 this.ideRole.addManagedPolicy(agentCoreIdentityPolicy);
             }
+        }
 
+        if (!"base".equals(props.getTemplateType()) && props.isPermissionsBoundary()) {
             // Create permissions boundary for roles created by workshop scripts
             String boundaryJson = loadFile("/workshop-boundary.json")
                 .replace("{{.AccountId}}", Aws.ACCOUNT_ID);

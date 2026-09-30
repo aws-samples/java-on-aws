@@ -13,6 +13,7 @@ SHARED_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/iam-policy.json"
 ROLE_MANAGEMENT_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/iam-role-management-policy.json"
 AGENTCORE_IDENTITY_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/agentcore-identity-policy.json"
 AGENTCORE_MANAGED_TOOLS_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/agentcore-managed-tools-policy.json"
+POLICY_DIR="$INFRA_DIR/cdk/src/main/resources/iam"
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
     log_error "Workshop registry not found: $CONFIG_FILE"
@@ -89,6 +90,37 @@ for index in "${selected_indexes[@]}"; do
         exit 1
     }
     log_success "Synced $template_file to $repository/static/workshop-stack.yaml"
+
+    # Workshops with a "policies" list in workshops.json: the IDE role (CDK) and the
+    # Participant role (contentspec.yaml) get the same iam/<name>.json files.
+    policies=()
+    while IFS= read -r policy; do
+        [[ -n "$policy" ]] && policies+=("$policy")
+    done < <(jq -r --arg t "$template" '.workshops[] | select(.template == $t) | .policies // [] | .[]' "$CONFIG_FILE")
+
+    if [[ "${#policies[@]}" -gt 0 ]]; then
+        contentspec="$WORKSPACE_ROOT/$repository/contentspec.yaml"
+        for policy in "${policies[@]}"; do
+            cp "$POLICY_DIR/$policy.json" "$target_dir/iam-$policy.json" || {
+                log_error "Failed to copy policy $policy for $template"
+                exit 1
+            }
+            log_success "Synced $POLICY_DIR/$policy.json to $repository/static/iam-$policy.json"
+            if ! grep -q "static/iam-$policy.json" "$contentspec"; then
+                log_error "$repository/contentspec.yaml participantRole.iamPolicies is missing static/iam-$policy.json"
+                exit 1
+            fi
+        done
+        for legacy in iam-policy.json iam-role-management-policy.json agentcore-managed-tools-policy.json agentcore-identity-policy.json; do
+            if grep -q "static/$legacy" "$contentspec"; then
+                log_error "$repository/contentspec.yaml still references legacy static/$legacy"
+                exit 1
+            fi
+            [[ -f "$target_dir/$legacy" ]] && log_warning "Legacy $repository/static/$legacy is no longer used, remove it"
+        done
+        synced_count=$((synced_count + 1))
+        continue
+    fi
 
     cp "$SHARED_POLICY_FILE" "$target_dir/iam-policy.json" || {
         log_error "Failed to copy policy for $template"

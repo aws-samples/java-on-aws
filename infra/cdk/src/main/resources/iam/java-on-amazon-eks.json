@@ -1,0 +1,59 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EksWorkshopServices",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:*",
+        "ecr:*",
+        "eks:*",
+        "elasticloadbalancing:*",
+        "events:*",
+        "rds:*"
+      ],
+      "Resource": [
+        "arn:aws:ec2:*:{{.AccountId}}:*/*",
+        "arn:aws:ec2:*::image/*",
+        "arn:aws:ecr:*:{{.AccountId}}:repository/unicorn*",
+        "arn:aws:ecr:*:{{.AccountId}}:repository/perf-*",
+        "arn:aws:eks:*:{{.AccountId}}:*",
+        "arn:aws:elasticloadbalancing:*:{{.AccountId}}:*/*",
+        "arn:aws:events:*:{{.AccountId}}:rule/*",
+        "arn:aws:events:*:{{.AccountId}}:event-bus/*",
+        "arn:aws:rds:*:{{.AccountId}}:*:*"
+      ]
+    },
+    {
+      "Sid": "EksWorkshopAccountLevel",
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Sid": "PassPodIdentityRoles",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::{{.AccountId}}:role/unicorn*",
+        "arn:aws:iam::{{.AccountId}}:role/pyroscope*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "pods.eks.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "CreateServiceLinkedRoles",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::*:role/aws-service-role/*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": "elasticloadbalancing.amazonaws.com"
+        }
+      }
+    }
+  ]
+}

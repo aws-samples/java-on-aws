@@ -22,6 +22,9 @@ import java.util.List;
  * CloudWatch / X-Ray writes), and lets the workshop content avoid running any
  * iam:PutRolePolicy commands at runtime.
  *
+ * With perfAnalyzer(false) only pyroscope-eks-pod-role is created (profiling storage
+ * without the perf-analyzer platform).
+ *
  * Note: ECR repositories (perf-analyzer, perf-collector) are created automatically
  * via ECR Repository Creation Template when images are first pushed.
  */
@@ -35,6 +38,7 @@ public class PerfPlatform extends Construct {
     public static class PerfPlatformProps {
         private Bucket workshopBucket;
         private IRole unicornEcsTaskRole;
+        private boolean perfAnalyzer = true;
 
         public static PerfPlatformProps.Builder builder() { return new Builder(); }
 
@@ -43,11 +47,13 @@ public class PerfPlatform extends Construct {
 
             public Builder workshopBucket(Bucket workshopBucket) { props.workshopBucket = workshopBucket; return this; }
             public Builder unicornEcsTaskRole(IRole unicornEcsTaskRole) { props.unicornEcsTaskRole = unicornEcsTaskRole; return this; }
+            public Builder perfAnalyzer(boolean perfAnalyzer) { props.perfAnalyzer = perfAnalyzer; return this; }
             public PerfPlatformProps build() { return props; }
         }
 
         public Bucket getWorkshopBucket() { return workshopBucket; }
         public IRole getUnicornEcsTaskRole() { return unicornEcsTaskRole; }
+        public boolean isPerfAnalyzer() { return perfAnalyzer; }
     }
 
     public PerfPlatform(final Construct scope, final String id) {
@@ -57,11 +63,14 @@ public class PerfPlatform extends Construct {
     public PerfPlatform(final Construct scope, final String id, final PerfPlatformProps props) {
         super(scope, id);
 
-        this.perfAnalyzerEksPodRole = createAnalyzerEksPodRole(props);
-        this.perfCollectorEksPodRole = createCollectorEksPodRole(props);
+        boolean perfAnalyzer = props.isPerfAnalyzer();
+        this.perfAnalyzerEksPodRole = perfAnalyzer ? createAnalyzerEksPodRole(props) : null;
+        this.perfCollectorEksPodRole = perfAnalyzer ? createCollectorEksPodRole(props) : null;
         this.pyroscopeEksPodRole = createPyroscopeEksPodRole(props);
-        this.grafanaEksPodRole = createGrafanaEksPodRole();
-        grantProfilingWriteToUnicornEcsTaskRole(props);
+        this.grafanaEksPodRole = perfAnalyzer ? createGrafanaEksPodRole() : null;
+        if (perfAnalyzer) {
+            grantProfilingWriteToUnicornEcsTaskRole(props);
+        }
     }
 
     /**

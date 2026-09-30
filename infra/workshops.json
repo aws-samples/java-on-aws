@@ -18,6 +18,7 @@
     {
       "template": "java-on-amazon-eks",
       "repository": "java-on-amazon-eks",
+      "policies": ["common", "java-on-amazon-eks"],
       "test": {
         "enabled": true,
         "title": "Cloud-native Java on Amazon EKS"

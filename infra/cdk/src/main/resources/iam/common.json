@@ -1,0 +1,111 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "MarketplaceSubscribeAnthropic",
+      "Effect": "Allow",
+      "Action": "aws-marketplace:Subscribe",
+      "Resource": "*",
+      "Condition": {
+        "Null": {
+          "aws-marketplace:ProductId": "false"
+        },
+        "ForAllValues:StringEquals": {
+          "aws-marketplace:ProductId": [
+            "prod-xdkflymybwmvi",
+            "prod-mxcfnwvpd6kb4",
+            "prod-jhuafngbly644",
+            "prod-5ukwuglpt66kg",
+            "prod-ffvjxvh4ltq64",
+            "prod-if5d653ow7ehg",
+            "prod-4ezhkeia6k2cs"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "MarketplaceManageAnthropic",
+      "Effect": "Allow",
+      "Action": [
+        "aws-marketplace:Unsubscribe",
+        "aws-marketplace:ViewSubscriptions"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ForAllValues:StringEquals": {
+          "aws-marketplace:ProductId": [
+            "prod-xdkflymybwmvi",
+            "prod-mxcfnwvpd6kb4",
+            "prod-jhuafngbly644",
+            "prod-5ukwuglpt66kg",
+            "prod-ffvjxvh4ltq64",
+            "prod-if5d653ow7ehg",
+            "prod-4ezhkeia6k2cs"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "CommonWorkshopServices",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:*",
+        "cloudformation:*",
+        "cloudwatch:*",
+        "logs:*",
+        "s3:*",
+        "secretsmanager:*",
+        "ssm:*"
+      ],
+      "Resource": [
+        "arn:aws:bedrock:*::foundation-model/*",
+        "arn:aws:bedrock:*:{{.AccountId}}:*",
+        "arn:aws:cloudformation:*:{{.AccountId}}:stack/workshop-*",
+        "arn:aws:cloudwatch:*:{{.AccountId}}:*",
+        "arn:aws:logs:*:{{.AccountId}}:log-group:*",
+        "arn:aws:s3:::workshop-*",
+        "arn:aws:secretsmanager:*:{{.AccountId}}:secret:workshop-*",
+        "arn:aws:ssm:*:{{.AccountId}}:parameter/workshop-*",
+        "arn:aws:ssm:*:{{.AccountId}}:document/*",
+        "arn:aws:ssm:*::document/*",
+        "arn:aws:ssm:*:{{.AccountId}}:session/*",
+        "arn:aws:ssm:*:{{.AccountId}}:managed-instance/*"
+      ]
+    },
+    {
+      "Sid": "DenyLargeInstances",
+      "Effect": "Deny",
+      "Action": "ec2:RunInstances",
+      "Resource": "arn:aws:ec2:*:*:instance/*",
+      "Condition": {
+        "StringLike": {
+          "ec2:InstanceType": [
+            "*4xlarge",
+            "*6xlarge",
+            "*8xlarge",
+            "*9xlarge",
+            "*10xlarge",
+            "*12xlarge",
+            "f1*",
+            "x1*",
+            "z1*",
+            "*metal"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyPurchases",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:ModifyReservedInstances",
+        "ec2:PurchaseHostReservation",
+        "ec2:PurchaseReservedInstancesOffering",
+        "ec2:PurchaseScheduledInstances",
+        "rds:PurchaseReservedDBInstancesOffering",
+        "dynamodb:PurchaseReservedCapacityOfferings"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
