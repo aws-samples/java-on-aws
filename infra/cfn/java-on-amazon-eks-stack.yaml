@@ -480,7 +480,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1790775090691"
+      ContentHash: "1790783263801"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -645,7 +645,7 @@ Resources:
         EnvironmentVariables:
           - Name: GIT_BRANCH
             Type: PLAINTEXT
-            Value: riv26-cns405
+            Value: main
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-on-amazon-eks
@@ -1631,7 +1631,7 @@ Resources:
                 # This keeps UserData under size limits while allowing unlimited bootstrap size
 
                 # Configuration from CDK
-                export GIT_BRANCH="riv26-cns405"
+                export GIT_BRANCH="main"
                 export AWS_REGION="
               - Ref: AWS::Region
               - |-
@@ -3432,7 +3432,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260930153130"
+            - "-20260930174743"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3516,7 +3516,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260930153130"
+            - "-20260930174743"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
