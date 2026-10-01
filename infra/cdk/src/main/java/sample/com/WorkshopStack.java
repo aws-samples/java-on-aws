@@ -109,8 +109,8 @@ public class WorkshopStack extends Stack {
             .workshopId(workshopId)
             .ideArch((isAiAgents || isAiAgentsAdvanced) ? Ide.IdeArch.ARM64 : Ide.IdeArch.X86_64_AMD)
             .iamPolicies(loadIamPolicies(templateType))
-            // Boundary for roles created from the IDE; java-on-amazon-eks creates none
-            .permissionsBoundary(!isEks)
+            // Boundary for roles created from the IDE; java-on-aws and java-on-amazon-eks create none
+            .permissionsBoundary(!isJavaOnAws && !isEks)
             .build();
         Ide ide = new Ide(this, "Ide", ideProps);
 

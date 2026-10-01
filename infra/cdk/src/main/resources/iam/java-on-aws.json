@@ -1,0 +1,91 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "JavaOnAwsWorkshopServices",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:*",
+        "application-autoscaling:*",
+        "application-signals:*",
+        "ec2:*",
+        "ecr:*",
+        "ecs:*",
+        "eks:*",
+        "elasticloadbalancing:*",
+        "events:*",
+        "lambda:*",
+        "rds:*"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:*::/apis/*",
+        "arn:aws:apigateway:*::/restapis/*",
+        "arn:aws:application-autoscaling:*:{{.AccountId}}:scal*/*",
+        "arn:aws:application-signals:*:{{.AccountId}}:*",
+        "arn:aws:ec2:*:{{.AccountId}}:*/*",
+        "arn:aws:ec2:*::image/*",
+        "arn:aws:ecr:*:{{.AccountId}}:repository/unicorn*",
+        "arn:aws:ecr:*:{{.AccountId}}:repository/ai-jvm-analyzer*",
+        "arn:aws:ecr:*:{{.AccountId}}:repository/perf-*",
+        "arn:aws:ecs:*:{{.AccountId}}:*",
+        "arn:aws:eks:*:{{.AccountId}}:*",
+        "arn:aws:elasticloadbalancing:*:{{.AccountId}}:*/*",
+        "arn:aws:events:*:{{.AccountId}}:rule/*",
+        "arn:aws:events:*:{{.AccountId}}:event-bus/*",
+        "arn:aws:lambda:*:{{.AccountId}}:function:*",
+        "arn:aws:rds:*:{{.AccountId}}:*:*"
+      ]
+    },
+    {
+      "Sid": "JavaOnAwsAccountLevel",
+      "Effect": "Allow",
+      "Action": [
+        "application-signals:StartDiscovery",
+        "ecr:GetAuthorizationToken",
+        "ecs:DeregisterTaskDefinition",
+        "ecs:PutAccountSetting",
+        "ecs:PutAccountSettingDefault",
+        "ecs:RegisterTaskDefinition"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "PassWorkloadRoles",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::{{.AccountId}}:role/unicorn*",
+        "arn:aws:iam::{{.AccountId}}:role/service-role/unicorn*",
+        "arn:aws:iam::{{.AccountId}}:role/ai-jvm-analyzer*",
+        "arn:aws:iam::{{.AccountId}}:role/perf-*",
+        "arn:aws:iam::{{.AccountId}}:role/pyroscope*",
+        "arn:aws:iam::{{.AccountId}}:role/grafana*",
+        "arn:aws:iam::{{.AccountId}}:role/workshop*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": [
+            "ecs.amazonaws.com",
+            "ecs-tasks.amazonaws.com",
+            "pods.eks.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "CreateServiceLinkedRoles",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::*:role/aws-service-role/*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": [
+            "application-signals.cloudwatch.amazonaws.com",
+            "ecs.amazonaws.com",
+            "elasticloadbalancing.amazonaws.com"
+          ]
+        }
+      }
+    }
+  ]
+}

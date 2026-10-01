@@ -532,7 +532,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1787757063583"
+      ContentHash: "1790786799686"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2342,6 +2342,288 @@ Resources:
           Value: cloudformation
     Type: AWS::SecretsManager::Secret
     UpdateReplacePolicy: Delete
+  IdePolicycommon00733806:
+    Properties:
+      Description: ""
+      Path: /
+      PolicyDocument:
+        Statement:
+          - Action: aws-marketplace:Subscribe
+            Condition:
+              ForAllValues:StringEquals:
+                aws-marketplace:ProductId:
+                  - prod-xdkflymybwmvi
+                  - prod-mxcfnwvpd6kb4
+                  - prod-jhuafngbly644
+                  - prod-5ukwuglpt66kg
+                  - prod-ffvjxvh4ltq64
+                  - prod-if5d653ow7ehg
+                  - prod-4ezhkeia6k2cs
+              "Null":
+                aws-marketplace:ProductId: "false"
+            Effect: Allow
+            Resource: "*"
+            Sid: MarketplaceSubscribeAnthropic
+          - Action:
+              - aws-marketplace:Unsubscribe
+              - aws-marketplace:ViewSubscriptions
+            Condition:
+              ForAllValues:StringEquals:
+                aws-marketplace:ProductId:
+                  - prod-xdkflymybwmvi
+                  - prod-mxcfnwvpd6kb4
+                  - prod-jhuafngbly644
+                  - prod-5ukwuglpt66kg
+                  - prod-ffvjxvh4ltq64
+                  - prod-if5d653ow7ehg
+                  - prod-4ezhkeia6k2cs
+            Effect: Allow
+            Resource: "*"
+            Sid: MarketplaceManageAnthropic
+          - Action:
+              - bedrock:*
+              - cloudformation:*
+              - cloudwatch:*
+              - logs:*
+              - s3:*
+              - secretsmanager:*
+              - ssm:*
+            Effect: Allow
+            Resource:
+              - arn:aws:bedrock:*::foundation-model/*
+              - arn:aws:s3:::workshop-*
+              - arn:aws:ssm:*::document/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:bedrock:*:"
+                    - Ref: AWS::AccountId
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:cloudformation:*:"
+                    - Ref: AWS::AccountId
+                    - :stack/workshop-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:cloudwatch:*:"
+                    - Ref: AWS::AccountId
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:logs:*:"
+                    - Ref: AWS::AccountId
+                    - :log-group:*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:secretsmanager:*:"
+                    - Ref: AWS::AccountId
+                    - :secret:workshop-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ssm:*:"
+                    - Ref: AWS::AccountId
+                    - :document/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ssm:*:"
+                    - Ref: AWS::AccountId
+                    - :managed-instance/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ssm:*:"
+                    - Ref: AWS::AccountId
+                    - :parameter/workshop-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ssm:*:"
+                    - Ref: AWS::AccountId
+                    - :session/*
+            Sid: CommonWorkshopServices
+          - Action: ec2:RunInstances
+            Condition:
+              StringLike:
+                ec2:InstanceType:
+                  - "*4xlarge"
+                  - "*6xlarge"
+                  - "*8xlarge"
+                  - "*9xlarge"
+                  - "*10xlarge"
+                  - "*12xlarge"
+                  - f1*
+                  - x1*
+                  - z1*
+                  - "*metal"
+            Effect: Deny
+            Resource: arn:aws:ec2:*:*:instance/*
+            Sid: DenyLargeInstances
+          - Action:
+              - dynamodb:PurchaseReservedCapacityOfferings
+              - ec2:ModifyReservedInstances
+              - ec2:PurchaseHostReservation
+              - ec2:PurchaseReservedInstancesOffering
+              - ec2:PurchaseScheduledInstances
+              - rds:PurchaseReservedDBInstancesOffering
+            Effect: Deny
+            Resource: "*"
+            Sid: DenyPurchases
+        Version: "2012-10-17"
+    Type: AWS::IAM::ManagedPolicy
+  IdePolicyjavaonawsD35AC45E:
+    Properties:
+      Description: ""
+      Path: /
+      PolicyDocument:
+        Statement:
+          - Action:
+              - apigateway:*
+              - application-autoscaling:*
+              - application-signals:*
+              - ec2:*
+              - ecr:*
+              - ecs:*
+              - eks:*
+              - elasticloadbalancing:*
+              - events:*
+              - lambda:*
+              - rds:*
+            Effect: Allow
+            Resource:
+              - arn:aws:apigateway:*::/apis/*
+              - arn:aws:apigateway:*::/restapis/*
+              - arn:aws:ec2:*::image/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:application-autoscaling:*:"
+                    - Ref: AWS::AccountId
+                    - :scal*/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:application-signals:*:"
+                    - Ref: AWS::AccountId
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ec2:*:"
+                    - Ref: AWS::AccountId
+                    - :*/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecr:*:"
+                    - Ref: AWS::AccountId
+                    - :repository/ai-jvm-analyzer*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecr:*:"
+                    - Ref: AWS::AccountId
+                    - :repository/perf-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecr:*:"
+                    - Ref: AWS::AccountId
+                    - :repository/unicorn*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ecs:*:"
+                    - Ref: AWS::AccountId
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:eks:*:"
+                    - Ref: AWS::AccountId
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:elasticloadbalancing:*:"
+                    - Ref: AWS::AccountId
+                    - :*/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:events:*:"
+                    - Ref: AWS::AccountId
+                    - :event-bus/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:events:*:"
+                    - Ref: AWS::AccountId
+                    - :rule/*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:lambda:*:"
+                    - Ref: AWS::AccountId
+                    - :function:*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:rds:*:"
+                    - Ref: AWS::AccountId
+                    - :*:*
+            Sid: JavaOnAwsWorkshopServices
+          - Action:
+              - application-signals:StartDiscovery
+              - ecr:GetAuthorizationToken
+              - ecs:DeregisterTaskDefinition
+              - ecs:PutAccountSetting
+              - ecs:PutAccountSettingDefault
+              - ecs:RegisterTaskDefinition
+            Effect: Allow
+            Resource: "*"
+            Sid: JavaOnAwsAccountLevel
+          - Action: iam:PassRole
+            Condition:
+              StringEquals:
+                iam:PassedToService:
+                  - ecs.amazonaws.com
+                  - ecs-tasks.amazonaws.com
+                  - pods.eks.amazonaws.com
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/ai-jvm-analyzer*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/grafana*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/perf-*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/pyroscope*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/service-role/unicorn*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/unicorn*
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :role/workshop*
+            Sid: PassWorkloadRoles
+          - Action: iam:CreateServiceLinkedRole
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - application-signals.cloudwatch.amazonaws.com
+                  - ecs.amazonaws.com
+                  - elasticloadbalancing.amazonaws.com
+            Effect: Allow
+            Resource: arn:aws:iam::*:role/aws-service-role/*
+            Sid: CreateServiceLinkedRoles
+        Version: "2012-10-17"
+    Type: AWS::IAM::ManagedPolicy
   IdePrefixListLookupFunction9E5A63DE:
     DependsOn:
       - IdeLambdaRoleDefaultPolicy099093D2
@@ -2435,8 +2717,8 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/CloudWatchAgentServerPolicy
-        - Ref: IdeUserPolicy2460FC7D
-        - Ref: IdeRoleManagementPolicyFE7F8500
+        - Ref: IdePolicycommon00733806
+        - Ref: IdePolicyjavaonawsD35AC45E
       RoleName: workshop-ide-user
       Tags:
         - Key: WorkshopDeploymentId
@@ -2462,155 +2744,6 @@ Resources:
       Roles:
         - Ref: IdeRole4650E22E
     Type: AWS::IAM::Policy
-  IdeRoleManagementPolicyFE7F8500:
-    Properties:
-      Description: ""
-      Path: /
-      PolicyDocument:
-        Statement:
-          - Action: iam:PassRole
-            Condition:
-              StringEquals:
-                iam:PassedToService:
-                  - bedrock.amazonaws.com
-                  - bedrock-agentcore.amazonaws.com
-                  - codebuild.amazonaws.com
-                  - ec2.amazonaws.com
-                  - ecs.amazonaws.com
-                  - ecs-tasks.amazonaws.com
-                  - lambda.amazonaws.com
-                  - pods.eks.amazonaws.com
-            Effect: Allow
-            Resource:
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/ai-jvm-analyzer*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/aiagent*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/backoffice*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/grafana*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/mcp*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/perf-analyzer*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/perf-collector*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/pyroscope*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/service-role/unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/workshop*
-          - Action: iam:CreateServiceLinkedRole
-            Condition:
-              StringEquals:
-                iam:AWSServiceName:
-                  - application-signals.cloudwatch.amazonaws.com
-                  - cloudtrail.amazonaws.com
-                  - ecs.amazonaws.com
-                  - elasticloadbalancing.amazonaws.com
-                  - network.bedrock-agentcore.amazonaws.com
-                  - runtime-identity.bedrock-agentcore.amazonaws.com
-            Effect: Allow
-            Resource: arn:aws:iam::*:role/aws-service-role/*
-          - Action: iam:CreateRole
-            Condition:
-              StringEquals:
-                iam:PermissionsBoundary:
-                  Fn::Join:
-                    - ""
-                    - - "arn:aws:iam::"
-                      - Ref: AWS::AccountId
-                      - :policy/workshop-boundary
-            Effect: Allow
-            Resource:
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/aiagent*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/backoffice*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/mcp*
-          - Action:
-              - iam:AttachRolePolicy
-              - iam:DeleteRole
-              - iam:DeleteRolePolicy
-              - iam:DetachRolePolicy
-              - iam:PutRolePolicy
-              - iam:UpdateAssumeRolePolicy
-            Effect: Allow
-            Resource:
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/aiagent-kb-role
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/aiagent-runtime-role
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/backoffice-role
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/mcp-currency-role
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:iam::"
-                    - Ref: AWS::AccountId
-                    - :role/mcp-gateway-role
-        Version: "2012-10-17"
-    Type: AWS::IAM::ManagedPolicy
   IdeSecurityGroup73B02454:
     Properties:
       GroupDescription: IDE security group
@@ -2645,331 +2778,6 @@ Resources:
           - PrefixListId
       ToPort: 80
     Type: AWS::EC2::SecurityGroupIngress
-  IdeUserPolicy2460FC7D:
-    Properties:
-      Description: ""
-      Path: /
-      PolicyDocument:
-        Statement:
-          - Action: aws-marketplace:Subscribe
-            Condition:
-              ForAllValues:StringEquals:
-                aws-marketplace:ProductId:
-                  - prod-xdkflymybwmvi
-                  - prod-mxcfnwvpd6kb4
-                  - prod-jhuafngbly644
-                  - prod-5ukwuglpt66kg
-                  - prod-ffvjxvh4ltq64
-              "Null":
-                aws-marketplace:ProductId: "false"
-            Effect: Allow
-            Resource: "*"
-          - Action:
-              - acm:*
-              - application-autoscaling:*
-              - application-signals:*
-              - bedrock-agentcore:*
-              - bedrock:*
-              - cloudformation:*
-              - cloudtrail:*
-              - cloudwatch:*
-              - cognito-idp:*
-              - ec2:*
-              - ecr:*
-              - eks:*
-              - elasticloadbalancing:*
-              - events:*
-              - lambda:*
-              - logs:*
-              - rds-data:*
-              - rds:*
-              - s3vectors:*
-              - secretsmanager:*
-              - ssm:*
-              - xray:*
-            Effect: Allow
-            Resource:
-              - arn:aws:bedrock:*::foundation-model/*
-              - arn:aws:ec2:*::image/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:acm:*:"
-                    - Ref: AWS::AccountId
-                    - :certificate/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:application-autoscaling:*:"
-                    - Ref: AWS::AccountId
-                    - :scal*/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:application-signals:*:"
-                    - Ref: AWS::AccountId
-                    - :*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:bedrock-agentcore:*:"
-                    - Ref: AWS::AccountId
-                    - :*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:bedrock:*:"
-                    - Ref: AWS::AccountId
-                    - :*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:cloudformation:*:"
-                    - Ref: AWS::AccountId
-                    - :stack/workshop-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:cloudtrail:*:"
-                    - Ref: AWS::AccountId
-                    - :trail/workshop-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:cloudwatch:*:"
-                    - Ref: AWS::AccountId
-                    - :*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:cognito-idp:*:"
-                    - Ref: AWS::AccountId
-                    - :userpool/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ec2:*:"
-                    - Ref: AWS::AccountId
-                    - :*/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecr:*:"
-                    - Ref: AWS::AccountId
-                    - :repository/ai*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecr:*:"
-                    - Ref: AWS::AccountId
-                    - :repository/backoffice*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecr:*:"
-                    - Ref: AWS::AccountId
-                    - :repository/mcp*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecr:*:"
-                    - Ref: AWS::AccountId
-                    - :repository/perf-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecr:*:"
-                    - Ref: AWS::AccountId
-                    - :repository/unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:eks:*:"
-                    - Ref: AWS::AccountId
-                    - :cluster/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:elasticloadbalancing:*:"
-                    - Ref: AWS::AccountId
-                    - :*/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:events:*:"
-                    - Ref: AWS::AccountId
-                    - :rule/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:lambda:*:"
-                    - Ref: AWS::AccountId
-                    - :function:*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:logs:*:"
-                    - Ref: AWS::AccountId
-                    - :log-group:*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:rds:*:"
-                    - Ref: AWS::AccountId
-                    - :*:*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:s3vectors:*:"
-                    - Ref: AWS::AccountId
-                    - :bucket/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:secretsmanager:*:"
-                    - Ref: AWS::AccountId
-                    - :secret:aiagent-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:secretsmanager:*:"
-                    - Ref: AWS::AccountId
-                    - :secret:mcp-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:secretsmanager:*:"
-                    - Ref: AWS::AccountId
-                    - :secret:workshop-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ssm:*:"
-                    - Ref: AWS::AccountId
-                    - :parameter/workshop-*
-          - Action:
-              - aws-marketplace:Unsubscribe
-              - aws-marketplace:ViewSubscriptions
-            Condition:
-              ForAllValues:StringEquals:
-                aws-marketplace:ProductId:
-                  - prod-xdkflymybwmvi
-                  - prod-mxcfnwvpd6kb4
-                  - prod-jhuafngbly644
-                  - prod-5ukwuglpt66kg
-                  - prod-ffvjxvh4ltq64
-            Effect: Allow
-            Resource: "*"
-          - Action:
-              - cloudfront:CreateCloudFrontOriginAccessIdentity
-              - cloudfront:CreateDistribution
-            Condition:
-              StringEquals:
-                aws:PrincipalAccount:
-                  Ref: AWS::AccountId
-            Effect: Allow
-            Resource: "*"
-          - Action:
-              - apigateway:*
-              - cloudfront:*
-              - dynamodb:*
-              - ecs:*
-              - s3:*
-            Effect: Allow
-            Resource:
-              - arn:aws:apigateway:*::/apis/*
-              - arn:aws:apigateway:*::/restapis/*
-              - arn:aws:s3:::aiagent-*
-              - arn:aws:s3:::workshop-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:cloudfront::"
-                    - Ref: AWS::AccountId
-                    - :distribution/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:cloudfront::"
-                    - Ref: AWS::AccountId
-                    - :origin-access-identity/cloudfront/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:dynamodb:*:"
-                    - Ref: AWS::AccountId
-                    - :table/backoffice-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecs:*:"
-                    - Ref: AWS::AccountId
-                    - :cluster/aiagent*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecs:*:"
-                    - Ref: AWS::AccountId
-                    - :cluster/unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecs:*:"
-                    - Ref: AWS::AccountId
-                    - :service/*/aiagent*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecs:*:"
-                    - Ref: AWS::AccountId
-                    - :service/*/unicorn*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecs:*:"
-                    - Ref: AWS::AccountId
-                    - :task-definition/aiagent*:*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecs:*:"
-                    - Ref: AWS::AccountId
-                    - :task-definition/unicorn*:*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecs:*:"
-                    - Ref: AWS::AccountId
-                    - :task/*/*
-          - Action:
-              - acm:ListCertificates
-              - apigateway:GET
-              - bedrock-agentcore:List*
-              - bedrock:List*
-              - cloudformation:List*
-              - cloudfront:Get*
-              - cloudfront:List*
-              - cognito-idp:CreateUserPool
-              - cognito-idp:ListUserPools
-              - ec2:Describe*
-              - ecr:CreateRepositoryCreationTemplate
-              - ecr:Describe*
-              - ecr:GetAuthorizationToken
-              - ecs:Describe*
-              - ecs:List*
-              - ecs:RegisterTaskDefinition
-              - eks:CreateCluster
-              - eks:Describe*
-              - eks:List*
-              - elasticloadbalancing:Describe*
-              - iam:GetRole
-              - iam:GetRolePolicy
-              - iam:ListAttachedRolePolicies
-              - iam:ListRolePolicies
-              - iam:ListRoles
-              - lambda:List*
-              - logs:Describe*
-              - rds:Describe*
-              - s3:ListAllMyBuckets
-              - s3vectors:CreateVectorBucket
-              - s3vectors:ListVectorBuckets
-              - secretsmanager:ListSecrets
-              - ssm:DescribeParameters
-              - sts:GetCallerIdentity
-              - tag:GetResources
-            Effect: Allow
-            Resource: "*"
-          - Action: ec2:RunInstances
-            Condition:
-              StringLike:
-                ec2:InstanceType:
-                  - "*4xlarge"
-                  - "*6xlarge"
-                  - "*8xlarge"
-                  - "*9xlarge"
-                  - "*10xlarge"
-                  - "*12xlarge"
-                  - f1*
-                  - x1*
-                  - z1*
-                  - "*metal"
-            Effect: Deny
-            Resource: arn:aws:ec2:*:*:instance/*
-          - Action:
-              - dynamodb:PurchaseReservedCapacityOfferings
-              - ec2:ModifyReservedInstances
-              - ec2:PurchaseHostReservation
-              - ec2:PurchaseReservedInstancesOffering
-              - ec2:PurchaseScheduledInstances
-              - rds:PurchaseReservedDBInstancesOffering
-            Effect: Deny
-            Resource: "*"
-        Version: "2012-10-17"
-    Type: AWS::IAM::ManagedPolicy
   IdeWaitConditionCC35C186:
     DependsOn:
       - IdeEC2InstanceResource438B3605
@@ -2977,184 +2785,10 @@ Resources:
       Count: 1
       Handle:
         Ref: IdeWaitConditionHandleE8345861
-      Timeout: "1800"
+      Timeout: "2700"
     Type: AWS::CloudFormation::WaitCondition
   IdeWaitConditionHandleE8345861:
     Type: AWS::CloudFormation::WaitConditionHandle
-  IdeWorkshopBoundaryDEE72AD4:
-    Properties:
-      Description: ""
-      ManagedPolicyName: workshop-boundary
-      Path: /
-      PolicyDocument:
-        Statement:
-          - Action: bedrock:*
-            Effect: Allow
-            Resource:
-              - arn:aws:bedrock:*::foundation-model/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:bedrock:*:"
-                    - Ref: AWS::AccountId
-                    - :*
-            Sid: BedrockRuntime
-          - Action:
-              - aws-marketplace:Subscribe
-              - aws-marketplace:ViewSubscriptions
-            Effect: Allow
-            Resource: "*"
-            Sid: BedrockMarketplaceModelAccess
-          - Action: bedrock-agentcore:*
-            Effect: Allow
-            Resource:
-              Fn::Join:
-                - ""
-                - - "arn:aws:bedrock-agentcore:*:"
-                  - Ref: AWS::AccountId
-                  - :*
-            Sid: AgentCoreRuntime
-          - Action:
-              - bedrock-agentcore:ConnectBrowserAutomationStream
-              - bedrock-agentcore:ConnectBrowserLiveViewStream
-            Effect: Allow
-            Resource: "*"
-            Sid: AgentCoreManagedBrowserStreams
-          - Action:
-              - bedrock-agentcore:GetBrowserSession
-              - bedrock-agentcore:StartBrowserSession
-              - bedrock-agentcore:StopBrowserSession
-              - bedrock-agentcore:UpdateBrowserStream
-            Effect: Allow
-            Resource: arn:aws:bedrock-agentcore:*:aws:browser/aws.browser.v1
-            Sid: AgentCoreManagedBrowser
-          - Action:
-              - bedrock-agentcore:GetCodeInterpreterSession
-              - bedrock-agentcore:InvokeCodeInterpreter
-              - bedrock-agentcore:StartCodeInterpreterSession
-              - bedrock-agentcore:StopCodeInterpreterSession
-            Effect: Allow
-            Resource: arn:aws:bedrock-agentcore:*:aws:code-interpreter/aws.codeinterpreter.v1
-            Sid: AgentCoreManagedCodeInterpreter
-          - Action:
-              - dynamodb:*
-              - ecr:*
-              - lambda:InvokeFunction
-              - logs:*
-              - s3:*
-              - s3vectors:*
-              - secretsmanager:GetSecretValue
-            Effect: Allow
-            Resource:
-              - arn:aws:s3:::aiagent-kb-data-*
-              - arn:aws:s3:::aiagent-kb-data-*/*
-              - arn:aws:s3:::workshop-*
-              - arn:aws:s3:::workshop-*/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:dynamodb:*:"
-                    - Ref: AWS::AccountId
-                    - :table/backoffice-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:dynamodb:*:"
-                    - Ref: AWS::AccountId
-                    - :table/backoffice-*/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecr:*:"
-                    - Ref: AWS::AccountId
-                    - :repository/aiagent*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:ecr:*:"
-                    - Ref: AWS::AccountId
-                    - :repository/backoffice*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:lambda:*:"
-                    - Ref: AWS::AccountId
-                    - :function:mcp-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:logs:*:"
-                    - Ref: AWS::AccountId
-                    - :log-group:/aws/bedrock-agentcore/*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:logs:*:"
-                    - Ref: AWS::AccountId
-                    - :log-group:/aws/bedrock-agentcore/*:*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:logs:*:"
-                    - Ref: AWS::AccountId
-                    - :log-group:/aws/lambda/mcp-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:logs:*:"
-                    - Ref: AWS::AccountId
-                    - :log-group:/aws/lambda/mcp-*:*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:s3vectors:*:"
-                    - Ref: AWS::AccountId
-                    - :bucket/aiagent-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:secretsmanager:*:"
-                    - Ref: AWS::AccountId
-                    - :secret:aiagent-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:secretsmanager:*:"
-                    - Ref: AWS::AccountId
-                    - :secret:bedrock-agentcore-identity!*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:secretsmanager:*:"
-                    - Ref: AWS::AccountId
-                    - :secret:mcp-*
-              - Fn::Join:
-                  - ""
-                  - - "arn:aws:secretsmanager:*:"
-                    - Ref: AWS::AccountId
-                    - :secret:workshop-*
-            Sid: WorkshopData
-          - Action:
-              - ec2:CreateNetworkInterface
-              - ec2:DeleteNetworkInterface
-            Effect: Allow
-            Resource:
-              Fn::Join:
-                - ""
-                - - "arn:aws:ec2:*:"
-                  - Ref: AWS::AccountId
-                  - :network-interface/*
-            Sid: RuntimeNetworkInterfaces
-          - Action:
-              - cloudwatch:PutMetricData
-              - ec2:DescribeNetworkInterfaces
-              - ec2:DescribeSecurityGroups
-              - ec2:DescribeSubnets
-              - ec2:DescribeVpcs
-              - ecr:GetAuthorizationToken
-              - logs:DescribeLogGroups
-              - xray:GetSamplingRules
-              - xray:GetSamplingTargets
-              - xray:PutTelemetryRecords
-              - xray:PutTraceSegments
-            Effect: Allow
-            Resource: "*"
-            Sid: RuntimeReadAndTelemetry
-          - Action:
-              - account:*
-              - iam:*
-              - organizations:*
-            Effect: Deny
-            Resource: "*"
-            Sid: DenyIAM
-        Version: "2012-10-17"
-    Type: AWS::IAM::ManagedPolicy
   PerfPlatformAnalyzerEksPodRoleA97B019B:
     Properties:
       AssumeRolePolicyDocument:
@@ -4756,7 +4390,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260826171103"
+            - "-20260930184639"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -4840,7 +4474,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260826171103"
+            - "-20260930184639"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
