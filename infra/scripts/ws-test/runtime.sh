@@ -695,31 +695,32 @@ ws_run_block() {
   echo "Source: ${WS_CURRENT_SOURCE}:${WS_CURRENT_LINES}"
 
   local runner_pid=$$
-  sh -c '
+  bash -c '
     tee_pid=$6
+    # child must be local: with a shared variable the recursion overwrites it and
+    # every process that has children (e.g. a block subshell) is never collected.
     collect_descendants() {
+      local child
       for child in $(pgrep -P "$1" 2>/dev/null || true); do
-        if [ "$child" = "$$" ] || [ "$child" = "$tee_pid" ]; then
-          continue
-        fi
+        [[ "$child" == "$$" || "$child" == "$tee_pid" ]] && continue
         collect_descendants "$child"
         printf "%s\n" "$child"
       done
     }
+    is_active() { [[ -f "$2" && "$(<"$2")" == "$3" ]]; }
 
     sleep "$1"
-    if [ -f "$2" ] && [ "$(cat "$2")" = "$3" ]; then
-      : > "$4"
-      descendants=$(collect_descendants "$5")
-      kill -TERM "$5" 2>/dev/null || true
-      for child in $descendants; do
-        kill -TERM "$child" 2>/dev/null || true
+    is_active "$@" || exit 0
+    : > "$4"
+    kill -TERM "$5" 2>/dev/null || true
+    # Re-collect each round so loops that spawn fresh children cannot outlive the kill.
+    for signal in TERM KILL KILL; do
+      for child in $(collect_descendants "$5"); do
+        kill "-$signal" "$child" 2>/dev/null || true
       done
       sleep 2
-      for child in $descendants; do
-        kill -KILL "$child" 2>/dev/null || true
-      done
-    fi
+      is_active "$@" || exit 0
+    done
   ' ws-test-watchdog \
     "$WS_CURRENT_TIMEOUT" \
     "${WS_RUN_DIR}/.active-block" \

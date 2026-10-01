@@ -1961,9 +1961,10 @@ POD=$(kubectl get pods -n unicorn-store-spring \
 
 (
   ANALYSIS_START=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-  kubectl logs -n monitoring -l app=perf-analyzer \
+  kubectl logs -n monitoring -l app=perf-analyzer --tail=-1 \
     --since-time="${ANALYSIS_START}" -f &
   LOGS_PID=$!
+  trap 'kill "${LOGS_PID}" 2>/dev/null || true' EXIT
 
   kubectl run -n monitoring trigger-analyze --rm --attach=true --restart=Never \
     --pod-running-timeout=120s \
@@ -1972,22 +1973,22 @@ POD=$(kubectl get pods -n unicorn-store-spring \
       -H 'Content-Type: application/json' \
       -d "{\"service\":\"unicorn-store-spring\",\"platform\":\"eks\",\"pod\":\"${POD}\",\"reason\":\"pre-change check\"}"
 
-  until kubectl logs -n monitoring -l app=perf-analyzer \
+  deadline=$((SECONDS + 420))
+  until kubectl logs -n monitoring -l app=perf-analyzer --tail=-1 \
     --since-time="${ANALYSIS_START}" | grep -q ' complete: s3://'; do
-    sleep 5
+    (( SECONDS < deadline )) || { echo "Analysis did not complete within 7 minutes" >&2; exit 1; }
+    sleep 10
   done
-
-  kill "${LOGS_PID}" 2>/dev/null || true
-  wait "${LOGS_PID}" 2>/dev/null || true
 )
 WS_TEST_BLOCK_313_7
 
 ws_skip_block 8 'First analysis: a quiet service' 'A healthy run looks like this:' 209 219 '' '' 'informational block without language'
 
-ws_run_block 9 'First analysis: a quiet service' 'Retrieve the report:' 227 234 'bash' '' <<'WS_TEST_BLOCK_313_9'
+ws_run_block 9 'First analysis: a quiet service' 'Retrieve the report:' 227 235 'bash' '' <<'WS_TEST_BLOCK_313_9'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 LATEST=$(aws s3 ls s3://${S3_BUCKET}/perf-platform/analysis/eks/unicorn-store-spring/ --recursive \
-  | grep analysis.md | sort | tail -1 | awk '{print $4}')
+  2>/dev/null | grep analysis.md | sort | tail -1 | awk '{print $4}' || true)
+[[ -n "${LATEST}" ]] || { echo "No analysis.md found in S3" >&2; false; }
 ANALYSIS_ID=$(echo "${LATEST}" | awk -F/ '{print $(NF-1)}')
 LOCAL_FILE=~/environment/analysis-${ANALYSIS_ID}.md
 aws s3 cp s3://${S3_BUCKET}/${LATEST} ${LOCAL_FILE} --no-cli-pager
@@ -1995,13 +1996,13 @@ echo "📄 Local file: ${LOCAL_FILE}"
 echo "🔗 S3 console: https://${AWS_REGION}.console.aws.amazon.com/s3/buckets/${S3_BUCKET}?prefix=$(dirname ${LATEST})/"
 WS_TEST_BLOCK_313_9
 
-ws_skip_block 10 'First analysis: a quiet service' 'Open the downloaded report in the IDE:' 240 240 'bash' '' 'opens the report in the IDE'
+ws_skip_block 10 'First analysis: a quiet service' 'Open the downloaded report in the IDE:' 241 241 'bash' '' 'opens the report in the IDE'
 
-ws_skip_block 11 'First analysis: a quiet service' 'A typical events.md excerpt against a quiet service:' 248 262 '' '' 'informational block without language'
+ws_skip_block 11 'First analysis: a quiet service' 'A typical events.md excerpt against a quiet service:' 249 263 '' '' 'informational block without language'
 
-ws_skip_block 12 'First analysis: a quiet service' 'The Bedrock report (analysis.md) starts with the verdict and rolls into prioritized findings. A typical idle-service report — the verdict line, then a finding citing source by file and line:' 270 292 '' '' 'informational block without language'
+ws_skip_block 12 'First analysis: a quiet service' 'The Bedrock report (analysis.md) starts with the verdict and rolls into prioritized findings. A typical idle-service report — the verdict line, then a finding citing source by file and line:' 271 293 '' '' 'informational block without language'
 
-ws_run_block 13 'Second analysis: under light load' 'Generate a small steady load and re-run. The picture changes — under any non-trivial request rate the publisher'"'"'s blocking call dominates the wall profile, and the agent'"'"'s findings sharpen:' 302 362 'bash' '' <<'WS_TEST_BLOCK_313_13'
+ws_run_block 13 'Second analysis: under light load' 'Generate a small steady load and re-run. The picture changes — under any non-trivial request rate the publisher'"'"'s blocking call dominates the wall profile, and the agent'"'"'s findings sharpen:' 303 363 'bash' '' <<'WS_TEST_BLOCK_313_13'
 SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks)
 echo "Load target: ${SVC_URL}"
 ~/java-on-aws/infra/scripts/test/benchmark.sh "${SVC_URL}" 120 30 &
@@ -2026,9 +2027,10 @@ analyze_under_load() {
 
   (
     ANALYSIS_START=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    kubectl logs -n monitoring -l app=perf-analyzer \
+    kubectl logs -n monitoring -l app=perf-analyzer --tail=-1 \
       --since-time="${ANALYSIS_START}" -f &
     LOGS_PID=$!
+    trap 'kill "${LOGS_PID}" 2>/dev/null || true' EXIT
 
     kubectl run -n monitoring trigger-analyze --rm --attach=true --restart=Never \
       --pod-running-timeout=120s \
@@ -2037,13 +2039,12 @@ analyze_under_load() {
         -H 'Content-Type: application/json' \
         -d "{\"service\":\"unicorn-store-spring\",\"platform\":\"eks\",\"pod\":\"${POD}\",\"reason\":\"under load check\"}"
 
-    until kubectl logs -n monitoring -l app=perf-analyzer \
+    deadline=$((SECONDS + 420))
+    until kubectl logs -n monitoring -l app=perf-analyzer --tail=-1 \
       --since-time="${ANALYSIS_START}" | grep -q ' complete: s3://'; do
-      sleep 5
+      (( SECONDS < deadline )) || { echo "Analysis did not complete within 7 minutes" >&2; exit 1; }
+      sleep 10
     done
-
-    kill "${LOGS_PID}" 2>/dev/null || true
-    wait "${LOGS_PID}" 2>/dev/null || true
   )
 }
 
@@ -2065,9 +2066,9 @@ trap - INT TERM
 unset -f analyze_under_load cleanup_benchmark
 WS_TEST_BLOCK_313_13
 
-ws_skip_block 14 'Second analysis: under light load' 'The deterministic events.md summary already shows the load arrived. Compare with the idle-run excerpt above:' 372 389 '' '' 'informational block without language'
+ws_skip_block 14 'Second analysis: under light load' 'The deterministic events.md summary already shows the load arrived. Compare with the idle-run excerpt above:' 373 390 '' '' 'informational block without language'
 
-ws_skip_block 15 'Second analysis: under light load' 'The Bedrock report sharpens accordingly. A typical under-load excerpt — the verdict line, then the dominant finding citing source by file and line:' 397 440 '' '' 'informational block without language'
+ws_skip_block 15 'Second analysis: under light load' 'The Bedrock report sharpens accordingly. A typical under-load excerpt — the verdict line, then the dominant finding citing source by file and line:' 398 441 '' '' 'informational block without language'
 
 ws_end_page
 
@@ -2187,46 +2188,44 @@ curl -s -u "admin:${GRAFANA_PASSWORD}" \
   | jq '.data.groups[].rules[] | select(.name | startswith("ServiceLatency-")) | {name, state, lastEvaluation}'
 WS_TEST_BLOCK_314_4
 
-ws_run_block 5 'Driving the regression' 'The application code does not change. We just give it more traffic than it can handle:' 181 183 'bash' '' <<'WS_TEST_BLOCK_314_5'
+ws_run_block 5 'Driving the regression' 'The application code does not change. We just give it more traffic than it can handle:' 181 184 'bash' '' <<'WS_TEST_BLOCK_314_5'
 LOAD_PLATFORM=eks
+ALERT_LOAD_START=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh "${LOAD_PLATFORM}")
 ~/java-on-aws/infra/scripts/test/benchmark.sh "${SVC_URL}" 240 200
 WS_TEST_BLOCK_314_5
 
-ws_run_block 6 'Driving the regression' 'About a minute after the metric stays above 1 second, the alert transitions:' 197 199 'bash' '' <<'WS_TEST_BLOCK_314_6'
+ws_run_block 6 'Driving the regression' 'About a minute after the metric stays above 1 second, the alert transitions:' 198 200 'bash' '' <<'WS_TEST_BLOCK_314_6'
 curl -s -u "admin:${GRAFANA_PASSWORD}" \
   "${GRAFANA_URL}/api/prometheus/grafana/api/v1/rules" \
   | jq '.data.groups[].rules[] | select(.name | startswith("ServiceLatency-")) | {name, state, alerts}'
 WS_TEST_BLOCK_314_6
 
-ws_run_block 7 'The webhook fires' 'The analyzer'"'"'s logs catch the webhook landing and run the four-lane pipeline against the workload:' 211 227 'bash' '' <<'WS_TEST_BLOCK_314_7'
+ws_run_block 7 'The webhook fires' 'The analyzer'"'"'s logs catch the webhook landing and run the four-lane pipeline against the workload:' 212 224 'bash' '' <<'WS_TEST_BLOCK_314_7'
 (
-  kubectl logs -n monitoring -l app=perf-analyzer --since=5m -f &
+  SINCE="${ALERT_LOAD_START:-$(date -u -d '-15 min' +"%Y-%m-%dT%H:%M:%SZ")}"
+  kubectl logs -n monitoring -l app=perf-analyzer --tail=-1 --since-time="${SINCE}" -f &
   LOGS_PID=$!
+  trap 'kill "${LOGS_PID}" 2>/dev/null || true' EXIT
 
-  until kubectl logs -n monitoring -l app=perf-analyzer --since=5m \
-    | grep -q 'Grafana webhook analysis:'; do
-    sleep 5
-  done
-
-  until kubectl logs -n monitoring -l app=perf-analyzer --since=5m \
+  deadline=$((SECONDS + 600))
+  until kubectl logs -n monitoring -l app=perf-analyzer --tail=-1 --since-time="${SINCE}" \
     | grep -q ' complete: s3://'; do
-    sleep 5
+    (( SECONDS < deadline )) || { echo "Analysis did not complete within 10 minutes" >&2; exit 1; }
+    sleep 10
   done
-
-  kill "${LOGS_PID}" 2>/dev/null || true
-  wait "${LOGS_PID}" 2>/dev/null || true
 )
 WS_TEST_BLOCK_314_7
 
-ws_skip_block 8 'The webhook fires' 'A real run under 200 rps looks like this:' 233 245 '' '' 'informational block without language'
+ws_skip_block 8 'The webhook fires' 'A real run under 200 rps looks like this:' 230 242 '' '' 'informational block without language'
 
-ws_skip_block 9 'The webhook fires' 'The Bedrock report is sharp anyway — Pyroscope alone is enough to identify the root cause when it'"'"'s bad enough to crash the pod:' 255 288 '' '' 'informational block without language'
+ws_skip_block 9 'The webhook fires' 'The Bedrock report is sharp anyway — Pyroscope alone is enough to identify the root cause when it'"'"'s bad enough to crash the pod:' 252 285 '' '' 'informational block without language'
 
-ws_run_block 10 'Reading the auto-generated report' 'Reading the auto-generated report' 296 303 'bash' '' <<'WS_TEST_BLOCK_314_10'
+ws_run_block 10 'Reading the auto-generated report' 'Reading the auto-generated report' 293 301 'bash' '' <<'WS_TEST_BLOCK_314_10'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text --no-cli-pager)
 LATEST=$(aws s3 ls s3://${S3_BUCKET}/perf-platform/analysis/${LOAD_PLATFORM}/unicorn-store-spring/ --recursive \
-  | grep analysis.md | sort | tail -1 | awk '{print $4}')
+  2>/dev/null | grep analysis.md | sort | tail -1 | awk '{print $4}' || true)
+[[ -n "${LATEST}" ]] || { echo "No analysis.md found in S3" >&2; false; }
 ANALYSIS_ID=$(echo "${LATEST}" | awk -F/ '{print $(NF-1)}')
 LOCAL_FILE=~/environment/incident-analysis-${ANALYSIS_ID}.md
 aws s3 cp s3://${S3_BUCKET}/${LATEST} ${LOCAL_FILE} --no-cli-pager
@@ -2234,7 +2233,7 @@ echo "📄 Local file: ${LOCAL_FILE}"
 echo "🔗 S3 console: https://${AWS_REGION}.console.aws.amazon.com/s3/buckets/${S3_BUCKET}?prefix=$(dirname ${LATEST})/"
 WS_TEST_BLOCK_314_10
 
-ws_skip_block 11 'Reading the auto-generated report' 'Open the downloaded report in the IDE:' 309 309 'bash' '' 'opens the report in the IDE'
+ws_skip_block 11 'Reading the auto-generated report' 'Open the downloaded report in the IDE:' 307 307 'bash' '' 'opens the report in the IDE'
 
 ws_end_page
 
@@ -2591,17 +2590,30 @@ curl -s --request POST ${SVC_URL}/unicorns \
 }' | jq
 WS_TEST_BLOCK_341_10
 
-ws_run_block 11 'Verifying the Results' '1. Check that profiling started:' 230 233 'bash' '' <<'WS_TEST_BLOCK_341_11'
-kubectl logs $(kubectl get pods -n unicorn-store-spring \
-                --field-selector=status.phase=Running \
-                -o jsonpath='{.items[0].metadata.name}') \
-                -n unicorn-store-spring | grep "Profiling started"
+ws_run_block 11 'Verifying the Results' '1. Check that profiling started:' 230 239 'bash' '' <<'WS_TEST_BLOCK_341_11'
+for attempt in {1..12}; do
+  POD_NAME=$(kubectl get pods -n unicorn-store-spring --field-selector=status.phase=Running \
+    -o jsonpath='{.items[0].metadata.name}')
+  kubectl logs ${POD_NAME} -n unicorn-store-spring 2>/dev/null | grep "Profiling started" && break
+  if (( attempt == 12 )); then
+    echo "Profiling did not start within 2 minutes" >&2
+    false
+  fi
+  sleep 10
+done
 WS_TEST_BLOCK_341_11
 
-ws_run_block 12 'Verifying the Results' '2. Verify profiling files in S3:' 243 245 'bash' '' <<'WS_TEST_BLOCK_341_12'
+ws_run_block 12 'Verifying the Results' '2. Verify profiling files in S3:' 249 258 'bash' '' <<'WS_TEST_BLOCK_341_12'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text)
 POD_NAME=$(kubectl get pods -n unicorn-store-spring --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
-aws s3 ls s3://${S3_BUCKET}/profiling/${POD_NAME}/
+for attempt in {1..12}; do
+  aws s3 ls s3://${S3_BUCKET}/profiling/${POD_NAME}/ 2>/dev/null && break
+  if (( attempt == 12 )); then
+    echo "No profiling files in S3 after 2 minutes" >&2
+    false
+  fi
+  sleep 10
+done
 WS_TEST_BLOCK_341_12
 
 ws_end_page
@@ -2751,8 +2763,8 @@ WS_TEST_BLOCK_344_1
 
 ws_run_block 2 'Running the load test' 'This test generates 50 POST requests per second for 120 seconds, which will exceed the alert threshold of 20 requests/second and trigger the automated analysis.' 36 40 'bash' '' <<'WS_TEST_BLOCK_344_2'
 S3_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name --query 'Parameter.Value' --output text)
-ANALYSIS_BASELINE=$(aws s3 ls s3://${S3_BUCKET}/analysis/ \
-  | awk '/_analysis_.*\.md$/ && $4 > latest {latest=$4} END {print latest}')
+ANALYSIS_BASELINE=$(aws s3 ls s3://${S3_BUCKET}/analysis/ 2>/dev/null \
+  | awk '/_analysis_.*\.md$/ && $4 > latest {latest=$4} END {print latest}' || true)
 SVC_URL=$(~/java-on-aws/infra/scripts/test/getsvcurl.sh eks) && echo ${SVC_URL}
 ~/java-on-aws/infra/scripts/test/benchmark.sh ${SVC_URL} 120 50
 WS_TEST_BLOCK_344_2
@@ -2767,10 +2779,10 @@ S3_BUCKET=${S3_BUCKET:-$(aws ssm get-parameter --name workshop-bucket-name --que
 # Wait up to 9 minutes for the asynchronous analysis to finish.
 deadline=$((SECONDS + 540))
 while (( SECONDS < deadline )); do
-  ANALYSIS_RESULT=$(aws s3 ls s3://${S3_BUCKET}/analysis/ \
-    | awk '/_analysis_.*\.md$/ && $4 > latest {latest=$4} END {print latest}')
+  ANALYSIS_RESULT=$(aws s3 ls s3://${S3_BUCKET}/analysis/ 2>/dev/null \
+    | awk '/_analysis_.*\.md$/ && $4 > latest {latest=$4} END {print latest}' || true)
   [[ -n "${ANALYSIS_RESULT}" && "${ANALYSIS_RESULT}" != "${ANALYSIS_BASELINE:-}" ]] && break
-  sleep 5
+  sleep 10
 done
 if [[ -z "${ANALYSIS_RESULT}" || "${ANALYSIS_RESULT}" == "${ANALYSIS_BASELINE:-}" ]]; then
   echo "Analysis did not finish within 9 minutes" >&2
@@ -3371,7 +3383,9 @@ ws_end_page
 
 ws_begin_page 'Cleanup' 999 'cleanup/index.en.md'
 
-ws_skip_block 1 'Deleting workshop resources' '1. Run the cleanup script to delete all workshop resources:' 19 19 'bash' '' 'deletes participant-owned workshop resources and its CloudFormation stack'
+ws_skip_block 1 'Deleting workshop resources' '1. Run the cleanup script to delete the workshop resources created outside the CloudFormation stack:' 19 19 'bash' '' 'deletes participant-owned workshop resources'
+
+ws_skip_block 2 'Deleting the stack' '2. After the script succeeds, delete the workshop-stack CloudFormation stack with your own credentials: open CloudFormation → Stacks → workshop-stack and choose Delete, or run this in AWS CloudShell:' 29 29 'bash' '' 'deletes the workshop CloudFormation stack'
 
 ws_end_page
 
