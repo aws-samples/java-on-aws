@@ -106,6 +106,28 @@
         "dynamodb:PurchaseReservedCapacityOfferings"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "DenySharingAndExposure",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:ModifySnapshotAttribute",
+        "ec2:ModifyImageAttribute",
+        "ec2:ModifyFpgaImageAttribute",
+        "ec2:CreateVpcPeeringConnection",
+        "ec2:AcceptVpcPeeringConnection",
+        "rds:ModifyDBSnapshotAttribute",
+        "rds:ModifyDBClusterSnapshotAttribute",
+        "ecr:SetRepositoryPolicy",
+        "ecr:PutRegistryPolicy",
+        "ecr:PutReplicationConfiguration",
+        "s3:PutBucketPolicy",
+        "s3:PutBucketAcl",
+        "s3:PutObjectAcl",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketPublicAccessBlock"
+      ],
+      "Resource": "*"
     }
   ]
 }
