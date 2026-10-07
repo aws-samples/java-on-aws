@@ -38,6 +38,7 @@ WS_CURRENT_EXECUTABLE_NUMBER=0
 WS_EXECUTABLE_TOTAL=0
 WS_DEFAULT_TIMEOUT=0
 WS_WATCHDOG_PID=""
+WS_VERBOSE=0
 
 ws_json_escape() {
   WS_ESCAPED=${1//\\/\\\\}
@@ -315,7 +316,7 @@ ws_restore_runtime_guards() {
 
 ws_filter_usage() {
   cat <<EOF
-Usage: ${0##*/} [--from WEIGHT[:BLOCK]] [--to WEIGHT[:BLOCK]] [--skip WEIGHT[,WEIGHT...]] [--skipTab ID[,ID...]]
+Usage: ${0##*/} [--from WEIGHT[:BLOCK]] [--to WEIGHT[:BLOCK]] [--skip WEIGHT[,WEIGHT...]] [--skipTab ID[,ID...]] [--verbose]
 
 Filters:
   --from POSITION Run at or after WEIGHT[:BLOCK] (inclusive). A page-only
@@ -327,6 +328,10 @@ Filters:
                   and 311 skips only 311.
   --skipTab LIST  Skip code blocks inside tabs whose IDs appear in the
                   comma-separated list. Blocks outside tabs are unaffected.
+
+Output:
+  -v, --verbose   Print each block's command output on the console as well as
+                  in output.log. By default block output goes to output.log only.
   -h, --help      Show this help.
 
 Filters are combined. Page and tab skips take precedence over --from and --to.
@@ -451,6 +456,9 @@ ws_parse_filter_args() {
         ;;
       --skipTab=*)
         ws_add_skip_tabs "${1#*=}"
+        ;;
+      -v|--verbose)
+        WS_VERBOSE=1
         ;;
       -h|--help)
         ws_filter_usage
@@ -583,6 +591,8 @@ EOF
     skip_tab_display=$(IFS=,; echo "${WS_SKIP_TABS[*]}")
     echo "Skipped tabs: ${skip_tab_display}"
   fi
+  [[ "$WS_VERBOSE" == "1" ]] && echo "Block output: console and output.log"
+  return 0
 }
 
 ws_set_executable_total() {
@@ -732,10 +742,15 @@ ws_run_block() {
 
   # Source in the current shell so variables and working directory persist exactly
   # as they do when a participant uses one terminal throughout the workshop.
-  # Block output goes to the on-box run log only (not the console/CloudWatch); the
-  # harness still prints the per-block header and PASSED/FAILED lines, and the
-  # failure path tails this log so a failing block's detail stays visible.
-  source "$WS_CURRENT_CODE_FILE" >> "$WS_OUTPUT_LOG" 2>&1
+  # By default block output goes to the on-box run log only (not the console/CloudWatch);
+  # the harness still prints the per-block header and PASSED/FAILED lines, and the
+  # failure path tails this log so a failing block's detail stays visible. --verbose
+  # keeps the runner's stdout, which is already tee'd to the console and the run log.
+  if [[ "$WS_VERBOSE" == "1" ]]; then
+    source "$WS_CURRENT_CODE_FILE"
+  else
+    source "$WS_CURRENT_CODE_FILE" >> "$WS_OUTPUT_LOG" 2>&1
+  fi
   ws_restore_runtime_guards
 
   rm -f "${WS_RUN_DIR}/.active-block"

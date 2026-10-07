@@ -480,7 +480,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1790783263801"
+      ContentHash: "1791370897065"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2351,6 +2351,25 @@ Resources:
             Effect: Deny
             Resource: "*"
             Sid: DenyPurchases
+          - Action:
+              - ec2:AcceptVpcPeeringConnection
+              - ec2:CreateVpcPeeringConnection
+              - ec2:ModifyFpgaImageAttribute
+              - ec2:ModifyImageAttribute
+              - ec2:ModifySnapshotAttribute
+              - ecr:PutRegistryPolicy
+              - ecr:PutReplicationConfiguration
+              - ecr:SetRepositoryPolicy
+              - rds:ModifyDBClusterSnapshotAttribute
+              - rds:ModifyDBSnapshotAttribute
+              - s3:PutBucketAcl
+              - s3:PutBucketOwnershipControls
+              - s3:PutBucketPolicy
+              - s3:PutBucketPublicAccessBlock
+              - s3:PutObjectAcl
+            Effect: Deny
+            Resource: "*"
+            Sid: DenySharingAndExposure
         Version: "2012-10-17"
     Type: AWS::IAM::ManagedPolicy
   IdePolicyjavaonamazoneksE6856F66:
@@ -3432,7 +3451,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260930174743"
+            - "-20261007130137"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3516,7 +3535,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20260930174743"
+            - "-20261007130137"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

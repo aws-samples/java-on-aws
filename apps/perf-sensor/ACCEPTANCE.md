@@ -19,6 +19,7 @@ bash infra/scripts/ws-test/java-on-amazon-eks.sh
 
 Read `infra/scripts/ws-test/reports/java-on-amazon-eks/<run>/output.log` (`Source:` lines point
 at content line ranges), `summary.md` (per-block durations) and `failure.md` if a block failed.
+Block output goes only to `output.log`; add `--verbose` (`-v`) to also stream it on the console.
 `claude` runs non-interactively (`-p`, then `-c -p`); the interactive blocks and all sample
 blocks are skipped. For a repeat on the same environment run
 `~/java-on-aws/infra/scripts/deploy/java-on-amazon-eks/reset-app.sh` first (hard-resets the app
