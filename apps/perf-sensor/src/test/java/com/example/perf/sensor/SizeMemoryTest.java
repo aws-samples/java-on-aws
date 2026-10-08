@@ -31,8 +31,8 @@ class SizeMemoryTest {
         .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
         .build();
 
-    // sizing-policy.yaml: peakFactor, floorSafetyFactor, roundMi, warmSeconds, minSamples, minRequestRate, minDeltaMi
-    static final SizeParams POLICY = new SizeParams(1.40, 1.50, 128, 120, 100, 1, 64);
+    // sizing-policy.yaml: peakFactor, floorSafetyFactor, roundMi, minPeakFactor, warmSeconds, minSamples, minRequestRate, minDeltaMi
+    static final SizeParams POLICY = new SizeParams(1.40, 1.50, 128, 1.30, 120, 100, 1, 64);
     // sizing-policy.yaml: cpuFactor, roundMillicores, warmSeconds, minSamples, minRequestRate, minDeltaMi
     static final CpuParams CPU_POLICY = new CpuParams(1.5, 50, 120, 100, 1, 64);
 
@@ -120,14 +120,15 @@ class SizeMemoryTest {
     }
 
     @Test
-    void sizeCpu_requestFromP95_limitUnchanged() throws IOException {
+    void sizeCpu_requestFromSteadyCpu_limitUnchanged() throws IOException {
         // p95 0.31 cores * 1.5 = 465m -> roundUp(50m) = 500m; limit 1 stays "1".
         var r = sensor.sizeCpu(fixture("baseline"), CPU_POLICY);
         assertThat(r.status()).isEqualTo("OK");
         assertThat(r.requestsCpu()).isEqualTo("500m");
         assertThat(r.limitsCpu()).isEqualTo("1");
         assertThat(r.clampedToLimit()).isFalse();
-        assertThat(r.evidence().cpuUsageP95Cores()).isEqualTo(0.31);
+        assertThat(r.evidence().cpuSteadyCores()).isEqualTo(0.31);
+        assertThat(r.evidence().cpuSteadyStatistic()).isEqualTo("p95");
     }
 
     @Test
@@ -142,10 +143,39 @@ class SizeMemoryTest {
     }
 
     @Test
-    void sizeCpu_blockedWithoutP95() throws IOException {
-        var r = sensor.sizeCpu(fixture("crac"), CPU_POLICY);   // fixture has no cpuUsageP95Cores
+    void sizeCpu_blockedWithoutSteadyCpu() throws IOException {
+        var r = sensor.sizeCpu(fixture("crac"), CPU_POLICY);   // fixture has no cpuSteadyCores
         assertThat(r.status()).isEqualTo("BLOCKED");
-        assertThat(r.reason()).contains("CPU usage p95");
+        assertThat(r.reason()).contains("steady-state CPU");
+    }
+
+    @Test
+    void roundsDownOneStep_whenTheLowerLimitKeepsMinPeakHeadroom() throws IOException {
+        // peak 368, floor 337: target max(515.2, 505.5) -> 640 up; 512 is 1.39x the peak (>= 1.30)
+        // and >= floor * 1.5, so 512. A peak a few MiB lower (357) also gives 512: no flip.
+        for (double peakMi : new double[] {357.0, 368.0}) {
+            var r = sensor.sizeMemory(withRuntime("crac", 337.0, peakMi), POLICY);
+            assertThat(r.status()).isEqualTo("OK");
+            assertThat(r.limits().memory()).as("peak %s", peakMi).isEqualTo("512Mi");
+        }
+        assertThat(sensor.sizeMemory(withRuntime("crac", 337.0, 368.0), POLICY).note()).contains("rounded down");
+    }
+
+    @Test
+    void keepsTheUpperStep_whenTheLowerOneWouldCutMinPeakHeadroom() throws IOException {
+        // peak 400: target 560 -> 640 up; 512 is only 1.28x the peak (< 1.30), so 640.
+        var r = sensor.sizeMemory(withRuntime("crac", 337.0, 400.0), POLICY);
+        assertThat(r.limits().memory()).isEqualTo("640Mi");
+        assertThat(r.note()).isNull();
+    }
+
+    /** The fixture with the working-set floor and peak overridden. */
+    private static Facts withRuntime(String name, double floorMi, double peakMi) throws IOException {
+        try (var in = SizeMemoryTest.class.getResourceAsStream("/fixtures/" + name + ".json")) {
+            var tree = (ObjectNode) MAPPER.readTree(in);
+            ((ObjectNode) tree.get("runtime")).put("workingSetFloorMi", floorMi).put("workingSetPeakMi", peakMi);
+            return MAPPER.treeToValue(tree, Facts.class);
+        }
     }
 
     @Test

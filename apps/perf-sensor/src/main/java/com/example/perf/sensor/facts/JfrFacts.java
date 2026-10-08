@@ -20,7 +20,8 @@ import java.util.List;
  * @param pinned           jdk.VirtualThreadPinned aggregate (synchronized blocks pinning carriers)
  * @param monitorTop       jdk.JavaMonitorEnter top monitors by total blocked time, with the waiting frame
  * @param safepointTotalMs jdk.SafepointBegin total stop-the-world time, ms
- * @param compilation      jdk.Compilation aggregate (JIT volume in the window)
+ * @param compilation      jdk.Compilation aggregate (JIT volume in the window) and the end of the
+ *                         last busy JIT interval ({@code busyUntil}), when the JIT stopped dominating
  */
 public record JfrFacts(
     String pod,
@@ -47,7 +48,12 @@ public record JfrFacts(
     /** {@code topFrame}: the most frequent frame of the threads that waited (first app frame if any). */
     public record MonitorWait(String monitorClass, int count, Double totalMs, String topFrame) {}
 
-    public record Compilation(int count, Double totalMs, Double maxMs) {}
+    /**
+     * {@code busyUntil}: end (ISO-8601) of the last 10 s interval in which compilations took at
+     * least 1 s in total, i.e. the JIT used at least a tenth of a core; null when no interval was
+     * that busy (a restored or long-warm JVM).
+     */
+    public record Compilation(int count, Double totalMs, Double maxMs, String busyUntil) {}
 
     public record FrameCount(String frame, int count) {}
 }

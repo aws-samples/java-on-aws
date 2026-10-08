@@ -43,7 +43,7 @@ patch, and nothing scales it back down). Prefer the CR.
 - Faster startup (and faster rollouts / scale-ups) with no image or code change.
 - No steady-state CPU waste — you pay the boot premium only during boot. With the
   boost in place, the steady-state `requests.cpu` can follow the measured demand
-  (`cpuUsageP95Cores` from `measure`) instead of being sized for boot; the boost
+  (`cpuSteadyCores` from `measure`) instead of being sized for boot; the boost
   percentage then supplies the boot CPU on top of the lower request.
 - Zero restarts: the resize is in place.
 
@@ -63,6 +63,6 @@ patch, and nothing scales it back down). Prefer the CR.
 ## What the operator verifies afterwards
 
 `perf-sensor.startupLog` (startup seconds drop) and `measure` (restartCount stays 0 —
-resized without restart; `cpuRequestCores` near `cpuUsageP95Cores`).
+resized without restart; `cpuRequestCores` near `cpuSteadyCores`).
 
 

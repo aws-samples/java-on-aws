@@ -38,7 +38,9 @@ public class SensorMcpTools {
         cpu resizePolicy, JAVA_TOOL_OPTIONS, image tag, replicas, probes with paths/budgets/initial
         delays, terminationGracePeriodSeconds, preStop sleep, sidecars) plus measured runtime
         (working-set floor/peak MiB, heap committed MiB, observed MaxHeapSize/InitialHeapSize MiB,
-        GC name, effective CPUs, CPU usage p95 cores, CFS throttled share (throttled s / used s, last 5 min, boot excluded), startup
+        GC name, effective CPUs, steady-state CPU usage cores (cpuSteadyCores: p95, or the mean when the steady
+        window is short — cpuSteadyStatistic; the window starts after readiness and after the JIT settled —
+        steadyStartSeconds, steadyWindowSeconds), CFS throttled share over the same steady window, startup
         seconds, restarts, last termination reason, HTTP latency mean/max ms), a CPU/wall profile
         summary (jit/gc/futex shares of the whole profile, samples), the JVM's own JFR ring facts (jfr: container
         limits as the JVM read them incl. effectiveCpuCount, jvmArgs, GC pauses count/max/total,
@@ -64,29 +66,31 @@ public class SensorMcpTools {
         (uptime > warmSeconds AND samples > minSamples) and load was observed (requestRate >
         minRequestRate OR workingSetPeak-workingSetFloor > minDeltaMi). All policy parameters are
         REQUIRED and supplied by the caller (the optimization skill owns the numbers; this tool owns
-        only the arithmetic): limits = roundUpMi(max(peak*peakFactor, floor*floorSafetyFactor));
-        requests = limits (Guaranteed memory QoS); MaxRAMPercentage = 75; InitialRAMPercentage = 50;
-        GC = cpuLimit <= 1 ? SerialGC : G1GC.""")
+        only the arithmetic): limits = roundUpMi(max(peak*peakFactor, floor*floorSafetyFactor)), one
+        roundMi step lower when that still leaves peak*minPeakFactor and floor*floorSafetyFactor (note
+        says so); requests = limits (Guaranteed memory QoS); MaxRAMPercentage = 75;
+        InitialRAMPercentage = 50; GC = cpuLimit <= 1 ? SerialGC : G1GC.""")
     public SizeResult sizeMemory(
         @ToolParam(description = SERVICE_PARAM) String service,
         @ToolParam(description = "Look-back window in minutes") int windowMinutes,
         @ToolParam(description = "limit >= peak * this (e.g. 1.40)") double peakFactor,
         @ToolParam(description = "limit >= floor * this (e.g. 1.50), protects an under-observed peak") double floorSafetyFactor,
         @ToolParam(description = "round memory up to a multiple of this many MiB (e.g. 128)") int roundMi,
+        @ToolParam(description = "round one step down when the lower limit is still >= peak * this (e.g. 1.30)") double minPeakFactor,
         @ToolParam(description = "guard: minimum uptime seconds before sizing (e.g. 120)") int warmSeconds,
         @ToolParam(description = "guard: minimum CPU profile samples in the window, i.e. 'a real profile exists' (e.g. 100)") int minSamples,
         @ToolParam(description = "guard: minimum request rate rps that counts as load (e.g. 1)") double minRequestRate,
         @ToolParam(description = "guard: minimum peak-floor MiB delta that counts as load (e.g. 64)") double minDeltaMi) {
         logger.info("MCP sizeMemory service={} window={}", service, windowMinutes);
         return sensor.sizeMemory(service, windowMinutes,
-            new SizeParams(peakFactor, floorSafetyFactor, roundMi, warmSeconds,
+            new SizeParams(peakFactor, floorSafetyFactor, roundMi, minPeakFactor, warmSeconds,
                 minSamples, minRequestRate, minDeltaMi));
     }
 
     @Tool(description = """
         Compute the steady-state CPU request for a Java service from its MEASURED CPU usage, with
         the same warm/load guard as sizeMemory. Returns status OK or BLOCKED. requests.cpu =
-        roundUp(cpuUsageP95Cores * cpuFactor, roundMillicores) as millicores, capped at limits.cpu
+        roundUp(cpuSteadyCores * cpuFactor, roundMillicores) as millicores, capped at limits.cpu
         (clampedToLimit=true with a note when capped: the container is CPU-bound at this load);
         limits.cpu is returned UNCHANGED (the boot spike is handled by a startup CPU boost /
         in-place resize, not by a permanently high request). All policy parameters are REQUIRED
@@ -94,7 +98,7 @@ public class SensorMcpTools {
     public CpuResult sizeCpu(
         @ToolParam(description = SERVICE_PARAM) String service,
         @ToolParam(description = "Look-back window in minutes") int windowMinutes,
-        @ToolParam(description = "requests.cpu = p95 usage * this (e.g. 1.5)") double cpuFactor,
+        @ToolParam(description = "requests.cpu = steady usage * this (e.g. 1.5)") double cpuFactor,
         @ToolParam(description = "round requests.cpu up to a multiple of this many millicores (e.g. 50)") int roundMillicores,
         @ToolParam(description = "guard: minimum uptime seconds before sizing (e.g. 120)") int warmSeconds,
         @ToolParam(description = "guard: minimum CPU profile samples in the window (e.g. 100)") int minSamples,

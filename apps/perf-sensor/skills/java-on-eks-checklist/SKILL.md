@@ -17,7 +17,7 @@ under load and `diagnoseBlocking` samples live threads.
 
 1. Call `perf-sensor.measure <service>` with `minUptimeSeconds = 120`. It returns everything
    items 1–10 and 12 need (workload, runtime, profile summary, `jfr` ring facts, window). A
-   pod younger than 120 s has no peak, p95 or throttle share yet, so the sensor waits for it
+   pod younger than 120 s has no peak, steady CPU or throttle share yet, so the sensor waits for it
    in slices of ≤ 30 s: while `window.settleRemainingSeconds > 0`, write one line for the
    user ("pod is N s old — measuring at 120 s, M s to go") and call `measure` again with the
    same parameters; use the last response. If `window.settleNote` says no load is flowing,
@@ -28,20 +28,21 @@ under load and `diagnoseBlocking` samples live threads.
    from `measure` is below `minRequestRate`, the load-dependent items are UNKNOWN with the
    reason "no load in window"; say that the service's load (its repo documents how, e.g. a
    `scripts/load*.sh`) must be running, and stop. Do not start load yourself.
-3. Evaluate every item in `references/checklist.md` as **PASS / FAIL / UNKNOWN**
+3. Evaluate every item in `references/checklist.md` as **PASS / BORDERLINE / FAIL / UNKNOWN**
+   (BORDERLINE only where the checklist defines it, items 6 and 7; it counts as passed)
    from the named evidence fields. A fact that is absent (null) makes its item
    UNKNOWN, not FAIL. Items marked *under load* are UNKNOWN when
    `window.requestRatePerSec` is null or below `minRequestRate` (probe traffic alone is
    ≈ 0.5 rps and does not count as load); say "no load in window" as the reason.
-4. Report `Score: <passed>/12`, then the table in `references/checklist.md` order (1–12),
+4. Report `Score: <passed>/12` (BORDERLINE counts as passed), then the table in `references/checklist.md` order (1–12),
    each row with its icon, number, practice and **the named fact/signal and value that
    decided it** (e.g. `704 / peak 347 = 2.03× (bar 2.0)`). Every verdict must cite the
    signal it came from — never assert without one.
 
 ## Output format
 
-No code fences. One markdown table, icon first: ✅ PASS, ❌ FAIL, 🟡 UNKNOWN (name the
-missing fact in Evidence). Evidence is one short clause with the deciding values and the bar.
+No code fences. One markdown table, icon first: ✅ PASS, ⚠️ BORDERLINE (within the bar's
+tolerance; say "borderline" with the value), ❌ FAIL, 🟡 UNKNOWN (name the missing fact in Evidence). Evidence is one short clause with the deciding values and the bar.
 
 Score: 6/12
 

@@ -26,8 +26,10 @@ blocks are skipped. For a repeat on the same environment run
 repo, deletes the boost CR, redeploys `:latest`).
 
 Load runs at 50 writes/s for the whole session and is never started by Claude. The sensor is
-read-only; its cAdvisor facts are scoped to the pods that are Ready now, and floor, CPU p95,
-latency and throttle ratio skip the pod's first minute. A score asked on a pod younger than
+read-only; its cAdvisor facts are scoped to the pods that are Ready now. Floor and latency skip
+the pod's first minute; steady CPU and throttle ratio use the steady window after readiness and
+JIT warm-up (a mean on a freshly rolled pod, a p95 later), and items 6 and 7 report ⚠️ borderline
+within 10 % of the bar. A score asked on a pod younger than
 2 min waits inside `measure`; asked later it returns at once.
 
 ## Skill-boundary checks, every optimization turn

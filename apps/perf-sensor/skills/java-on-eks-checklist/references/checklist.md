@@ -41,8 +41,8 @@ JDK `java` tool reference (container support, `MaxRAMPercentage`, `InitialRAMPer
 | # | Practice | Rule | Evidence |
 |---|---|---|---|
 | 5 | JVM sees its CPU and the GC fits it | `cpuLimitCores` set AND `effectiveCpuCount == ceil(cpuLimitCores)` (`effectiveCpuCount` is the JVM's own `jdk.ContainerConfiguration` value when the ring is present); AND (`effectiveCpuCount ≤ 1` → `gcName == SerialGC`) | `workload.cpuLimitCores`, `runtime.effectiveCpuCount`, `jfr.container`, `runtime.gcName` |
-| 6 | CPU request reflects steady state, not boot | `cpuRequestCores / cpuUsageP95Cores ≤ 1.75` *under load* | `workload.cpuRequestCores`, `runtime.cpuUsageP95Cores`, `window.requestRatePerSec` |
-| 7 | Not CFS-throttled under load | `cpuThrottledRatio ≤ 0.10` (throttled seconds / CPU seconds used, the current pod's lifetime minus its first 60 s, capped at 5 min) *under load*; null → 🟡 "pod younger than 90 s" | `runtime.cpuThrottledRatio`, `runtime.uptimeSeconds`, `window.requestRatePerSec` |
+| 6 | CPU request reflects steady state, not boot | `cpuRequestCores / cpuSteadyCores ≤ 1.75` *under load*; null → 🟡 "less than 30 s of steady state" | `workload.cpuRequestCores`, `runtime.cpuSteadyCores`, `runtime.cpuSteadyStatistic`, `runtime.steadyWindowSeconds`, `window.requestRatePerSec` |
+| 7 | Not CFS-throttled under load | `cpuThrottledRatio ≤ 0.10` (throttled seconds / CPU seconds used over the steady window, capped at 5 min) *under load*; null → 🟡 "less than 30 s of steady state" | `runtime.cpuThrottledRatio`, `runtime.steadyWindowSeconds`, `window.requestRatePerSec` |
 
 Why: GC, JIT and ForkJoin thread counts are fixed at JVM start from the processor
 count; a JVM that sees more cores than its quota over-threads and gets throttled, and
@@ -53,6 +53,14 @@ CFS throttling stretches GC pauses and trips liveness probes; the share is time-
 (throttled seconds over CPU seconds used) because the classic throttled-periods ratio marks
 a whole 100 ms period as throttled when a bursty request used the quota in 5 ms, so it
 reads 20–30 % for a low-quota JVM that lost almost no wall time (7).
+
+**Steady window and borderline (6, 7).** Both read the steady window: it starts after
+readiness and after the JIT stopped dominating (`runtime.steadyStartSeconds`), so boot CPU
+never counts. On a freshly rolled pod that window is short and `cpuSteadyStatistic` is
+`mean` instead of `p95`; name it in the evidence (e.g. `mean over 95 s`). A value within
+`borderlineShare` (`references/sizing-policy.yaml` of the optimization skill, 10 %) of the bar
+on the failing side is ⚠️ BORDERLINE: scored as a pass, evidence says "borderline" with the
+value and the bar (item 6: ratio ≤ 1.75 × 1.10; item 7: ratio ≤ 0.10 × 1.10).
 Sources: AWS Containers blog (as above; CFS throttling, `ActiveProcessorCount`);
 HotSpot GC tuning guide (ergonomics: Serial below two CPUs); learnk8s — *Kubernetes
 production readiness checklist* (right-sizing); Kube Startup CPU Boost.

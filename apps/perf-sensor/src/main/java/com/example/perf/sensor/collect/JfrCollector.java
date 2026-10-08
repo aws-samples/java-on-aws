@@ -47,6 +47,9 @@ public class JfrCollector {
     private static final Logger logger = LoggerFactory.getLogger(JfrCollector.class);
     private static final int TOP = 5;
     private static final int STACK_SCAN_DEPTH = 64;
+    /** JIT activity is bucketed in 10 s intervals; a bucket with >= 1 s of compile time is busy. */
+    static final long JIT_BUCKET_SECONDS = 10;
+    static final double JIT_BUSY_MS = 1000.0;
 
     private final RestClient http;
     private final int dumpPort;
@@ -111,6 +114,7 @@ public class JfrCollector {
         boolean anySafepoint = false;
         int compCount = 0;
         double compTotal = 0, compMax = 0;
+        var compByBucket = new java.util.TreeMap<Long, Double>();   // 10 s bucket -> compile ms
 
         try (var recording = new RecordingFile(file)) {
             while (recording.hasMoreEvents()) {
@@ -171,6 +175,9 @@ public class JfrCollector {
                         compCount++;
                         compTotal += ms;
                         compMax = Math.max(compMax, ms);
+                        if (t != null) {
+                            compByBucket.merge(t.getEpochSecond() / JIT_BUCKET_SECONDS, ms, Double::sum);
+                        }
                     }
                     default -> { }
                 }
@@ -193,7 +200,17 @@ public class JfrCollector {
             new Pinned(pinCount, pinCount == 0 ? null : round(pinMax), top(pinFrames)),
             monitorTop,
             anySafepoint ? round(safepointTotal) : null,
-            compCount == 0 ? new Compilation(0, null, null) : new Compilation(compCount, round(compTotal), round(compMax)));
+            compCount == 0 ? new Compilation(0, null, null, null)
+                : new Compilation(compCount, round(compTotal), round(compMax), jitBusyUntil(compByBucket)));
+    }
+
+    /** End of the last bucket whose compile time reached {@link #JIT_BUSY_MS}, or null. */
+    static String jitBusyUntil(java.util.NavigableMap<Long, Double> compByBucket) {
+        return compByBucket.descendingMap().entrySet().stream()
+            .filter(b -> b.getValue() >= JIT_BUSY_MS)
+            .findFirst()
+            .map(b -> Instant.ofEpochSecond((b.getKey() + 1) * JIT_BUCKET_SECONDS).toString())
+            .orElse(null);
     }
 
     private static List<String> frames(RecordedStackTrace st) {
