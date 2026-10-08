@@ -116,9 +116,12 @@ public class SensorService {
     /**
      * A blocking diagnosis: thread facts sampled over time WHILE THE OPERATOR'S LOAD RUNS.
      * status OK, or BLOCKED (threads null) when no load is flowing right now.
+     * {@code poolSizeTarget}: the connection pool size the measurement asks for — the peak
+     * in-flight request threads — whenever request threads waited for a connection, whether or
+     * not the wait also came from a transaction boundary; null when none waited.
      */
     public record BlockingResult(String status, String reason, ThreadFacts threads,
-                                 int durationSec, Double requestRatePerSec) {}
+                                 int durationSec, Double requestRatePerSec, Integer poolSizeTarget) {}
 
     public record ProfileTop(List<Frame> frames, Double jitShare, Double gcShare, Double futexWallShare, long samples) {}
 
@@ -280,7 +283,7 @@ public class SensorService {
 
         if (steady == null) {
             return new CpuResult("BLOCKED", "insufficient measurement: missing steady-state CPU usage from Prometheus "
-                + "(the pod needs 30 s of steady state after readiness)",
+                + "(the pod needs 60 s of steady state after readiness)",
                 null, null, false, null, evidence, p);
         }
         boolean warm = uptime != null && uptime > p.warmSeconds() && samples > p.minSamples();
@@ -422,15 +425,17 @@ public class SensorService {
             return new BlockingResult("BLOCKED",
                 ("no load flowing now: requestRate(1m)=%s rps (need > %s). Start the load run, then retry "
                     + "while it is running.").formatted(fmt(rateNow), fmt(minRequestRate)),
-                null, dur, rateNow);
+                null, dur, rateNow, null);
         }
         var threads = threadDumpOverTime(service, samples, gap);
         if (threads == null) {
             return new BlockingResult("BLOCKED",
                 "no thread dump could be taken: is the profiler sidecar attached (perf-profile/sidecar label) and its /dump reachable?",
-                null, dur, rateNow);
+                null, dur, rateNow, null);
         }
-        return new BlockingResult("OK", null, threads, dur, rateNow);
+        Integer poolSizeTarget = threads.requestThreadsWaitingForConnection() > 0
+            ? threads.requestThreadsActive() : null;
+        return new BlockingResult("OK", null, threads, dur, rateNow, poolSizeTarget);
     }
 
     // --- profileTop / startupLog -----------------------------------------------

@@ -137,7 +137,10 @@ public class SensorMcpTools {
         platform threads) — sampling dumps under load catches it on any image, including CRaC.
         Returns status OK with aggregated thread facts (requestThreadsActive,
         requestThreadsBlockedInFutureGet, blockedInsideTransaction, requestThreadsWaitingForConnection
-        and byState = PEAK concurrent across samples; topBlockingFrames counts summed), or BLOCKED
+        and byState = PEAK concurrent across samples; topBlockingFrames counts summed) and
+        poolSizeTarget (= requestThreadsActive when any request thread waited for a connection,
+        else null: set the connection pool's maximum size to it when the configured size is
+        smaller, also when the wait came from a transaction boundary), or BLOCKED
         with a reason when the request rate over the last minute is not above minRequestRate (ask
         the operator to start the load run and call again while it runs) or when no dump could be
         taken (sidecar not attached).""")

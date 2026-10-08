@@ -31,7 +31,7 @@ package com.example.perf.sensor.facts;
  *                           stopped dominating (JFR); boot before it is excluded from CPU and throttling
  * @param steadyWindowSeconds length of the steady window used for CPU and throttling, seconds
  * @param cpuThrottledRatio  CFS throttled seconds / CPU seconds used over the steady window, capped at 5 min;
- *                           null while the pod has less than 30 s of steady state (cAdvisor)
+ *                           null while the pod has less than 60 s of steady state (cAdvisor)
  * @param latencyMeanMs      mean HTTP request latency over the window, ms (Micrometer http_server_requests_seconds, non-actuator URIs)
  * @param latencyMaxMs       max HTTP request latency observed (Micrometer http_server_requests_seconds_max, non-actuator URIs), ms
  * @param lastTerminationReason reason of the app container's last termination (e.g. "OOMKilled"), or null

@@ -41,8 +41,8 @@ JDK `java` tool reference (container support, `MaxRAMPercentage`, `InitialRAMPer
 | # | Practice | Rule | Evidence |
 |---|---|---|---|
 | 5 | JVM sees its CPU and the GC fits it | `cpuLimitCores` set AND `effectiveCpuCount == ceil(cpuLimitCores)` (`effectiveCpuCount` is the JVM's own `jdk.ContainerConfiguration` value when the ring is present); AND (`effectiveCpuCount ≤ 1` → `gcName == SerialGC`) | `workload.cpuLimitCores`, `runtime.effectiveCpuCount`, `jfr.container`, `runtime.gcName` |
-| 6 | CPU request reflects steady state, not boot | `cpuRequestCores / cpuSteadyCores ≤ 1.75` *under load*; null → 🟡 "less than 30 s of steady state" | `workload.cpuRequestCores`, `runtime.cpuSteadyCores`, `runtime.cpuSteadyStatistic`, `runtime.steadyWindowSeconds`, `window.requestRatePerSec` |
-| 7 | Not CFS-throttled under load | `cpuThrottledRatio ≤ 0.10` (throttled seconds / CPU seconds used over the steady window, capped at 5 min) *under load*; null → 🟡 "less than 30 s of steady state" | `runtime.cpuThrottledRatio`, `runtime.steadyWindowSeconds`, `window.requestRatePerSec` |
+| 6 | CPU request reflects steady state, not boot | `cpuRequestCores ≤ roundUp(1.75 × cpuSteadyCores, roundMillicores)` *under load* (the bar is rounded like the request `sizeCpu` writes, so a request sized from the same load passes); null → 🟡 "no steady-state CPU: less than 60 s of steady state after readiness, or no cAdvisor series" | `workload.cpuRequestCores`, `runtime.cpuSteadyCores`, `runtime.cpuSteadyStatistic`, `runtime.steadyWindowSeconds`, `window.requestRatePerSec` |
+| 7 | Not CFS-throttled under load | `cpuThrottledRatio ≤ 0.10` (throttled seconds / CPU seconds used over the steady window, capped at 5 min) *under load*; null → 🟡 "no steady-state CPU: less than 60 s of steady state after readiness, or no cAdvisor series" | `runtime.cpuThrottledRatio`, `runtime.steadyWindowSeconds`, `window.requestRatePerSec` |
 
 Why: GC, JIT and ForkJoin thread counts are fixed at JVM start from the processor
 count; a JVM that sees more cores than its quota over-threads and gets throttled, and
@@ -60,7 +60,8 @@ never counts. On a freshly rolled pod that window is short and `cpuSteadyStatist
 `mean` instead of `p95`; name it in the evidence (e.g. `mean over 95 s`). A value within
 `borderlineShare` (`references/sizing-policy.yaml` of the optimization skill, 10 %) of the bar
 on the failing side is ⚠️ BORDERLINE: scored as a pass, evidence says "borderline" with the
-value and the bar (item 6: ratio ≤ 1.75 × 1.10; item 7: ratio ≤ 0.10 × 1.10).
+value and the bar (item 6: request ≤ bar × 1.10; item 7: ratio ≤ 0.10 × 1.10).
+`roundMillicores` is in the same file (50 m): e.g. request 0.30 ≤ roundUp(1.75 × 0.165 = 0.289, 50 m) = 0.30.
 Sources: AWS Containers blog (as above; CFS throttling, `ActiveProcessorCount`);
 HotSpot GC tuning guide (ergonomics: Serial below two CPUs); learnk8s — *Kubernetes
 production readiness checklist* (right-sizing); Kube Startup CPU Boost.

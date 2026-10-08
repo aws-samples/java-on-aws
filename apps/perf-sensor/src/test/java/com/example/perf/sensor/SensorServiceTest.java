@@ -92,6 +92,18 @@ class SensorServiceTest {
         assertThat(t.total()).isEqualTo(40);                       // peak, not 120
         assertThat(t.byState()).containsEntry("RUNNABLE", 7).containsEntry("WAITING", 21);
         assertThat(t.topBlockingFrames()).containsExactly(new ThreadFacts.FrameCount("CompletableFuture.get", 3));
+        assertThat(r.poolSizeTarget()).as("threads waited for a connection: size the pool to peak in-flight").isEqualTo(4);
+    }
+
+    @Test
+    void diagnoseBlocking_noConnectionWait_noPoolSizeTarget() {
+        when(prometheus.requestRatePerSec("svc", 1)).thenReturn(50.0);
+        when(k8s.collect("svc", "svc")).thenReturn(snapshot("p1", "10.0.0.1"));
+        when(dump.threads("10.0.0.1", "p1")).thenReturn(
+            dumpOf("p1", 3, 1, 0, 1, Map.of("RUNNABLE", 5), "CompletableFuture.get", 1));
+        var r = sensor().diagnoseBlocking("svc", 3, 1000, 1);
+        assertThat(r.status()).isEqualTo("OK");
+        assertThat(r.poolSizeTarget()).isNull();
     }
 
     @Test

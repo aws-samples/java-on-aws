@@ -30,8 +30,11 @@ public class FactsCollector {
     static final int BOOT_SECONDS = 60;
     /** Margin after readiness before CPU counts as steady (first requests, pool warm-up). */
     static final int READY_MARGIN_SECONDS = 10;
-    /** Shortest steady window that CPU and throttling are reported over; younger pods report null. */
-    static final int MIN_STEADY_SECONDS = 30;
+    /**
+     * Shortest steady window that CPU and throttling are reported over; younger pods report null.
+     * Four 15 s scrapes: over two, a cAdvisor rate is noisy or empty.
+     */
+    static final int MIN_STEADY_SECONDS = 60;
     /** 15 s points the p95 range needs; with fewer, the steady CPU is the mean over the window. */
     static final int MIN_P95_POINTS = 8;
     private static final int P95_STEP_SECONDS = 15;
