@@ -88,7 +88,8 @@ public class WorkshopStack extends Stack {
 
         // Template type flags
         boolean isJavaOnAws = "java-on-aws".equals(templateType);
-        boolean isEks = "java-on-amazon-eks".equals(templateType);
+        // java-performance starts from the java-on-amazon-eks infrastructure
+        boolean isEks = "java-on-amazon-eks".equals(templateType) || "java-performance".equals(templateType);
         boolean isSpringAi = "java-spring-ai-agents".equals(templateType);
         boolean isAiAgents = "java-ai-agents".equals(templateType);
         boolean isAiAgentsAdvanced = "java-ai-agents-advanced".equals(templateType);
