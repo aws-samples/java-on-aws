@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
 Metadata:
   cdk_nag:
     rules_to_suppress:
@@ -171,6 +173,9 @@ Resources:
     Properties:
       Code:
         ZipFile: |
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
           import boto3
           import time
           import cfnresponse
@@ -480,7 +485,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1791370897065"
+      ContentHash: "1791437613057"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -694,6 +699,9 @@ Resources:
     Properties:
       Code:
         ZipFile: |
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
           import json
           import os
           import urllib.request
@@ -904,6 +912,9 @@ Resources:
     Properties:
       Code:
         ZipFile: |
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
           import json
           import os
           import time
@@ -1625,6 +1636,8 @@ Resources:
             - - |-
                 #!/bin/bash
                 #!/bin/bash
+                # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+                # SPDX-License-Identifier: MIT-0
                 set -e
 
                 # Minimal EC2 UserData script - downloads and runs full bootstrap
@@ -1796,6 +1809,9 @@ Resources:
     Properties:
       Code:
         ZipFile: |-
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
           import boto3
           import traceback
           import cfnresponse
@@ -2067,6 +2083,9 @@ Resources:
     Properties:
       Code:
         ZipFile: |-
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
           import boto3
           import json
           import traceback
@@ -2466,6 +2485,9 @@ Resources:
     Properties:
       Code:
         ZipFile: |-
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
           from __future__ import print_function
           import boto3
           import traceback
@@ -2722,6 +2744,9 @@ Resources:
     Properties:
       Code:
         ZipFile: |-
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
           import traceback
           import cfnresponse
           import boto3
@@ -3451,7 +3476,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261007130137"
+            - "-20261008073333"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3535,7 +3560,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261007130137"
+            - "-20261008073333"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

@@ -53,7 +53,8 @@ mvn clean package -q || {
     exit 1
 }
 
-GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+# Branch the IDE clones at bootstrap; override with GIT_BRANCH=main when generating on a feature branch
+GIT_BRANCH="${GIT_BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")}"
 log_info "Using git branch: $GIT_BRANCH"
 mkdir -p ../cfn
 
@@ -84,6 +85,11 @@ generate_template() {
         log_error "Failed to sort keys in $output_file"
         return 1
     }
+
+    { printf '%s\n' \
+        "# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved." \
+        "# SPDX-License-Identifier: MIT-0"
+      cat "$output_file"; } > "$output_file.tmp" && mv "$output_file.tmp" "$output_file"
 
     log_success "Generated $template_type template: $output_file"
 }
