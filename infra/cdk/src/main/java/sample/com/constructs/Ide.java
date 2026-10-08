@@ -1,6 +1,7 @@
 package sample.com.constructs;
 
 import software.amazon.awscdk.Aws;
+import software.amazon.awscdk.CfnCondition;
 import software.amazon.awscdk.CfnOutput;
 import software.amazon.awscdk.CfnWaitCondition;
 import software.amazon.awscdk.CfnWaitConditionHandle;
@@ -9,6 +10,7 @@ import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Fn;
 import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Stack;
+import software.amazon.awscdk.Token;
 import software.amazon.awscdk.services.cloudfront.AllowedMethods;
 import software.amazon.awscdk.services.cloudfront.BehaviorOptions;
 import software.amazon.awscdk.services.cloudfront.CachePolicy;
@@ -466,6 +468,14 @@ public class Ide extends Construct {
             .instanceId(instanceId)
             .build();
 
+        // Public DNS suffix: us-east-1 uses compute-1.amazonaws.com, other regions <region>.compute.amazonaws.com
+        var isUsEast1 = CfnCondition.Builder.create(this, "IsUsEast1")
+            .expression(Fn.conditionEquals(Aws.REGION, "us-east-1"))
+            .build();
+        String publicDnsSuffix = Token.asString(Fn.conditionIf(isUsEast1.getLogicalId(),
+            "compute-1.amazonaws.com",
+            Fn.join("", List.of(Aws.REGION, ".compute.amazonaws.com"))));
+
         // Create public DNS name from EIP
         String publicDnsName = Fn.join("", List.of(
             "ec2-",
@@ -476,7 +486,8 @@ public class Ide extends Construct {
             Fn.select(2, Fn.split(".", elasticIP.getAttrPublicIp())),
             "-",
             Fn.select(3, Fn.split(".", elasticIP.getAttrPublicIp())),
-            ".compute-1.amazonaws.com"
+            ".",
+            publicDnsSuffix
         ));
 
         // Create CloudFront distribution

@@ -1,5 +1,10 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
+Conditions:
+  IdeIsUsEast1C8D91B94:
+    Fn::Equals:
+      - Ref: AWS::Region
+      - us-east-1
 Metadata:
   cdk_nag:
     rules_to_suppress:
@@ -485,7 +490,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1791437613057"
+      ContentHash: "1791443372905"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -1586,7 +1591,14 @@ Resources:
                           - Fn::GetAtt:
                               - IdeElasticIP3327A0B5
                               - PublicIp
-                  - .compute-1.amazonaws.com
+                  - "."
+                  - Fn::If:
+                      - IdeIsUsEast1C8D91B94
+                      - compute-1.amazonaws.com
+                      - Fn::Join:
+                          - ""
+                          - - Ref: AWS::Region
+                            - .compute.amazonaws.com
             Id: WorkshopStackIdeDistributionOrigin10FECA386
       Tags:
         - Key: WorkshopDeploymentId
@@ -3476,7 +3488,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261008073333"
+            - "-20261008090932"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3560,7 +3572,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261008073333"
+            - "-20261008090932"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
