@@ -16,7 +16,7 @@ import java.util.Map;
 
 /**
  * Query Prometheus (in-cluster) for the app container's MEASURED footprint over a window:
- * working-set floor and peak (the figure Kubernetes evicts on), CPU usage p95, CFS
+ * working-set floor and peak (the figure Kubernetes evicts on), steady CPU usage (p95 or mean), CFS
  * throttling, HTTP request rate and latency (Micrometer), and the startup gauges. Read-only;
  * every accessor degrades to null when Prometheus is unavailable or has no series.
  *
@@ -75,13 +75,22 @@ public class PrometheusClient {
     }
 
     /**
-     * p95 of the app container's CPU usage rate over the window, cores (worst pod). Steady-state
-     * demand for the "CPU request reflects steady state" item; the 1m rate smooths scrape jitter,
-     * the 95th percentile ignores the boot spike.
+     * p95 of the app container's 1 min CPU usage rate, cores (worst pod), sampled every 15 s over
+     * the last {@code rangeSeconds}. The caller passes the steady window MINUS one minute, so the
+     * 1 min look-back of the earliest point does not reach into boot.
      */
-    public Double cpuUsageP95Cores(String namespace, String container, String podRegex, int mins) {
+    public Double cpuUsageP95Cores(String namespace, String container, String podRegex, int rangeSeconds) {
         return scalar("max(quantile_over_time(0.95, rate(container_cpu_usage_seconds_total"
-            + sel(namespace, container, podRegex) + "[1m])[" + mins + "m:30s]))");
+            + sel(namespace, container, podRegex) + "[1m])[" + rangeSeconds + "s:15s]))");
+    }
+
+    /**
+     * Mean CPU usage of the app container over the last {@code seconds}, cores (worst pod): the
+     * steady-state figure when the window is too short for a meaningful p95.
+     */
+    public Double cpuUsageMeanCores(String namespace, String container, String podRegex, int seconds) {
+        return scalar("max(rate(container_cpu_usage_seconds_total"
+            + sel(namespace, container, podRegex) + "[" + seconds + "s]))");
     }
 
     /**

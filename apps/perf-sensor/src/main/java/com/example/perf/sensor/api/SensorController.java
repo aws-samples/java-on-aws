@@ -47,12 +47,13 @@ public class SensorController {
                                  @RequestParam double peakFactor,
                                  @RequestParam double floorSafetyFactor,
                                  @RequestParam int roundMi,
+                                 @RequestParam double minPeakFactor,
                                  @RequestParam int warmSeconds,
                                  @RequestParam int minSamples,
                                  @RequestParam double minRequestRate,
                                  @RequestParam double minDeltaMi) {
         return sensor.sizeMemory(service, windowMinutes,
-            new SizeParams(peakFactor, floorSafetyFactor, roundMi, warmSeconds,
+            new SizeParams(peakFactor, floorSafetyFactor, roundMi, minPeakFactor, warmSeconds,
                 minSamples, minRequestRate, minDeltaMi));
     }
 
@@ -104,8 +105,8 @@ public class SensorController {
                 "input", "service, windowMinutes=15, minUptimeSeconds=0",
                 "output", "{service, windowMinutes, workload, runtime, profile, jfr, window{uptimeSeconds, samples, requestRatePerSec, waitedSeconds, settleRemainingSeconds, settleNote}, pods[{pod, workingSetPeakMi, startupSeconds}]}"),
             Map.of("name", "sizeMemory",
-                "input", "service, windowMinutes, peakFactor, floorSafetyFactor, roundMi, warmSeconds, minSamples, minRequestRate, minDeltaMi",
-                "output", "{status OK|BLOCKED, reason, requests.memory (== limits), limits.memory, maxRamPercentage, initialRamPercentage, gc, evidence, params}"),
+                "input", "service, windowMinutes, peakFactor, floorSafetyFactor, roundMi, minPeakFactor, warmSeconds, minSamples, minRequestRate, minDeltaMi",
+                "output", "{status OK|BLOCKED, reason, requests.memory (== limits), limits.memory, maxRamPercentage, initialRamPercentage, gc, evidence, params, note}"),
             Map.of("name", "sizeCpu",
                 "input", "service, windowMinutes, cpuFactor, roundMillicores, warmSeconds, minSamples, minRequestRate, minDeltaMi",
                 "output", "{status OK|BLOCKED, reason, requestsCpu, limitsCpu (unchanged), clampedToLimit, note, evidence, params}"),

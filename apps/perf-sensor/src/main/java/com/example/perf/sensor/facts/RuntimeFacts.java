@@ -22,8 +22,16 @@ package com.example.perf.sensor.facts;
  * @param requestRatePerSec  HTTP request rate over the window (Micrometer), 0 if idle, null if unscraped
  * @param maxHeapMi          observed JVM MaxHeapSize (VM.flags), MiB — the real heap ceiling, image-independent
  * @param initialHeapMi      observed JVM InitialHeapSize (VM.flags), MiB
- * @param cpuUsageP95Cores   p95 of the container CPU usage rate over the window, cores (cAdvisor)
- * @param cpuThrottledRatio  CFS throttled seconds / CPU seconds used, current pod's lifetime minus its first 60 s, capped at 5 min; null while the pod is younger than 90 s (cAdvisor)
+ * @param cpuSteadyCores     steady-state CPU usage of the container, cores (cAdvisor), over the steady window:
+ *                           the p95 of the 1 min usage rate when the window holds enough points, else the
+ *                           mean usage over the window (see {@code cpuSteadyStatistic})
+ * @param cpuSteadyStatistic {@code p95}, or {@code mean} when the steady window is too short for a
+ *                           meaningful p95 (a freshly rolled pod); a mean is the lower-confidence figure
+ * @param steadyStartSeconds pod age at which steady state starts: after readiness and after the JIT
+ *                           stopped dominating (JFR); boot before it is excluded from CPU and throttling
+ * @param steadyWindowSeconds length of the steady window used for CPU and throttling, seconds
+ * @param cpuThrottledRatio  CFS throttled seconds / CPU seconds used over the steady window, capped at 5 min;
+ *                           null while the pod has less than 30 s of steady state (cAdvisor)
  * @param latencyMeanMs      mean HTTP request latency over the window, ms (Micrometer http_server_requests_seconds, non-actuator URIs)
  * @param latencyMaxMs       max HTTP request latency observed (Micrometer http_server_requests_seconds_max, non-actuator URIs), ms
  * @param lastTerminationReason reason of the app container's last termination (e.g. "OOMKilled"), or null
@@ -41,7 +49,10 @@ public record RuntimeFacts(
     Double requestRatePerSec,
     Double maxHeapMi,
     Double initialHeapMi,
-    Double cpuUsageP95Cores,
+    Double cpuSteadyCores,
+    String cpuSteadyStatistic,
+    Double steadyStartSeconds,
+    Integer steadyWindowSeconds,
     Double cpuThrottledRatio,
     Double latencyMeanMs,
     Double latencyMaxMs,

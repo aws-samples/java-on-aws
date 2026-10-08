@@ -81,7 +81,7 @@ public class SensorService {
 
     /** Caller-supplied sizing policy — all required, no defaults (the skill owns the numbers). */
     public record SizeParams(double peakFactor, double floorSafetyFactor,
-                             int roundMi, int warmSeconds, int minSamples,
+                             int roundMi, double minPeakFactor, int warmSeconds, int minSamples,
                              double minRequestRate, double minDeltaMi) {}
 
     public record Sized(String memory) {}
@@ -92,17 +92,19 @@ public class SensorService {
     /**
      * OK: computed sizing — requests == limits (Guaranteed memory QoS: JVM memory is stable
      * after warm-up and a Burstable JVM is the first OOM-kill candidate on a busy node).
-     * BLOCKED: reason set, sizing null (guard not satisfied).
+     * BLOCKED: reason set, sizing null (guard not satisfied). note: set when the limit was
+     * rounded down one step (see {@link #sizeMemory(Facts, SizeParams)}).
      */
     public record SizeResult(String status, String reason, Sized requests, Sized limits,
                              Integer maxRamPercentage, Integer initialRamPercentage, String gc,
-                             SizeEvidence evidence, SizeParams params) {}
+                             SizeEvidence evidence, SizeParams params, String note) {}
 
     /** Caller-supplied CPU sizing policy — all required (the skill owns the numbers). */
     public record CpuParams(double cpuFactor, int roundMillicores, int warmSeconds, int minSamples,
                             double minRequestRate, double minDeltaMi) {}
 
-    public record CpuEvidence(Double cpuUsageP95Cores, Double cpuRequestCores, Double cpuLimitCores) {}
+    public record CpuEvidence(Double cpuSteadyCores, String cpuSteadyStatistic, Integer steadyWindowSeconds,
+                              Double cpuRequestCores, Double cpuLimitCores) {}
 
     /**
      * OK: requests.cpu computed, limits.cpu = current (unchanged). BLOCKED: reason set.
@@ -192,9 +194,10 @@ public class SensorService {
      * Pure sizing over already-collected facts (also the unit-test entry point).
      * Guard: BLOCKED unless {@code uptime > warmSeconds && samples > minSamples}
      * and {@code (requestRate > minRequestRate || peak - floor > minDeltaMi)}.
-     * Rule: limits = roundUpMi(max(peak*peakFactor, floor*floorSafetyFactor));
-     * requests = limits (Guaranteed); maxRamPercentage = 75; initialRamPercentage = 50;
-     * gc = cpuLimit <= 1 ? SerialGC : G1GC.
+     * Rule: limits = roundUpMi(max(peak*peakFactor, floor*floorSafetyFactor)), one step lower
+     * when that still leaves {@code peak * minPeakFactor} (so a peak a few MiB either side of a
+     * rounding edge does not flip the limit by a whole step); requests = limits (Guaranteed);
+     * maxRamPercentage = 75; initialRamPercentage = 50; gc = cpuLimit <= 1 ? SerialGC : G1GC.
      */
     public SizeResult sizeMemory(Facts f, SizeParams p) {
         var rt = f.runtime();
@@ -226,16 +229,26 @@ public class SensorService {
                 .formatted(fmt(reqRate), fmt(p.minRequestRate()), peak - floor, p.minDeltaMi()), evidence, p);
         }
 
-        String limits = roundUpMi(Math.max(peak * p.peakFactor(), floor * p.floorSafetyFactor()), p.roundMi());
+        double target = Math.max(peak * p.peakFactor(), floor * p.floorSafetyFactor());
+        long up = roundUpMiValue(target, p.roundMi());
+        long down = up - p.roundMi();
+        String note = null;
+        long chosen = up;
+        if (down > 0 && down >= peak * p.minPeakFactor() && down >= floor * p.floorSafetyFactor()) {
+            chosen = down;
+            note = ("rounded down to %dMi instead of %dMi: %dMi is still %.2f× the peak %.0fMi "
+                + "(minPeakFactor %.2f)").formatted(down, up, down, down / peak, peak, p.minPeakFactor());
+        }
+        String limits = chosen + "Mi";
         String requests = limits;   // Guaranteed memory QoS
         String gc = (cpuLimit != null && cpuLimit <= 1) ? "SerialGC" : "G1GC";
-        logger.info("sizeMemory OK floor={} peak={} cpuLimit={} -> requests=limits={} gc={}",
-            floor, peak, cpuLimit, limits, gc);
-        return new SizeResult("OK", null, new Sized(requests), new Sized(limits), 75, 50, gc, evidence, p);
+        logger.info("sizeMemory OK floor={} peak={} cpuLimit={} -> requests=limits={} gc={}{}",
+            floor, peak, cpuLimit, limits, gc, note == null ? "" : " (" + note + ")");
+        return new SizeResult("OK", null, new Sized(requests), new Sized(limits), 75, 50, gc, evidence, p, note);
     }
 
     private static SizeResult blocked(String reason, SizeEvidence ev, SizeParams p) {
-        return new SizeResult("BLOCKED", reason, null, null, null, null, null, ev, p);
+        return new SizeResult("BLOCKED", reason, null, null, null, null, null, ev, p, null);
     }
 
     // --- sizeCpu (arithmetic + guard) ------------------------------------------
@@ -246,14 +259,16 @@ public class SensorService {
 
     /**
      * Pure CPU sizing over collected facts. Guard identical to sizeMemory (warm + load).
-     * Rule: requests.cpu = roundUp(cpuUsageP95 * cpuFactor, roundMillicores), capped at
+     * Rule: requests.cpu = roundUp(cpuSteadyCores * cpuFactor, roundMillicores), capped at
      * limits.cpu; limits.cpu unchanged — the boot spike is the startup boost's job, not the
      * steady request's.
      */
     public CpuResult sizeCpu(Facts f, CpuParams p) {
         var rt = f.runtime();
         var wl = f.workload();
-        Double p95 = rt == null ? null : rt.cpuUsageP95Cores();
+        Double steady = rt == null ? null : rt.cpuSteadyCores();
+        String statistic = rt == null ? null : rt.cpuSteadyStatistic();
+        Integer steadySecs = rt == null ? null : rt.steadyWindowSeconds();
         Double cpuReq = wl == null ? null : wl.cpuRequestCores();
         Double cpuLim = wl == null ? null : wl.cpuLimitCores();
         Double uptime = rt == null ? null : rt.uptimeSeconds();
@@ -261,10 +276,11 @@ public class SensorService {
         Double floor = rt == null ? null : rt.workingSetFloorMi();
         Double peak = rt == null ? null : rt.workingSetPeakMi();
         long samples = f.profile() == null ? 0 : f.profile().samples();
-        var evidence = new CpuEvidence(p95, cpuReq, cpuLim);
+        var evidence = new CpuEvidence(steady, statistic, steadySecs, cpuReq, cpuLim);
 
-        if (p95 == null) {
-            return new CpuResult("BLOCKED", "insufficient measurement: missing CPU usage p95 from Prometheus",
+        if (steady == null) {
+            return new CpuResult("BLOCKED", "insufficient measurement: missing steady-state CPU usage from Prometheus "
+                + "(the pod needs 30 s of steady state after readiness)",
                 null, null, false, null, evidence, p);
         }
         boolean warm = uptime != null && uptime > p.warmSeconds() && samples > p.minSamples();
@@ -279,7 +295,7 @@ public class SensorService {
             return new CpuResult("BLOCKED", ("no load observed: requestRate=%s rps (need > %s). Drive traffic and retry.")
                 .formatted(fmt(reqRate), fmt(p.minRequestRate())), null, null, false, null, evidence, p);
         }
-        long millis = (long) Math.ceil(p95 * p.cpuFactor() * 1000.0);
+        long millis = (long) Math.ceil(steady * p.cpuFactor() * 1000.0);
         long rounded = ((millis + p.roundMillicores() - 1) / p.roundMillicores()) * p.roundMillicores();
         String limits = cpuLim == null ? null : quantity(cpuLim);
         boolean clamped = false;
@@ -287,12 +303,13 @@ public class SensorService {
         if (cpuLim != null && rounded > Math.round(cpuLim * 1000.0)) {
             clamped = true;
             note = ("computed request %dm exceeds limits.cpu %s; capped to the limit. The container is "
-                + "CPU-bound at this load (p95 %.3f cores of %s): raise limits.cpu (and ActiveProcessorCount) "
-                + "or reduce CPU per request, then re-measure.").formatted(rounded, limits, p95, limits);
+                + "CPU-bound at this load (%s %.3f cores of %s): raise limits.cpu (and ActiveProcessorCount) "
+                + "or reduce CPU per request, then re-measure.").formatted(rounded, limits, statistic, steady, limits);
             rounded = Math.round(cpuLim * 1000.0);
         }
         String requests = rounded + "m";
-        logger.info("sizeCpu OK p95={} -> requests={} limits={} (unchanged) clamped={}", p95, requests, limits, clamped);
+        logger.info("sizeCpu OK {}={} over {}s -> requests={} limits={} (unchanged) clamped={}",
+            statistic, steady, steadySecs, requests, limits, clamped);
         return new CpuResult("OK", null, requests, limits, clamped, note, evidence, p);
     }
 
@@ -446,9 +463,12 @@ public class SensorService {
 
     /** Round a MiB value UP to the next multiple of stepMi, formatted as a K8s quantity. */
     static String roundUpMi(double mi, int stepMi) {
+        return roundUpMiValue(mi, stepMi) + "Mi";
+    }
+
+    static long roundUpMiValue(double mi, int stepMi) {
         long v = (long) Math.ceil(mi);
-        long rounded = ((v + stepMi - 1) / stepMi) * stepMi;
-        return rounded + "Mi";
+        return ((v + stepMi - 1) / stepMi) * stepMi;
     }
 
     private static int norm(int windowMinutes) {

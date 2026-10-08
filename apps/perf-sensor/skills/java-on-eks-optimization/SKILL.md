@@ -18,7 +18,7 @@ Rollout and verification belong to the operator.
   ring: container limits as the JVM read them, `jvmArgs`, GC pauses, pinning, monitors,
   safepoints, JIT compilation) + window. Start here.
 - `sizeMemory <service> …params` — memory requests/limits/GC with a guard. See Hard rules.
-- `sizeCpu <service> …params` — steady-state CPU request from measured p95 usage, same guard;
+- `sizeCpu <service> …params` — steady-state CPU request from measured steady usage, same guard;
   limit unchanged.
 - `threadDump <service>` — summarized thread dump; request-path blocking, top frames.
 - `diagnoseBlocking <service> minRequestRate` — samples the JSON thread dump over time **while
@@ -92,7 +92,11 @@ Read the file and pass the values through. The *why* for each:
 - `peakFactor` — memory limit over the observed load peak.
 - `floorSafetyFactor` — protects against an under-observed peak.
 - `roundMi` — scheduler-friendly granularity.
-- `cpuFactor` / `roundMillicores` — CPU request as headroom over measured p95 steady-state usage.
+- `minPeakFactor` — round one step down when the lower limit still leaves this headroom over
+  the peak, so a peak near a rounding edge does not flip the limit by a step between runs.
+  When `sizeMemory.note` says it rounded down, quote it.
+- `cpuFactor` / `roundMillicores` — CPU request as headroom over measured steady-state usage
+  (`cpuSteadyCores`: p95, or the mean on a freshly rolled pod — name which in the evidence).
 - `cracHeap` — `-Xmx`/`-Xms` baked into a CRaC checkpoint as a share of the pod memory limit.
 - `warmSeconds` — past the bulk of JIT warm-up; a 120 s load run after a restart satisfies it.
 - `minSamples` — enough profile samples for a floor/peak.

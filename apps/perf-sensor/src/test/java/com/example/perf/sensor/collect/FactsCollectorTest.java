@@ -1,11 +1,13 @@
 package com.example.perf.sensor.collect;
 
+import com.example.perf.sensor.facts.JfrFacts;
 import com.example.perf.sensor.facts.ProfileFacts;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -19,9 +21,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Window scoping rules: cAdvisor queries are scoped to the Ready pods; the floor, CPU p95,
- * latency and throttle ratio exclude the pod's boot minute; the request rate is clipped to the
- * pod's lifetime; and startup prefers the log-derived gauge over application.ready.time.
+ * Window scoping rules: cAdvisor queries are scoped to the Ready pods; the floor and latency
+ * exclude the pod's boot minute; CPU and throttling use the steady window (after readiness and
+ * after the JIT settled), with every rate look-back inside it, and report the mean when that
+ * window is too short for a p95; the request rate is clipped to the pod's lifetime; and startup
+ * prefers the log-derived gauge over application.ready.time.
  */
 @ExtendWith(MockitoExtension.class)
 class FactsCollectorTest {
@@ -44,29 +48,83 @@ class FactsCollectorTest {
             "shop", uptime, null, ready);
     }
 
-    @Test
-    void youngPod_hasNoFloorAndNoThrottleRatio_trafficWindowIsOneMinute() {
-        var f = collector().collect("shop", 15, snap(45.0, List.of("p1")));
-        verify(prometheus, never()).workingSetFloorMi(any(), any(), any(), anyInt());
-        verify(prometheus, never()).cpuThrottledRatio(any(), any(), any(), anyInt());
-        verify(prometheus).requestRatePerSec("shop", 1);
-        verify(prometheus).latencyMeanMs("shop", 1);
-        verify(prometheus).workingSetPeakMi("shop", "shop", "p1", 15);
-        verify(prometheus).cpuUsageP95Cores("shop", "shop", "p1", 15);
-        assertThat(f.runtime().workingSetFloorMi()).isNull();
-        assertThat(f.runtime().cpuThrottledRatio()).isNull();
+    /** A JFR ring whose JIT was busy until {@code busySeconds} after the container started. */
+    private static JfrFacts ringJitBusyUntil(double uptime, double busySeconds) {
+        var busyUntil = Instant.now().minusMillis((long) ((uptime - busySeconds) * 1000));
+        return new JfrFacts("p1", null, null, null, null, null, null, List.of(), null,
+            new JfrFacts.Compilation(40, 9000.0, 300.0, busyUntil.toString()));
     }
 
     @Test
-    void settledPod_floorAndThrottleExcludeTheBootMinute_windowsClipToUptime() {
+    void youngPod_hasNoFloorNoThrottleNoSteadyCpu_trafficWindowIsOneMinute() {
+        when(prometheus.startupSeconds("shop")).thenReturn(null);   // startup unknown: boot minute + margin
+        var f = collector().collect("shop", 15, snap(45.0, List.of("p1")));
+        verify(prometheus, never()).workingSetFloorMi(any(), any(), any(), anyInt());
+        verify(prometheus, never()).cpuThrottledRatio(any(), any(), any(), anyInt());
+        verify(prometheus, never()).cpuUsageP95Cores(any(), any(), any(), anyInt());
+        verify(prometheus, never()).cpuUsageMeanCores(any(), any(), any(), anyInt());
+        verify(prometheus).requestRatePerSec("shop", 1);
+        verify(prometheus).latencyMeanMs("shop", 1);
+        verify(prometheus).workingSetPeakMi("shop", "shop", "p1", 15);
+        assertThat(f.runtime().workingSetFloorMi()).isNull();
+        assertThat(f.runtime().cpuThrottledRatio()).isNull();
+        assertThat(f.runtime().cpuSteadyCores()).isNull();
+        assertThat(f.runtime().cpuSteadyStatistic()).isNull();
+    }
+
+    @Test
+    void freshColdPod_steadyStartsAfterReadiness_shortWindowReportsTheMean() {
+        // startup 15 s: steady from 15 + 10 = 25 s; at 120 s that is 95 s, too short for a p95.
+        when(prometheus.startupSeconds("shop")).thenReturn(15.0);
+        when(prometheus.cpuUsageMeanCores("shop", "shop", "p1", 95)).thenReturn(0.42);
+        var f = collector().collect("shop", 15, snap(120.0, List.of("p1")));
+        verify(prometheus, never()).cpuUsageP95Cores(any(), any(), any(), anyInt());
+        verify(prometheus).cpuThrottledRatio("shop", "shop", "p1", 95);
+        assertThat(f.runtime().cpuSteadyCores()).isEqualTo(0.42);
+        assertThat(f.runtime().cpuSteadyStatistic()).isEqualTo("mean");
+        assertThat(f.runtime().steadyStartSeconds()).isEqualTo(25.0);
+        assertThat(f.runtime().steadyWindowSeconds()).isEqualTo(95);
+    }
+
+    @Test
+    void busyJit_movesTheSteadyStartPastReadiness() {
+        // JIT busy until 80 s, readiness at 25 s: steady from 80 s, 40 s at uptime 120 s.
+        when(prometheus.startupSeconds("shop")).thenReturn(15.0);
+        when(jfr.collect(any(), any())).thenReturn(ringJitBusyUntil(120.0, 80.0));
+        var f = collector().collect("shop", 15, snap(120.0, List.of("p1")));
+        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1", 40);
+        verify(prometheus).cpuThrottledRatio("shop", "shop", "p1", 40);
+        assertThat(f.runtime().steadyStartSeconds()).isBetween(79.0, 81.0);
+    }
+
+    @Test
+    void jitBusyAlmostToNow_keepsAThirtySecondWindow() {
+        when(prometheus.startupSeconds("shop")).thenReturn(15.0);
+        when(jfr.collect(any(), any())).thenReturn(ringJitBusyUntil(120.0, 115.0));
+        var f = collector().collect("shop", 15, snap(120.0, List.of("p1")));
+        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1", 30);
+        assertThat(f.runtime().steadyStartSeconds()).isEqualTo(90.0);
+    }
+
+    @Test
+    void restoredPod_hasNoBootToExclude() {
+        // CRaC restore in 0.06 s: steady from 10.06 s, 109 s at uptime 120 s.
+        when(prometheus.startupSeconds("shop")).thenReturn(0.06);
+        collector().collect("shop", 15, snap(120.0, List.of("p1")));
+        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1", 109);
+    }
+
+    @Test
+    void settledPod_cpuIsAP95WhoseLookBackStaysInTheSteadyWindow() {
+        when(prometheus.startupSeconds("shop")).thenReturn(null);
         collector().collect("shop", 15, snap(600.0, List.of("p1", "p2")));
-        // floor, cpu p95, latency: (600 - 60) / 60 = 9 min; throttle: min(300, 600 - 60) = 300 s;
-        // request rate: lifetime, 10 min
+        // no startup known: steady from 60 + 10 = 70 s -> 530 s; the p95 range leaves the 60 s
+        // rate look-back inside it (470 s); throttle capped at 300 s. Floor and latency: (600-60)/60 = 9 min.
+        verify(prometheus).cpuUsageP95Cores("shop", "shop", "p1|p2", 470);
+        verify(prometheus).cpuThrottledRatio("shop", "shop", "p1|p2", 300);
         verify(prometheus).workingSetFloorMi("shop", "shop", "p1|p2", 9);
-        verify(prometheus).cpuUsageP95Cores("shop", "shop", "p1|p2", 9);
         verify(prometheus).latencyMeanMs("shop", 9);
         verify(prometheus).latencyMaxMs("shop", 9);
-        verify(prometheus).cpuThrottledRatio("shop", "shop", "p1|p2", 300);
         verify(prometheus).requestRatePerSec("shop", 10);
     }
 
@@ -74,7 +132,7 @@ class FactsCollectorTest {
     void oldPod_windowsAreTheRequestedWindow() {
         collector().collect("shop", 15, snap(3600.0, List.of("p1")));
         verify(prometheus).workingSetFloorMi("shop", "shop", "p1", 15);
-        verify(prometheus).cpuUsageP95Cores("shop", "shop", "p1", 15);
+        verify(prometheus).cpuUsageP95Cores("shop", "shop", "p1", 840);
         verify(prometheus).latencyMeanMs("shop", 15);
         verify(prometheus).requestRatePerSec("shop", 15);
         verify(prometheus).cpuThrottledRatio("shop", "shop", "p1", 300);

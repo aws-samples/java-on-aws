@@ -54,6 +54,16 @@ class JfrParseTest {
     }
 
     @Test
+    void jitBusyUntil_isTheEndOfTheLastBucketWithAtLeastOneSecondOfCompiles() {
+        var buckets = new java.util.TreeMap<Long, Double>();
+        buckets.put(100L, 4000.0);   // 1000..1010 s: busy
+        buckets.put(101L, 1200.0);   // 1010..1020 s: busy
+        buckets.put(102L, 300.0);    // 1020..1030 s: quiet
+        assertThat(JfrCollector.jitBusyUntil(buckets)).isEqualTo(java.time.Instant.ofEpochSecond(1020).toString());
+        assertThat(JfrCollector.jitBusyUntil(new java.util.TreeMap<>(java.util.Map.of(5L, 200.0)))).isNull();
+    }
+
+    @Test
     void requestPackageIsRequired() {
         assertThatThrownBy(() -> new JfrCollector(9100, " "))
             .isInstanceOf(IllegalStateException.class);

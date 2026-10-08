@@ -29,7 +29,8 @@
     "restarts": 0,
     "uptimeSeconds": 3600.0,
     "requestRatePerSec": 30,
-    "cpuUsageP95Cores": 0.667
+    "cpuSteadyCores": 0.667,
+    "cpuSteadyStatistic": "p95"
   },
   "profile": {
     "topCpu": [
