@@ -26,6 +26,15 @@
       }
     },
     {
+      "template": "java-performance",
+      "repository": "java-performance",
+      "policies": ["common", "java-performance"],
+      "test": {
+        "enabled": true,
+        "title": "Java performance optimization"
+      }
+    },
+    {
       "template": "java-spring-ai-agents",
       "repository": "java-spring-ai-agents"
     },
