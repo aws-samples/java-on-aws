@@ -6,7 +6,7 @@ set -Eeuo pipefail
 WS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${WS_SCRIPT_DIR}/runtime.sh"
 ws_begin_run 'Java performance optimization' "${WS_SCRIPT_DIR}/reports/java-performance" 5 "$@"
-ws_set_executable_total 32
+ws_set_executable_total 29
 ws_set_default_timeout 600
 ws_source_environment '/etc/profile.d/workshop.sh'
 
@@ -248,53 +248,26 @@ ws_end_page
 
 ws_begin_page 'Unblock the request path' 600 'unblock-requests/index.en.md'
 
-ws_run_block 1 'Unblock the request path' 'In the Shell terminal:' 21 21 'bash' 'non-interactive' <<'WS_TEST_BLOCK_600_1'
+ws_run_block 1 'Fix the request path' 'In the Shell terminal:' 25 25 'bash' 'non-interactive' <<'WS_TEST_BLOCK_600_1'
 cd ~/environment && claude -c -p "Why do some writes to unicorn-store-spring take seconds under load and how do I fix it?"
 WS_TEST_BLOCK_600_1
 
-ws_skip_block 2 'Unblock the request path' 'Claude takes thread dumps of the pod under the running load, finds the frame, reads the source, and edits a few files. It edits and stops; nothing is built or deployed.' 31 59 'text' '' 'copy action disabled'
+ws_skip_block 2 'Fix the request path' 'Claude takes thread dumps of the pod under the running load, finds the frame, reads the source, and edits a few files. It edits and stops; nothing is built or deployed.' 35 63 'text' '' 'copy action disabled'
 
-ws_run_block 3 'Build and roll out' 'In the Shell terminal. The code changed, so you rebuild the current image. It is the CRaC image, so the build retakes the checkpoint with the fixed code:' 70 74 'bash' '' 1200 <<'WS_TEST_BLOCK_600_3'
-# the code changed: rebuild the current image (≈ 2 min)
-~/environment/unicorn-store-spring/scripts/build.sh crac Dockerfile.crac
-
-# same tag, new digest: restart to pull it
-kubectl -n unicorn-store-spring rollout restart deploy/unicorn-store-spring
+ws_run_block 3 'Right-size again and fix the shutdown budget' 'In the Shell terminal:' 126 126 'bash' 'non-interactive' <<'WS_TEST_BLOCK_600_3'
+cd ~/environment && claude -c -p "Right-size unicorn-store-spring again and fix item 10."
 WS_TEST_BLOCK_600_3
 
-ws_run_block 4 'Verify' 'Verify' 120 123 'bash' '' <<'WS_TEST_BLOCK_600_4'
-kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
+ws_skip_block 4 'Right-size again and fix the shutdown budget' 'Claude re-runs sizeMemory and sizeCpu against the pod as it is now, and edits two files. It edits and stops.' 136 155 'text' '' 'copy action disabled'
 
-git -C ~/environment/unicorn-store-spring add -A \
-  && git -C ~/environment/unicorn-store-spring commit -q -m "non-blocking publish"
-WS_TEST_BLOCK_600_4
-
-ws_skip_block 5 'Verify' 'Verify' 128 134 'text' '' 'copy action disabled'
-
-ws_run_block 6 'Check against best practices' 'In the Shell terminal:' 157 157 'bash' 'non-interactive' <<'WS_TEST_BLOCK_600_6'
-cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
-WS_TEST_BLOCK_600_6
-
-ws_skip_block 7 'Check against best practices' 'Check against best practices' 165 185 'text' '' 'copy action disabled'
-
-ws_end_page
-
-ws_begin_page 'Close the loop' 650 'close-the-loop/index.en.md'
-
-ws_run_block 1 'Close the loop' 'In the Shell terminal:' 21 21 'bash' 'non-interactive' <<'WS_TEST_BLOCK_650_1'
-cd ~/environment && claude -c -p "Right-size unicorn-store-spring again and fix item 10."
-WS_TEST_BLOCK_650_1
-
-ws_skip_block 2 'Close the loop' 'Claude re-runs sizeMemory and sizeCpu against the pod as it is now, and edits two files. It edits and stops.' 31 50 'text' '' 'copy action disabled'
-
-ws_run_block 3 'Build and roll out' 'In the Shell terminal. The heap changed, so the build retakes the checkpoint:' 61 64 'bash' '' 1200 <<'WS_TEST_BLOCK_650_3'
-# heap flags changed: rebuild the checkpoint (≈ 1 min, the JAR is cached)
+ws_run_block 5 'Build and roll out' 'In the Shell terminal. The code and the heap flags changed, so one build retakes the checkpoint with both, and apply rolls out the new limits and pulls the new image:' 175 178 'bash' '' 1200 <<'WS_TEST_BLOCK_600_5'
+# code and heap flags changed: rebuild the checkpoint (≈ 2 min)
 ~/environment/unicorn-store-spring/scripts/build.sh crac Dockerfile.crac
 
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
-WS_TEST_BLOCK_650_3
+WS_TEST_BLOCK_600_5
 
-ws_run_block 4 'Verify' 'Verify' 79 87 'bash' '' <<'WS_TEST_BLOCK_650_4'
+ws_run_block 6 'Verify' 'Verify' 184 192 'bash' '' <<'WS_TEST_BLOCK_600_6'
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 
 # heap flags from the new checkpoint: 75 % / 50 % of the new limit
@@ -303,18 +276,22 @@ kubectl -n unicorn-store-spring exec deploy/unicorn-store-spring -c unicorn-stor
   | tr ' ' '\n' | grep -E 'MaxHeapSize|InitialHeapSize'
 
 git -C ~/environment/unicorn-store-spring add -A \
-  && git -C ~/environment/unicorn-store-spring commit -q -m "re-size after code fix, shutdown budget"
-WS_TEST_BLOCK_650_4
+  && git -C ~/environment/unicorn-store-spring commit -q -m "non-blocking publish, re-size, shutdown budget"
+WS_TEST_BLOCK_600_6
 
-ws_skip_block 5 'Verify' 'Verify' 92 98 'text' '' 'copy action disabled'
+ws_skip_block 7 'Verify' 'Verify' 197 204 'text' '' 'copy action disabled'
 
-ws_run_block 6 'Check against best practices' 'In the Shell terminal:' 127 127 'bash' 'non-interactive' <<'WS_TEST_BLOCK_650_6'
+ws_run_block 8 'Check against best practices' 'In the Shell terminal:' 231 231 'bash' 'non-interactive' <<'WS_TEST_BLOCK_600_8'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
-WS_TEST_BLOCK_650_6
+WS_TEST_BLOCK_600_8
 
-ws_skip_block 7 'Check against best practices' 'Check against best practices' 135 150 'text' '' 'copy action disabled'
+ws_skip_block 9 'Check against best practices' 'Check against best practices' 239 254 'text' '' 'copy action disabled'
 
-ws_skip_block 8 'Choosing for your own workloads' 'Choosing for your own workloads' 159 174 '' '' 'informational block without language'
+ws_end_page
+
+ws_begin_page 'Results' 650 'results/index.en.md'
+
+ws_skip_block 1 'Choosing for your own workloads' 'Choosing for your own workloads' 30 49 '' '' 'informational block without language'
 
 ws_end_page
 
