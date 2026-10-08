@@ -48,9 +48,10 @@ latency metric** is the authoritative "it is slow" signal on every image.
   `TransactionAspectSupport.invokeWithinTransaction`, Jakarta `TransactionalInterceptor`,
   `TransactionTemplate`). **> 0 means the remote call runs inside the transaction and holds
   a pooled connection for its duration.** Fix the transaction boundary, not only the block.
-- `requestThreadsWaitingForConnection` — threads waiting on a connection pool. > 0 with
-  `blockedInsideTransaction > 0` is the transaction boundary starving the pool; > 0 with
-  `blockedInsideTransaction == 0` is a pool genuinely too small for the concurrency.
+- `requestThreadsWaitingForConnection` — threads waiting on a connection pool. > 0 means
+  the pool is short for the concurrency, whatever else holds connections: with
+  `blockedInsideTransaction > 0` the transaction boundary makes it worse, but fixing the
+  boundary does not give each in-flight write its own connection. Size the pool either way.
 - `requestThreadsActive` — request-path threads in flight (peak across samples): the
   concurrency a connection pool has to serve. The number to size a pool from.
 - `requestRatePerSec` (from `diagnoseBlocking`) — the load that was flowing while it sampled.
@@ -82,6 +83,9 @@ latency metric** is the authoritative "it is slow" signal on every image.
   in-flight write needs its own connection for its database work even after the remote call
   leaves the transaction. The target comes from the measured concurrency, not a round
   number; when the configured size already covers it, leave the pool alone.
+  `diagnoseBlocking` returns that target as `poolSizeTarget` (null when no thread waited).
+  Size the pool **in the same change as the transaction-boundary fix**, not instead of it and
+  not later: the waiting is not "explained away" by `blockedInsideTransaction > 0`.
 - If a result is genuinely needed, bound it (timeout) rather than waiting without limit.
 - Virtual threads make blocking cheaper but do not make a needless block correct;
   remove the block first.
@@ -130,6 +134,6 @@ Do not guess between these; each has its own number in the tool output.
 There is no golden file here — the change is in the app's source. Name the blocking
 frame and `file:line` from `diagnoseBlocking`; if `blockedInsideTransaction > 0`, move the
 remote call after commit (inline `afterCommit` synchronization, see above) AND make it
-non-blocking; otherwise make it non-blocking. When `requestThreadsWaitingForConnection > 0`
-and the configured pool is smaller than `requestThreadsActive`, size the pool to
-`requestThreadsActive` in the same change.
+non-blocking; otherwise make it non-blocking. When `poolSizeTarget` is set and the
+configured pool is smaller, size the pool to `poolSizeTarget` in the same change, also when
+`blockedInsideTransaction > 0`.

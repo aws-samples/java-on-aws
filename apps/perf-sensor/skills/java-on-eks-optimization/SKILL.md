@@ -143,8 +143,11 @@ Read the file and pass the values through. The *why* for each:
   including CRaC**. Do **not** use `profileTop wall` to find this. Artifact: the
   non-blocking change; if `blockedInsideTransaction > 0`, also move the remote call out of
   the transaction (after commit — the connection is held for the round-trip otherwise; read
-  the `@Transactional` method in `src/` to show it); if `requestThreadsWaitingForConnection > 0`, also
-  size the connection pool to the observed concurrency. Reference: `blocking-calls.md`.
+  the `@Transactional` method in `src/` to show it); when `diagnoseBlocking` returns
+  `poolSizeTarget` (threads waited for a connection) and the configured pool is smaller, also
+  set the pool's maximum size to `poolSizeTarget` in the same change — **also when the wait
+  came from the transaction boundary**: each in-flight write still needs its own connection
+  after the remote call leaves the transaction. Reference: `blocking-calls.md`.
 - **"right-size again" / "re-size" / "re-measure after the change" / "the sizing is stale"** →
   `measure`, `sizeMemory` and `sizeCpu` in one pass (a code or runtime change moves the
   working set and the CPU demand; the earlier numbers were right for the earlier code).
@@ -155,10 +158,10 @@ Read the file and pass the values through. The *why* for each:
   rebuilt. Cite old → new for each value. Reference: `right-size-memory.md`.
 - **"item 11 still fails" / "pool waits" / "connection pool"** → `diagnoseBlocking`. If
   `requestThreadsBlockedInFutureGet == 0` and `blockedInsideTransaction == 0` but
-  `requestThreadsWaitingForConnection > 0`, the pool is smaller than the request concurrency: set the
-  pool's maximum size (Hikari `maximum-pool-size` in the app config) to
-  `requestThreadsActive` (peak in-flight request threads across the samples), not a round
-  number; say which value you read. If blocking is still > 0, fix that first
+  `poolSizeTarget` is set, the pool is smaller than the request concurrency: set the
+  pool's maximum size (Hikari `maximum-pool-size` in the app config) to `poolSizeTarget`
+  (peak in-flight request threads across the samples), not a round number; say which value
+  you read. If blocking is still > 0, fix that first
   (previous bullet). Reference: `blocking-calls.md`.
 - **"how are we doing / score"** → run the `java-on-eks-checklist` skill.
 

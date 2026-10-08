@@ -88,22 +88,33 @@ class FactsCollectorTest {
 
     @Test
     void busyJit_movesTheSteadyStartPastReadiness() {
-        // JIT busy until 80 s, readiness at 25 s: steady from 80 s, 40 s at uptime 120 s.
+        // JIT busy until 80 s, readiness at 25 s: steady from 80 s, 100 s at uptime 180 s.
         when(prometheus.startupSeconds("shop")).thenReturn(15.0);
-        when(jfr.collect(any(), any())).thenReturn(ringJitBusyUntil(120.0, 80.0));
-        var f = collector().collect("shop", 15, snap(120.0, List.of("p1")));
-        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1", 40);
-        verify(prometheus).cpuThrottledRatio("shop", "shop", "p1", 40);
+        when(jfr.collect(any(), any())).thenReturn(ringJitBusyUntil(180.0, 80.0));
+        var f = collector().collect("shop", 15, snap(180.0, List.of("p1")));
+        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1", 100);
+        verify(prometheus).cpuThrottledRatio("shop", "shop", "p1", 100);
         assertThat(f.runtime().steadyStartSeconds()).isBetween(79.0, 81.0);
     }
 
     @Test
-    void jitBusyAlmostToNow_keepsAThirtySecondWindow() {
+    void jitBusyAlmostToNow_keepsASixtySecondWindow() {
+        // four 15 s scrapes: a 30 s window held two and came back empty on a restored pod.
         when(prometheus.startupSeconds("shop")).thenReturn(15.0);
         when(jfr.collect(any(), any())).thenReturn(ringJitBusyUntil(120.0, 115.0));
         var f = collector().collect("shop", 15, snap(120.0, List.of("p1")));
-        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1", 30);
-        assertThat(f.runtime().steadyStartSeconds()).isEqualTo(90.0);
+        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1", 60);
+        assertThat(f.runtime().steadyStartSeconds()).isEqualTo(60.0);
+    }
+
+    @Test
+    void coldPodLessThanAMinutePastReadiness_hasNoSteadyCpu() {
+        // ready at 25 s, uptime 80 s: 55 s of steady state, under the 60 s minimum.
+        when(prometheus.startupSeconds("shop")).thenReturn(15.0);
+        var f = collector().collect("shop", 15, snap(80.0, List.of("p1")));
+        verify(prometheus, never()).cpuUsageMeanCores(any(), any(), any(), anyInt());
+        assertThat(f.runtime().cpuSteadyCores()).isNull();
+        assertThat(f.runtime().steadyStartSeconds()).isNull();
     }
 
     @Test
