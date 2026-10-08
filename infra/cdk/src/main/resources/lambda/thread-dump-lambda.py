@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
 """
 Thread Dump Lambda - Placeholder for CDK deployment.
 This is a minimal placeholder that will be replaced by the full implementation
