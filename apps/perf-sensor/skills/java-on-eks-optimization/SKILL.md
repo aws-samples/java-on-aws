@@ -96,7 +96,8 @@ Read the file and pass the values through. The *why* for each:
   the peak, so a peak near a rounding edge does not flip the limit by a step between runs.
   When `sizeMemory.note` says it rounded down, quote it.
 - `cpuFactor` / `roundMillicores` — CPU request as headroom over measured steady-state usage
-  (`cpuSteadyCores`: p95, or the mean on a freshly rolled pod — name which in the evidence).
+  (`cpuSteadyCores`: the mean over the steady window minus the JIT compiler threads' share —
+  cite `cpuMeanCores` and `cpuJitShare` with it).
 - `cracHeap` — `-Xmx`/`-Xms` baked into a CRaC checkpoint as a share of the pod memory limit.
 - `warmSeconds` — past the bulk of JIT warm-up; a 120 s load run after a restart satisfies it.
 - `minSamples` — enough profile samples for a floor/peak.

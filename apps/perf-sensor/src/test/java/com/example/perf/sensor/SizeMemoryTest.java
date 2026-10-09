@@ -121,14 +121,15 @@ class SizeMemoryTest {
 
     @Test
     void sizeCpu_requestFromSteadyCpu_limitUnchanged() throws IOException {
-        // p95 0.31 cores * 1.5 = 465m -> roundUp(50m) = 500m; limit 1 stays "1".
+        // steady 0.31 cores (mean 0.40 minus 22.5 % JIT) * 1.5 = 465m -> roundUp(50m) = 500m; limit 1 stays "1".
         var r = sensor.sizeCpu(fixture("baseline"), CPU_POLICY);
         assertThat(r.status()).isEqualTo("OK");
         assertThat(r.requestsCpu()).isEqualTo("500m");
         assertThat(r.limitsCpu()).isEqualTo("1");
         assertThat(r.clampedToLimit()).isFalse();
         assertThat(r.evidence().cpuSteadyCores()).isEqualTo(0.31);
-        assertThat(r.evidence().cpuSteadyStatistic()).isEqualTo("p95");
+        assertThat(r.evidence().cpuMeanCores()).isEqualTo(0.4);
+        assertThat(r.evidence().cpuJitShare()).isEqualTo(22.5);
     }
 
     @Test
