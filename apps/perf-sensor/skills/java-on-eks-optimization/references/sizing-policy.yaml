@@ -9,8 +9,8 @@
 #             requests = limits (Guaranteed memory QoS — JVM memory is stable after warm-up,
 #             and a Burstable JVM is the first OOM-kill candidate on a busy node).
 # sizeCpu:    requests.cpu = min(roundUp(cpuSteadyCores * cpuFactor, roundMillicores), limits.cpu); limits.cpu unchanged
-#             (cpuSteadyCores: steady-state usage after readiness and JIT warm-up — the p95, or the mean
-#             when the pod is too young for a meaningful p95; see measure.runtime.cpuSteadyStatistic)
+#             (cpuSteadyCores: mean usage over the steady window after readiness, minus the JIT compiler
+#             threads' share of the CPU profile — measure.runtime.cpuMeanCores and cpuJitShare)
 #             (the boot spike is the startup CPU boost's job, not the steady request's;
 #             clampedToLimit=true means the pod is CPU-bound at this load).
 policy:
@@ -34,8 +34,3 @@ cracHeap:
 
 # Default look-back window (minutes) for measure / sizeMemory / sizeCpu / profileTop.
 windowMinutes: 15
-
-# Checklist bars that read a short steady window (items 6 and 7): a value within this share of
-# the bar on the failing side is BORDERLINE (⚠️), scored as a pass, because a freshly rolled
-# pod's CPU and throttle figures vary by about this much from run to run.
-borderlineShare: 0.10

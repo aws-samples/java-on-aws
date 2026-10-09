@@ -103,8 +103,8 @@ public class SensorService {
     public record CpuParams(double cpuFactor, int roundMillicores, int warmSeconds, int minSamples,
                             double minRequestRate, double minDeltaMi) {}
 
-    public record CpuEvidence(Double cpuSteadyCores, String cpuSteadyStatistic, Integer steadyWindowSeconds,
-                              Double cpuRequestCores, Double cpuLimitCores) {}
+    public record CpuEvidence(Double cpuSteadyCores, Double cpuMeanCores, Double cpuJitShare,
+                              Integer steadyWindowSeconds, Double cpuRequestCores, Double cpuLimitCores) {}
 
     /**
      * OK: requests.cpu computed, limits.cpu = current (unchanged). BLOCKED: reason set.
@@ -130,7 +130,7 @@ public class SensorService {
     // --- measure ---------------------------------------------------------------
 
     /**
-     * {@code minUptimeSeconds}: a freshly rolled pod has no peak, p95 or throttle share yet (the
+     * {@code minUptimeSeconds}: a freshly rolled pod has no peak, steady CPU or throttle share yet (the
      * load-guarded checklist items need ~2 min of traffic on THAT pod). When the current pod is
      * younger, wait until it reaches this age, in slices of at most 30 s per call so the caller
      * can narrate progress, before collecting.
@@ -270,7 +270,8 @@ public class SensorService {
         var rt = f.runtime();
         var wl = f.workload();
         Double steady = rt == null ? null : rt.cpuSteadyCores();
-        String statistic = rt == null ? null : rt.cpuSteadyStatistic();
+        Double mean = rt == null ? null : rt.cpuMeanCores();
+        Double jitShare = rt == null ? null : rt.cpuJitShare();
         Integer steadySecs = rt == null ? null : rt.steadyWindowSeconds();
         Double cpuReq = wl == null ? null : wl.cpuRequestCores();
         Double cpuLim = wl == null ? null : wl.cpuLimitCores();
@@ -279,7 +280,7 @@ public class SensorService {
         Double floor = rt == null ? null : rt.workingSetFloorMi();
         Double peak = rt == null ? null : rt.workingSetPeakMi();
         long samples = f.profile() == null ? 0 : f.profile().samples();
-        var evidence = new CpuEvidence(steady, statistic, steadySecs, cpuReq, cpuLim);
+        var evidence = new CpuEvidence(steady, mean, jitShare, steadySecs, cpuReq, cpuLim);
 
         if (steady == null) {
             return new CpuResult("BLOCKED", "insufficient measurement: missing steady-state CPU usage from Prometheus "
@@ -306,13 +307,13 @@ public class SensorService {
         if (cpuLim != null && rounded > Math.round(cpuLim * 1000.0)) {
             clamped = true;
             note = ("computed request %dm exceeds limits.cpu %s; capped to the limit. The container is "
-                + "CPU-bound at this load (%s %.3f cores of %s): raise limits.cpu (and ActiveProcessorCount) "
-                + "or reduce CPU per request, then re-measure.").formatted(rounded, limits, statistic, steady, limits);
+                + "CPU-bound at this load (steady %.3f cores of %s): raise limits.cpu (and ActiveProcessorCount) "
+                + "or reduce CPU per request, then re-measure.").formatted(rounded, limits, steady, limits);
             rounded = Math.round(cpuLim * 1000.0);
         }
         String requests = rounded + "m";
-        logger.info("sizeCpu OK {}={} over {}s -> requests={} limits={} (unchanged) clamped={}",
-            statistic, steady, steadySecs, requests, limits, clamped);
+        logger.info("sizeCpu OK steady={} (mean {} jit {}%) over {}s -> requests={} limits={} (unchanged) clamped={}",
+            steady, mean, jitShare, steadySecs, requests, limits, clamped);
         return new CpuResult("OK", null, requests, limits, clamped, note, evidence, p);
     }
 

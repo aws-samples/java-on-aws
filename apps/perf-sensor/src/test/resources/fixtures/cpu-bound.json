@@ -30,7 +30,8 @@
     "uptimeSeconds": 3600.0,
     "requestRatePerSec": 30,
     "cpuSteadyCores": 0.667,
-    "cpuSteadyStatistic": "p95"
+    "cpuMeanCores": 0.7,
+    "cpuJitShare": 4.7
   },
   "profile": {
     "topCpu": [

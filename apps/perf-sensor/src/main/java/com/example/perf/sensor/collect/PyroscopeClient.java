@@ -42,6 +42,11 @@ public class PyroscopeClient {
     private static final List<String> JIT = List.of(
         "PhaseChaitin", "PhaseIdealLoop", "PhaseLive", "PhaseCFG", "Compile::", "Compilation::",
         "CodeHeap", "C2Compiler", "C1_", "Compiler::", "OptoRuntime", "Matcher::");
+    /**
+     * Root frame of every JIT compiler thread (C1 and C2). Its subtree is ALL compiler CPU,
+     * including leaves the names above miss ({@code Node::}, {@code Arena::}, {@code memset}).
+     */
+    static final String COMPILER_THREAD_LOOP = "CompileBroker::compiler_thread_loop";
     private static final List<String> GC = List.of(
         "MarkSweep", "PSYoungGen", "PSScavenge", "G1", "GCTaskThread", "GenCollectedHeap",
         "SerialHeap", "CardTable", "VM_GenCollect", "gc/", "TenuredGeneration", "DefNewGeneration");
@@ -110,8 +115,10 @@ public class PyroscopeClient {
             .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
             .limit(n)
             .forEach(e -> frames.add(new Frame(e.getKey(), round1((100.0 * e.getValue()) / numTicks))));
+        double jit = Math.max(share(selfByName, numTicks, JIT),
+            round1(100.0 * subtreeTicks(names, levels, COMPILER_THREAD_LOOP) / numTicks));
         return new ProfileData(frames, samples,
-            share(selfByName, numTicks, JIT), share(selfByName, numTicks, GC), share(selfByName, numTicks, FUTEX));
+            jit, share(selfByName, numTicks, GC), share(selfByName, numTicks, FUTEX));
     }
 
     /**
@@ -129,6 +136,12 @@ public class PyroscopeClient {
             cpu.hasSamples() ? cpu.gcShare() : null,
             wall.hasSamples() ? wall.futexShare() : null,
             cpu.samples());
+    }
+
+    /** JIT share of the CPU profile over the window, percent; null without CPU samples. */
+    public Double cpuJitShare(String service, String fromIso, String toIso) {
+        var cpu = profile(service, "cpu", fromIso, toIso, 1);
+        return cpu.hasSamples() ? cpu.jitShare() : null;
     }
 
     /** JIT (cpu) / GC (cpu) / futex (wall) share for a single requested type, plus frames. */
@@ -156,6 +169,35 @@ public class PyroscopeClient {
             }
         }
         return round1(100.0 * sum / numTicks);
+    }
+
+    /**
+     * Total ticks under the frames whose name contains {@code needle}, each subtree counted once
+     * (a match inside an already counted match is skipped). Flamebearer levels hold groups of
+     * {@code [offsetDelta, total, self, nameIdx]}; a node's start is the previous node's end on
+     * the same level plus its delta.
+     */
+    static long subtreeTicks(JsonNode names, JsonNode levels, String needle) {
+        var counted = new ArrayList<long[]>();   // [start, end) of counted subtrees
+        long sum = 0;
+        for (var level : levels) {
+            if (!level.isArray()) continue;
+            long pos = 0;
+            for (int i = 0; i + 3 < level.size(); i += 4) {
+                long start = pos + level.get(i).asLong(0);
+                long total = level.get(i + 1).asLong(0);
+                pos = start + total;
+                var nameIdx = level.get(i + 3).asInt(-1);
+                if (total <= 0 || nameIdx < 0 || nameIdx >= names.size()
+                    || !names.get(nameIdx).asText().contains(needle)) continue;
+                boolean inside = counted.stream().anyMatch(c -> start >= c[0] && start < c[1]);
+                if (!inside) {
+                    counted.add(new long[] {start, start + total});
+                    sum += total;
+                }
+            }
+        }
+        return sum;
     }
 
     private static Map<String, Long> selfByName(JsonNode names, JsonNode levels) {

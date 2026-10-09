@@ -35,11 +35,6 @@ public class FactsCollector {
      * Four 15 s scrapes: over two, a cAdvisor rate is noisy or empty.
      */
     static final int MIN_STEADY_SECONDS = 60;
-    /** 15 s points the p95 range needs; with fewer, the steady CPU is the mean over the window. */
-    static final int MIN_P95_POINTS = 8;
-    private static final int P95_STEP_SECONDS = 15;
-    /** Look-back of each p95 point (rate window), kept inside the steady window. */
-    private static final int RATE_SECONDS = 60;
 
     private final K8sCollector k8s;
     private final PrometheusClient prometheus;
@@ -70,7 +65,7 @@ public class FactsCollector {
         WorkloadFacts workload = snap.workload();
         String container = snap.appContainer() != null ? snap.appContainer() : service;
         // Scope cAdvisor facts to the pods that exist NOW: a pod replaced by a rollout earlier
-        // in the window must not supply the peak, the p95 or the startup of the current one.
+        // in the window must not supply the peak, the steady CPU or the startup of the current one.
         String pods = snap.readyPodRegex();
         Double uptime = snap.uptimeSeconds();
 
@@ -99,33 +94,26 @@ public class FactsCollector {
         Double latencyMean = prometheus.latencyMeanMs(service, latencyMins);
         Double latencyMax = prometheus.latencyMaxMs(service, latencyMins);
         // CPU and throttling describe steady state: the window starts after readiness and after
-        // the JIT stopped dominating, and every rate look-back stays inside it, so boot CPU never
-        // sizes the request. A short window (a freshly rolled pod) reports the mean, not a p95
-        // of two or three points.
+        // the JIT stopped dominating, so boot CPU never sizes the request. Within 2 min of a
+        // restart the JIT is still compiling, so the steady CPU is the window's mean minus the
+        // compiler threads' share of the CPU profile over the same window: compilation ends, the
+        // load's CPU stays. A pod measured later has less JIT to subtract and reads the same.
         Double steadyStart = steadyStartSeconds(uptime, startup, ring, to);
         Integer steadySecs = null;
-        Double cpuSteady = null;
-        String cpuStatistic = null;
+        Double cpuMean = null;
+        Double cpuJitShare = null;
         Double throttled = null;
         if (steadyStart != null) {
             steadySecs = (int) Math.min(mins * 60L, Math.floor(uptime - steadyStart));
-            int p95Range = steadySecs - RATE_SECONDS;
-            if (p95Range >= (MIN_P95_POINTS - 1) * P95_STEP_SECONDS) {
-                cpuSteady = prometheus.cpuUsageP95Cores(service, container, pods, p95Range);
-                cpuStatistic = "p95";
-            } else {
-                cpuSteady = prometheus.cpuUsageMeanCores(service, container, pods, steadySecs);
-                cpuStatistic = "mean";
-            }
+            cpuMean = prometheus.cpuUsageMeanCores(service, container, pods, steadySecs);
+            cpuJitShare = pyroscope.cpuJitShare(service, to.minusSeconds(steadySecs).toString(), to.toString());
             throttled = prometheus.cpuThrottledRatio(service, container, pods, Math.min(300, steadySecs));
         } else if (uptime == null) {
             // No pod age (Kubernetes API unavailable): the requested window, boot included.
-            cpuSteady = prometheus.cpuUsageP95Cores(service, container, pods, mins * 60 - RATE_SECONDS);
-            cpuStatistic = cpuSteady == null ? null : "p95";
+            cpuMean = prometheus.cpuUsageMeanCores(service, container, pods, mins * 60);
+            cpuJitShare = pyroscope.cpuJitShare(service, from.toString(), to.toString());
         }
-        if (cpuSteady == null) {
-            cpuStatistic = null;
-        }
+        Double cpuSteady = withoutJit(cpuMean, cpuJitShare);
         // effectiveCpuCount: what the JVM itself reported (jdk.ContainerConfiguration) when the
         // ring is available; otherwise the CPU limit rounded up to whole processors.
         Integer effectiveCpu = ring != null && ring.container() != null && ring.container().effectiveCpuCount() != null
@@ -134,16 +122,28 @@ public class FactsCollector {
         var runtime = new RuntimeFacts(floor, peak,
             heap.heapUsedMi(), heap.heapCommittedMi(), heap.gcName(),
             effectiveCpu, startup, snap.restarts(), uptime, requestRate,
-            heap.maxHeapMi(), heap.initialHeapMi(), cpuSteady, cpuStatistic, steadyStart, steadySecs,
+            heap.maxHeapMi(), heap.initialHeapMi(), cpuSteady, cpuMean, cpuJitShare, steadyStart, steadySecs,
             throttled, latencyMean, latencyMax,
             snap.lastTerminationReason());
 
         ProfileFacts profile = pyroscope.summarize(service, from.toString(), to.toString(), 15);
 
-        logger.info("facts collected service={} window={}m workload={} workingSet=[{},{}] startup={} steady={}s from {}s cpu={} {} samples={}",
-            service, mins, workload != null, floor, peak, startup, steadySecs, steadyStart, cpuStatistic, cpuSteady,
+        logger.info("facts collected service={} window={}m workload={} workingSet=[{},{}] startup={} steady={}s from {}s cpu={} (jit {}%) samples={}",
+            service, mins, workload != null, floor, peak, startup, steadySecs, steadyStart, cpuSteady, cpuJitShare,
             profile.samples());
         return new Facts(workload, runtime, profile, ring);
+    }
+
+    /** Mean CPU minus the JIT's percent share; the mean as it is when no profile covers the window. */
+    static Double withoutJit(Double cpuMean, Double jitSharePct) {
+        if (cpuMean == null) {
+            return null;
+        }
+        if (jitSharePct == null) {
+            return cpuMean;
+        }
+        double share = Math.max(0, Math.min(jitSharePct, 100.0)) / 100.0;
+        return Math.round(cpuMean * (1 - share) * 1000.0) / 1000.0;
     }
 
     /**

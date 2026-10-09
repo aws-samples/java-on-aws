@@ -38,9 +38,9 @@ public class SensorMcpTools {
         cpu resizePolicy, JAVA_TOOL_OPTIONS, image tag, replicas, probes with paths/budgets/initial
         delays, terminationGracePeriodSeconds, preStop sleep, sidecars) plus measured runtime
         (working-set floor/peak MiB, heap committed MiB, observed MaxHeapSize/InitialHeapSize MiB,
-        GC name, effective CPUs, steady-state CPU usage cores (cpuSteadyCores: p95, or the mean when the steady
-        window is short — cpuSteadyStatistic; the window starts after readiness and after the JIT settled —
-        steadyStartSeconds, steadyWindowSeconds), CFS throttled share over the same steady window, startup
+        GC name, effective CPUs, steady-state CPU usage cores (cpuSteadyCores = cpuMeanCores, the mean over the steady
+        window, minus cpuJitShare, the JIT compiler threads' percent of the CPU profile; the window starts
+        after readiness and after the JIT settled — steadyStartSeconds, steadyWindowSeconds), CFS throttled share over the same steady window, startup
         seconds, restarts, last termination reason, HTTP latency mean/max ms), a CPU/wall profile
         summary (jit/gc/futex shares of the whole profile, samples), the JVM's own JFR ring facts (jfr: container
         limits as the JVM read them incl. effectiveCpuCount, jvmArgs, GC pauses count/max/total,

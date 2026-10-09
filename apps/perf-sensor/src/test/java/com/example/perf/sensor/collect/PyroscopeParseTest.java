@@ -40,6 +40,27 @@ class PyroscopeParseTest {
         assertThat(one.futexShare()).isEqualTo(20.0);
     }
 
+    // A C2 compiler thread: root -> thread_native_entry -> CompileBroker::compiler_thread_loop ->
+    // {PhaseChaitin 0.1 s, Node::out 0.2 s, memset 0.1 s}; next to it 0.6 s of app CPU. The leaf
+    // names catch only PhaseChaitin (10 %); the compiler thread's subtree is 40 % of the CPU.
+    private static final String COMPILER_BODY = """
+        {"flamebearer":{"names":["total","thread_native_entry","CompileBroker::compiler_thread_loop",
+                                 "PhaseChaitin::Register_Allocate","Node::out","memset",
+                                 "com/example/shop/Service.run"],
+                        "levels":[[0,1000000000,0,0],
+                                  [0,400000000,0,1, 0,600000000,600000000,6],
+                                  [0,400000000,0,2],
+                                  [0,100000000,100000000,3, 0,200000000,200000000,4, 0,100000000,100000000,5]],
+                        "numTicks":1000000000},
+         "metadata":{"sampleRate":1000000000}}
+        """;
+
+    @Test
+    void jitShare_isTheWholeCompilerThread_notOnlyTheKnownLeaves() throws Exception {
+        var d = PyroscopeClient.parse(MAPPER.readTree(COMPILER_BODY), 15);
+        assertThat(d.jitShare()).isEqualTo(40.0);
+    }
+
     @Test
     void ticksBecomeSamplesViaSampleRate() throws Exception {
         var d = PyroscopeClient.parse(MAPPER.readTree(BODY), 15);

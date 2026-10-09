@@ -23,8 +23,8 @@ import static org.mockito.Mockito.when;
 /**
  * Window scoping rules: cAdvisor queries are scoped to the Ready pods; the floor and latency
  * exclude the pod's boot minute; CPU and throttling use the steady window (after readiness and
- * after the JIT settled), with every rate look-back inside it, and report the mean when that
- * window is too short for a p95; the request rate is clipped to the pod's lifetime; and startup
+ * after the JIT settled) and report the mean over it minus the JIT compiler threads' share of the
+ * CPU profile; the request rate is clipped to the pod's lifetime; and startup
  * prefers the log-derived gauge over application.ready.time.
  */
 @ExtendWith(MockitoExtension.class)
@@ -61,27 +61,29 @@ class FactsCollectorTest {
         var f = collector().collect("shop", 15, snap(45.0, List.of("p1")));
         verify(prometheus, never()).workingSetFloorMi(any(), any(), any(), anyInt());
         verify(prometheus, never()).cpuThrottledRatio(any(), any(), any(), anyInt());
-        verify(prometheus, never()).cpuUsageP95Cores(any(), any(), any(), anyInt());
         verify(prometheus, never()).cpuUsageMeanCores(any(), any(), any(), anyInt());
+        verify(pyroscope, never()).cpuJitShare(any(), any(), any());
         verify(prometheus).requestRatePerSec("shop", 1);
         verify(prometheus).latencyMeanMs("shop", 1);
         verify(prometheus).workingSetPeakMi("shop", "shop", "p1", 15);
         assertThat(f.runtime().workingSetFloorMi()).isNull();
         assertThat(f.runtime().cpuThrottledRatio()).isNull();
         assertThat(f.runtime().cpuSteadyCores()).isNull();
-        assertThat(f.runtime().cpuSteadyStatistic()).isNull();
+        assertThat(f.runtime().cpuMeanCores()).isNull();
     }
 
     @Test
-    void freshColdPod_steadyStartsAfterReadiness_shortWindowReportsTheMean() {
-        // startup 15 s: steady from 15 + 10 = 25 s; at 120 s that is 95 s, too short for a p95.
+    void freshColdPod_steadyIsTheMeanAfterReadinessMinusTheJit() {
+        // startup 15 s: steady from 15 + 10 = 25 s; at 120 s that is 95 s. Mean 0.42 cores, of
+        // which the compiler threads took 25 % -> 0.315 cores of load.
         when(prometheus.startupSeconds("shop")).thenReturn(15.0);
         when(prometheus.cpuUsageMeanCores("shop", "shop", "p1", 95)).thenReturn(0.42);
+        when(pyroscope.cpuJitShare(eq("shop"), anyString(), anyString())).thenReturn(25.0);
         var f = collector().collect("shop", 15, snap(120.0, List.of("p1")));
-        verify(prometheus, never()).cpuUsageP95Cores(any(), any(), any(), anyInt());
         verify(prometheus).cpuThrottledRatio("shop", "shop", "p1", 95);
-        assertThat(f.runtime().cpuSteadyCores()).isEqualTo(0.42);
-        assertThat(f.runtime().cpuSteadyStatistic()).isEqualTo("mean");
+        assertThat(f.runtime().cpuMeanCores()).isEqualTo(0.42);
+        assertThat(f.runtime().cpuJitShare()).isEqualTo(25.0);
+        assertThat(f.runtime().cpuSteadyCores()).isEqualTo(0.315);
         assertThat(f.runtime().steadyStartSeconds()).isEqualTo(25.0);
         assertThat(f.runtime().steadyWindowSeconds()).isEqualTo(95);
     }
@@ -126,12 +128,12 @@ class FactsCollectorTest {
     }
 
     @Test
-    void settledPod_cpuIsAP95WhoseLookBackStaysInTheSteadyWindow() {
+    void settledPod_cpuIsTheMeanOverTheWholeSteadyWindow() {
         when(prometheus.startupSeconds("shop")).thenReturn(null);
         collector().collect("shop", 15, snap(600.0, List.of("p1", "p2")));
-        // no startup known: steady from 60 + 10 = 70 s -> 530 s; the p95 range leaves the 60 s
-        // rate look-back inside it (470 s); throttle capped at 300 s. Floor and latency: (600-60)/60 = 9 min.
-        verify(prometheus).cpuUsageP95Cores("shop", "shop", "p1|p2", 470);
+        // no startup known: steady from 60 + 10 = 70 s -> 530 s; throttle capped at 300 s.
+        // Floor and latency: (600-60)/60 = 9 min.
+        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1|p2", 530);
         verify(prometheus).cpuThrottledRatio("shop", "shop", "p1|p2", 300);
         verify(prometheus).workingSetFloorMi("shop", "shop", "p1|p2", 9);
         verify(prometheus).latencyMeanMs("shop", 9);
@@ -143,10 +145,18 @@ class FactsCollectorTest {
     void oldPod_windowsAreTheRequestedWindow() {
         collector().collect("shop", 15, snap(3600.0, List.of("p1")));
         verify(prometheus).workingSetFloorMi("shop", "shop", "p1", 15);
-        verify(prometheus).cpuUsageP95Cores("shop", "shop", "p1", 840);
+        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1", 900);
         verify(prometheus).latencyMeanMs("shop", 15);
         verify(prometheus).requestRatePerSec("shop", 15);
         verify(prometheus).cpuThrottledRatio("shop", "shop", "p1", 300);
+    }
+
+    @Test
+    void withoutJit_subtractsTheShare_keepsTheMeanWithoutAProfile() {
+        assertThat(FactsCollector.withoutJit(0.40, 30.0)).isEqualTo(0.28);
+        assertThat(FactsCollector.withoutJit(0.40, null)).isEqualTo(0.40);
+        assertThat(FactsCollector.withoutJit(null, 30.0)).isNull();
+        assertThat(FactsCollector.withoutJit(0.40, 0.0)).isEqualTo(0.40);
     }
 
     @Test

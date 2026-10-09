@@ -22,11 +22,11 @@ package com.example.perf.sensor.facts;
  * @param requestRatePerSec  HTTP request rate over the window (Micrometer), 0 if idle, null if unscraped
  * @param maxHeapMi          observed JVM MaxHeapSize (VM.flags), MiB — the real heap ceiling, image-independent
  * @param initialHeapMi      observed JVM InitialHeapSize (VM.flags), MiB
- * @param cpuSteadyCores     steady-state CPU usage of the container, cores (cAdvisor), over the steady window:
- *                           the p95 of the 1 min usage rate when the window holds enough points, else the
- *                           mean usage over the window (see {@code cpuSteadyStatistic})
- * @param cpuSteadyStatistic {@code p95}, or {@code mean} when the steady window is too short for a
- *                           meaningful p95 (a freshly rolled pod); a mean is the lower-confidence figure
+ * @param cpuSteadyCores     steady-state CPU usage of the container, cores: {@code cpuMeanCores} minus the
+ *                           JIT compiler threads' share ({@code cpuJitShare}); the request is sized from it
+ * @param cpuMeanCores       mean CPU usage of the container over the steady window, cores (cAdvisor), JIT included
+ * @param cpuJitShare        JIT compiler threads' share of the CPU profile over the steady window, percent
+ *                           (Pyroscope); null without a profile, and then cpuSteadyCores equals cpuMeanCores
  * @param steadyStartSeconds pod age at which steady state starts: after readiness and after the JIT
  *                           stopped dominating (JFR); boot before it is excluded from CPU and throttling
  * @param steadyWindowSeconds length of the steady window used for CPU and throttling, seconds
@@ -50,7 +50,8 @@ public record RuntimeFacts(
     Double maxHeapMi,
     Double initialHeapMi,
     Double cpuSteadyCores,
-    String cpuSteadyStatistic,
+    Double cpuMeanCores,
+    Double cpuJitShare,
     Double steadyStartSeconds,
     Integer steadyWindowSeconds,
     Double cpuThrottledRatio,

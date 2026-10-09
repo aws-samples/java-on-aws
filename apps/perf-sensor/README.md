@@ -15,7 +15,7 @@ that gives the sensor thread dumps, the JFR ring and continuous profiles.
 |---|---|
 | `measure` | Reads the Deployment and its Ready pods (Kubernetes API), cAdvisor and Micrometer series scoped to those pods (Prometheus), the CPU/wall profile summary (Pyroscope), heap flags and the JFR ring (sidecar `/dump`) and returns typed facts with the window; if the pod is younger than `minUptimeSeconds` it waits up to 30 s per call. |
 | `sizeMemory` | `limits = roundUp(max(peak × peakFactor, floor × floorSafetyFactor), roundMi)`, `requests = limits`, 75 % / 50 % heap, SerialGC on ≤ 1 CPU, from the working-set floor and peak of the current pods; BLOCKED unless uptime, profile samples and observed load pass the guard. |
-| `sizeCpu` | `requests.cpu = roundUp(p95 CPU usage × cpuFactor, roundMillicores)` capped at the current limit, limit unchanged; same guard. |
+| `sizeCpu` | `requests.cpu = roundUp(steady CPU (mean minus JIT) × cpuFactor, roundMillicores)` capped at the current limit, limit unchanged; same guard. |
 | `threadDump` | One JSON thread dump (`jcmd Thread.dump_to_file -format=json`, virtual threads included) from the newest Ready pod, or N pods summed, reduced to counts: request-path threads, those parked in `Future.get`, those blocked inside a transaction, those waiting for a pooled connection, top blocking frames; `null` when no dump could be taken. |
 | `diagnoseBlocking` | 40 thread dumps over 20 s while the operator's load runs, reporting peak concurrent counts and summed blocking frames; BLOCKED when the last-minute request rate is below the threshold or no dump can be taken. |
 | `profileTop` | Pyroscope's hottest leaf frames by self time for `cpu` or `wall`, with the JIT/GC or futex share of the **whole** profile. |

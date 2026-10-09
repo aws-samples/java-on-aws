@@ -114,7 +114,7 @@ should fall to 0.
 itself, so look at what the pod is waiting on. Read these from `measure`, in this order,
 and name the one that carries the number:
 
-- `runtime.cpuThrottledRatio` high (> 0.10) and `jfr.container.effectiveCpuCount` >
+- `runtime.cpuThrottledRatio` high (> 0.25) and `jfr.container.effectiveCpuCount` >
   `ceil(cpuLimitCores)`: the JVM runs more threads than its quota and is CFS-throttled —
   every throttled period adds up to 100 ms to whatever was running. Pin
   `ActiveProcessorCount` (in the checkpoint for CRaC); do not touch the code.
