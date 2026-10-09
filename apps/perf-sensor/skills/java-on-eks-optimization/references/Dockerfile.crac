@@ -78,5 +78,7 @@ COPY --from=builder --chown=1000:1000 /app.jar /app.jar
 USER 1000:1000
 EXPOSE 8080
 # Restore from the checkpoint — no cold JVM start, no class loading, and (because the
-# checkpoint was warmed) no JIT ramp on the request path either.
-ENTRYPOINT ["java", "-XX:CRaCEngine=warp", "-XX:CRaCRestoreFrom=/opt/crac-files", "-Dserver.port=8080"]
+# checkpoint was warmed) no JIT ramp on the request path either. JAVA_TOOL_OPTIONS is
+# cleared: GC and heap flags came with the checkpoint, and a leftover GC flag from the
+# Deployment would stop the restore ("not restore-settable").
+ENTRYPOINT ["sh", "-c", "unset JAVA_TOOL_OPTIONS; exec java -XX:CRaCEngine=warp -XX:CRaCRestoreFrom=/opt/crac-files -Dserver.port=8080"]

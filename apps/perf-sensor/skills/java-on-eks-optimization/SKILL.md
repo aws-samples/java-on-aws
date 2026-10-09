@@ -129,11 +129,12 @@ Read the file and pass the values through. The *why* for each:
   `JAR_FILE` from `pom.xml`, `WARMUP_CMD` = one `curl` on the app's hot request path (the
   checkpoint is taken after a warm-up), `JAVA_HEAP_OPTS` from `workload.memLimitMi` × `cracHeap`
   shares (whole MiB, e.g. 640 → `-Xmx480m -Xms320m`), `JAVA_CPU_OPTS` =
-  `-XX:ActiveProcessorCount=<ceil(workload.cpuLimitCores)>`, and a CRaC `Resource` hook for each
-  class in `src/` holding network clients or file handles. Mention credentials-at-restore
-  and that a later memory-limit change needs a rebuild. **Remove `JAVA_TOOL_OPTIONS` (GC/heap flags) from the
-  Deployment for the CRaC image** — those are baked into the checkpoint; leaving them
-  crash-loops the restore. Reference: `crac.md`.
+  `-XX:ActiveProcessorCount=<ceil(workload.cpuLimitCores)>`, a CRaC `Resource` hook for each
+  class in `src/` holding network clients or file handles, and **`k8s/deployment.yaml` with
+  `JAVA_TOOL_OPTIONS` removed — edit it now, in the same change**: the GC/heap flags are baked
+  into the checkpoint, a leftover GC flag stops the restore, and the rollout only swaps the
+  image tag. Mention credentials-at-restore and that a later memory-limit change needs a
+  rebuild. Reference: `crac.md`.
 - **"fix latency under load" / "some requests take seconds" / "slow writes" / "tail latency"** →
   `diagnoseBlocking <service>` while the operator's load
   run is flowing (if BLOCKED: say "the service's load must be running — start it and ask

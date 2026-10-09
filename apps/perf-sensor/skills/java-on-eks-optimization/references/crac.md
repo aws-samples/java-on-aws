@@ -77,8 +77,11 @@ the deployment carries `JAVA_TOOL_OPTIONS` from an earlier right-sizing step
 (e.g. `-XX:+UseSerialGC -XX:MaxRAMPercentage=75`), the restoring JVM re-reads it,
 finds a flag it may not change after checkpoint, and **crash-loops** (e.g. "cannot
 change GC after restore"). When switching a workload to the CRaC image, **remove
-`JAVA_TOOL_OPTIONS`** (or at least the GC/heap flags) from the Deployment. Keep the
-memory `requests`/`limits`; only the JVM-flag env must go.
+`JAVA_TOOL_OPTIONS`** from the Deployment in the same change as `Dockerfile.crac`, not as
+a later step. Keep the memory `requests`/`limits`; only the JVM-flag env must go. The
+reference `Dockerfile.crac` also clears `JAVA_TOOL_OPTIONS` in its restore `ENTRYPOINT`, so a
+leftover variable cannot stop the restore; remove it anyway, because a Deployment that names
+flags the JVM ignores misleads the next reader.
 
 Consequences to state explicitly:
 - `Dockerfile.crac` sets `-XX:+UseSerialGC` on the checkpoint command, so the GC still
