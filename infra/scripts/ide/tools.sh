@@ -247,6 +247,8 @@ if os.path.exists(path):
         data = {}
 data["hasCompletedOnboarding"] = True
 data["shiftEnterKeyBindingInstalled"] = True
+data.setdefault("hasIdeOnboardingBeenShown", {})["vscode"] = True
+data["hasSeenAutoDefaultNotice"] = True
 data.setdefault("projects", {}).setdefault(ws, {})["hasTrustDialogAccepted"] = True
 with open(path, "w") as f:
     json.dump(data, f, indent=2)
