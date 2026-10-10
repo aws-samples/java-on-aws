@@ -3,6 +3,9 @@
 #   __IMAGE__            the pushed image, pinned by digest
 #   __NS__               the monitoring namespace
 #   __REQUEST_PACKAGE__  the profiled app's request-path package (REQUIRED by the sensor)
+#   __RULES_SHA__        hash of the checklist rules, so a rules change rolls the pod
+# The checklist rules come from the ConfigMap perf-sensor-checklist-rules (the script
+# creates it from src/main/resources/checklist-rules.yaml): kubectl shows what is scored.
 # Reaches Prometheus, Pyroscope and the profiler sidecar /dump by pod IP; every endpoint
 # is overridable via env (see src/main/resources/application.yaml for the full list).
 apiVersion: apps/v1
@@ -21,6 +24,7 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/actuator/prometheus"
         prometheus.io/port: "8080"
+        perf-sensor/checklist-rules-sha: "__RULES_SHA__"
     spec:
       serviceAccountName: perf-sensor
       automountServiceAccountToken: true   # the K8s API is the sensor's data source
@@ -42,12 +46,14 @@ spec:
             - {name: REQUEST_PACKAGE, value: "__REQUEST_PACKAGE__"}
             - {name: PROFILED_POD_LABEL, value: "perf-profile/sidecar=true"}
             - {name: PROFILER_CONTAINER, value: "perf-profiler"}
+            - {name: CHECKLIST_RULES, value: "/config/checklist/checklist-rules.yaml"}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
           volumeMounts:
             - {name: tmp, mountPath: /tmp}   # JfrCollector writes the fetched ring here before parsing
+            - {name: checklist-rules, mountPath: /config/checklist, readOnly: true}
           startupProbe:
             httpGet: {path: /actuator/health/liveness, port: http}
             periodSeconds: 5
@@ -63,6 +69,7 @@ spec:
             limits:   {cpu: "1",    memory: "1Gi"}
       volumes:
         - {name: tmp, emptyDir: {sizeLimit: 256Mi}}
+        - {name: checklist-rules, configMap: {name: perf-sensor-checklist-rules}}
 ---
 apiVersion: v1
 kind: Service

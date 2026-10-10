@@ -5,8 +5,9 @@
 # chat, no AWS SDK, no Pod Identity (the sensor makes no AWS calls).
 #
 #   build    jib build + push to ECR, record the digest (no cluster needed)
-#   install  ServiceAccount + read-only ClusterRole, Deployment (image by digest) +
-#            Service in the monitoring namespace, the Grafana dashboard
+#   install  ServiceAccount + read-only ClusterRole, the checklist rules ConfigMap,
+#            Deployment (image by digest) + Service in the monitoring namespace, the
+#            Grafana dashboard
 #   (none)   both, in order
 #
 # Not app-specific: APP_NS names the workload the dashboard is for; REQUEST_PACKAGE
@@ -75,11 +76,20 @@ install() {
   sed "s|__NS__|${NS}|g" "${K8S_DIR}/rbac.yaml" | kubectl apply -f - >/dev/null
   log_success "RBAC applied (get/list on deployments, pods, pods/log)"
 
+  # The checklist rules (CEL) as a ConfigMap the sensor reads at startup, so anyone can
+  # see what is scored: kubectl -n monitoring get cm perf-sensor-checklist-rules -o yaml
+  local rules="${APP_DIR}/src/main/resources/checklist-rules.yaml" rules_sha
+  log_info "Applying checklist rules ConfigMap..."
+  kubectl create configmap perf-sensor-checklist-rules --from-file=checklist-rules.yaml="${rules}" -n "${NS}" \
+    --dry-run=client -o yaml | kubectl apply -f - >/dev/null \
+    || { log_error "could not apply ConfigMap perf-sensor-checklist-rules"; exit 1; }
+  rules_sha="$(sha256sum "${rules}" | cut -c1-16)"
+
   log_info "Deploying perf-sensor to ${NS} (REQUEST_PACKAGE=${REQUEST_PACKAGE})..."
   sed -e "s|__IMAGE__|${image_ref}|g" -e "s|__NS__|${NS}|g" -e "s|__REQUEST_PACKAGE__|${REQUEST_PACKAGE}|g" \
-    "${K8S_DIR}/deployment.yaml" | kubectl apply -f - >/dev/null
-  # The image is pinned by digest, so a changed image is a changed pod template: no
-  # rollout restart needed.
+    -e "s|__RULES_SHA__|${rules_sha}|g" "${K8S_DIR}/deployment.yaml" | kubectl apply -f - >/dev/null
+  # The image is pinned by digest and the rules by hash, so a changed image or rules file
+  # is a changed pod template: no rollout restart needed.
   kubectl -n "${NS}" rollout status deploy/perf-sensor --timeout=200s >/dev/null || {
     log_error "rollout not ready; recent logs:"; kubectl -n "${NS}" logs -l app=perf-sensor --tail=60; exit 1; }
   log_success "perf-sensor running (${image_ref})"
