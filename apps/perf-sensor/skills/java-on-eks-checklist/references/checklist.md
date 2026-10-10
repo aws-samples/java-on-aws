@@ -8,7 +8,9 @@ for item 11), not from a YAML lint. Security, image
 hygiene, availability and observability practices are real but out of this scope;
 see the end.
 
-Scoring: PASS / FAIL / UNKNOWN per item from the named evidence; a null fact makes the
+Scoring: `perf-sensor.checklist` evaluates these rules over the measured facts. They are
+encoded in the sensor's `checklist-rules.yaml` as CEL expressions; this file explains them.
+PASS / FAIL / UNKNOWN per item from the named evidence; a null fact makes the
 item **UNKNOWN — never FAIL on a missing fact**. Score = `PASS / 12`. Items marked
 *under load* need a load run flowing while scoring; otherwise they are UNKNOWN. Three
 thresholds are stated bars, not constants: 5 s for startup (12-factor: "a few seconds"),
@@ -58,8 +60,7 @@ reads 20–30 % for a low-quota JVM that lost almost no wall time (7).
 JIT settled (`runtime.steadyStartSeconds`), so boot never counts. `cpuSteadyCores` is the
 window's mean minus the JIT compiler threads' share of the CPU profile (`cpuMeanCores`,
 `cpuJitShare`): minutes after a restart the JIT still compiles, and that CPU ends; the load's
-CPU stays, so a pod measured at 2 min and one measured at 10 min read about the same. Name both in
-the evidence (e.g. `steady 0.21 = mean 0.30 − JIT 30 % over 60 s`). The bars leave room for the
+CPU stays, so a pod measured at 2 min and one measured at 10 min read about the same. The bars leave room for the
 variance of a short window: a 2-minute estimate lands within about 40 % of the settled value
 either way, so the estimate `sizeCpu` sized from and the one the checklist reads can differ by
 up to 2×. Item 6 fails a request sized for boot (3× steady and more) and passes one `sizeCpu`

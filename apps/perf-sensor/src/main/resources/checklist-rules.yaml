@@ -1,0 +1,168 @@
+# Checklist rules — the twelve practices of the java-on-eks-checklist skill
+# (references/checklist.md explains each one and its sources), as data. perf-sensor
+# evaluates them over the facts it measured; no rule is written in Java.
+#
+# Each item:
+#   requires   fact paths that must be present, else the item is UNKNOWN; "a|b" = either
+#   underLoad  UNKNOWN unless the window carried load (window.requestRatePerSec >= minRequestRate)
+#   unknown    the evidence text for UNKNOWN (default: the missing fact names)
+#   values     named CEL expressions, evaluated in order; later ones may use earlier ones
+#   pass       CEL expression -> bool
+#   evidence   the table cell: {name} prints a value, {name:N} with N decimals
+#
+# Expressions are CEL (https://cel.dev), the language Kubernetes uses for validation rules:
+# no side effects, no I/O, always terminates. Variables: workload, runtime, jfr, profile,
+# window, threads (diagnoseBlocking under load), blocking. Every number is a double, so
+# write literals as 30.0, not 30. Functions beyond standard CEL: ceil(x), roundUp(x, step).
+# A fact the sensor could not measure is absent: test optional ones with has(...).
+minRequestRate: 1.0
+
+items:
+  - id: 1
+    practice: Memory Guaranteed and honoured
+    requires: [workload.memRequestMi, workload.memLimitMi]
+    values:
+      req: workload.memRequestMi
+      lim: workload.memLimitMi
+      restarts: "has(runtime.restarts) ? runtime.restarts : 0.0"
+      oom: "has(runtime.lastTerminationReason) && runtime.lastTerminationReason == 'OOMKilled'"
+      op: "req == lim ? '==' : '≠'"
+      last: "oom ? ', last termination OOMKilled' : ''"
+    pass: "req == lim && (restarts == 0.0 || !oom)"
+    evidence: "request {req} {op} limit {lim}, restarts {restarts}{last}"
+
+  - id: 2
+    practice: Limit sized from working set
+    underLoad: true
+    requires: [workload.memLimitMi, runtime.workingSetPeakMi]
+    values:
+      lim: workload.memLimitMi
+      peak: runtime.workingSetPeakMi
+      ratio: lim / peak
+    pass: ratio <= 2.5
+    evidence: "{lim} / peak {peak:2} = {ratio:2}× (bar 2.5)"
+
+  - id: 3
+    practice: Heap follows the container
+    requires: [runtime.maxHeapMi, workload.memLimitMi]
+    values:
+      heap: runtime.maxHeapMi
+      lim: workload.memLimitMi
+      ratio: heap / lim
+    pass: ratio >= 0.5 && ratio <= 0.8
+    evidence: "maxHeap {heap} / limit {lim} = {ratio:2}× (bar 0.50–0.80)"
+
+  - id: 4
+    practice: Heap starts near its steady size
+    requires: [runtime.initialHeapMi, runtime.maxHeapMi]
+    values:
+      initMi: runtime.initialHeapMi
+      maxMi: runtime.maxHeapMi
+      ratio: initMi / maxMi
+    pass: ratio >= 0.5
+    evidence: "initial {initMi} / max {maxMi} = {ratio:3} (bar ≥0.50)"
+
+  - id: 5
+    practice: JVM sees its CPU and GC fits it
+    requires: [workload.cpuLimitCores, "jfr.container.effectiveCpuCount|runtime.effectiveCpuCount"]
+    values:
+      lim: workload.cpuLimitCores
+      eff: "has(jfr.container) && has(jfr.container.effectiveCpuCount) ? jfr.container.effectiveCpuCount : runtime.effectiveCpuCount"
+      cl: ceil(lim)
+      gc: "has(runtime.gcName) ? runtime.gcName : 'unknown'"
+      op: "eff == cl ? '==' : '≠'"
+      gcNote: "eff <= 1.0 ? (gc == 'SerialGC' ? 'GC SerialGC at ≤1 CPU' : 'GC ' + gc + ' at ≤1 CPU, want SerialGC') : 'GC ' + gc"
+    pass: "eff == cl && (eff > 1.0 || gc == 'SerialGC')"
+    evidence: "limit {lim} → ceil {cl} {op} effectiveCpuCount {eff}; {gcNote}"
+
+  - id: 6
+    practice: CPU request reflects steady state
+    underLoad: true
+    requires: [workload.cpuRequestCores, runtime.cpuSteadyCores]
+    unknown: "no steady-state CPU: less than 60 s of steady state after readiness, or no cAdvisor series"
+    values:
+      req: workload.cpuRequestCores
+      steady: runtime.cpuSteadyCores
+      raw: 2.5 * steady
+      bar: roundUp(raw, 0.05)
+      op: "req <= bar ? '≤' : '>'"
+    pass: req <= bar
+    evidence: "request {req} {op} roundUp(2.5 × steady {steady:3} = {raw:4}, 50m) = {bar:2}"
+
+  - id: 7
+    practice: Not CFS-throttled under load
+    underLoad: true
+    requires: [runtime.cpuThrottledRatio]
+    unknown: "no steady-state CPU: less than 60 s of steady state after readiness, or no cAdvisor series"
+    values:
+      ratio: runtime.cpuThrottledRatio
+      op: "ratio <= 0.25 ? '≤' : '>'"
+    pass: ratio <= 0.25
+    evidence: "throttled ratio {ratio:3} {op} 0.25"
+
+  - id: 8
+    practice: Fast startup
+    requires: [runtime.startupSeconds]
+    values:
+      s: runtime.startupSeconds
+      op: "s <= 5.0 ? '≤' : '>'"
+    pass: s <= 5.0
+    evidence: "startup {s:3}s {op} 5s bar"
+
+  - id: 9
+    practice: Probe budgets match observed behaviour
+    requires: [runtime.startupSeconds]
+    values:
+      s: runtime.startupSeconds
+      need: 2.0 * s
+      startupProbe: "has(workload.startupProbe) && workload.startupProbe && has(workload.startupBudgetSeconds)"
+      sb: "has(workload.startupBudgetSeconds) ? workload.startupBudgetSeconds : 0.0"
+      noDelay: "(has(workload.startupInitialDelaySeconds) ? workload.startupInitialDelaySeconds : 0.0) == 0.0 && (has(workload.readinessInitialDelaySeconds) ? workload.readinessInitialDelaySeconds : 0.0) == 0.0"
+      lb: "has(workload.livenessBudgetSeconds) ? workload.livenessBudgetSeconds : 0.0"
+      gcMax: "has(jfr.gc) && has(jfr.gc.maxMs) ? jfr.gc.maxMs : 0.0"
+      livenessOk: "lb >= 30.0 && lb * 1000.0 >= 3.0 * gcMax"
+      pathsDiffer: "!(has(workload.livenessPath) && has(workload.readinessPath)) || workload.livenessPath != workload.readinessPath"
+      startupOp: "startupProbe && sb >= need ? '≥' : '<'"
+      liveOp: "livenessOk ? '≥' : '<'"
+      pathOp: "pathsDiffer ? '≠' : '=='"
+      probeNote: "startupProbe ? '' : 'no startupProbe; '"
+      delayNote: "noDelay ? '' : '; initialDelaySeconds set'"
+    pass: "startupProbe && sb >= need && noDelay && livenessOk && pathsDiffer"
+    evidence: "{probeNote}startupBudget {sb}s {startupOp} 2×{s:3}={need:2}s; livenessBudget {lb}s {liveOp}30 and {liveOp}3×gcMax {gcMax:1}ms; liveness {pathOp} readiness path{delayNote}"
+
+  - id: 10
+    practice: Shutdown budget is consistent
+    requires: [workload.terminationGracePeriodSeconds, workload.preStopSleepSeconds]
+    values:
+      grace: workload.terminationGracePeriodSeconds
+      preStop: workload.preStopSleepSeconds
+      need: preStop + 30.0
+      op: "grace >= need ? '≥' : '<'"
+    pass: grace >= need
+    evidence: "grace {grace}s {op} preStop {preStop}s + 30 = {need}s"
+
+  - id: 11
+    practice: Request path does not block on downstream calls
+    underLoad: true
+    requires: [threads.requestThreadsBlockedInFutureGet]
+    unknown: "no thread dump under load (diagnoseBlocking BLOCKED)"
+    values:
+      blocked: threads.requestThreadsBlockedInFutureGet
+      waiting: threads.requestThreadsWaitingForConnection
+      inTx: threads.blockedInsideTransaction
+      txNote: "inTx > 0.0 ? ' (holds a DB connection)' : ''"
+    pass: blocked == 0.0 && waiting == 0.0
+    evidence: "blockedInFutureGet {blocked}, waitingForConnection {waiting}, blockedInsideTransaction {inTx}{txNote}"
+
+  - id: 12
+    practice: Latency under load is bounded
+    underLoad: true
+    requires: [runtime.latencyMeanMs]
+    values:
+      mean: runtime.latencyMeanMs
+      gcMax: "has(jfr.gc) && has(jfr.gc.maxMs) ? jfr.gc.maxMs : null"
+      safepoint: "has(jfr.safepointTotalMs) ? jfr.safepointTotalMs : null"
+      pinned: "has(jfr.pinned) ? jfr.pinned.count : null"
+      op: "mean <= 100.0 ? '≤' : '>'"
+    pass: mean <= 100.0
+    evidence: "latencyMean {mean:2}ms {op} 100ms bar; gc.maxMs {gcMax:1}, safepointTotalMs {safepoint:1}, pinned {pinned}"

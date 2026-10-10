@@ -14,8 +14,9 @@
     <version>1.0.0</version>
     <name>perf-sensor</name>
     <description>Deterministic performance sensors for Java workloads on EKS, exposed over
-        MCP (streamable-http) and REST. Measures only — no LLM, no AWS SDK. Judgement lives in
-        the java-on-eks-optimization / java-on-eks-checklist skills.</description>
+        MCP (streamable-http) and REST. No LLM, no AWS SDK: it measures, sizes and scores the
+        checklist from a rules file. Advice lives in the java-on-eks-optimization /
+        java-on-eks-checklist skills.</description>
 
     <properties>
         <java.version>25</java.version>
@@ -66,6 +67,15 @@
             <groupId>io.kubernetes</groupId>
             <artifactId>client-java</artifactId>
             <version>${kubernetes-client.version}</version>
+        </dependency>
+
+        <!-- Checklist rules (checklist-rules.yaml) are CEL expressions evaluated over the
+             measured facts: the side-effect-free language Kubernetes uses for validation
+             rules, so a rules file can only read facts, never act. -->
+        <dependency>
+            <groupId>dev.cel</groupId>
+            <artifactId>cel</artifactId>
+            <version>0.14.0</version>
         </dependency>
 
         <dependency>

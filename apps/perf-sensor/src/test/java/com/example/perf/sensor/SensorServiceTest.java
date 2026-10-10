@@ -96,6 +96,21 @@ class SensorServiceTest {
     }
 
     @Test
+    void threadDumpOverTime_slowDumps_endAtTheWindow_notAtTheCount() {
+        when(k8s.collect("svc", "svc")).thenReturn(snapshot("p1", "10.0.0.1"));
+        when(dump.threads("10.0.0.1", "p1")).thenAnswer(inv -> {
+            Thread.sleep(300);
+            return dumpOf("p1", 1, 0, 0, 0, Map.of("RUNNABLE", 1), null, 0);
+        });
+        long t0 = System.nanoTime();
+        var t = sensor().threadDumpOverTime("svc", 10, 100);   // window 10 × 100 ms = 1 s
+        long ms = (System.nanoTime() - t0) / 1_000_000L;
+        assertThat(t).isNotNull();
+        assertThat(ms).as("a 300 ms dump is not followed by another 100 ms gap: about 1.2 s, not 4 s").isLessThan(2000);
+        verify(dump, org.mockito.Mockito.atMost(5)).threads("10.0.0.1", "p1");
+    }
+
+    @Test
     void diagnoseBlocking_noConnectionWait_noPoolSizeTarget() {
         when(prometheus.requestRatePerSec("svc", 1)).thenReturn(50.0);
         when(k8s.collect("svc", "svc")).thenReturn(snapshot("p1", "10.0.0.1"));

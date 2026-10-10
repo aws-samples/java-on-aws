@@ -8,6 +8,8 @@ import com.example.perf.sensor.SensorService.ProfileTop;
 import com.example.perf.sensor.SensorService.SizeParams;
 import com.example.perf.sensor.SensorService.SizeResult;
 import com.example.perf.sensor.SensorService.StartupResult;
+import com.example.perf.sensor.checklist.ChecklistService;
+import com.example.perf.sensor.checklist.ChecklistService.ChecklistResult;
 import com.example.perf.sensor.facts.ThreadFacts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,9 +30,29 @@ public class SensorMcpTools {
     private static final String SERVICE_PARAM = "Pyroscope service_name = Deployment name = namespace";
 
     private final SensorService sensor;
+    private final ChecklistService checklist;
 
-    public SensorMcpTools(SensorService sensor) {
+    public SensorMcpTools(SensorService sensor, ChecklistService checklist) {
         this.sensor = sensor;
+        this.checklist = checklist;
+    }
+
+    @Tool(description = """
+        Score a Java service on EKS against the twelve checklist practices (memory, CPU, startup,
+        latency). Deterministic: the sensor measures (measure + diagnoseBlocking under the running
+        load) and evaluates the checklist rules file over the facts; no LLM decides a verdict.
+        A freshly rolled pod has no steady-state facts yet: while it is younger than
+        minUptimeSeconds the call waits up to 30 s and returns status SETTLING with
+        settleRemainingSeconds; tell the user how long is left and call again. status OK returns
+        score, total, items [{id, practice, verdict PASS|FAIL|UNKNOWN, icon, evidence}] and
+        markdown: the score line and the table, ready to print verbatim. note says why the
+        load-dependent items are UNKNOWN when no load is flowing.""")
+    public ChecklistResult checklist(
+        @ToolParam(description = SERVICE_PARAM) String service,
+        @ToolParam(description = "score only once the current pod is at least this old, seconds (default 120)", required = false) Integer minUptimeSeconds) {
+        logger.info("MCP checklist service={} minUptime={}", service, minUptimeSeconds);
+        return checklist.checklist(service,
+            minUptimeSeconds == null ? ChecklistService.DEFAULT_MIN_UPTIME_SECONDS : minUptimeSeconds, 30);
     }
 
     @Tool(description = """
