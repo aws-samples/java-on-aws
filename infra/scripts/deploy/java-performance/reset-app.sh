@@ -6,6 +6,9 @@
 # Everything a run changes in the APP is reverted; the platform (monitoring,
 # profiler policy, sensor, boost controller, skills) is left as bootstrapped.
 #
+#   0. The load and the sensor port-forward a run started are stopped: the loops and
+#      the artillery process of the current run (it outlives its loop for up to 600 s,
+#      and a second load on top doubles the request rate the next run measures).
 #   1. ~/environment/unicorn-store-spring: hard reset to the commit
 #      "Starting point: containerized + deployed to EKS" (made by app-prepare.sh), untracked files removed
 #      (Dockerfile.aot/.crac, startup-cpu-boost.yaml, listener classes ...); then
@@ -52,6 +55,14 @@ PREBUILD=false
 [ "${1:-}" = "--prebuild" ] && PREBUILD=true
 
 [ -d "${APP_DIR}/.git" ] || { log_error "No git repo at ${APP_DIR}"; exit 1; }
+
+# 0. Stop the previous run's load and port-forward (loops first, then what they started).
+pkill -f 'scripts/load.sh' 2>/dev/null; pkill -f 'artillery run' 2>/dev/null
+pkill -f 'port-forward svc/perf-sensor' 2>/dev/null
+sleep 2
+pgrep -f 'artillery run|scripts/load.sh' >/dev/null \
+  && log_warning "load still running: $(pgrep -af 'artillery run|scripts/load.sh' | head -3)" \
+  || log_success "load and port-forward stopped"
 
 # 1. App repo back to the starting point.
 START_SHA="$(git -C "${APP_DIR}" log --format=%H --grep="${START_MSG}" -n 1)"
