@@ -2,9 +2,10 @@
 
 Deterministic performance sensors for Java workloads on Amazon EKS, exposed to an AI
 assistant over MCP (streamable-http) and to an operator over REST. The sensor **measures**;
-it never writes to the cluster, never drives traffic and runs no model. Judgement lives in
-two Claude Code skills shipped next to it (`skills/`): a twelve-item checklist and an
-optimization playbook whose sizing numbers come from `references/sizing-policy.yaml`.
+it never writes to the cluster, never drives traffic and runs no model. It also scores the
+twelve-item checklist, by evaluating the rules in `checklist-rules.yaml` over those facts.
+The explanation lives in two Claude Code skills shipped next to it (`skills/`): the checklist
+and an optimization playbook whose sizing numbers come from `references/sizing-policy.yaml`.
 
 Companion: [`apps/perf-profiler`](../perf-profiler/README.md), the privilege-free sidecar
 that gives the sensor thread dumps, the JFR ring and continuous profiles.
@@ -20,11 +21,12 @@ that gives the sensor thread dumps, the JFR ring and continuous profiles.
 | `diagnoseBlocking` | 40 thread dumps over 20 s while the operator's load runs, reporting peak concurrent counts and summed blocking frames; BLOCKED when the last-minute request rate is below the threshold or no dump can be taken. |
 | `profileTop` | Pyroscope's hottest leaf frames by self time for `cpu` or `wall`, with the JIT/GC or futex share of the **whole** profile. |
 | `startupLog` | The last `Started … in N seconds` or `Restored …` line from the app container's log, with `kind`. |
+| `checklist` | Waits until the current pod is `minUptimeSeconds` old (default 120), runs `measure` and `diagnoseBlocking`, and evaluates `src/main/resources/checklist-rules.yaml` (CEL expressions, the language Kubernetes uses for validation rules: no side effects, no I/O) over the facts: score, one verdict and evidence cell per item, and the markdown table. `CHECKLIST_RULES` points at a replacement file, for example from a ConfigMap. |
 | `StartupMetrics` | Every 30 s reads each profiled pod's log once and publishes `perf_sensor_startup_seconds{service,namespace,pod}`, because `application.ready.time` is frozen inside a CRaC checkpoint. |
-| REST `/api/v1/*` | The same seven operations for `curl`, so an operator can check a number next to what the assistant saw; `/api/v1/tools` lists them. |
+| REST `/api/v1/*` | The same eight operations for `curl`, so an operator can check a number next to what the assistant saw; `/api/v1/tools` lists them. `/api/v1/checklist/<service>?format=text&wait=true` prints a dot every 5 s while it waits and measures, then the table. |
 
 Every number in a tool result names its source; a fact that cannot be read is `null`
-(the skills score it UNKNOWN, never PASS or FAIL).
+(the checklist scores it UNKNOWN, never PASS or FAIL).
 
 ## Contract
 
@@ -62,11 +64,12 @@ Environment variables are listed in `src/main/resources/application.yaml`.
 ## Build, test, deploy
 
 ```bash
-mvn -o test                                             # 51 unit tests, no cluster needed
+mvn -o test                                             # unit tests, no cluster needed
 infra/scripts/deploy/java-on-amazon-eks/perf-sensor.sh  # build (jib, push, digest) then install (RBAC, Deployment, dashboard); or `build` / `install` alone
 infra/scripts/deploy/java-on-amazon-eks/claude-code.sh   # skills + .mcp.json + Claude permissions on the IDE
 kubectl -n monitoring port-forward svc/perf-sensor 8090:8080
 curl -s localhost:8090/api/v1/measure/<service> | jq .
+curl -sN "localhost:8090/api/v1/checklist/<service>?format=text&wait=true"
 ```
 
 `perf-sensor.sh` takes `APP_NS` and `REQUEST_PACKAGE` for the workload; the Grafana
@@ -77,10 +80,12 @@ dashboard is `k8s/dashboard.json`.
 ```
 src/main/java/com/example/perf/sensor/
   SensorApplication      Boot + MCP tool registration
-  SensorMcpTools         the seven MCP tools (descriptions are the tool contract)
+  SensorMcpTools         the eight MCP tools (descriptions are the tool contract)
   SensorService          guards, arithmetic, dump aggregation over pods and time
   StartupMetrics         startup gauge for every profiled pod
   api/SensorController   REST mirror of the tools
+  api/ChecklistController REST checklist: json, markdown or text, 503 or progress while the pod settles
+  checklist/             the rules engine (CEL) and the checklist service
   collect/               one class per source: K8s, Prometheus, Pyroscope, /dump, JFR, pod log
   facts/                 the typed result records
 skills/                  java-on-eks-checklist, java-on-eks-optimization (+ references)

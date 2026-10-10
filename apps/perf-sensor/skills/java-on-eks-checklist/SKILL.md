@@ -6,54 +6,36 @@ description: Score a Java workload on EKS against cloud-native performance pract
 # java-on-eks-checklist
 
 Score a Java service on EKS against the twelve performance practices in
-`references/checklist.md`, using only measured facts from `perf-sensor`.
-Deterministic: the same cluster state yields the same score. Never guess a missing
-fact — mark it UNKNOWN.
+`references/checklist.md`. The score is computed by `perf-sensor`, not by you: the
+sensor measures the service and evaluates the checklist rules over the facts, so the same
+cluster state yields the same score and the same evidence. `references/checklist.md`
+explains each practice, its bar and its sources.
 
 ## Procedure
 
 Scoring needs a load run flowing (the operator's benchmark); five items are only decidable
-under load and `diagnoseBlocking` samples live threads.
+under load.
 
-1. Call `perf-sensor.measure <service>` with `minUptimeSeconds = 120`. It returns everything
-   items 1–10 and 12 need (workload, runtime, profile summary, `jfr` ring facts, window). A
-   pod younger than 120 s has no peak, steady CPU or throttle share yet, so the sensor waits for it
-   in slices of ≤ 30 s: while `window.settleRemainingSeconds > 0`, write one line for the
-   user ("pod is N s old — measuring at 120 s, M s to go") and call `measure` again with the
-   same parameters; use the last response. If `window.settleNote` says no load is flowing,
-   stop waiting: report as in step 2.
-2. Call `perf-sensor.diagnoseBlocking <service>` with `minRequestRate` from the optimization
-   skill's `references/sizing-policy.yaml` for item 11. It samples the thread dump while the
-   load flows and drives no traffic. If it returns BLOCKED, or `window.requestRatePerSec`
-   from `measure` is below `minRequestRate`, the load-dependent items are UNKNOWN with the
-   reason "no load in window"; say that the service's load (its repo documents how, e.g. a
-   `scripts/load*.sh`) must be running, and stop. Do not start load yourself.
-3. Evaluate every item in `references/checklist.md` as **PASS / FAIL / UNKNOWN**
-   from the named evidence fields. A fact that is absent (null) makes its item
-   UNKNOWN, not FAIL. Items marked *under load* are UNKNOWN when
-   `window.requestRatePerSec` is null or below `minRequestRate` (probe traffic alone is
-   ≈ 0.5 rps and does not count as load); say "no load in window" as the reason.
-4. Report `Score: <passed>/12`, then the table in `references/checklist.md` order (1–12),
-   each row with its icon, number, practice and **the named fact/signal and value that
-   decided it** (e.g. `704 / peak 347 = 2.03× (bar 2.0)`). Every verdict must cite the
-   signal it came from — never assert without one.
+1. Call `perf-sensor.checklist <service>` (default `minUptimeSeconds = 120`). A pod younger
+   than that has no peak, steady CPU or throttle share yet, so the sensor waits in slices of
+   ≤ 30 s: while `status` is `SETTLING`, write one line for the user ("pod is N s old —
+   scoring at 120 s, M s to go", from `podUptimeSeconds` and `settleRemainingSeconds`) and
+   call again with the same parameters.
+2. When `status` is `OK`, print `markdown` verbatim: the score line and the table. Do not
+   recompute, reorder or reword a verdict or an evidence cell.
+3. If `note` is set (no load flowing), print it after the table, and say that the service's
+   load (its repo documents how, e.g. a `scripts/load*.sh`) must be running. Do not start
+   load yourself.
+
+The same score is available to the operator with
+`curl -sN "localhost:8090/api/v1/checklist/<service>?format=text&wait=true"`.
 
 ## Output format
 
-No code fences. One markdown table, icon first: ✅ PASS, ❌ FAIL, 🟡 UNKNOWN (name the missing fact in Evidence). Evidence is one short clause with the deciding values and the bar.
+No code fences. The `markdown` field as returned, icon first: ✅ PASS, ❌ FAIL, 🟡 UNKNOWN
+(the evidence names the missing fact). No before/after comparison with earlier scores:
+report the current state only.
 
-Score: 6/12
-
-| | # | Practice | Evidence |
-|---|---|---|---|
-| ✅ | 1 | Memory Guaranteed and honoured | request 704 == limit 704, restarts 0 |
-| ❌ | 2 | Limit sized from working set | 704 / peak 347 = 2.03× (bar 2.0) |
-| ❌ | 3 | Heap follows the container | maxHeap 3906 / 704 = 5.55× (bar 0.5–0.8) |
-| 🟡 | 12 | Pool not a bottleneck | hikariPendingMax null — metric not scraped |
-
-No before/after comparison with earlier scores: report the current state only.
-
-This skill **scores; it does not prescribe.** Report each item's verdict and the
-deciding evidence only. Do **not** append remediation steps, "how to fix", or
-"ask for X" next-step hints for FAIL/UNKNOWN items. If the operator wants a fix, they
-ask the optimization skill for that specific improvement.
+This skill **scores; it does not prescribe.** Report the table only. Do **not** append
+remediation steps, "how to fix", or "ask for X" next-step hints for FAIL/UNKNOWN items. If
+the operator wants a fix, they ask the optimization skill for that specific improvement.

@@ -10,8 +10,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 /**
  * perf-sensor — deterministic performance sensors for Java workloads on EKS, exposed over
  * MCP (streamable-http) and REST. No LLM, no AWS SDK: it measures (Kubernetes API,
- * Prometheus, Pyroscope, profiler sidecar /dump) and owns the sizing arithmetic and its
- * guards. All judgement lives in the java-on-eks-optimization / java-on-eks-checklist skills.
+ * Prometheus, Pyroscope, profiler sidecar /dump), owns the sizing arithmetic and its guards,
+ * and scores the checklist from a rules file (checklist-rules.yaml). Advice and explanation
+ * live in the java-on-eks-optimization / java-on-eks-checklist skills.
  */
 @SpringBootApplication
 @EnableScheduling   // StartupMetrics polls the profiled pods and publishes their startup gauge

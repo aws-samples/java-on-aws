@@ -13,6 +13,8 @@
 #                        default perf-profile/sidecar=true (the profiler opt-in label)
 #   PROFILER_CONTAINER   sidecar container name to skip when finding the app container,
 #                        default perf-profiler
+#   CHECKLIST_RULES      path of a checklist rules file replacing the bundled
+#                        checklist-rules.yaml (e.g. mounted from a ConfigMap), default unset
 # Contract: namespace == Deployment == app container == Pyroscope service_name (see README).
 # =============================================================================
 spring:

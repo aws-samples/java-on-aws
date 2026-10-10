@@ -344,26 +344,36 @@ public class SensorService {
     }
 
     /**
-     * Sample the representative pod's thread dump {@code samples} times, {@code intervalMs} apart,
-     * and aggregate over TIME. A request-path block on a virtual-thread app is brief — the vthread
+     * Sample the representative pod's thread dump up to {@code samples} times on a fixed
+     * {@code intervalMs} tick, within {@code samples × intervalMs} of wall time, and aggregate
+     * over TIME. A dump takes about half a second (jcmd attach, JSON write, fetch), so at the
+     * 500 ms default the dumps run back to back and the window, not the count, ends sampling. A request-path block on a virtual-thread app is brief — the vthread
      * parks in {@code Future.get()} only for the downstream round-trip — so a single snapshot
      * usually misses it. Counters are the PEAK concurrent value across samples; {@code byState}
      * is the peak per state; {@code topBlockingFrames} counts are summed. Must be taken WHILE
      * load flows. null when no dump could be taken.
      */
     public ThreadFacts threadDumpOverTime(String service, int samples, long intervalMs) {
-        int n = Math.max(1, Math.min(samples <= 0 ? 5 : samples, 30));
+        int n = Math.max(1, Math.min(samples <= 0 ? 5 : samples, 40));
         long gap = intervalMs <= 0 ? 1000L : Math.min(intervalMs, 5000L);
         var snap = k8s.collect(service, service);
         var dumps = new ArrayList<ThreadFacts>();
+        long start = System.nanoTime();
+        long deadline = start + n * gap * 1_000_000L;
         for (int i = 0; i < n; i++) {
             var d = dump.threads(snap.appPodIP(), snap.appPodName());
             if (d != null) {
                 dumps.add(d);
             }
-            if (i < n - 1) {
+            long now = System.nanoTime();
+            if (i == n - 1 || now >= deadline) {
+                break;
+            }
+            // Fixed rate: a dump that took longer than the tick is not followed by a full gap.
+            long waitMs = (start + (i + 1) * gap * 1_000_000L - now) / 1_000_000L;
+            if (waitMs > 0) {
                 try {
-                    Thread.sleep(gap);
+                    Thread.sleep(waitMs);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -412,8 +422,9 @@ public class SensorService {
      * thread) exists only while requests are in flight, and JFR does not record virtual-thread
      * parks, so the caller must have a load run going. Guard: BLOCKED unless the request rate
      * over the last minute exceeds {@code minRequestRate}. Read-only on any image, including CRaC.
-     * Defaults 20 s at 500 ms = 40 dumps: a ~10 ms block at 50 rps is present in a given dump
-     * with p ≈ 0.4, so 12 dumps missed it once in ~25 runs; 40 dumps make a miss negligible.
+     * Defaults 20 s at 500 ms ticks = up to 40 dumps, about 36 in practice: a ~10 ms block at
+     * 50 rps is present in a given dump with p ≈ 0.4, so 12 dumps missed it once in ~25 runs;
+     * 36 dumps make a miss negligible.
      * Each dump is a safepoint in the app JVM; 40 in 20 s is the accepted cost of the diagnosis.
      */
     public BlockingResult diagnoseBlocking(String service, int durationSec, long intervalMs,

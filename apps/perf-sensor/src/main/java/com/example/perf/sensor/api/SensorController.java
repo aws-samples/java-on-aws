@@ -20,7 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * REST facade exposing the same seven operations as the MCP tools, returning the same JSON
+ * REST facade exposing the same operations as the MCP tools (the checklist is in
+ * {@link ChecklistController}), returning the same JSON
  * records, so an operator can check a number with {@code curl} next to what Claude sees.
  * Deterministic; no LLM. Health is served by Actuator at {@code /actuator/health}.
  */
@@ -97,7 +98,7 @@ public class SensorController {
         return sensor.startupLog(service);
     }
 
-    /** The seven operations with their inputs and outputs (the MCP tool descriptions carry the detail). */
+    /** The eight operations with their inputs and outputs (the MCP tool descriptions carry the detail). */
     @GetMapping("/tools")
     public List<Map<String, String>> tools() {
         return List.of(
@@ -121,6 +122,9 @@ public class SensorController {
                 "output", "{frames[{name, selfPct}], jitShare, gcShare, futexWallShare, samples}"),
             Map.of("name", "startupLog",
                 "input", "service",
-                "output", "{pod, line, seconds, kind Started|Restored}"));
+                "output", "{pod, line, seconds, kind Started|Restored}"),
+            Map.of("name", "checklist",
+                "input", "service, format=json|markdown|text, minUptimeSeconds=120, wait=false",
+                "output", "{status OK|SETTLING, score, total, items[{id, practice, verdict, icon, evidence}], markdown, podUptimeSeconds, settleRemainingSeconds, requestRatePerSec, note}; 503 while SETTLING without wait"));
     }
 }
