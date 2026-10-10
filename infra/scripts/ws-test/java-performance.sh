@@ -98,13 +98,13 @@ ws_run_block 1 '2. Fix the manifest' 'In the Shell terminal:' 25 25 'bash' 'non-
 cd ~/environment && claude -c -p "Right-size the memory and CPU of unicorn-store-spring and make it start faster without changing the image."
 WS_TEST_BLOCK_200_1
 
-ws_skip_block 2 'Review the change' 'Review the change' 51 64 'text' '' 'copy action disabled'
+ws_skip_block 2 'Review the change' 'Review the change' 51 68 'text' '' 'copy action disabled'
 
-ws_skip_block 3 'Review the change' 'In k8s/deployment.yaml:' 71 80 'yaml' '' 'copy action disabled'
+ws_skip_block 3 'Review the change' 'In k8s/deployment.yaml:' 75 88 'yaml' '' 'copy action disabled'
 
-ws_skip_block 4 'Review the change' '- requests.cpu comes from sizeCpu. limits.cpu stays at 1, and ActiveProcessorCount=1 is ceil(limits.cpu)' 90 111 'yaml' '' 'copy action disabled'
+ws_skip_block 4 'Review the change' '- requests.cpu comes from sizeCpu. limits.cpu stays at 1, and ActiveProcessorCount=1 is ceil(limits.cpu)' 98 119 'yaml' '' 'copy action disabled'
 
-ws_run_block 5 'Roll out, verify and score' 'In the Shell terminal:' 122 143 'bash' '' 900 <<'WS_TEST_BLOCK_200_5'
+ws_run_block 5 'Roll out, verify and score' 'In the Shell terminal:' 130 151 'bash' '' 900 <<'WS_TEST_BLOCK_200_5'
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/startup-cpu-boost.yaml
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
@@ -129,9 +129,9 @@ git -C ~/environment/unicorn-store-spring add -A \
 curl -sN "localhost:8090/api/v1/checklist/unicorn-store-spring?format=text&wait=true"
 WS_TEST_BLOCK_200_5
 
-ws_skip_block 6 'Roll out, verify and score' 'Roll out, verify and score' 150 160 'text' '' 'copy action disabled'
+ws_skip_block 6 'Roll out, verify and score' 'Roll out, verify and score' 158 168 'text' '' 'copy action disabled'
 
-ws_skip_block 7 'The score' 'The score' 187 200 'text' '' 'copy action disabled'
+ws_skip_block 7 'The score' 'The score' 195 208 'text' '' 'copy action disabled'
 
 ws_end_page
 
@@ -141,13 +141,13 @@ ws_run_block 1 '3. Fix the image' 'In the Shell terminal:' 25 25 'bash' 'non-int
 cd ~/environment && claude -c -p "How can unicorn-store-spring start in under a second?"
 WS_TEST_BLOCK_300_1
 
-ws_skip_block 2 'Review the change' 'Review the change' 44 54 'text' '' 'copy action disabled'
+ws_skip_block 2 'Review the change' 'Review the change' 44 58 'text' '' 'copy action disabled'
 
-ws_skip_block 3 'Review the change' '- k8s/deployment.yaml: JAVATOOLOPTIONS removed. A restored JVM keeps the flags of the checkpoint, and a GC flag in the environment stops the restore' 67 111 'dockerfile' '' 'copy action disabled'
+ws_skip_block 3 'Review the change' '- k8s/deployment.yaml: JAVATOOLOPTIONS removed. A restored JVM keeps the flags of the checkpoint, and a GC flag in the environment stops the restore' 71 115 'dockerfile' '' 'copy action disabled'
 
-ws_skip_block 4 'Review the change' '- Line 45: -XX:CRaCRestoreFrom restores instead of starting. There are no GC or heap flags: they came with the checkpoint' 123 150 'java' '' 'copy action disabled'
+ws_skip_block 4 'Review the change' '- Line 45: -XX:CRaCRestoreFrom restores instead of starting. There are no GC or heap flags: they came with the checkpoint' 127 157 'java' '' 'copy action disabled'
 
-ws_run_block 5 'Build, roll out, verify and score' 'In the Shell terminal. The build starts the application inside Docker, warms it up, checkpoints, and pushes the :crac tag:' 163 183 'bash' '' 1500 <<'WS_TEST_BLOCK_300_5'
+ws_run_block 5 'Build, roll out, verify and score' 'In the Shell terminal. The build starts the application inside Docker, warms it up, checkpoints, and pushes the :crac tag:' 170 190 'bash' '' 1500 <<'WS_TEST_BLOCK_300_5'
 # ≈ 3 min: builds, starts, warms up, checkpoints; pushes :crac
 ~/environment/unicorn-store-spring/scripts/build.sh crac Dockerfile.crac
 
@@ -171,9 +171,9 @@ git -C ~/environment/unicorn-store-spring add -A \
 curl -sN "localhost:8090/api/v1/checklist/unicorn-store-spring?format=text&wait=true"
 WS_TEST_BLOCK_300_5
 
-ws_skip_block 6 'The image now carries runtime state' '- The image is larger. In this run the :crac image is 504 MB in ECR against 452 MB for :latest. A node that has not pulled it yet downloads it before the restore starts.' 202 211 'text' '' 'copy action disabled'
+ws_skip_block 6 'The image now carries runtime state' '- The image is larger. In this run the :crac image is 503 MB in ECR against 452 MB for :latest. A node that has not pulled it yet downloads it before the restore starts.' 209 218 'text' '' 'copy action disabled'
 
-ws_skip_block 7 'The score' 'The score' 227 240 'text' '' 'copy action disabled'
+ws_skip_block 7 'The score' 'The score' 234 247 'text' '' 'copy action disabled'
 
 ws_end_page
 
@@ -183,9 +183,9 @@ ws_run_block 1 '4. Fix the code' 'In the Shell terminal:' 25 25 'bash' 'non-inte
 cd ~/environment && claude -c -p "Why do some writes to unicorn-store-spring take seconds under load? Fix it, size the service again and fix item 10."
 WS_TEST_BLOCK_400_1
 
-ws_skip_block 2 'Review the change' 'Review the change' 43 58 'text' '' 'copy action disabled'
+ws_skip_block 2 'Review the change' 'Review the change' 43 62 'text' '' 'copy action disabled'
 
-ws_run_block 3 'Build, roll out, verify and score' 'In the Shell terminal. The image tag stays :crac with a new digest, and the Deployment changed, so apply rolls out both:' 79 93 'bash' '' 1500 <<'WS_TEST_BLOCK_400_3'
+ws_run_block 3 'Build, roll out, verify and score' 'In the Shell terminal. The image tag stays :crac with a new digest, and the Deployment changed, so apply rolls out both:' 83 97 'bash' '' 1500 <<'WS_TEST_BLOCK_400_3'
 # code and heap flags changed: rebuild the checkpoint (≈ 2 min)
 ~/environment/unicorn-store-spring/scripts/build.sh crac Dockerfile.crac
 
@@ -203,9 +203,9 @@ git -C ~/environment/unicorn-store-spring add -A \
 curl -sN "localhost:8090/api/v1/checklist/unicorn-store-spring?format=text&wait=true"
 WS_TEST_BLOCK_400_3
 
-ws_skip_block 4 'The pool and the database' 'The pool and the database' 112 117 'text' '' 'copy action disabled'
+ws_skip_block 4 'The pool and the database' 'The pool and the database' 116 122 'text' '' 'copy action disabled'
 
-ws_skip_block 5 'The score' 'The score' 133 146 'text' '' 'copy action disabled'
+ws_skip_block 5 'The score' 'The score' 138 151 'text' '' 'copy action disabled'
 
 ws_end_page
 
@@ -215,11 +215,11 @@ ws_run_block 1 '5. Enforce the practices' 'In the Shell terminal:' 25 25 'bash' 
 cd ~/environment && claude -c -p "Turn the checklist items that can be checked on the manifest into a ValidatingAdmissionPolicy for unicorn-store-spring."
 WS_TEST_BLOCK_500_1
 
-ws_skip_block 2 'Review the policy' 'Review the policy' 44 51 'text' '' 'copy action disabled'
+ws_skip_block 2 'Review the policy' 'Review the policy' 44 52 'text' '' 'copy action disabled'
 
-ws_skip_block 3 'Review the policy' 'Two of the six validations in k8s/admission-policy.yaml:' 58 71 'yaml' '' 'copy action disabled'
+ws_skip_block 3 'Review the policy' 'Two of the six validations in k8s/admission-policy.yaml:' 59 72 'yaml' '' 'copy action disabled'
 
-ws_run_block 4 'Apply and test' 'You act for the platform team here: the policy is cluster-scoped, and the binding decides which namespaces it guards. In the Shell terminal:' 83 95 'bash' '' <<'WS_TEST_BLOCK_500_4'
+ws_run_block 4 'Apply and test' 'You act for the platform team here: the policy is cluster-scoped, and the binding decides which namespaces it guards. In the Shell terminal:' 84 96 'bash' '' <<'WS_TEST_BLOCK_500_4'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/admission-policy.yaml
 sleep 10   # the API server loads a new policy within seconds
 
@@ -235,7 +235,7 @@ git -C ~/environment/unicorn-store-spring add -A \
   && git -C ~/environment/unicorn-store-spring commit -q -m "admission policy"
 WS_TEST_BLOCK_500_4
 
-ws_skip_block 5 'Apply and test' 'Apply and test' 100 104 'text' '' 'copy action disabled'
+ws_skip_block 5 'Apply and test' 'Apply and test' 101 105 'text' '' 'copy action disabled'
 
 ws_end_page
 
