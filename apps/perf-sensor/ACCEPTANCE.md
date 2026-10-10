@@ -1,9 +1,9 @@
 # perf-sensor — acceptance criteria
 
-What a passing run of the CON405 flow looks like: the skills (investigate → root cause →
+What a passing run of the java-performance flow looks like: the skills (investigate → root cause →
 solution → apply → exit), the page-side rollout/verify loop, and the twelve-item checklist
 moving as expected on a clean environment. The commands live in the workshop content
-(`java-on-amazon-eks/content/*/index.en.md`); this file holds only the criteria to judge a run
+(`java-performance/content/*/index.en.md`); this file holds only the criteria to judge a run
 by. When the two disagree, the content is the source of truth.
 
 ## Run it
@@ -13,17 +13,18 @@ shell, on the IDE:
 
 ```bash
 cd ~/java-on-aws && git pull -q
-node infra/scripts/ws-test/generate.mjs java-on-amazon-eks
-bash infra/scripts/ws-test/java-on-amazon-eks.sh
+node infra/scripts/ws-test/generate.mjs java-performance
+bash infra/scripts/ws-test/java-performance.sh
 ```
 
-Read `infra/scripts/ws-test/reports/java-on-amazon-eks/<run>/output.log` (`Source:` lines point
+Read `infra/scripts/ws-test/reports/java-performance/<run>/output.log` (`Source:` lines point
 at content line ranges), `summary.md` (per-block durations) and `failure.md` if a block failed.
 Block output goes only to `output.log`; add `--verbose` (`-v`) to also stream it on the console.
 `claude` runs non-interactively (`-p`, then `-c -p`); the interactive blocks and all sample
 blocks are skipped. For a repeat on the same environment run
-`~/java-on-aws/infra/scripts/deploy/java-on-amazon-eks/reset-app.sh` first (hard-resets the app
-repo, deletes the boost CR, redeploys `:latest`).
+`~/java-on-aws/infra/scripts/deploy/java-performance/reset-app.sh` first (stops the previous
+load, hard-resets the app repo, deletes the boost CR and the admission policy, redeploys
+`:latest`).
 
 Load runs at 50 writes/s for the whole session and is never started by Claude. The sensor is
 read-only; its cAdvisor facts are scoped to the pods that are Ready now. Floor and latency skip
@@ -47,17 +48,16 @@ Fail the module if any is violated:
 Numbers vary with the measured working set (the sizing policy is `max(1.4 × peak, 1.5 × floor)`
 rounded up to 128 MiB; CPU `steady × 1.5` rounded up to 50m). The verdicts must not.
 
-| Step | Tool cited | Files changed | Score after | Items that move |
+| Module | Tool cited | Files changed | Score after | Items that move |
 |---|---|---|---|---|
-| Baseline | `measure`, `diagnoseBlocking` | — | 5/12 | ❌ 2 3 4 6 8 10 11 (6: a 1-core request is several times the steady CPU) |
-| Right-size memory | `sizeMemory` | `k8s/deployment.yaml` | 8/12 | 2 3 4 → ✅ |
-| Boost startup CPU | `sizeCpu`, `jfr.compilation` | `k8s/startup-cpu-boost.yaml`, `k8s/deployment.yaml` | 9/12 | 6 → ✅ (request from steady CPU); 8 halves (≈ 16 s → ≈ 8 s); `jfr.container.effectiveCpuCount` 1 with `cpuQuotaCores` 2.0 |
-| Cache startup (AOT) | `profileTop cpu` (JIT share) | `Dockerfile.aot` | 10/12 | 8 → ✅ (≈ 2.6 s); 11 must still be ❌, else the dump sampling missed the block |
-| Restore (CRaC) | `startupLog`, `measure` | `pom.xml`, one Java file, `Dockerfile.crac`, `k8s/deployment.yaml` | 10/12 | 8 ✅ (Restored, < 0.1 s); 3 4 5 stay ✅ from the checkpoint; 6 stays ✅ (steady CPU excludes the JIT, so it reads as on the cold image) |
-| Unblock the request path | `diagnoseBlocking`, `sizeMemory`, `sizeCpu` | `UnicornService.java`, `application.yaml` (pool to `poolSizeTarget`), `k8s/deployment.yaml`, `Dockerfile.crac` | 12/12 | 10 11 → ✅ (blocked 0, in-transaction 0, pool waits 0); memory 768 → 512 MiB, new heap baked into the checkpoint, rebuild stated; mean latency drops to single digits |
+| 1. Measure | `checklist` | — | 5/12 | ❌ 2 3 4 6 8 10 11 (6: a 1-core request is several times the steady CPU) |
+| 2. Fix the manifest (one question) | `sizeMemory`, `sizeCpu`, `startupLog` | `k8s/deployment.yaml`, `k8s/startup-cpu-boost.yaml` | 9/12 | 2 3 4 6 → ✅; 8 halves (≈ 15 s → ≈ 8 s); `jfr.container` effectiveCpuCount 1 with `cpuQuotaCores` 2.0; `cpu.max` 1 core after the resize |
+| 3. Fix the image (CRaC) | `startupLog`, `measure` | `pom.xml`, one Java file, `Dockerfile.crac`, `k8s/deployment.yaml` | 10/12 | 8 → ✅ (Restored, < 0.1 s); 3 4 5 stay ✅ from the checkpoint; 2 may sit near its bar (the restored pod's working set is lower under a limit sized for the cold one) |
+| 4. Fix the code (one question) | `diagnoseBlocking`, `sizeMemory`, `sizeCpu` | `UnicornService.java`, `application.yaml` (pool to `poolSizeTarget`), `k8s/deployment.yaml` (sizes, `terminationGracePeriodSeconds`), `Dockerfile.crac` | 12/12 | 10 11 → ✅ (blocked 0, in-transaction 0, pool waits 0); memory steps down, new heap baked into the checkpoint, rebuild stated |
+| 5. Enforce | `measure` | `k8s/admission-policy.yaml` | 12/12 | none; the policy matches `references/admission-policy.yaml`; the current manifest passes `--dry-run=server`, one with `-Xmx` is denied with the item 3 message |
 
-Record per run: the twelve verdicts after each step, memory limit after step 1 (768 or 1024),
-`jfr.container` after step 2 (must not be `null`), the file count after step 5, the `-p` wall
+Record per run: the twelve verdicts after each module, memory limit after module 2 (768 or 1024),
+`jfr.container` after module 2 (must not be `null`), the file count after module 4, the `-p` wall
 time per call, and the build logs free of `AccessDeniedException` (the IDE role needs
 `events:PutEvents` on `event-bus/*` for the checkpoint warm-up).
 
