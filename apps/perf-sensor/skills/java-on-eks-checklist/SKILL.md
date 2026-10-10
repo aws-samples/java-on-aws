@@ -20,7 +20,8 @@ under load.
    than that has no peak, steady CPU or throttle share yet, so the sensor waits in slices of
    ≤ 30 s: while `status` is `SETTLING`, write one line for the user ("pod is N s old —
    scoring at 120 s, M s to go", from `podUptimeSeconds` and `settleRemainingSeconds`) and
-   call again with the same parameters.
+   call again right away with the same parameters. The tool itself waits up to 30 s per
+   call: never schedule a wakeup, sleep or end the turn while it is SETTLING.
 2. When `status` is `OK`, print `markdown` verbatim: the score line and the table. Do not
    recompute, reorder or reword a verdict or an evidence cell.
 3. If `note` is set (no load flowing), print it after the table, and say that the service's
