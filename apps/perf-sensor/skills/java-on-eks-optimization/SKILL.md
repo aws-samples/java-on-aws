@@ -192,6 +192,13 @@ Read the file and pass the values through. The *why* for each:
   CRaC image `JAVA_HEAP_OPTS` in `Dockerfile.crac` from the new limit (the code change needs a
   rebuild anyway, so one build takes both); `terminationGracePeriodSeconds`. References:
   `blocking-calls.md`, `right-size-memory.md`, `shutdown-budget.md`.
+- **"enforce" / "admission policy" / "ValidatingAdmissionPolicy" / "keep these from regressing"**
+  → `measure` (the items must pass on the current Deployment, or the policy rejects its next
+  update: say which fail and fix them in the same change). Artifact: `k8s/admission-policy.yaml`
+  from `admission-policy.yaml`, `<app>` and `<namespace>` filled, expressions verbatim. It
+  covers items 1, 3, 9 and 10; name the others as runtime items the sensor keeps scoring. Close
+  with the step-5 line; applying the policy is the platform team's step. Reference:
+  `admission-policy.md`.
 - **"how are we doing / score"** → run the `java-on-eks-checklist` skill.
 
 ## 5. Answer format

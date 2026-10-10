@@ -1,0 +1,96 @@
+# ValidatingAdmissionPolicy — the manifest-checkable checklist items (1, 3, 9, 10) as
+# admission rules. GENERIC — replace <app> and <namespace>; keep the expressions verbatim.
+#
+# The API server evaluates the CEL expressions on every CREATE/UPDATE of a Deployment in
+# the bound namespace and rejects a manifest that breaks a rule, with the rule's message.
+# Native Kubernetes (admissionregistration.k8s.io/v1, GA in 1.30): no webhook, no
+# controller. The runtime items (2, 4–8, 11, 12) need measurements and stay with the sensor.
+#
+# The checks mirror the sensor's own reading of the Deployment (K8sCollector) and the
+# thresholds in checklist-rules.yaml, minus what only a running pod can tell (startup time
+# vs the startup budget, GC pauses vs the liveness budget):
+#   item 1   memory request == limit
+#   item 3   no fixed heap (-Xmx / MaxHeapSize) in the JVM options env: the heap follows
+#            the container limit (a CRaC image carries its heap in the checkpoint instead)
+#   item 9   startupProbe present; no initialDelaySeconds on startup or readiness; liveness
+#            budget failureThreshold × periodSeconds >= 30 s; liveness path != readiness path
+#   item 10  terminationGracePeriodSeconds >= preStop sleep + 30 s (Spring Boot drain)
+#
+# The API server loads a new policy within a few seconds. Then check a manifest against it
+# without changing anything: kubectl apply --dry-run=server -f k8s/deployment.yaml
+# Existing Deployments are not re-checked: the policy applies to their next update.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: java-on-eks-<app>
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments"]
+  variables:
+    - name: containers
+      expression: object.spec.template.spec.containers
+    - name: grace
+      expression: >-
+        has(object.spec.template.spec.terminationGracePeriodSeconds)
+          ? object.spec.template.spec.terminationGracePeriodSeconds : 30
+  validations:
+    - expression: >-
+        variables.containers.all(c,
+          has(c.resources) && has(c.resources.requests) && has(c.resources.limits)
+          && 'memory' in c.resources.requests && 'memory' in c.resources.limits
+          && quantity(c.resources.requests.memory).compareTo(quantity(c.resources.limits.memory)) == 0)
+      message: "item 1: set resources.requests.memory equal to resources.limits.memory"
+      reason: Invalid
+    - expression: >-
+        variables.containers.all(c, !has(c.env) || c.env.all(e,
+          !(e.name in ['JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', 'JAVA_OPTS'])
+          || !has(e.value) || !e.value.matches(r'-Xmx|MaxHeapSize=')))
+      message: "item 3: no -Xmx or -XX:MaxHeapSize in the JVM options, size the heap with -XX:MaxRAMPercentage"
+      reason: Invalid
+    - expression: >-
+        variables.containers.all(c, has(c.startupProbe)
+          && (!has(c.startupProbe.initialDelaySeconds) || c.startupProbe.initialDelaySeconds == 0)
+          && (!has(c.readinessProbe) || !has(c.readinessProbe.initialDelaySeconds)
+              || c.readinessProbe.initialDelaySeconds == 0))
+      message: "item 9: add a startupProbe and drop initialDelaySeconds from the startup and readiness probes"
+      reason: Invalid
+    - expression: >-
+        variables.containers.all(c, has(c.livenessProbe)
+          && (has(c.livenessProbe.failureThreshold) ? c.livenessProbe.failureThreshold : 3)
+             * (has(c.livenessProbe.periodSeconds) ? c.livenessProbe.periodSeconds : 10) >= 30)
+      message: "item 9: give the livenessProbe a budget (failureThreshold × periodSeconds) of at least 30 s"
+      reason: Invalid
+    - expression: >-
+        variables.containers.all(c,
+          !(has(c.livenessProbe) && has(c.livenessProbe.httpGet) && has(c.livenessProbe.httpGet.path)
+            && has(c.readinessProbe) && has(c.readinessProbe.httpGet) && has(c.readinessProbe.httpGet.path))
+          || c.livenessProbe.httpGet.path != c.readinessProbe.httpGet.path)
+      message: "item 9: use different paths for the liveness and readiness probes"
+      reason: Invalid
+    - expression: >-
+        variables.containers.all(c, variables.grace >= 30 + (
+          !has(c.lifecycle) || !has(c.lifecycle.preStop) ? 0
+          : has(c.lifecycle.preStop.sleep) ? c.lifecycle.preStop.sleep.seconds
+          : has(c.lifecycle.preStop.exec) && has(c.lifecycle.preStop.exec.command)
+            && c.lifecycle.preStop.exec.command.join(' ').matches(r'sleep\s+[0-9]+')
+            ? int(c.lifecycle.preStop.exec.command.join(' ').find(r'sleep\s+[0-9]+').find(r'[0-9]+'))
+          : 0))
+      message: "item 10: set terminationGracePeriodSeconds to at least the preStop sleep + 30 s"
+      reason: Invalid
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: java-on-eks-<app>
+spec:
+  policyName: java-on-eks-<app>
+  validationActions: ["Deny"]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: <namespace>
