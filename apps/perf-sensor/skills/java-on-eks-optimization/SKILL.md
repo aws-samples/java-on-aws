@@ -59,6 +59,13 @@ Do not read desired-state that `measure` already returns via `list_k8s_resources
    `Not deployed. Review the diff, roll out, and re-measure under load to confirm the effect.`
    Then stop.
 
+**Combined questions.** When one question asks for several §4 entries (e.g. memory, CPU
+and startup in one go), run the tools of every entry first, then answer once: one
+`Root cause (<topic>):` line and one `Evidence` group per entry, one `Solution`, one change
+in the working tree with all edits, one exit line. Where two entries edit the same field
+(e.g. `JAVA_TOOL_OPTIONS`), write it once with every flag. A `BLOCKED` tool stops only its
+own entry: report it as that entry's root cause and still apply the others.
+
 ## 3. Hard rules
 
 - **Every number comes from a tool result. Never estimate a size, share, or time.**
@@ -165,6 +172,26 @@ Read the file and pass the values through. The *why* for each:
   (peak in-flight request threads across the samples), not a round number; say which value
   you read. If blocking is still > 0, fix that first
   (previous bullet). Reference: `blocking-calls.md`.
+- **"item 10" / "shutdown budget" / "terminationGracePeriodSeconds"** → `measure`
+  (`workload.terminationGracePeriodSeconds`, `workload.preStopSleepSeconds`); read the app's
+  graceful-shutdown timeout from its config (Spring Boot `spring.lifecycle.timeout-per-shutdown-phase`,
+  30 s when unset; say which you read). Artifact: `terminationGracePeriodSeconds` under
+  `spec.template.spec` = `preStopSleepSeconds` + that timeout. Reference: `shutdown-budget.md`.
+- **Combined: "right-size memory and CPU and start faster without changing the image"** (or
+  "reduce what it reserves") → the "reduce memory" and "start faster without changing the image"
+  entries in one pass: `measure`, `startupLog`, `sizeMemory`, `sizeCpu`. One change: memory
+  `requests == limits` from `sizeMemory`; `requests.cpu` from `sizeCpu`, `limits.cpu` unchanged;
+  one `JAVA_TOOL_OPTIONS` with the `sizeMemory` GC and RAM percentages plus
+  `-XX:ActiveProcessorCount=<ceil(limits.cpu)>`; `k8s/startup-cpu-boost.yaml` (the
+  `StartupCPUBoost` CR). Cite old → new for each value. References: `right-size-memory.md`,
+  `in-place-resize.md`.
+- **Combined: "fix the slow writes, size it again and fix item 10"** → the latency, "right-size
+  again" and item 10 entries in one pass: `diagnoseBlocking` while the load runs, then `measure`,
+  `sizeMemory`, `sizeCpu`. One change: the non-blocking code change (plus transaction boundary
+  and pool size when the evidence calls for them); memory and CPU from the sizing tools; on a
+  CRaC image `JAVA_HEAP_OPTS` in `Dockerfile.crac` from the new limit (the code change needs a
+  rebuild anyway, so one build takes both); `terminationGracePeriodSeconds`. References:
+  `blocking-calls.md`, `right-size-memory.md`, `shutdown-budget.md`.
 - **"how are we doing / score"** → run the `java-on-eks-checklist` skill.
 
 ## 5. Answer format
@@ -176,3 +203,6 @@ Solution:   <3–5 lines> — see references/<file>
 Files changed: <paths>
 Not deployed. Review the diff, roll out, and re-measure under load to confirm the effect.
 ```
+
+A combined question labels each root cause and evidence group (`Root cause (memory):`,
+`Root cause (CPU):`, `Root cause (startup):`, …); `Solution` may take 3–5 lines per entry.
