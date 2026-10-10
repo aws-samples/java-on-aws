@@ -13,7 +13,8 @@
 #      source (apps/unicorn-store-spring) and folded into that commit, so the
 #      starting point always carries the current versions.
 #   2. StartupCPUBoost CRs in the app namespace deleted (created in module 2;
-#      the CR outlives the manifest reset).
+#      the CR outlives the manifest reset), and every ValidatingAdmissionPolicy bound to
+#      the app namespace with its binding (module 5; the baseline manifest fails it).
 #   3. Baseline manifest applied (:latest, 1 vCPU / 2Gi, no sidecar label) and
 #      rolled out; image, resources and container list verified.
 #   4. ~/environment/baseline.txt removed.
@@ -84,6 +85,16 @@ fi
 kubectl -n "${APP_NS}" delete startupcpuboost --all --ignore-not-found >/dev/null 2>&1 \
   && log_success "StartupCPUBoost CRs removed" \
   || log_warning "could not delete StartupCPUBoost CRs (CRD absent?)"
+
+# Module 5's admission policy rejects the baseline manifest: remove every binding scoped
+# to the app namespace and the policy it binds.
+for b in $(kubectl get validatingadmissionpolicybindings -o json 2>/dev/null \
+    | jq -r --arg ns "${APP_NS}" '.items[] | select(.spec.matchResources.namespaceSelector.matchLabels["kubernetes.io/metadata.name"] == $ns) | .metadata.name + "=" + .spec.policyName'); do
+  kubectl delete validatingadmissionpolicybinding "${b%%=*}" --ignore-not-found >/dev/null \
+    && kubectl delete validatingadmissionpolicy "${b#*=}" --ignore-not-found >/dev/null \
+    && log_success "admission policy ${b#*=} removed"
+  sleep 5   # the API server unloads a deleted policy within seconds
+done
 
 # 3. Baseline deployment.
 MANIFEST="${APP_DIR}/k8s/deployment.yaml"
