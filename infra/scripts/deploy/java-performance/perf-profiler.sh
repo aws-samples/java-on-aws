@@ -76,8 +76,12 @@ install() {
       -e "s|__PYROSCOPE_URL__|${PYROSCOPE_URL}|g" \
     "${APP_DIR}/k8s/sidecar-inject-policy.yaml" | kubectl apply -f - >/dev/null
   log_success "MutatingPolicy inject-perf-profiler applied"
+  # Rejects opt-ins the sidecar cannot serve (app container first, named like the app
+  # label, runAsUser APP_UID), at the apply of the Deployment.
+  sed -e "s|__APP_UID__|${APP_UID}|g" "${APP_DIR}/k8s/sidecar-optin-policy.yaml" | kubectl apply -f - >/dev/null
+  log_success "ValidatingPolicy perf-profiler-opt-in applied"
 
-  echo "✅ Success: perf-profiler (image ${image_ref}; Kyverno + inject policy)"
+  echo "✅ Success: perf-profiler (image ${image_ref}; Kyverno + inject and opt-in policies)"
   log_info "Opt a workload in: add 'perf-profile/sidecar: \"true\"' under spec.template.metadata.labels and kubectl apply the Deployment"
 }
 

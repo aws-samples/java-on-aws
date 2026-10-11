@@ -10,13 +10,18 @@
 #
 # The checks mirror the sensor's own reading of the Deployment (K8sCollector) and the
 # thresholds in checklist-rules.yaml, minus what only a running pod can tell (startup time
-# vs the startup budget, GC pauses vs the liveness budget):
+# vs the startup budget, GC pauses vs the liveness budget). They apply to the app container
+# the sensor reads: the container named like the Deployment, else the first one; sidecars
+# keep their own probes and lifecycle.
 #   item 1   memory request == limit
 #   item 3   no fixed heap (-Xmx / MaxHeapSize) in the JVM options env: the heap follows
 #            the container limit (a CRaC image carries its heap in the checkpoint instead)
-#   item 9   startupProbe present; no initialDelaySeconds on startup or readiness; liveness
-#            budget failureThreshold × periodSeconds >= 30 s; liveness path != readiness path
-#   item 10  terminationGracePeriodSeconds >= preStop sleep + 30 s (Spring Boot drain)
+#   item 9   startupProbe and readinessProbe present; no initialDelaySeconds on startup or
+#            readiness; liveness budget failureThreshold × periodSeconds >= 30 s; liveness
+#            path != readiness path
+#   item 10  a preStop hook, if any, is a plain sleep (the sleep action, sleep N or
+#            sh -c "sleep N"), and terminationGracePeriodSeconds >= that sleep + 30 s
+#            (Spring Boot's default drain, assumed)
 #
 # Kyverno also scans existing resources in the background and records the results in a
 # PolicyReport in the namespace (kubectl get policyreport): a Deployment that was applied
@@ -37,51 +42,66 @@ spec:
   variables:
     - name: containers
       expression: object.spec.template.spec.containers
+    - name: app
+      expression: >-
+        variables.containers.exists(c, c.name == object.metadata.name)
+          ? variables.containers.filter(c, c.name == object.metadata.name)[0]
+          : variables.containers[0]
     - name: grace
       expression: >-
         has(object.spec.template.spec.terminationGracePeriodSeconds)
           ? object.spec.template.spec.terminationGracePeriodSeconds : 30
+    # Seconds the preStop hook sleeps: 0 without a hook, -1 for a hook whose duration
+    # cannot be read from the manifest.
+    - name: preStop
+      expression: >-
+        !has(variables.app.lifecycle) || !has(variables.app.lifecycle.preStop) ? 0
+        : has(variables.app.lifecycle.preStop.sleep) ? variables.app.lifecycle.preStop.sleep.seconds
+        : !has(variables.app.lifecycle.preStop.exec) || !has(variables.app.lifecycle.preStop.exec.command) ? -1
+        : size(variables.app.lifecycle.preStop.exec.command) == 2
+            && variables.app.lifecycle.preStop.exec.command[0].matches('^(/usr)?(/bin/)?sleep$')
+            && variables.app.lifecycle.preStop.exec.command[1].matches('^[0-9]+$')
+          ? int(variables.app.lifecycle.preStop.exec.command[1])
+        : size(variables.app.lifecycle.preStop.exec.command) == 3
+            && variables.app.lifecycle.preStop.exec.command[0].matches('^(/usr)?(/bin/)?(sh|bash)$')
+            && variables.app.lifecycle.preStop.exec.command[1] == '-c'
+            && variables.app.lifecycle.preStop.exec.command[2].matches(r'^\s*sleep\s+[0-9]+\s*;?\s*$')
+          ? int(variables.app.lifecycle.preStop.exec.command[2].find('[0-9]+'))
+        : -1
   validations:
     - expression: >-
-        variables.containers.all(c,
-          has(c.resources) && has(c.resources.requests) && has(c.resources.limits)
-          && 'memory' in c.resources.requests && 'memory' in c.resources.limits
-          && quantity(c.resources.requests.memory).compareTo(quantity(c.resources.limits.memory)) == 0)
+        has(variables.app.resources) && has(variables.app.resources.requests) && has(variables.app.resources.limits)
+          && 'memory' in variables.app.resources.requests && 'memory' in variables.app.resources.limits
+          && quantity(variables.app.resources.requests.memory).compareTo(quantity(variables.app.resources.limits.memory)) == 0
       message: "item 1: set resources.requests.memory equal to resources.limits.memory"
       reason: Invalid
     - expression: >-
-        variables.containers.all(c, !has(c.env) || c.env.all(e,
+        !has(variables.app.env) || variables.app.env.all(e,
           !(e.name in ['JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', 'JAVA_OPTS'])
-          || !has(e.value) || !e.value.matches(r'-Xmx|MaxHeapSize=')))
+          || !has(e.value) || !e.value.matches(r'-Xmx|MaxHeapSize='))
       message: "item 3: no -Xmx or -XX:MaxHeapSize in the JVM options, size the heap with -XX:MaxRAMPercentage"
       reason: Invalid
     - expression: >-
-        variables.containers.all(c, has(c.startupProbe)
-          && (!has(c.startupProbe.initialDelaySeconds) || c.startupProbe.initialDelaySeconds == 0)
-          && (!has(c.readinessProbe) || !has(c.readinessProbe.initialDelaySeconds)
-              || c.readinessProbe.initialDelaySeconds == 0))
-      message: "item 9: add a startupProbe and drop initialDelaySeconds from the startup and readiness probes"
+        has(variables.app.startupProbe) && has(variables.app.readinessProbe)
+          && (!has(variables.app.startupProbe.initialDelaySeconds) || variables.app.startupProbe.initialDelaySeconds == 0)
+          && (!has(variables.app.readinessProbe.initialDelaySeconds) || variables.app.readinessProbe.initialDelaySeconds == 0)
+      message: "item 9: add a startupProbe and a readinessProbe, without initialDelaySeconds"
       reason: Invalid
     - expression: >-
-        variables.containers.all(c, has(c.livenessProbe)
-          && (has(c.livenessProbe.failureThreshold) ? c.livenessProbe.failureThreshold : 3)
-             * (has(c.livenessProbe.periodSeconds) ? c.livenessProbe.periodSeconds : 10) >= 30)
+        has(variables.app.livenessProbe)
+          && (has(variables.app.livenessProbe.failureThreshold) ? variables.app.livenessProbe.failureThreshold : 3)
+             * (has(variables.app.livenessProbe.periodSeconds) ? variables.app.livenessProbe.periodSeconds : 10) >= 30
       message: "item 9: give the livenessProbe a budget (failureThreshold × periodSeconds) of at least 30 s"
       reason: Invalid
     - expression: >-
-        variables.containers.all(c,
-          !(has(c.livenessProbe) && has(c.livenessProbe.httpGet) && has(c.livenessProbe.httpGet.path)
-            && has(c.readinessProbe) && has(c.readinessProbe.httpGet) && has(c.readinessProbe.httpGet.path))
-          || c.livenessProbe.httpGet.path != c.readinessProbe.httpGet.path)
+        !(has(variables.app.livenessProbe) && has(variables.app.livenessProbe.httpGet) && has(variables.app.livenessProbe.httpGet.path)
+          && has(variables.app.readinessProbe) && has(variables.app.readinessProbe.httpGet) && has(variables.app.readinessProbe.httpGet.path))
+        || variables.app.livenessProbe.httpGet.path != variables.app.readinessProbe.httpGet.path
       message: "item 9: use different paths for the liveness and readiness probes"
       reason: Invalid
-    - expression: >-
-        variables.containers.all(c, variables.grace >= 30 + (
-          !has(c.lifecycle) || !has(c.lifecycle.preStop) ? 0
-          : has(c.lifecycle.preStop.sleep) ? c.lifecycle.preStop.sleep.seconds
-          : has(c.lifecycle.preStop.exec) && has(c.lifecycle.preStop.exec.command)
-            && c.lifecycle.preStop.exec.command.join(' ').matches(r'sleep\s+[0-9]+')
-            ? int(c.lifecycle.preStop.exec.command.join(' ').find(r'sleep\s+[0-9]+').find(r'[0-9]+'))
-          : 0))
+    - expression: variables.preStop >= 0
+      message: "item 10: make the preStop hook a plain sleep (the sleep action, sleep N or sh -c \"sleep N\") so the shutdown budget can be checked"
+      reason: Invalid
+    - expression: variables.grace >= variables.preStop + 30
       message: "item 10: set terminationGracePeriodSeconds to at least the preStop sleep + 30 s"
       reason: Invalid

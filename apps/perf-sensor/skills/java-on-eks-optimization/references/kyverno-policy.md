@@ -16,8 +16,10 @@ regression shows only in the next measurement, after it reached the cluster.
   with that validation's `message`.
 - Kyverno also evaluates existing resources in the background and records the results in a
   PolicyReport in the namespace (`kubectl get policyreport`).
+- The rules apply to the app container as the sensor reads it (the container named like the
+  Deployment, else the first one). Sidecars keep their own probes and lifecycle.
 - Only what the manifest alone decides can be enforced here: items 1, 3, 9 (the probe
-  shape) and 10. Items that need a running pod (sizes against the working set, CPU against
+  shape) and 10. A `preStop` hook must be a plain sleep, or its duration cannot be checked. Items that need a running pod (sizes against the working set, CPU against
   steady usage, startup time, blocking) stay with the sensor.
 
 ## Trade-offs

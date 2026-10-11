@@ -1,0 +1,44 @@
+# Rejects a profiler opt-in the sidecar cannot serve (Kyverno ValidatingPolicy, CEL), so the
+# owner of the workload learns it at `kubectl apply` instead of finding a pod without the
+# sidecar. The contract is the inject policy's (sidecar-inject-policy.yaml): the first
+# container is the app, named like the pod's `app` label, running as __APP_UID__ set
+# explicitly on the container or the pod. JVM dynamic attach needs the sidecar to run with
+# the app's UID, and the sensor reads that container.
+#
+# Autogen applies the rule to the pod templates of Deployments, StatefulSets and the other
+# pod controllers, so the apply of the Deployment is denied, with the message below.
+# __APP_UID__ is substituted by deploy/java-performance/perf-profiler.sh.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: perf-profiler-opt-in
+spec:
+  validationActions: [Deny]
+  failurePolicy: Ignore
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+        operations: ["CREATE", "UPDATE"]
+  matchConditions:
+    - name: opted-in
+      expression: >-
+        has(object.metadata.labels) &&
+        'perf-profile/sidecar' in object.metadata.labels &&
+        object.metadata.labels['perf-profile/sidecar'] == 'true'
+  validations:
+    - expression: >-
+        'app' in object.metadata.labels
+        && object.spec.containers[0].name == object.metadata.labels['app']
+        && (has(object.spec.containers[0].securityContext) && has(object.spec.containers[0].securityContext.runAsUser)
+            ? object.spec.containers[0].securityContext.runAsUser == __APP_UID__
+            : has(object.spec.securityContext) && has(object.spec.securityContext.runAsUser)
+              && object.spec.securityContext.runAsUser == __APP_UID__)
+      message: >-
+        perf-profile/sidecar: the first container must be the app, named like the pod's app label,
+        with securityContext.runAsUser __APP_UID__ (the profiler attaches with the app's UID)
+      reason: Invalid
