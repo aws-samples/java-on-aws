@@ -23,7 +23,7 @@ Block output goes only to `output.log`; add `--verbose` (`-v`) to also stream it
 `claude` runs non-interactively (`-p`, then `-c -p`); the interactive blocks and all sample
 blocks are skipped. For a repeat on the same environment run
 `~/java-on-aws/infra/scripts/deploy/java-performance/reset-app.sh` first (stops the previous
-load, hard-resets the app repo, deletes the boost CR and the admission policy, redeploys
+load, hard-resets the app repo, deletes the boost CR and the Kyverno policy, redeploys
 `:latest`).
 
 Load runs at 50 writes/s for the whole session and is never started by Claude. The sensor is
@@ -51,10 +51,10 @@ rounded up to 128 MiB; CPU `steady × 1.5` rounded up to 50m). The verdicts must
 | Module | Tool cited | Files changed | Score after | Items that move |
 |---|---|---|---|---|
 | 1. Measure | `checklist` | — | 5/12 | ❌ 2 3 4 6 8 10 11 (6: a 1-core request is several times the steady CPU) |
-| 2. Fix the manifest (one question) | `sizeMemory`, `sizeCpu`, `startupLog` | `k8s/deployment.yaml`, `k8s/startup-cpu-boost.yaml` | 9/12 | 2 3 4 6 → ✅; 8 halves (≈ 15 s → ≈ 8 s); `jfr.container` effectiveCpuCount 1 with `cpuQuotaCores` 2.0; `cpu.max` 1 core after the resize |
-| 3. Fix the image (CRaC) | `startupLog`, `measure` | `pom.xml`, one Java file, `Dockerfile.crac`, `k8s/deployment.yaml` | 10/12 | 8 → ✅ (Restored, < 0.1 s); 3 4 5 stay ✅ from the checkpoint; 2 may sit near its bar (the restored pod's working set is lower under a limit sized for the cold one) |
-| 4. Fix the code (one question) | `diagnoseBlocking`, `sizeMemory`, `sizeCpu` | `UnicornService.java`, `application.yaml` (pool to `poolSizeTarget`), `k8s/deployment.yaml` (sizes, `terminationGracePeriodSeconds`), `Dockerfile.crac` | 12/12 | 10 11 → ✅ (blocked 0, in-transaction 0, pool waits 0); memory steps down, new heap baked into the checkpoint, rebuild stated |
-| 5. Enforce | `measure` | `k8s/admission-policy.yaml` | 12/12 | none; the policy matches `references/admission-policy.yaml`; the current manifest passes `--dry-run=server`, one with `-Xmx` is denied with the item 3 message |
+| 2. Improve the manifest (one question) | `sizeMemory`, `sizeCpu`, `startupLog` | `k8s/deployment.yaml`, `k8s/startup-cpu-boost.yaml` | 9/12 | 2 3 4 6 → ✅; 8 halves (≈ 15 s → ≈ 8 s); `jfr.container` effectiveCpuCount 1 with `cpuQuotaCores` 2.0; `cpu.max` 1 core after the resize |
+| 3. Improve the image (CRaC) | `startupLog`, `measure` | `pom.xml`, one Java file, `Dockerfile.crac`, `k8s/deployment.yaml` | 10/12 | 8 → ✅ (Restored, < 0.1 s); 3 4 5 stay ✅ from the checkpoint; 2 may sit near its bar (the restored pod's working set is lower under a limit sized for the cold one) |
+| 4. Improve the code (one question) | `diagnoseBlocking`, `sizeMemory`, `sizeCpu` | `UnicornService.java`, `application.yaml` (pool to `poolSizeTarget`), `k8s/deployment.yaml` (sizes, `terminationGracePeriodSeconds`), `Dockerfile.crac` | 12/12 | 10 11 → ✅ (blocked 0, in-transaction 0, pool waits 0); memory steps down, new heap baked into the checkpoint, rebuild stated |
+| 5. Enforce | `measure` | `k8s/policy.yaml` | 12/12 | none; the policy matches `references/kyverno-policy.yaml`; the PolicyReport shows the running Deployment passing; an apply with `-Xmx` is denied with the item 3 message |
 
 Record per run: the twelve verdicts after each module, memory limit after module 2 (768 or 1024),
 `jfr.container` after module 2 (must not be `null`), the file count after module 4, the `-p` wall
