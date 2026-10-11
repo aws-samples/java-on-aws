@@ -59,7 +59,8 @@ Do not read desired-state that `measure` already returns via `list_k8s_resources
    operator reviews the change with `git diff`.
 5. **Exit.** Report `Files changed: <paths>` and close with exactly:
    `Not deployed. Review the diff, roll out, and re-measure under load to confirm the effect.`
-   Then stop.
+   Copy that line character for character: no build command, step or expected result inside it
+   or after it (they belong in `Solution`). Then stop.
 
 **Combined questions.** When one question asks for several §4 entries (e.g. memory, CPU
 and startup in one go), run the tools of every entry first, then answer once: one
@@ -203,6 +204,8 @@ Read the file and pass the values through. The *why* for each:
 - **"how are we doing / score"** → run the `java-on-eks-checklist` skill.
 
 ## 5. Answer format
+
+The answer starts with the first `Root cause` line: no preamble about the work you did.
 
 ```
 Root cause: <one line, with tool + signal>
