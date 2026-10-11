@@ -1,6 +1,6 @@
 ---
 name: java-on-eks-optimization
-description: "Optimize a Java service on Amazon EKS: memory, startup, latency. Use when asked to reduce memory, speed up startup, or fix latency of a Java workload on EKS."
+description: "Optimize a Java service on Amazon EKS: memory, CPU, startup, latency, and enforce the practices at admission. Use when asked to reduce memory, size CPU, speed up startup or fix latency of a Java workload on EKS, or to turn checklist items into a Kyverno or admission policy."
 ---
 
 # java-on-eks-optimization
