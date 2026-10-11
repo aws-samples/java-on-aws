@@ -4,6 +4,7 @@ Privilege-free JVM profiler sidecar. Amazon Corretto 25 +
 [async-profiler](https://github.com/async-profiler/async-profiler), baked into one image
 (checksum-verified at build; no runtime download). Companion of
 [`apps/perf-sensor`](../perf-sensor/README.md), which reads what this sidecar exposes.
+A sample for the Java on AWS workshops, not a supported product.
 
 ## What each part does
 

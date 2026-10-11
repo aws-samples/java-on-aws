@@ -6,6 +6,7 @@ it never writes to the cluster, never drives traffic and runs no model. It also 
 twelve-item checklist, by evaluating the rules in `checklist-rules.yaml` over those facts.
 The explanation lives in two Claude Code skills shipped next to it (`skills/`): the checklist
 and an optimization playbook whose sizing numbers come from `references/sizing-policy.yaml`.
+A sample for the Java on AWS workshops, not a supported product.
 
 Companion: [`apps/perf-profiler`](../perf-profiler/README.md), the privilege-free sidecar
 that gives the sensor thread dumps, the JFR ring and continuous profiles.
