@@ -111,6 +111,16 @@ class ChecklistEngineTest {
     }
 
     @Test
+    void poolWaits_areEvidence_notAFailure() {
+        var f = baseline();
+        f.put("threads", Map.of("requestThreadsBlockedInFutureGet", 0.0,
+            "requestThreadsWaitingForConnection", 1.0, "blockedInsideTransaction", 0.0));
+        var eleven = item(shipped().evaluate(f), 11);
+        assertThat(eleven.verdict()).isEqualTo(Verdict.PASS);
+        assertThat(eleven.evidence()).contains("waitingForConnection 1");
+    }
+
+    @Test
     void absentEvidence_isNotPassing() {
         var f = baseline();
         group(f, "runtime").remove("restarts");           // no pod status: OOM kills unknown

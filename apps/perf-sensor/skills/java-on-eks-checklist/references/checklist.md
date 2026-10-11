@@ -101,7 +101,7 @@ pauses vs probe timing); learnk8s (SIGTERM handling, probe semantics).
 
 | # | Practice | Rule | Evidence |
 |---|---|---|---|
-| 11 | Request path does not block on downstream calls | `diagnoseBlocking` status OK and `threads.requestThreadsBlockedInFutureGet == 0` and `threads.requestThreadsWaitingForConnection == 0` *under load* (UNKNOWN when BLOCKED); cite `blockedInsideTransaction` when > 0 — the block holds a DB connection | `diagnoseBlocking.threads.requestThreadsBlockedInFutureGet`, `blockedInsideTransaction`, `requestThreadsWaitingForConnection`, `topBlockingFrames` |
+| 11 | Request path does not block on downstream calls | `diagnoseBlocking` status OK and `threads.requestThreadsBlockedInFutureGet == 0` *under load* (UNKNOWN when BLOCKED); cite `blockedInsideTransaction` when > 0 — the block holds a DB connection. `requestThreadsWaitingForConnection` is shown as evidence and not scored: pool contention is a sizing decision against the database's connection budget | `diagnoseBlocking.threads.requestThreadsBlockedInFutureGet`, `blockedInsideTransaction`, `requestThreadsWaitingForConnection`, `topBlockingFrames` |
 | 12 | Latency under load is bounded | `latencyMeanMs ≤ 100` *under load*; cite `jfr.pinned`, `jfr.monitorTop`, `jfr.safepointTotalMs`, `jfr.gc.maxMs` as the in-JVM context | `runtime.latencyMeanMs`, `runtime.latencyMaxMs`, `window.requestRatePerSec`, `jfr.*` |
 
 Why: a request thread parked in `Future.get()` adds the downstream round-trip to every

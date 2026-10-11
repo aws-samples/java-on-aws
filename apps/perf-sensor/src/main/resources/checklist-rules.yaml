@@ -153,7 +153,9 @@ items:
       waiting: threads.requestThreadsWaitingForConnection
       inTx: threads.blockedInsideTransaction
       txNote: "inTx > 0.0 ? ' (holds a DB connection)' : ''"
-    pass: blocked == 0.0 && waiting == 0.0
+    # Threads waiting for a pooled connection are contention evidence, not a blocked downstream
+    # call: a pool size has to fit the database's connection budget, which is not measured.
+    pass: blocked == 0.0
     evidence: "blockedInFutureGet {blocked}, waitingForConnection {waiting}, blockedInsideTransaction {inTx}{txNote}"
 
   - id: 12
