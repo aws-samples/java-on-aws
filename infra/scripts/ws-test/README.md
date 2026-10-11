@@ -69,6 +69,7 @@ samples/refresh.py java-performance "$REPORT" ../../../../java-performance/conte
 ```bash
 cd capture && npm install    # once; uses the installed Chrome
 node grafana-panels.mjs "$REPORT" '[{"name":"baseline-grafana","from":"2026-10-11T08:35:00Z","to":"2026-10-11T08:40:30Z"}]' OUT_DIR
+node grafana-profiles.mjs "$REPORT" '[{"name":"x","pod":"<pod>","from":"<ISO>","to":"<ISO>","search":"CompileBroker"}]' OUT_DIR
 ./ide.sh tools OUT_DIR       # Claude lists the MCP tools (not during a run)
 ./ide.sh scm OUT_DIR         # Source Control diff of the module 2 commit
 ```
