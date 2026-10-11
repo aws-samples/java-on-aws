@@ -15,8 +15,8 @@
 # their ARGs filled via build-args — same Dockerfile, same ARG values module 4 expects. The
 # CRaC checkpoint bakes GC, heap bounds and the processor count in, so JAVA_HEAP_OPTS is
 # derived from the memory limit module 1 lands on (PREBUILD_MEM_LIMIT_MI, 768 on the
-# reference run: peak ~490 x 1.4 rounded up to 128) with the sizing-policy.yaml cracHeap
-# shares (0.75 / 0.50), and JAVA_CPU_OPTS from the CPU limit (1). Swaps in the CRaC Resource
+# reference run: peak ~490 x 1.4 rounded up to 128) at the sensor's -Xmx/-Xms shares
+# (75 % / 50 %, SensorService.heapOpts), and JAVA_CPU_OPTS from the CPU limit (1). Swaps in the CRaC Resource
 # hook (UnicornPublisher.crac) for the checkpoint build.
 #
 # Runs on the IDE instance (amd64, inside the VPC so the DB is reachable).
@@ -37,7 +37,7 @@ trap 'rm -rf "${BUILD_DIR}"' EXIT
 export JAR_FILE="store-spring-1.0.0-exec.jar"
 export MAIN_CLASS="com.unicorn.store.StoreApplication"
 # Heap flags baked into the checkpoint: 75 % / 50 % of the memory limit module 1 reaches
-# (sizing-policy.yaml cracHeap). One number to change if the reference run moves.
+# (as the sensor's jvmFlags.javaHeapOpts). One number to change if the reference run moves.
 PREBUILD_MEM_LIMIT_MI="${PREBUILD_MEM_LIMIT_MI:-768}"
 export JAVA_HEAP_OPTS="-Xmx$((PREBUILD_MEM_LIMIT_MI * 3 / 4))m -Xms$((PREBUILD_MEM_LIMIT_MI / 2))m"
 export JAVA_CPU_OPTS="-XX:ActiveProcessorCount=1"   # ceil(limits.cpu) = 1

@@ -8,13 +8,16 @@
         resources:
           requests:
             cpu: "<keep current>"          # unchanged
-            memory: "<sizeMemory.requests.memory>"   # == limits (Guaranteed), e.g. 768Mi
+            memory: "<sizeMemory.requests.memory>"   # == limits, e.g. 768Mi
           limits:
             cpu: "<keep current>"          # unchanged
             memory: "<sizeMemory.limits.memory>"     # e.g. 768Mi
         env:
+          # The value holds JVM options only: a "#" inside the folded scalar would be passed to
+          # the JVM. GC: SerialGC on <= 1 vCPU, never G1 there. MaxRAMPercentage: heap ceiling as
+          # a share of the limit, e.g. 75. InitialRAMPercentage: start near the steady size, e.g. 50.
           - name: JAVA_TOOL_OPTIONS
             value: >-
-              -XX:+Use<sizeMemory.gc>                                  # SerialGC on <=1 vCPU; never G1 there
-              -XX:MaxRAMPercentage=<sizeMemory.maxRamPercentage>       # heap ceiling as % of the limit, e.g. 75
-              -XX:InitialRAMPercentage=<sizeMemory.initialRamPercentage>   # start near steady size, e.g. 50
+              -XX:+Use<sizeMemory.gc>
+              -XX:MaxRAMPercentage=<sizeMemory.maxRamPercentage>
+              -XX:InitialRAMPercentage=<sizeMemory.initialRamPercentage>

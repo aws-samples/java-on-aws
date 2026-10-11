@@ -40,6 +40,10 @@ public class SensorService {
     private static final Logger logger = LoggerFactory.getLogger(SensorService.class);
     private static final int DEFAULT_WINDOW_MINUTES = 15;
     private static final int MAX_SETTLE_SLICE_SECONDS = 30;
+    /** Heap as a share of the memory limit: MaxRAMPercentage / InitialRAMPercentage, and the
+     *  -Xmx / -Xms a CRaC checkpoint bakes in place of them. */
+    static final int MAX_RAM_PERCENTAGE = 75;
+    static final int INITIAL_RAM_PERCENTAGE = 50;
 
     private final FactsCollector facts;
     private final K8sCollector k8s;
@@ -73,11 +77,25 @@ public class SensorService {
     /** Per-pod drill-down behind the fleet aggregate (current Ready pods only). */
     public record PodBreakdown(String pod, Double workingSetPeakMi, Double startupSeconds) {}
 
-    /** All fact groups the checklist needs, plus the JFR ring, the window and per-pod breakdown. */
+    /**
+     * JVM flags for the current limits, for the places where no percentage can follow the
+     * container: {@code javaHeapOpts} = -Xmx/-Xms at MAX_RAM_PERCENTAGE/INITIAL_RAM_PERCENTAGE of
+     * limits.memory in whole MiB (a CRaC checkpoint fixes the heap at build time),
+     * {@code activeProcessorCount} = -XX:ActiveProcessorCount=ceil(limits.cpu). null when the
+     * limit is unset.
+     */
+    public record JvmFlags(String javaHeapOpts, String activeProcessorCount) {
+        static JvmFlags of(Double memLimitMi, Double cpuLimitCores) {
+            return new JvmFlags(heapOpts(memLimitMi), processorCount(cpuLimitCores));
+        }
+    }
+
+    /** All fact groups the checklist needs, plus the JFR ring, the window, per-pod breakdown and
+     *  the JVM flags for the current limits. */
     public record MeasureResult(String service, int windowMinutes,
                                 WorkloadFacts workload, RuntimeFacts runtime,
                                 ProfileFacts profile, JfrFacts jfr, Window window,
-                                List<PodBreakdown> pods) {}
+                                List<PodBreakdown> pods, JvmFlags jvmFlags) {}
 
     /** Caller-supplied sizing policy — all required, no defaults (the skill owns the numbers). */
     public record SizeParams(double peakFactor, double floorSafetyFactor,
@@ -93,11 +111,12 @@ public class SensorService {
      * OK: computed sizing — requests == limits (Guaranteed memory QoS: JVM memory is stable
      * after warm-up and a Burstable JVM is the first OOM-kill candidate on a busy node).
      * BLOCKED: reason set, sizing null (guard not satisfied). note: set when the limit was
-     * rounded down one step (see {@link #sizeMemory(Facts, SizeParams)}).
+     * rounded down one step (see {@link #sizeMemory(Facts, SizeParams)}). javaHeapOpts: the
+     * -Xmx/-Xms for the new limit, for an image that bakes the heap (CRaC checkpoint).
      */
     public record SizeResult(String status, String reason, Sized requests, Sized limits,
                              Integer maxRamPercentage, Integer initialRamPercentage, String gc,
-                             SizeEvidence evidence, SizeParams params, String note) {}
+                             SizeEvidence evidence, SizeParams params, String note, String javaHeapOpts) {}
 
     /** Caller-supplied CPU sizing policy — all required (the skill owns the numbers). */
     public record CpuParams(double cpuFactor, int roundMillicores, int warmSeconds, int minSamples,
@@ -109,9 +128,12 @@ public class SensorService {
     /**
      * OK: requests.cpu computed, limits.cpu = current (unchanged). BLOCKED: reason set.
      * clampedToLimit: the computed request exceeded limits.cpu and was capped to it (note explains).
+     * activeProcessorCount: the JVM flag that pins the processor count to the limit, so the JVM
+     * does not keep thread pools sized for a boosted or resized CPU.
      */
     public record CpuResult(String status, String reason, String requestsCpu, String limitsCpu,
-                            boolean clampedToLimit, String note, CpuEvidence evidence, CpuParams params) {}
+                            boolean clampedToLimit, String note, CpuEvidence evidence, CpuParams params,
+                            String activeProcessorCount) {}
 
     /**
      * A blocking diagnosis: thread facts sampled over time WHILE THE OPERATOR'S LOAD RUNS.
@@ -167,8 +189,10 @@ public class SensorService {
             f.profile() == null ? 0 : f.profile().samples(),
             rt == null ? null : rt.requestRatePerSec(),
             waited, remaining, note);
-        return new MeasureResult(service, mins, f.workload(), rt, f.profile(), f.jfr(), window,
-            perPodBreakdown(service, mins, snap));
+        var wl = f.workload();
+        return new MeasureResult(service, mins, wl, rt, f.profile(), f.jfr(), window,
+            perPodBreakdown(service, mins, snap),
+            JvmFlags.of(wl == null ? null : wl.memLimitMi(), wl == null ? null : wl.cpuLimitCores()));
     }
 
     /** Per-pod peak + startup behind the fleet aggregate, for the Ready pods of the snapshot. */
@@ -247,11 +271,12 @@ public class SensorService {
         String gc = (cpuLimit != null && cpuLimit <= 1) ? "SerialGC" : "G1GC";
         logger.info("sizeMemory OK floor={} peak={} cpuLimit={} -> requests=limits={} gc={}{}",
             floor, peak, cpuLimit, limits, gc, note == null ? "" : " (" + note + ")");
-        return new SizeResult("OK", null, new Sized(requests), new Sized(limits), 75, 50, gc, evidence, p, note);
+        return new SizeResult("OK", null, new Sized(requests), new Sized(limits),
+            MAX_RAM_PERCENTAGE, INITIAL_RAM_PERCENTAGE, gc, evidence, p, note, heapOpts((double) chosen));
     }
 
     private static SizeResult blocked(String reason, SizeEvidence ev, SizeParams p) {
-        return new SizeResult("BLOCKED", reason, null, null, null, null, null, ev, p, null);
+        return new SizeResult("BLOCKED", reason, null, null, null, null, null, ev, p, null, null);
     }
 
     // --- sizeCpu (arithmetic + guard) ------------------------------------------
@@ -285,19 +310,19 @@ public class SensorService {
         if (steady == null) {
             return new CpuResult("BLOCKED", "insufficient measurement: missing steady-state CPU usage from Prometheus "
                 + "(the pod needs 60 s of steady state after readiness)",
-                null, null, false, null, evidence, p);
+                null, null, false, null, evidence, p, null);
         }
         boolean warm = uptime != null && uptime > p.warmSeconds() && samples > p.minSamples();
         if (!warm) {
             return new CpuResult("BLOCKED", ("profiling window not warm: uptime=%s (need > %ds), samples=%d (need > %d). "
                 + "Run a load phase after (re)start and retry.")
-                .formatted(fmt(uptime), p.warmSeconds(), samples, p.minSamples()), null, null, false, null, evidence, p);
+                .formatted(fmt(uptime), p.warmSeconds(), samples, p.minSamples()), null, null, false, null, evidence, p, null);
         }
         boolean load = (reqRate != null && reqRate > p.minRequestRate())
             || (floor != null && peak != null && peak - floor > p.minDeltaMi());
         if (!load) {
             return new CpuResult("BLOCKED", ("no load observed: requestRate=%s rps (need > %s). Drive traffic and retry.")
-                .formatted(fmt(reqRate), fmt(p.minRequestRate())), null, null, false, null, evidence, p);
+                .formatted(fmt(reqRate), fmt(p.minRequestRate())), null, null, false, null, evidence, p, null);
         }
         long millis = (long) Math.ceil(steady * p.cpuFactor() * 1000.0);
         long rounded = ((millis + p.roundMillicores() - 1) / p.roundMillicores()) * p.roundMillicores();
@@ -314,7 +339,7 @@ public class SensorService {
         String requests = rounded + "m";
         logger.info("sizeCpu OK steady={} (mean {} jit {}%) over {}s -> requests={} limits={} (unchanged) clamped={}",
             steady, mean, jitShare, steadySecs, requests, limits, clamped);
-        return new CpuResult("OK", null, requests, limits, clamped, note, evidence, p);
+        return new CpuResult("OK", null, requests, limits, clamped, note, evidence, p, processorCount(cpuLim));
     }
 
     // --- threadDump / diagnoseBlocking -----------------------------------------
@@ -469,6 +494,24 @@ public class SensorService {
     }
 
     // --- helpers ---------------------------------------------------------------
+
+    /** -Xmx/-Xms as MAX_RAM_PERCENTAGE/INITIAL_RAM_PERCENTAGE of the limit, whole MiB rounded down. */
+    static String heapOpts(Double memLimitMi) {
+        if (memLimitMi == null || !(memLimitMi > 0)) {
+            return null;
+        }
+        long xmx = (long) Math.floor(memLimitMi * MAX_RAM_PERCENTAGE / 100.0);
+        long xms = (long) Math.floor(memLimitMi * INITIAL_RAM_PERCENTAGE / 100.0);
+        return "-Xmx%dm -Xms%dm".formatted(xmx, xms);
+    }
+
+    /** -XX:ActiveProcessorCount=ceil(limits.cpu), at least 1. */
+    static String processorCount(Double cpuLimitCores) {
+        if (cpuLimitCores == null || !(cpuLimitCores > 0)) {
+            return null;
+        }
+        return "-XX:ActiveProcessorCount=" + Math.max(1, (long) Math.ceil(cpuLimitCores - 1e-9));
+    }
 
     /** Cores as a K8s quantity: whole cores as "1", fractions as millicores "500m". */
     static String quantity(double cores) {

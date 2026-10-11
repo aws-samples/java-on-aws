@@ -67,7 +67,9 @@ public class SensorMcpTools {
         summary (jit/gc/futex shares of the whole profile, samples), the JVM's own JFR ring facts (jfr: container
         limits as the JVM read them incl. effectiveCpuCount, jvmArgs, GC pauses count/max/total,
         VirtualThreadPinned, top monitors, safepoint total, JIT compilation count/time), and the
-        window {uptimeSeconds, samples, requestRatePerSec}. Facts only — everything the checklist
+        window {uptimeSeconds, samples, requestRatePerSec}, and jvmFlags for the current limits
+        (javaHeapOpts -Xmx/-Xms at 75/50 % of limits.memory for an image that bakes the heap, such as
+        a CRaC checkpoint; activeProcessorCount = ceil(limits.cpu)): copy them, do not compute them. Facts only — everything the checklist
         needs except the thread dump under load. Deterministic; no LLM. minUptimeSeconds: if the
         current pod is younger than this, the sensor waits up to 30 s per call and reports
         window.settleRemainingSeconds; while > 0, tell the user how long is left and call again
@@ -91,7 +93,8 @@ public class SensorMcpTools {
         only the arithmetic): limits = roundUpMi(max(peak*peakFactor, floor*floorSafetyFactor)), one
         roundMi step lower when that still leaves peak*minPeakFactor and floor*floorSafetyFactor (note
         says so); requests = limits (Guaranteed memory QoS); MaxRAMPercentage = 75;
-        InitialRAMPercentage = 50; GC = cpuLimit <= 1 ? SerialGC : G1GC.""")
+        InitialRAMPercentage = 50; GC = cpuLimit <= 1 ? SerialGC : G1GC; javaHeapOpts = the -Xmx/-Xms
+        for the new limit, for an image that bakes the heap (CRaC checkpoint).""")
     public SizeResult sizeMemory(
         @ToolParam(description = SERVICE_PARAM) String service,
         @ToolParam(description = "Look-back window in minutes") int windowMinutes,
@@ -115,7 +118,8 @@ public class SensorMcpTools {
         roundUp(cpuSteadyCores * cpuFactor, roundMillicores) as millicores, capped at limits.cpu
         (clampedToLimit=true with a note when capped: the container is CPU-bound at this load);
         limits.cpu is returned UNCHANGED (the boot spike is handled by a startup CPU boost /
-        in-place resize, not by a permanently high request). All policy parameters are REQUIRED
+        in-place resize, not by a permanently high request). activeProcessorCount is the JVM flag
+        that pins the processor count to the limit. All policy parameters are REQUIRED
         and supplied by the caller (the optimization skill owns the numbers).""")
     public CpuResult sizeCpu(
         @ToolParam(description = SERVICE_PARAM) String service,

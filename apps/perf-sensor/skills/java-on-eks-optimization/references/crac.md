@@ -87,13 +87,13 @@ Consequences to state explicitly:
 - `Dockerfile.crac` sets `-XX:+UseSerialGC` on the checkpoint command, so the GC still
   fits a ≤ 1 vCPU pod after restore.
 - `Dockerfile.crac` sets the heap bounds on the checkpoint command (`JAVA_HEAP_OPTS`,
-  `-Xmx` = 75 % and `-Xms` = 50 % of the pod's `limits.memory`, from
-  `sizing-policy.yaml cracHeap`). Without them the heap is sized from the **build**
+  `-Xmx` = 75 % and `-Xms` = 50 % of the pod's `limits.memory`, returned by the sensor as
+  `measure.jvmFlags.javaHeapOpts`). Without them the heap is sized from the **build**
   machine and `MaxRAMPercentage` in the Deployment has no effect on a restored JVM.
   The checkpoint is therefore tied to that pod size: change the memory limit → rebuild
   the image. This is a CRaC trade-off, not a misconfiguration.
 - `Dockerfile.crac` pins the processor count on the checkpoint command (`JAVA_CPU_OPTS`,
-  `-XX:ActiveProcessorCount=<ceil(limits.cpu)>`). A restored JVM re-reads the cgroup CPU
+  `measure.jvmFlags.activeProcessorCount`, the CPU limit rounded up). A restored JVM re-reads the cgroup CPU
   quota at restore; with a startup CPU boost active at that moment it reads the boosted
   count and keeps that many threads on the steady-state quota for life (`jfr.container.
   effectiveCpuCount` 2 on a 1-CPU pod). The Deployment's `JAVA_TOOL_OPTIONS` pin is gone
@@ -105,12 +105,13 @@ Consequences to state explicitly:
 - **Credentials at restore**: a client closed before checkpoint must fetch fresh
   credentials/config in `afterRestore` — do not bake secrets into the checkpoint.
 - **What the checkpoint contains**: the whole JVM heap at checkpoint time. Anything the
-  application held in memory then — including a datasource password read from the
-  environment during the build's warm-up — is in `/opt/crac-files` and therefore in the
-  pushed image. Treat a CRaC image as you would a heap dump: private registry, no
-  long-lived secrets during the checkpoint run (a throwaway build database or short-lived
-  credentials), and pass build inputs with `docker build --secret`, not `--build-arg`
-  (build-args stay visible in the builder stage's history).
+  application held in memory then — including the datasource password the build's warm-up
+  used — is in `/opt/crac-files` and therefore in the pushed image, and the restored
+  application keeps using it. `Dockerfile.crac` takes the password as a BuildKit secret
+  (`docker build --secret id=db-password,env=<VAR>`), which keeps it out of build args and
+  layer history; it cannot keep it out of the heap. Treat a CRaC image as you would a heap
+  dump: private registry, and for production short-lived database credentials (for example
+  IAM database authentication) that the application fetches again after the restore.
 - Requires a CRaC-enabled JDK (e.g. Azul Zulu CRaC) and the `org.crac` API.
 - Every FD-holding class needs a hook; missing one breaks restore.
 - The checkpoint is environment-sensitive; rebuild it when the app or JDK changes.
@@ -121,9 +122,9 @@ Three changes: (1) add the `org.crac` dependency to `pom.xml`; (2) add an
 `org.crac.Resource` hook to each FD-holding class found in `src/`; (3) use
 `Dockerfile.crac` verbatim, filling `JAR_FILE` from the app's `pom.xml`, `WARMUP_CMD` with
 one `curl` against the app's hot request path (method, path and body from the controller or
-the app's own docs), and `JAVA_HEAP_OPTS` from the pod's `limits.memory` (`measure` → `workload.memLimitMi`,
-× 0.75 / × 0.50, whole MiB, e.g. 640Mi → `-Xmx480m -Xms320m`) and `JAVA_CPU_OPTS` from
-`workload.cpuLimitCores` (`-XX:ActiveProcessorCount=<ceil>`, e.g. 1 → `-XX:ActiveProcessorCount=1`).
+the app's own docs), `JAVA_HEAP_OPTS` = `measure.jvmFlags.javaHeapOpts` (e.g. 640Mi →
+`-Xmx480m -Xms320m`) and `JAVA_CPU_OPTS` = `measure.jvmFlags.activeProcessorCount` (e.g. 1 →
+`-XX:ActiveProcessorCount=1`). When the same change resizes memory, use `sizeMemory.javaHeapOpts`.
 Verify with `perf-sensor.startupLog` — `kind` should read **Restored** and seconds < 1 — and
 `measure` → `jfr.container.effectiveCpuCount == ceil(cpuLimitCores)`.
 

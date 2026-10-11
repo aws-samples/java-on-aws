@@ -25,12 +25,5 @@ policy:
   minRequestRate: 1         # guard: rps that counts as "load observed" (sizing) / "load flowing" (diagnoseBlocking, last 1 min)
   minDeltaMi: 64            # guard: peak-floor MiB that counts as "load observed"
 
-# Heap flags baked into a CRaC checkpoint (Dockerfile.crac JAVA_HEAP_OPTS), as a share of
-# the pod memory limit. The checkpoint fixes MaxHeapSize/InitialHeapSize; MaxRAMPercentage
-# in the Deployment has no effect on a restored JVM.
-cracHeap:
-  xmxShareOfLimit: 0.75
-  xmsShareOfLimit: 0.50
-
 # Default look-back window (minutes) for measure / sizeMemory / sizeCpu / profileTop.
 windowMinutes: 15

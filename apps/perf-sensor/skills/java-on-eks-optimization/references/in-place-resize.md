@@ -54,7 +54,8 @@ patch, and nothing scales it back down). Prefer the CR.
   quota (e.g. 2 cores) and keeps GC, JIT and ForkJoin threads sized for it after the resize
   down to 1 — `jdk.ContainerConfiguration.effectiveCpuCount` in the JFR ring shows exactly
   what it read. Pin the steady-state count explicitly:
-  `-XX:ActiveProcessorCount=<ceil(limits.cpu)>` in `JAVA_TOOL_OPTIONS`, and keep SerialGC
+  `-XX:ActiveProcessorCount` at the CPU limit rounded up (`sizeCpu.activeProcessorCount`) in
+  `JAVA_TOOL_OPTIONS`, and keep SerialGC
   explicit on one core. This is the container-JVM guidance for any environment where the
   CPU quota differs from what the JVM should assume (fractional limits, shares, boosts).
 - Cost: with fewer compiler threads part of the boost's startup gain may shrink; the extra

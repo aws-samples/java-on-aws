@@ -70,7 +70,9 @@ own entry: report it as that entry's root cause and still apply the others.
 
 ## 3. Hard rules
 
-- **Every number comes from a tool result. Never estimate a size, share, or time.**
+- **Every number comes from a tool result. Never estimate a size, share, or time.** This includes
+  JVM flags: `-Xmx`/`-Xms` and `ActiveProcessorCount` come from `jvmFlags`, `sizeMemory` and
+  `sizeCpu` as strings; copy them.
 - Call `sizeMemory`, `sizeCpu` and `diagnoseBlocking` with the policy parameters from
   **`references/sizing-policy.yaml`** (read the values from that file, pass them verbatim) —
   **never compute sizes yourself and never retype the numbers from prose.** `sizeMemory`
@@ -107,7 +109,6 @@ Read the file and pass the values through. The *why* for each:
 - `cpuFactor` / `roundMillicores` — CPU request as headroom over measured steady-state usage
   (`cpuSteadyCores`: the mean over the steady window minus the JIT compiler threads' share —
   cite `cpuMeanCores` and `cpuJitShare` with it).
-- `cracHeap` — `-Xmx`/`-Xms` baked into a CRaC checkpoint as a share of the pod memory limit.
 - `warmSeconds` — past the bulk of JIT warm-up; a 120 s load run after a restart satisfies it.
 - `minSamples` — enough profile samples for a floor/peak.
 - `minRequestRate` / `minDeltaMi` — what counts as "load observed".
@@ -124,7 +125,7 @@ Read the file and pass the values through. The *why* for each:
   Startup CPU Boost controller is platform-installed) — boots the container at higher CPU
   and resizes it down automatically on Ready; (b) `requests.cpu` in the Deployment set to
   `sizeCpu.requestsCpu`, `limits.cpu` unchanged — the boost supplies the boot CPU, so the
-  steady request no longer has to; (c) `-XX:ActiveProcessorCount=<ceil(limits.cpu)>` appended
+  steady request no longer has to; (c) `sizeCpu.activeProcessorCount` appended
   to `JAVA_TOOL_OPTIONS` — the JVM sizes GC/JIT/ForkJoin threads once at start and would
   otherwise keep the boosted count after the resize down (`jfr.container.effectiveCpuCount`
   shows what it read). Reference `deployment-cpu-boost.yaml` only to explain the underlying
@@ -136,9 +137,8 @@ Read the file and pass the values through. The *why* for each:
   volume a cold start pays), `startupLog`; CRaC. Artifact:
   `org.crac` dependency in `pom.xml` (not present by default), `Dockerfile.crac` with
   `JAR_FILE` from `pom.xml`, `WARMUP_CMD` = one `curl` on the app's hot request path (the
-  checkpoint is taken after a warm-up), `JAVA_HEAP_OPTS` from `workload.memLimitMi` × `cracHeap`
-  shares (whole MiB, e.g. 640 → `-Xmx480m -Xms320m`), `JAVA_CPU_OPTS` =
-  `-XX:ActiveProcessorCount=<ceil(workload.cpuLimitCores)>`, a CRaC `Resource` hook for each
+  checkpoint is taken after a warm-up), `JAVA_HEAP_OPTS` = `measure.jvmFlags.javaHeapOpts`,
+  `JAVA_CPU_OPTS` = `measure.jvmFlags.activeProcessorCount`, a CRaC `Resource` hook for each
   class in `src/` holding network clients or file handles, and **`k8s/deployment.yaml` with
   `JAVA_TOOL_OPTIONS` removed — edit it now, in the same change**: the GC/heap flags are baked
   into the checkpoint, a leftover GC flag stops the restore, and the rollout only swaps the
@@ -164,8 +164,8 @@ Read the file and pass the values through. The *why* for each:
   working set and the CPU demand; the earlier numbers were right for the earlier code).
   One change with everything the two tools returned: memory `requests == limits`, CPU
   `requests` (limit unchanged), `MaxRAMPercentage`/`InitialRAMPercentage` when the image
-  reads them; on a CRaC image the heap bounds live in the checkpoint, so update
-  `JAVA_HEAP_OPTS` in `Dockerfile.crac` from the new limit and say the image must be
+  reads them; on a CRaC image the heap bounds live in the checkpoint, so set
+  `JAVA_HEAP_OPTS` in `Dockerfile.crac` to `sizeMemory.javaHeapOpts` and say the image must be
   rebuilt. Cite old → new for each value. Reference: `right-size-memory.md`.
 - **"item 11 still fails" / "pool waits" / "connection pool"** → `diagnoseBlocking`. If
   `requestThreadsBlockedInFutureGet == 0` and `blockedInsideTransaction == 0` but
@@ -184,15 +184,15 @@ Read the file and pass the values through. The *why* for each:
   entries in one pass: `measure`, `startupLog`, `sizeMemory`, `sizeCpu`. One change: memory
   `requests == limits` from `sizeMemory`; `requests.cpu` from `sizeCpu`, `limits.cpu` unchanged;
   one `JAVA_TOOL_OPTIONS` with the `sizeMemory` GC and RAM percentages plus
-  `-XX:ActiveProcessorCount=<ceil(limits.cpu)>`; `k8s/startup-cpu-boost.yaml` (the
+  `sizeCpu.activeProcessorCount`; `k8s/startup-cpu-boost.yaml` (the
   `StartupCPUBoost` CR). Cite old → new for each value. References: `right-size-memory.md`,
   `in-place-resize.md`.
 - **Combined: "fix the slow writes, size it again and fix item 10"** → the latency, "right-size
   again" and item 10 entries in one pass: `diagnoseBlocking` while the load runs, then `measure`,
   `sizeMemory`, `sizeCpu`. One change: the non-blocking code change (plus transaction boundary
   and pool size when the evidence calls for them); memory and CPU from the sizing tools; on a
-  CRaC image `JAVA_HEAP_OPTS` in `Dockerfile.crac` from the new limit (the code change needs a
-  rebuild anyway, so one build takes both); `terminationGracePeriodSeconds`. References:
+  CRaC image `JAVA_HEAP_OPTS` in `Dockerfile.crac` = `sizeMemory.javaHeapOpts` (the code change
+  needs a rebuild anyway, so one build takes both); `terminationGracePeriodSeconds`. References:
   `blocking-calls.md`, `right-size-memory.md`, `shutdown-budget.md`.
 - **"enforce" / "admission policy" / "Kyverno policy" / "keep these from regressing"**
   → `measure` (the items must pass on the current Deployment, or the policy rejects its next

@@ -64,6 +64,7 @@ class SizeMemoryTest {
         assertThat(r.maxRamPercentage()).isEqualTo(75);
         assertThat(r.initialRamPercentage()).isEqualTo(50);
         assertThat(r.gc()).isEqualTo("SerialGC");
+        assertThat(r.javaHeapOpts()).isEqualTo("-Xmx576m -Xms384m");   // the new limit, for a CRaC checkpoint
         assertThat(r.evidence().workingSetFloorMi()).isEqualTo(377.0);
         assertThat(r.evidence().workingSetPeakMi()).isEqualTo(517.0);
     }
@@ -127,6 +128,7 @@ class SizeMemoryTest {
         assertThat(r.requestsCpu()).isEqualTo("500m");
         assertThat(r.limitsCpu()).isEqualTo("1");
         assertThat(r.clampedToLimit()).isFalse();
+        assertThat(r.activeProcessorCount()).isEqualTo("-XX:ActiveProcessorCount=1");
         assertThat(r.evidence().cpuSteadyCores()).isEqualTo(0.31);
         assertThat(r.evidence().cpuMeanCores()).isEqualTo(0.4);
         assertThat(r.evidence().cpuJitShare()).isEqualTo(22.5);
@@ -201,5 +203,16 @@ class SizeMemoryTest {
         assertThat(SensorService.roundUpMi(689.0, 128)).isEqualTo("768Mi");
         assertThat(SensorService.roundUpMi(768.0, 128)).isEqualTo("768Mi");
         assertThat(SensorService.roundUpMi(768.1, 128)).isEqualTo("896Mi");
+    }
+
+    @Test
+    void jvmFlags_fromTheLimits() {
+        assertThat(SensorService.heapOpts(640.0)).isEqualTo("-Xmx480m -Xms320m");
+        assertThat(SensorService.heapOpts(2048.0)).isEqualTo("-Xmx1536m -Xms1024m");
+        assertThat(SensorService.heapOpts(null)).isNull();
+        assertThat(SensorService.processorCount(1.0)).isEqualTo("-XX:ActiveProcessorCount=1");
+        assertThat(SensorService.processorCount(1.5)).isEqualTo("-XX:ActiveProcessorCount=2");
+        assertThat(SensorService.processorCount(0.5)).isEqualTo("-XX:ActiveProcessorCount=1");
+        assertThat(SensorService.processorCount(null)).isNull();
     }
 }
