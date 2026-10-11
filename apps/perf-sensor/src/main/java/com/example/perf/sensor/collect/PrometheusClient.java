@@ -90,10 +90,62 @@ public class PrometheusClient {
      * Mean CPU usage of the app container over the last {@code seconds}, cores, per pod. A
      * mean, not a percentile: it reads the same on a 60 s window and a 15 min one, so a pod
      * measured two minutes or ten minutes after a restart gets a comparable figure.
+     *
+     * <p>Not {@code rate()}: cAdvisor updates the counter only every 15–30 s and the scrapes in
+     * between repeat the value, so a 60 s rate sees one or two real updates and its
+     * extrapolation over the stale samples read 0.10 cores where the counter grew by 0.28 cores
+     * per second. The mean here is the counter's growth between its first and last update inside
+     * the window, divided by the time between those updates (raw samples, {@link #updateMean}).
      */
     public Map<String, Double> cpuUsageMeanCoresByPod(String namespace, String container, String podRegex, int seconds) {
-        return vectorByPod("max by (pod) (rate(container_cpu_usage_seconds_total"
-            + sel(namespace, container, podRegex) + "[" + seconds + "s]))");
+        var out = new LinkedHashMap<String, Double>();
+        // 60 s of lead-in: the first sample inside the window is an update only if it differs
+        // from the sample before it.
+        String query = "container_cpu_usage_seconds_total" + sel(namespace, container, podRegex) + "[" + (seconds + 60) + "s]";
+        try {
+            var url = promUrl + "/api/v1/query?query=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
+            var body = restClient.get().uri(URI.create(url)).retrieve().body(String.class);
+            var result = MAPPER.readTree(body).path("data").path("result");
+            double windowStart = System.currentTimeMillis() / 1000.0 - seconds;
+            for (var series : result) {
+                var pod = series.path("metric").path("pod").asText(null);
+                if (pod == null) continue;
+                var samples = new java.util.ArrayList<double[]>();
+                for (var v : series.path("values")) {
+                    Double value = finite(v.get(1).asText());
+                    if (value != null) samples.add(new double[] {v.get(0).asDouble(), value});
+                }
+                Double mean = updateMean(samples, windowStart);
+                if (mean != null) out.merge(pod, mean, Math::max);
+            }
+        } catch (Exception e) {
+            logger.warn("Prometheus cpu samples failed [{}]: {}", query, e.getMessage());
+        }
+        return out;
+    }
+
+    /**
+     * Mean rate of a counter from its updates at or after {@code windowStart}: (last update value
+     * − first update value) / (time between them). An update is a sample whose value differs from
+     * the one before it; a repeated value is a scrape that saw no new cAdvisor reading. A decrease
+     * (container restart) starts over. null with fewer than two updates in the window.
+     */
+    static Double updateMean(java.util.List<double[]> samples, double windowStart) {
+        double[] first = null, last = null;
+        Double prev = null;
+        for (var s : samples) {
+            boolean update = prev != null && s[1] != prev;
+            if (prev != null && s[1] < prev) {
+                first = null;   // counter reset
+                last = null;
+            }
+            prev = s[1];
+            if (!update || s[0] < windowStart) continue;
+            if (first == null) first = s;
+            last = s;
+        }
+        if (first == null || last == first || last[0] <= first[0]) return null;
+        return (last[1] - first[1]) / (last[0] - first[0]);
     }
 
     /**
