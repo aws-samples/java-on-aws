@@ -5,8 +5,8 @@
 # so Claude Code started from ~/environment finds all three. No cluster needed.
 #
 # Copies the two skills to ~/environment/.claude/skills/, writes ~/environment/.mcp.json
-# (perf-sensor over streamable-http on the port-forward; eks-mcp read-only), writes the
-# project permissions, and prints the port-forward command. Idempotent.
+# (perf-sensor over streamable-http on localhost:8090, the IDE's port-forward service;
+# eks-mcp read-only) and the project permissions. Idempotent.
 #
 # EKS MCP Server: the awslabs eks-mcp-server over local stdio, pinned to a version,
 # WITHOUT --allow-write (the server refuses mutations). Its tool list still shows the
@@ -115,7 +115,5 @@ echo "wrote ${ENV_DIR}/.claude/settings.json (MCP servers enabled; allow: sensor
 
 echo
 echo "Next:"
-echo "  # run the port-forward in a SEPARATE terminal (it is long-lived and would block the Claude session):"
-echo "  kubectl -n ${NS} port-forward svc/perf-sensor 8090:8080"
-echo "  # then, in your working terminal:"
+echo "  # the sensor is on localhost:8090 (systemd perf-sensor-port-forward, from perf-sensor.sh install)"
 echo "  cd ${ENV_DIR} && claude   # skills + .mcp.json are picked up from here"

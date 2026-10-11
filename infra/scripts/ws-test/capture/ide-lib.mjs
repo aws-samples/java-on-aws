@@ -28,9 +28,10 @@ export async function palette(page, cmd) {
   await page.waitForTimeout(1200);
 }
 
-export async function typeInTerminal(page, text) {
-  await page.locator('.editor-instance .xterm-helper-textarea, .terminal-wrapper.active .xterm-helper-textarea')
-    .last().focus();
+// Type into the editor-area terminal (where Claude runs), or the panel's active one.
+export async function typeInTerminal(page, text, where = 'editor') {
+  await page.locator(where === 'editor' ? '.editor-instance .xterm-helper-textarea'
+    : '.part.panel .terminal-wrapper.active .xterm-helper-textarea').last().focus();
   await page.keyboard.type(text, { delay: 15 });
   await page.keyboard.press('Enter');
 }

@@ -1,9 +1,10 @@
 // ide.mjs tools|scm OUT_DIR — Code Editor screenshots (run through ide.sh, which prepares
 // the IDE and sets IDE_URL and WS_ACCOUNT).
 //
-//   tools  the Shell terminal plus a Claude terminal in the editor area, Claude lists the
-//          MCP tools of perf-sensor and eks-mcp -> OUT_DIR/tools.png. Starts an
-//          interactive Claude: never while a ws-test runs.
+//   tools  the IDE as it opens (deploy/java-performance/ide-layout.sh): Claude Code started
+//          in the editor-area terminal lists the MCP tools of perf-sensor and eks-mcp, the
+//          Shell terminal in the panel -> OUT_DIR/tools.png. Starts an interactive Claude:
+//          never while a ws-test runs.
 //   scm    the Source Control view with SCM_FILE's diff open (default deployment.yaml)
 //          -> OUT_DIR/scm.png
 import { join } from 'node:path';
@@ -13,12 +14,9 @@ const [what, out = '.'] = process.argv.slice(2);
 const { browser, page } = await open(process.env.IDE_URL);
 
 if (what === 'tools') {
-  await page.locator('.tab', { hasText: 'zsh' }).first().click();
+  await page.locator('.editor-group-container .tab', { hasText: 'zsh' }).first().click();
   await page.waitForTimeout(800);
-  await typeInTerminal(page, 'clear');
-  await palette(page, 'Terminal: Create New Terminal in Editor Area');
-  await page.waitForTimeout(3000);
-  await typeInTerminal(page, 'cd ~/environment && claude');
+  await typeInTerminal(page, 'claude');
   await page.waitForTimeout(15000);
   await typeInTerminal(page, 'List the MCP tools you can see from perf-sensor and eks-mcp, names only.');
   const rows = page.locator('.editor-instance .xterm-rows').last();

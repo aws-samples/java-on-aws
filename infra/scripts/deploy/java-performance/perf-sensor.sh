@@ -7,7 +7,8 @@
 #   build    jib build + push to ECR, record the digest (no cluster needed)
 #   install  ServiceAccount + read-only ClusterRole, the checklist rules ConfigMap,
 #            Deployment (image by digest) + Service in the monitoring namespace, the
-#            Grafana dashboard
+#            Grafana dashboard, and the IDE's port-forward localhost:8090 -> the sensor as
+#            the systemd service perf-sensor-port-forward (Restart=always, as ec2-user)
 #   (none)   both, in order
 #
 # Not app-specific: APP_NS names the workload the dashboard is for; REQUEST_PACKAGE
@@ -109,8 +110,42 @@ install() {
     || log_warning "dashboard provisioning skipped (Grafana sidecar / monitoring not present?)"
   rm -f "${dash}"
 
+  port_forward_service
+
   echo "✅ Success: perf-sensor (image ${image_ref})"
-  log_info "Reach it from the IDE:  kubectl -n ${NS} port-forward svc/perf-sensor 8090:8080 &  then  curl -s localhost:8090/api/v1/measure/${APP_NS} | jq ."
+  log_info "Reach it from the IDE:  curl -s localhost:8090/api/v1/measure/${APP_NS} | jq .   (systemd: ${PF_UNIT})"
+}
+
+# localhost:8090 on the IDE -> svc/perf-sensor:8080, for Claude Code (.mcp.json) and curl.
+# kubectl port-forward ends whenever the sensor pod is replaced; systemd starts it again,
+# so nobody keeps a terminal open for it. A login shell gives kubectl the user's PATH,
+# kubeconfig and /etc/profile.d/workshop.sh (region for `aws eks get-token`).
+PF_UNIT="perf-sensor-port-forward"
+port_forward_service() {
+  log_info "Installing the IDE port-forward (systemd ${PF_UNIT}, localhost:8090)..."
+  sudo tee "/etc/systemd/system/${PF_UNIT}.service" >/dev/null <<EOF
+[Unit]
+Description=Port-forward localhost:8090 to svc/perf-sensor:8080 in ${NS}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=$(id -un)
+ExecStart=/bin/bash -lc 'exec kubectl -n ${NS} port-forward --address 127.0.0.1 svc/perf-sensor 8090:8080'
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  sudo systemctl daemon-reload
+  sudo systemctl enable "${PF_UNIT}" >/dev/null 2>&1
+  sudo systemctl restart "${PF_UNIT}"
+  for _ in $(seq 1 15); do
+    curl -sf localhost:8090/actuator/health >/dev/null 2>&1 && { log_success "port-forward up: localhost:8090"; return 0; }
+    sleep 2
+  done
+  log_warning "localhost:8090 not answering yet (journalctl -u ${PF_UNIT})"
 }
 
 case "${1:-all}" in

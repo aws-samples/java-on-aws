@@ -6,9 +6,10 @@
 # Everything a run changes in the APP is reverted; the platform (monitoring,
 # profiler policy, sensor, boost controller, skills) is left as bootstrapped.
 #
-#   0. The load and the sensor port-forward a run started are stopped: the loops and
-#      the artillery process of the current run (it outlives its loop for up to 600 s,
-#      and a second load on top doubles the request rate the next run measures).
+#   0. The load a run started is stopped: the loops and the artillery process of the
+#      current run (it outlives its loop for up to 600 s, and a second load on top doubles
+#      the request rate the next run measures). The sensor port-forward service is
+#      restarted, and a hand-started port-forward from an older run is stopped.
 #   1. ~/environment/unicorn-store-spring: hard reset to the commit
 #      "Starting point: containerized + deployed to EKS" (made by app-prepare.sh), untracked files removed
 #      (Dockerfile.aot/.crac, startup-cpu-boost.yaml, listener classes ...); then
@@ -59,11 +60,17 @@ PREBUILD=false
 # 0. Stop the previous run's load and port-forward (loops first, then what they started).
 # common.sh sets -e: pkill exits 1 when nothing matches, which is the normal case here.
 pkill -f 'scripts/load.sh' 2>/dev/null || true; pkill -f 'artillery run' 2>/dev/null || true
-pkill -f 'port-forward svc/perf-sensor' 2>/dev/null || true
+# A hand-started forward (loop first, then its kubectl) would hold 8090; the service's own
+# kubectl has --address in its command line and does not match.
+pkill -f 'while true; do kubectl -n monitoring port-forward' 2>/dev/null || true
+pkill -f 'kubectl -n monitoring port-forward svc/perf-sensor' 2>/dev/null || true
 sleep 2
 pgrep -f 'artillery run|scripts/load.sh' >/dev/null \
   && log_warning "load still running: $(pgrep -af 'artillery run|scripts/load.sh' | head -3)" \
-  || log_success "load and port-forward stopped"
+  || log_success "load stopped"
+sudo systemctl restart perf-sensor-port-forward 2>/dev/null \
+  && log_success "port-forward service restarted (localhost:8090)" \
+  || log_warning "no perf-sensor-port-forward service (perf-sensor.sh install creates it)"
 
 # 1. App repo back to the starting point.
 START_SHA="$(git -C "${APP_DIR}" log --format=%H --grep="${START_MSG}" -n 1)"
