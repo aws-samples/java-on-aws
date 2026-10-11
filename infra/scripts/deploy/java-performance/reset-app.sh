@@ -120,6 +120,13 @@ log_info "Applying baseline manifest and waiting for rollout..."
 kubectl -n "${APP_NS}" apply -f "${MANIFEST}" >/dev/null \
   && kubectl -n "${APP_NS}" rollout status deploy/unicorn-store-spring --timeout=300s >/dev/null \
   || { log_error "baseline rollout failed"; exit 1; }
+# Wait for the previous pods to finish terminating (grace period up to 40 s), so the next
+# run starts from one pod, as a fresh environment does.
+for _ in $(seq 1 30); do
+  [ "$(kubectl -n "${APP_NS}" get pod -l app=unicorn-store-spring -o json \
+    | jq '[.items[] | select(.metadata.deletionTimestamp != null)] | length')" = 0 ] && break
+  sleep 3
+done
 
 # Read the NEW pod: right after rollout status the old one is still Terminating and
 # sorts first, so filter on phase=Running and no deletionTimestamp, newest first.
