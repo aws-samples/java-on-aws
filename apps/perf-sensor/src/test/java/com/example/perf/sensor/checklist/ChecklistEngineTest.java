@@ -139,6 +139,25 @@ class ChecklistEngineTest {
     }
 
     @Test
+    void text_wrapsTheEvidenceUnderItsColumn() {
+        var items = List.of(
+            new Item(9, "Probe budgets match observed behaviour", Verdict.PASS,
+                "startupBudget 50s ≥ 2×0.1=0.2s; livenessBudget 30s ≥30 and ≥3×gcMax 7ms; liveness ≠ readiness path"),
+            new Item(11, "Request path does not block on downstream calls", Verdict.PASS, "short"));
+        var lines = ChecklistEngine.text(items).lines().skip(2).toList();
+        // 47-character practice column: evidence starts at column 56, 54 columns wide
+        assertThat(lines).hasSize(3);
+        assertThat(lines.get(0)).endsWith("startupBudget 50s ≥ 2×0.1=0.2s; livenessBudget 30s ≥30");
+        assertThat(lines.get(1)).isEqualTo(" ".repeat(56) + "and ≥3×gcMax 7ms; liveness ≠ readiness path");
+        assertThat(lines).allSatisfy(l -> assertThat(l.codePointCount(0, l.length()) + 1).isLessThanOrEqualTo(ChecklistEngine.TEXT_WIDTH));
+    }
+
+    @Test
+    void wrap_keepsAnOverlongWordWhole() {
+        assertThat(ChecklistEngine.wrap("a bbbbbbbb c", 4)).containsExactly("a", "bbbbbbbb", "c");
+    }
+
+    @Test
     void brokenRule_failsAtLoad() {
         var yaml = "items:\n  - id: 1\n    practice: x\n    pass: \"runtime.\"\n    evidence: x\n";
         assertThatThrownBy(() -> new ChecklistEngine(new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8))))

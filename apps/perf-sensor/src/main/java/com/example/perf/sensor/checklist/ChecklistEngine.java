@@ -124,15 +124,40 @@ public class ChecklistEngine {
         return sb.toString();
     }
 
-    /** The same table as aligned plain text, for a terminal. */
+    /** Columns of the plain-text table, evidence wrapped to fit. */
+    public static final int TEXT_WIDTH = 110;
+
+    /** The same table as aligned plain text, for a terminal, the evidence wrapped at TEXT_WIDTH. */
     public static String text(List<Item> items) {
         int w = items.stream().mapToInt(i -> i.practice().length()).max().orElse(10);
+        // icon (2 columns), space, 2-digit id, 2 spaces, practice, 2 spaces
+        String indent = " ".repeat(w + 9);
+        int evidenceWidth = Math.max(30, TEXT_WIDTH - indent.length());
         var sb = new StringBuilder("Score: ").append(score(items)).append('/').append(items.size()).append("\n\n");
         for (var i : items) {
             sb.append(i.icon()).append(' ').append(String.format("%2d", i.id())).append("  ")
-                .append(String.format("%-" + w + "s", i.practice())).append("  ").append(i.evidence()).append('\n');
+                .append(String.format("%-" + w + "s", i.practice())).append("  ")
+                .append(String.join("\n" + indent, wrap(i.evidence(), evidenceWidth))).append('\n');
         }
         return sb.toString();
+    }
+
+    /** Greedy word wrap at spaces; a word longer than the width stays whole on its own line. */
+    static List<String> wrap(String s, int width) {
+        var lines = new ArrayList<String>();
+        var line = new StringBuilder();
+        for (String word : s.split(" ")) {
+            if (!line.isEmpty() && line.length() + 1 + word.length() > width) {
+                lines.add(line.toString());
+                line.setLength(0);
+            }
+            if (!line.isEmpty()) {
+                line.append(' ');
+            }
+            line.append(word);
+        }
+        lines.add(line.toString());
+        return lines;
     }
 
     public static long score(List<Item> items) {
