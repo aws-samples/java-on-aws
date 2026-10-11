@@ -175,19 +175,23 @@ public class DumpCollector {
         else if (body.contains("+UseG1GC") || body.contains("garbage-first")) gc = "G1GC";
         else if (body.contains("+UseParallelGC") || body.contains("PSYoungGen")) gc = "ParallelGC";
         else if (body.contains("+UseZGC") || body.contains("ZHeap")) gc = "ZGC";
-        // GC.heap_info prints one "total <n>K, used <n>K" per generation/region and
-        // has no "committed" keyword for the heap. Committed heap = sum of the
-        // per-region totals; used heap = sum of the per-region used. (An explicit
-        // "committed <n>K", as Metaspace prints, is added in if present.)
-        Double committed = kbToMi(sumMatches(body, "total\\s+(\\d+)K"));
-        if (committed == null) {
-            committed = kbToMi(sumMatches(body, "committed\\s+(\\d+)K"));
-        }
-        Double used = kbToMi(sumMatches(body, "\\bused\\s+(\\d+)K"));
+        // GC.heap_info prints one "total <n>K, used <n>K" per generation/region. Committed
+        // heap = sum of the per-region totals, used heap = sum of the per-region used, both
+        // over the heap section only: JDKs before 25 append "Metaspace used <n>K, committed
+        // <n>K" and "class space used ...", which are not heap. Other formats read null.
+        String heapSection = heapSection(body);
+        Double committed = kbToMi(sumMatches(heapSection, "total\\s+(\\d+)K"));
+        Double used = kbToMi(sumMatches(heapSection, "\\bused\\s+(\\d+)K"));
         // VM.flags: "-XX:MaxHeapSize=1610612736 ... -XX:InitialHeapSize=134217728" (bytes)
         Double maxHeap = bytesToMi(firstMatch(body, "-XX:MaxHeapSize=(\\d+)"));
         Double initialHeap = bytesToMi(firstMatch(body, "-XX:InitialHeapSize=(\\d+)"));
         return new HeapInfo(used, committed, gc, maxHeap, initialHeap);
+    }
+
+    /** GC.heap_info up to the first non-heap section (Metaspace, class space). */
+    static String heapSection(String body) {
+        var m = Pattern.compile("(?m)^\\s*(Metaspace|class space)\\b").matcher(body);
+        return m.find() ? body.substring(0, m.start()) : body;
     }
 
     private String get(String podIP, String kind) {

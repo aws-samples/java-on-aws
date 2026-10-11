@@ -6,8 +6,9 @@
 # sizeMemory: limits = roundUp(max(peak * peakFactor, floor * floorSafetyFactor)), one roundMi step
 #             lower when that still leaves peak * minPeakFactor and floor * floorSafetyFactor
 #             (a peak a few MiB either side of a rounding edge must not flip the limit by a step);
-#             requests = limits (Guaranteed memory QoS — JVM memory is stable after warm-up,
-#             and a Burstable JVM is the first OOM-kill candidate on a busy node).
+#             requests = limits (JVM memory is stable after warm-up; usage never exceeds the
+#             request, and under node memory pressure the kubelet evicts pods above their
+#             request first).
 # sizeCpu:    requests.cpu = min(roundUp(cpuSteadyCores * cpuFactor, roundMillicores), limits.cpu); limits.cpu unchanged
 #             (cpuSteadyCores: mean usage over the steady window after readiness, minus the JIT compiler
 #             threads' share of the CPU profile — measure.runtime.cpuMeanCores and cpuJitShare)

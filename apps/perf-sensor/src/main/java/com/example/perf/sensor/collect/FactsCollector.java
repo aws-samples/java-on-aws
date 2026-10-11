@@ -63,6 +63,12 @@ public class FactsCollector {
         var from = to.minus(Duration.ofMinutes(mins));
 
         WorkloadFacts workload = snap.workload();
+        if (snap.readyPodNames() != null && snap.readyPodNames().isEmpty()) {
+            // The API answered and no pod is Ready: there is no current JVM to measure. A query
+            // without the pod matcher would read pods that are gone.
+            logger.info("facts collected service={}: no Ready pod, runtime facts unavailable", service);
+            return new Facts(workload, null, null, null);
+        }
         String container = snap.appContainer() != null ? snap.appContainer() : service;
         // Scope cAdvisor facts to the pods that exist NOW: a pod replaced by a rollout earlier
         // in the window must not supply the peak, the steady CPU or the startup of the current one.
@@ -114,11 +120,9 @@ public class FactsCollector {
             cpuJitShare = pyroscope.cpuJitShare(service, from.toString(), to.toString());
         }
         Double cpuSteady = withoutJit(cpuMean, cpuJitShare);
-        // effectiveCpuCount: what the JVM itself reported (jdk.ContainerConfiguration) when the
-        // ring is available; otherwise the CPU limit rounded up to whole processors.
-        Integer effectiveCpu = ring != null && ring.container() != null && ring.container().effectiveCpuCount() != null
-            ? ring.container().effectiveCpuCount()
-            : (workload != null && workload.cpuLimitCores() != null) ? (int) Math.ceil(workload.cpuLimitCores()) : null;
+        // effectiveCpuCount: what the JVM itself reported (jdk.ContainerConfiguration); null
+        // without the ring. The limit is not a stand-in: item 5 compares the two.
+        Integer effectiveCpu = ring != null && ring.container() != null ? ring.container().effectiveCpuCount() : null;
         var runtime = new RuntimeFacts(floor, peak,
             heap.heapUsedMi(), heap.heapCommittedMi(), heap.gcName(),
             effectiveCpu, startup, snap.restarts(), uptime, requestRate,

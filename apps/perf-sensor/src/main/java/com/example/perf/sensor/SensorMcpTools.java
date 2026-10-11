@@ -92,7 +92,7 @@ public class SensorMcpTools {
         REQUIRED and supplied by the caller (the optimization skill owns the numbers; this tool owns
         only the arithmetic): limits = roundUpMi(max(peak*peakFactor, floor*floorSafetyFactor)), one
         roundMi step lower when that still leaves peak*minPeakFactor and floor*floorSafetyFactor (note
-        says so); requests = limits (Guaranteed memory QoS); MaxRAMPercentage = 75;
+        says so); requests = limits; MaxRAMPercentage = 75;
         InitialRAMPercentage = 50; GC = cpuLimit <= 1 ? SerialGC : G1GC; javaHeapOpts = the -Xmx/-Xms
         for the new limit, for an image that bakes the heap (CRaC checkpoint).""")
     public SizeResult sizeMemory(

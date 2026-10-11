@@ -43,6 +43,24 @@ class K8sCollectorTest {
         assertThat(K8sCollector.preStopSleepSeconds(exec)).isEqualTo(10);
         assertThat(K8sCollector.preStopSleepSeconds(sleep)).isEqualTo(7);
         assertThat(K8sCollector.preStopSleepSeconds(new V1Container())).isZero();
+        assertThat(K8sCollector.preStopSleepSeconds(execHook("sleep", "15"))).isEqualTo(15);
+        assertThat(K8sCollector.preStopSleepSeconds(execHook("/bin/sh", "-c", "sleep 20;"))).isEqualTo(20);
+    }
+
+    @Test
+    void preStopSleep_otherHooksAreUnreadable() {
+        // Two sleeps, a sleep as text, a script that does more: the duration is not the first number.
+        assertThat(K8sCollector.preStopSleepSeconds(execHook("sh", "-c", "sleep 20; sleep 20"))).isNull();
+        assertThat(K8sCollector.preStopSleepSeconds(execHook("sh", "-c", "echo \"sleep 100\""))).isNull();
+        assertThat(K8sCollector.preStopSleepSeconds(execHook("/drain.sh"))).isNull();
+        var http = new V1Container().lifecycle(new V1Lifecycle().preStop(new V1LifecycleHandler()
+            .httpGet(new io.kubernetes.client.openapi.models.V1HTTPGetAction().path("/drain"))));
+        assertThat(K8sCollector.preStopSleepSeconds(http)).isNull();
+    }
+
+    private static V1Container execHook(String... command) {
+        return new V1Container().lifecycle(new V1Lifecycle().preStop(
+            new V1LifecycleHandler().exec(new V1ExecAction().command(List.of(command)))));
     }
 
     @Test

@@ -30,7 +30,7 @@ class ChecklistEngineTest {
         f.put("workload", new HashMap<>(Map.ofEntries(
             Map.entry("memRequestMi", 2048.0), Map.entry("memLimitMi", 2048.0),
             Map.entry("cpuRequestCores", 1.0), Map.entry("cpuLimitCores", 1.0),
-            Map.entry("startupProbe", true), Map.entry("startupBudgetSeconds", 50.0),
+            Map.entry("startupProbe", true), Map.entry("readinessProbe", true), Map.entry("startupBudgetSeconds", 50.0),
             Map.entry("startupInitialDelaySeconds", 0.0), Map.entry("readinessInitialDelaySeconds", 0.0),
             Map.entry("livenessBudgetSeconds", 30.0),
             Map.entry("livenessPath", "/actuator/health/liveness"),
@@ -75,7 +75,7 @@ class ChecklistEngineTest {
         assertThat(item(items, 8).evidence()).isEqualTo("startup 17.06s > 5s bar");
         assertThat(item(items, 9).evidence())
             .isEqualTo("startupBudget 50s ≥ 2×17.06=34.12s; livenessBudget 30s ≥30 and ≥3×gcMax 144.8ms; liveness ≠ readiness path");
-        assertThat(item(items, 10).evidence()).isEqualTo("grace 30s < preStop 10s + 30 = 40s");
+        assertThat(item(items, 10).evidence()).isEqualTo("grace 30s < preStop 10s + 30 s assumed drain = 40s");
         assertThat(item(items, 11).evidence())
             .isEqualTo("blockedInFutureGet 1, waitingForConnection 2, blockedInsideTransaction 1 (holds a DB connection)");
         assertThat(item(items, 12).evidence())
@@ -94,7 +94,7 @@ class ChecklistEngineTest {
         var items = shipped().evaluate(f);
         assertThat(ChecklistEngine.score(items)).isEqualTo(12);
         assertThat(item(items, 6).evidence()).isEqualTo("request 0.2 ≤ roundUp(2.5 × steady 0.116 = 0.29, 50m) = 0.3");
-        assertThat(item(items, 10).evidence()).isEqualTo("grace 40s ≥ preStop 10s + 30 = 40s");
+        assertThat(item(items, 10).evidence()).isEqualTo("grace 40s ≥ preStop 10s + 30 s assumed drain = 40s");
         assertThat(item(items, 11).evidence()).isEqualTo("blockedInFutureGet 0, waitingForConnection 0, blockedInsideTransaction 0");
     }
 
@@ -108,6 +108,21 @@ class ChecklistEngineTest {
         assertThat(item(items, 6).evidence()).startsWith("no steady-state CPU");
         assertThat(item(items, 11).verdict()).isEqualTo(Verdict.UNKNOWN);
         assertThat(item(items, 11).icon()).isEqualTo("🟡");
+    }
+
+    @Test
+    void absentEvidence_isNotPassing() {
+        var f = baseline();
+        group(f, "runtime").remove("restarts");           // no pod status: OOM kills unknown
+        group(f, "workload").put("readinessProbe", false);
+        group(f, "workload").remove("readinessPath");
+        group(f, "workload").remove("preStopSleepSeconds"); // a hook whose duration cannot be read
+        var items = shipped().evaluate(f);
+        assertThat(item(items, 1).verdict()).isEqualTo(Verdict.UNKNOWN);
+        assertThat(item(items, 9).verdict()).isEqualTo(Verdict.FAIL);
+        assertThat(item(items, 9).evidence()).startsWith("no readinessProbe; ");
+        assertThat(item(items, 10).verdict()).isEqualTo(Verdict.UNKNOWN);
+        assertThat(item(items, 10).evidence()).startsWith("preStop hook other than a plain sleep");
     }
 
     @Test

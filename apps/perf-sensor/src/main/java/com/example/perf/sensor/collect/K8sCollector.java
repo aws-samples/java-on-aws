@@ -150,7 +150,7 @@ public class K8sCollector {
             String livenessPath = null, readinessPath = null;
             Integer livenessBudget = null, startupBudget = null;
             Integer startupInitialDelay = null, readinessInitialDelay = null;
-            Integer preStopSleep = 0;
+            Integer preStopSleep = 0;   // no hook; null when the hook's duration cannot be read
             // Pod-level: terminationGracePeriodSeconds defaults to 30 when unset.
             Long grace = spec != null && spec.getTemplate().getSpec() != null
                 && spec.getTemplate().getSpec().getTerminationGracePeriodSeconds() != null
@@ -291,20 +291,36 @@ public class K8sCollector {
         return probe.getInitialDelaySeconds() == null ? 0 : probe.getInitialDelaySeconds();
     }
 
-    /** Seconds slept by a preStop hook: exec `sleep N` / `sh -c "sleep N"`, or the K8s 1.30+ sleep action. 0 when none. */
-    static int preStopSleepSeconds(V1Container app) {
+    /**
+     * Seconds slept by a preStop hook: the Kubernetes sleep action, exec {@code ["sleep", "N"]},
+     * or exec {@code [sh|bash, "-c", "sleep N"]} with nothing else in the script. 0 when there is
+     * no hook; null for any other hook, whose duration cannot be read from the manifest.
+     */
+    static Integer preStopSleepSeconds(V1Container app) {
         var lc = app.getLifecycle();
         if (lc == null || lc.getPreStop() == null) return 0;
         var pre = lc.getPreStop();
         if (pre.getSleep() != null && pre.getSleep().getSeconds() != null) {
             return (int) pre.getSleep().getSeconds().longValue();
         }
-        if (pre.getExec() != null && pre.getExec().getCommand() != null) {
-            var m = Pattern.compile("sleep\\s+(\\d+)")
-                .matcher(String.join(" ", pre.getExec().getCommand()));
-            if (m.find()) return Integer.parseInt(m.group(1));
+        if (pre.getExec() == null || pre.getExec().getCommand() == null) return null;
+        var cmd = pre.getExec().getCommand();
+        if (cmd.size() == 2 && SLEEP_BINARY.matcher(cmd.get(0)).matches()) {
+            return seconds(cmd.get(1));
         }
-        return 0;
+        if (cmd.size() == 3 && SHELL.matcher(cmd.get(0)).matches() && "-c".equals(cmd.get(1))) {
+            var m = SLEEP_SCRIPT.matcher(cmd.get(2));
+            return m.matches() ? Integer.valueOf(m.group(1)) : null;
+        }
+        return null;
+    }
+
+    private static final Pattern SLEEP_BINARY = Pattern.compile("(/usr)?(/bin/)?sleep");
+    private static final Pattern SHELL = Pattern.compile("(/usr)?(/bin/)?(sh|bash)");
+    private static final Pattern SLEEP_SCRIPT = Pattern.compile("\\s*sleep\\s+(\\d+)\\s*;?\\s*");
+
+    private static Integer seconds(String s) {
+        return s.matches("\\d+") ? Integer.valueOf(s) : null;
     }
 
     /** Label selector from the Deployment's own matchLabels; falls back to serviceLabel=deployment. */

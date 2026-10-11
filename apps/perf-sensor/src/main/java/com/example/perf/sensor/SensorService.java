@@ -97,10 +97,25 @@ public class SensorService {
                                 ProfileFacts profile, JfrFacts jfr, Window window,
                                 List<PodBreakdown> pods, JvmFlags jvmFlags) {}
 
-    /** Caller-supplied sizing policy — all required, no defaults (the skill owns the numbers). */
+    /**
+     * Caller-supplied sizing policy — all required, no defaults (the skill owns the numbers).
+     * Rejected unless the factors are finite and at least 1 (a limit below the measured peak or
+     * floor is not a sizing), the step is positive and the guards are not negative.
+     */
     public record SizeParams(double peakFactor, double floorSafetyFactor,
                              int roundMi, double minPeakFactor, int warmSeconds, int minSamples,
-                             double minRequestRate, double minDeltaMi) {}
+                             double minRequestRate, double minDeltaMi) {
+        public SizeParams {
+            atLeastOne("peakFactor", peakFactor);
+            atLeastOne("floorSafetyFactor", floorSafetyFactor);
+            atLeastOne("minPeakFactor", minPeakFactor);
+            positive("roundMi", roundMi);
+            notNegative("warmSeconds", warmSeconds);
+            notNegative("minSamples", minSamples);
+            notNegative("minRequestRate", minRequestRate);
+            notNegative("minDeltaMi", minDeltaMi);
+        }
+    }
 
     public record Sized(String memory) {}
 
@@ -108,8 +123,9 @@ public class SensorService {
                                Double heapCommittedMi, Double cpuLimitCores) {}
 
     /**
-     * OK: computed sizing — requests == limits (Guaranteed memory QoS: JVM memory is stable
-     * after warm-up and a Burstable JVM is the first OOM-kill candidate on a busy node).
+     * OK: computed sizing — requests == limits (JVM memory is stable after warm-up; usage never
+     * exceeds the request, and the kubelet evicts pods whose usage exceeds their request first).
+     * Not the Guaranteed QoS class: that also needs CPU requests == limits in every container.
      * BLOCKED: reason set, sizing null (guard not satisfied). note: set when the limit was
      * rounded down one step (see {@link #sizeMemory(Facts, SizeParams)}). javaHeapOpts: the
      * -Xmx/-Xms for the new limit, for an image that bakes the heap (CRaC checkpoint).
@@ -118,9 +134,36 @@ public class SensorService {
                              Integer maxRamPercentage, Integer initialRamPercentage, String gc,
                              SizeEvidence evidence, SizeParams params, String note, String javaHeapOpts) {}
 
-    /** Caller-supplied CPU sizing policy — all required (the skill owns the numbers). */
+    /** Caller-supplied CPU sizing policy — all required (the skill owns the numbers); validated as SizeParams. */
     public record CpuParams(double cpuFactor, int roundMillicores, int warmSeconds, int minSamples,
-                            double minRequestRate, double minDeltaMi) {}
+                            double minRequestRate, double minDeltaMi) {
+        public CpuParams {
+            atLeastOne("cpuFactor", cpuFactor);
+            positive("roundMillicores", roundMillicores);
+            notNegative("warmSeconds", warmSeconds);
+            notNegative("minSamples", minSamples);
+            notNegative("minRequestRate", minRequestRate);
+            notNegative("minDeltaMi", minDeltaMi);
+        }
+    }
+
+    private static void atLeastOne(String name, double v) {
+        if (!Double.isFinite(v) || v < 1.0) {
+            throw new IllegalArgumentException(name + " must be a finite number >= 1, was " + v);
+        }
+    }
+
+    private static void positive(String name, int v) {
+        if (v <= 0) {
+            throw new IllegalArgumentException(name + " must be > 0, was " + v);
+        }
+    }
+
+    private static void notNegative(String name, double v) {
+        if (!Double.isFinite(v) || v < 0) {
+            throw new IllegalArgumentException(name + " must be a finite number >= 0, was " + v);
+        }
+    }
 
     public record CpuEvidence(Double cpuSteadyCores, Double cpuMeanCores, Double cpuJitShare,
                               Integer steadyWindowSeconds, Double cpuRequestCores, Double cpuLimitCores) {}
@@ -223,7 +266,7 @@ public class SensorService {
      * and {@code (requestRate > minRequestRate || peak - floor > minDeltaMi)}.
      * Rule: limits = roundUpMi(max(peak*peakFactor, floor*floorSafetyFactor)), one step lower
      * when that still leaves {@code peak * minPeakFactor} (so a peak a few MiB either side of a
-     * rounding edge does not flip the limit by a whole step); requests = limits (Guaranteed);
+     * rounding edge does not flip the limit by a whole step); requests = limits;
      * maxRamPercentage = 75; initialRamPercentage = 50; gc = cpuLimit <= 1 ? SerialGC : G1GC.
      */
     public SizeResult sizeMemory(Facts f, SizeParams p) {
@@ -240,6 +283,10 @@ public class SensorService {
 
         if (floor == null || peak == null) {
             return blocked("insufficient measurement: missing working-set floor/peak from Prometheus",
+                evidence, p);
+        }
+        if (cpuLimit == null) {
+            return blocked("no CPU limit on the container: the GC choice (SerialGC at <= 1 CPU) needs it",
                 evidence, p);
         }
         boolean warm = uptime != null && uptime > p.warmSeconds() && samples > p.minSamples();
@@ -267,8 +314,8 @@ public class SensorService {
                 + "(minPeakFactor %.2f)").formatted(down, up, down, down / peak, peak, p.minPeakFactor());
         }
         String limits = chosen + "Mi";
-        String requests = limits;   // Guaranteed memory QoS
-        String gc = (cpuLimit != null && cpuLimit <= 1) ? "SerialGC" : "G1GC";
+        String requests = limits;
+        String gc = cpuLimit <= 1 ? "SerialGC" : "G1GC";
         logger.info("sizeMemory OK floor={} peak={} cpuLimit={} -> requests=limits={} gc={}{}",
             floor, peak, cpuLimit, limits, gc, note == null ? "" : " (" + note + ")");
         return new SizeResult("OK", null, new Sized(requests), new Sized(limits),

@@ -38,6 +38,28 @@ class DumpParseTest {
     }
 
     @Test
+    void heap_beforeJdk25_metaspaceIsNotHeap() {
+        // JDK 21 GC.heap_info appends Metaspace and class space: neither is heap.
+        var heap = dump.parseHeap("""
+             def new generation   total 9792K, used 8131K [0x0, 0x0, 0x0)
+              eden space 8704K,  89% used [0x0, 0x0, 0x0)
+             tenured generation   total 21632K, used 15012K [0x0, 0x0, 0x0)
+               the space 21632K,  69% used [0x0, 0x0, 0x0)
+             Metaspace       used 60000K, committed 61000K, reserved 1114112K
+              class space    used 8000K, committed 8500K, reserved 1048576K
+            -XX:+UseSerialGC""");
+        assertThat(heap.heapUsedMi()).isCloseTo((8131 + 15012) / 1024.0, within(0.01));
+        assertThat(heap.heapCommittedMi()).isCloseTo((9792 + 21632) / 1024.0, within(0.01));
+    }
+
+    @Test
+    void heap_unknownFormat_readsNull() {
+        var heap = dump.parseHeap("Metaspace       used 60000K, committed 61000K, reserved 1114112K");
+        assertThat(heap.heapUsedMi()).isNull();
+        assertThat(heap.heapCommittedMi()).isNull();
+    }
+
+    @Test
     void heap_g1_detected() {
         var heap = dump.parseHeap("garbage-first heap   total 524288K, used 120000K\n-XX:+UseG1GC");
         assertThat(heap.gcName()).isEqualTo("G1GC");

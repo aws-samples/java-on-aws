@@ -206,6 +206,30 @@ class SizeMemoryTest {
     }
 
     @Test
+    void invalidPolicy_isRejected() {
+        assertThatThrownBy(() -> new SizeParams(0.0, 1.50, 128, 1.30, 120, 100, 1, 64))
+            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("peakFactor");
+        assertThatThrownBy(() -> new SizeParams(1.40, 1.50, 0, 1.30, 120, 100, 1, 64))
+            .hasMessageContaining("roundMi");
+        assertThatThrownBy(() -> new SizeParams(1.40, Double.NaN, 128, 1.30, 120, 100, 1, 64))
+            .hasMessageContaining("floorSafetyFactor");
+        assertThatThrownBy(() -> new CpuParams(-1.5, 50, 120, 100, 1, 64)).hasMessageContaining("cpuFactor");
+        assertThatThrownBy(() -> new CpuParams(1.5, 0, 120, 100, 1, 64)).hasMessageContaining("roundMillicores");
+    }
+
+    @Test
+    void noCpuLimit_blocksTheGcChoice() throws IOException {
+        var r = sensor.sizeMemory(fixtureWithWorkload("baseline", "cpuLimitCores", 1.0), POLICY);
+        assertThat(r.status()).isEqualTo("OK");
+        var tree = (ObjectNode) MAPPER.readTree(SizeMemoryTest.class.getResourceAsStream("/fixtures/baseline.json"));
+        ((ObjectNode) tree.get("workload")).remove("cpuLimitCores");
+        var blocked = sensor.sizeMemory(MAPPER.treeToValue(tree, Facts.class), POLICY);
+        assertThat(blocked.status()).isEqualTo("BLOCKED");
+        assertThat(blocked.reason()).contains("no CPU limit");
+        assertThat(blocked.gc()).isNull();
+    }
+
+    @Test
     void jvmFlags_fromTheLimits() {
         assertThat(SensorService.heapOpts(640.0)).isEqualTo("-Xmx480m -Xms320m");
         assertThat(SensorService.heapOpts(2048.0)).isEqualTo("-Xmx1536m -Xms1024m");

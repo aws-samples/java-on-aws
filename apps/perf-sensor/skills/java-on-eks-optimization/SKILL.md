@@ -76,7 +76,7 @@ own entry: report it as that entry's root cause and still apply the others.
 - Call `sizeMemory`, `sizeCpu` and `diagnoseBlocking` with the policy parameters from
   **`references/sizing-policy.yaml`** (read the values from that file, pass them verbatim) —
   **never compute sizes yourself and never retype the numbers from prose.** `sizeMemory`
-  returns `requests == limits` (Guaranteed memory QoS); keep them equal. `sizeCpu` changes
+  returns `requests == limits`; keep them equal. `sizeCpu` changes
   the request only; keep the limit. If `sizeCpu.clampedToLimit` is true, use `requestsCpu`
   as returned (it equals the limit) and quote `note`: the container is CPU-bound at this
   load, the request can't express headroom, and the real fix is a cheaper request path or a

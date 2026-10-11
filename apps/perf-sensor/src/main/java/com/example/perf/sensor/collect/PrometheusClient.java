@@ -146,8 +146,9 @@ public class PrometheusClient {
                 for (var series : result) {
                     var pod = series.path("metric").path("pod").asText(null);
                     var val = series.path("value");
-                    if (pod != null && val.isArray() && val.size() == 2) {
-                        out.put(pod, Double.parseDouble(val.get(1).asText()));
+                    Double v = val.isArray() && val.size() == 2 ? finite(val.get(1).asText()) : null;
+                    if (pod != null && v != null) {
+                        out.put(pod, v);
                     }
                 }
             }
@@ -177,13 +178,20 @@ public class PrometheusClient {
             }
             // instant vector sample: "value": [ <ts>, "<number>" ]
             var val = result.get(0).path("value");
-            if (val.isArray() && val.size() == 2) {
-                return Double.parseDouble(val.get(1).asText());
-            }
-            return null;
+            return val.isArray() && val.size() == 2 ? finite(val.get(1).asText()) : null;
         } catch (Exception e) {
             logger.warn("Prometheus query failed [{}]: {}", query, e.getMessage());
             return null;
+        }
+    }
+
+    /** A sample value, or null for NaN, +Inf and -Inf (PromQL prints them for 0/0 and x/0). */
+    static Double finite(String value) {
+        try {
+            double v = Double.parseDouble(value);
+            return Double.isFinite(v) ? v : null;
+        } catch (NumberFormatException e) {
+            return null;   // "+Inf" / "-Inf" are not Java literals
         }
     }
 

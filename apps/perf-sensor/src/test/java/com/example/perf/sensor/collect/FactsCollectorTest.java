@@ -56,6 +56,24 @@ class FactsCollectorTest {
     }
 
     @Test
+    void noReadyPod_readsNoRuntimeFacts_insteadOfEveryPodInTheWindow() {
+        var collector = new FactsCollector(k8s, prometheus, pyroscope, dump, jfr);
+        var f = collector.collect("shop", 15, snap(null, List.of()));
+        assertThat(f.runtime()).isNull();
+        assertThat(f.profile()).isNull();
+        verify(prometheus, never()).workingSetPeakMi(anyString(), anyString(), any(), anyInt());
+        verify(dump, never()).heap(any());
+    }
+
+    @Test
+    void nonFiniteSamples_readAsAbsent() {
+        assertThat(PrometheusClient.finite("NaN")).isNull();
+        assertThat(PrometheusClient.finite("+Inf")).isNull();
+        assertThat(PrometheusClient.finite("-Inf")).isNull();
+        assertThat(PrometheusClient.finite("0.25")).isEqualTo(0.25);
+    }
+
+    @Test
     void youngPod_hasNoFloorNoThrottleNoSteadyCpu_trafficWindowIsOneMinute() {
         when(prometheus.startupSeconds("shop")).thenReturn(null);   // startup unknown: boot minute + margin
         var f = collector().collect("shop", 15, snap(45.0, List.of("p1")));
