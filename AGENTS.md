@@ -29,8 +29,10 @@ to this one.
 - The IDE clones `main` at bootstrap: a branch reaches a test environment only through
   `infra/scripts/ws-test/remote/sync-branch.sh`.
 - Workshops are independent: a change for one workshop must not change another's template,
-  scripts or policies. Shared code (the CDK constructs, `infra/scripts/lib/`) is changed
-  with all users in mind.
+  scripts or policies. Shared code (the CDK constructs, `infra/scripts/lib/`, the apps) is
+  changed with all users in mind. java-on-amazon-eks runs several java-performance deploy
+  scripts through one-line wrappers (same app, sensor and profiler); a change there reaches
+  both workshops.
 - Shell scripts start with a header comment that says what the script does, its arguments
   and its side effects; they source `infra/scripts/lib/common.sh` for logging where they run
   on the IDE.

@@ -85,7 +85,7 @@ curl -s localhost:8090/api/v1/measure/<service> | jq .
 curl -sN "localhost:8090/api/v1/checklist/<service>?format=text&wait=true"
 ```
 
-The java-on-amazon-eks workshop has its own copies of these scripts under
+The java-on-amazon-eks workshop runs the same scripts through wrappers in
 `infra/scripts/deploy/java-on-amazon-eks/`. `perf-sensor.sh` takes `APP_NS`, `REQUEST_PACKAGE`
 and `SENSOR_SERVICES` for the workload; the Grafana
 dashboard is `k8s/dashboard.json`. The java-performance workshop runs as a ws-test, with the
