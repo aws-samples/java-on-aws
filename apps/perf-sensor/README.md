@@ -74,7 +74,8 @@ curl -sN "localhost:8090/api/v1/checklist/<service>?format=text&wait=true"
 ```
 
 `perf-sensor.sh` takes `APP_NS` and `REQUEST_PACKAGE` for the workload; the Grafana
-dashboard is `k8s/dashboard.json`.
+dashboard is `k8s/dashboard.json`. The java-performance workshop runs as a ws-test, with the
+acceptance criteria for the skills: [infra/scripts/ws-test/README.md](../../infra/scripts/ws-test/README.md).
 
 ## Layout
 
@@ -91,5 +92,4 @@ src/main/java/com/example/perf/sensor/
   facts/                 the typed result records
 skills/                  java-on-eks-checklist, java-on-eks-optimization (+ references)
 k8s/                     rbac, deployment, dashboard.json
-ACCEPTANCE.md            acceptance criteria for a ws-test run of the workshop content
 ```

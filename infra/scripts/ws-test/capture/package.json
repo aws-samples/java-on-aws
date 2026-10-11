@@ -1,0 +1,9 @@
+{
+  "name": "ws-test-capture",
+  "private": true,
+  "type": "module",
+  "description": "Screenshots for workshop content from a ws-test environment (Grafana panels, the IDE)",
+  "dependencies": {
+    "playwright-core": "^1.64.0"
+  }
+}

@@ -46,3 +46,5 @@ dependency-reduced-pom.xml
 infra/scripts/ws-test/reports/
 
 .env
+
+__pycache__/
