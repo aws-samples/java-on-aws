@@ -19,7 +19,7 @@ import java.util.List;
  * @param memLimitMi         limits.memory in MiB; null if unset
  * @param cpuResizePolicy    true when the container declares a CPU resizePolicy (in-place resize enabled)
  * @param cpuResizeRestartPolicy the CPU resizePolicy restart value (e.g. "NotRequired"), or null
- * @param javaToolOptions    value of the JAVA_TOOL_OPTIONS env var, or null if unset
+ * @param javaToolOptions    the JVM tuning flags in the JAVA_TOOL_OPTIONS env var ({@link JvmOptions}), or null if unset
  * @param readinessProbe     true when the app container declares a readinessProbe
  * @param startupProbe       true when the app container declares a startupProbe
  * @param runAsNonRoot       true when the app container (or pod) securityContext sets runAsNonRoot: true

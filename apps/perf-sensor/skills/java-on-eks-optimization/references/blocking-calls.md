@@ -76,16 +76,13 @@ latency metric** is the authoritative "it is slow" signal on every image.
   **In this repository use the inline `afterCommit` synchronization in the service method
   that holds the transaction.** It keeps the change to the service class and its
   configuration and adds no new class; do not introduce an event type or a listener.
-- **Size the pool in the same change when the measurement already shows it is short.**
-  Read the configured `spring.datasource.hikari.maximum-pool-size` from the source. When
-  `requestThreadsWaitingForConnection > 0` and the configured size is below
-  `requestThreadsActive` (peak in-flight requests), set it to `requestThreadsActive`: each
-  in-flight write needs its own connection for its database work even after the remote call
-  leaves the transaction. The target comes from the measured concurrency, not a round
-  number; when the configured size already covers it, leave the pool alone.
-  `diagnoseBlocking` returns that target as `poolSizeTarget` (null when no thread waited).
-  Size the pool **in the same change as the transaction-boundary fix**, not instead of it and
-  not later: the waiting is not "explained away" by `blockedInsideTransaction > 0`.
+- **Leave the pool size alone in this change.** `requestThreadsWaitingForConnection > 0`
+  shows that requests queued for a connection. While the remote call runs inside the
+  transaction, each write holds its connection for the round-trip, so the wait usually ends
+  with the transaction fix. Measure again after it. Request concurrency
+  (`requestThreadsActive`) is not database demand, and a pool size has to fit the database's
+  connection budget across every replica (pool × replicas against its connection limit),
+  which no tool here measures.
 - If a result is genuinely needed, bound it (timeout) rather than waiting without limit.
 - Virtual threads make blocking cheaper but do not make a needless block correct;
   remove the block first.
@@ -134,6 +131,7 @@ Do not guess between these; each has its own number in the tool output.
 There is no golden file here — the change is in the app's source. Name the blocking
 frame and `file:line` from `diagnoseBlocking`; if `blockedInsideTransaction > 0`, move the
 remote call after commit (inline `afterCommit` synchronization, see above) AND make it
-non-blocking; otherwise make it non-blocking. When `poolSizeTarget` is set and the
-configured pool is smaller, size the pool to `poolSizeTarget` in the same change, also when
-`blockedInsideTransaction > 0`.
+non-blocking; otherwise make it non-blocking. Do not change the connection pool size:
+`requestThreadsWaitingForConnection` shows contention, and the wait usually ends with the
+transaction fix. Re-measure first; a pool size needs the database's connection budget
+(pool × replicas against its connection limit), which the sensor does not measure.

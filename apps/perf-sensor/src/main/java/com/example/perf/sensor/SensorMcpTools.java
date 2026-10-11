@@ -57,7 +57,8 @@ public class SensorMcpTools {
 
     @Tool(description = """
         Measure a Java service on EKS: Kubernetes desired-state (requests/limits in MiB/cores,
-        cpu resizePolicy, JAVA_TOOL_OPTIONS, image tag, replicas, probes with paths/budgets/initial
+        cpu resizePolicy, the JVM tuning flags of JAVA_TOOL_OPTIONS (-XX/-Xmx/-Xms/-Xss only; system
+        properties are never returned), image tag, replicas, probes with paths/budgets/initial
         delays, terminationGracePeriodSeconds, preStop sleep, sidecars) plus measured runtime
         (working-set floor/peak MiB, heap committed MiB, observed MaxHeapSize/InitialHeapSize MiB,
         GC name, effective CPUs, steady-state CPU usage cores (cpuSteadyCores = cpuMeanCores, the mean over the steady
@@ -163,10 +164,8 @@ public class SensorMcpTools {
         platform threads) — sampling dumps under load catches it on any image, including CRaC.
         Returns status OK with aggregated thread facts (requestThreadsActive,
         requestThreadsBlockedInFutureGet, blockedInsideTransaction, requestThreadsWaitingForConnection
-        and byState = PEAK concurrent across samples; topBlockingFrames counts summed) and
-        poolSizeTarget (= requestThreadsActive when any request thread waited for a connection,
-        else null: set the connection pool's maximum size to it when the configured size is
-        smaller, also when the wait came from a transaction boundary), the pod sampled (the newest
+        and byState = PEAK concurrent across samples; topBlockingFrames counts summed: evidence of
+        contention, not a pool size), the pod sampled (the newest
         Ready pod), dumpsAttempted, dumpsTaken and durationSec (the time actually sampled), or BLOCKED
         with a reason when the request rate over the last minute is not above minRequestRate (ask
         the operator to start the load run and call again while it runs), when no dump could be

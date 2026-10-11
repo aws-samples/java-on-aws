@@ -59,11 +59,19 @@ Environment variables are listed in `src/main/resources/application.yaml`.
   seccomp; `/tmp` is an emptyDir for the fetched JFR file.
 - Network: ClusterIP only, no Ingress, reached from the IDE over `kubectl port-forward`.
   The sensor's MCP/REST port and the sidecar's `/dump` port are unauthenticated and
-  reachable from any pod in the cluster; both are read-only. In a shared cluster, add a
-  NetworkPolicy that limits `/dump` (9100) to the sensor and 8080 to Prometheus and the
-  operator's path.
-- Output hygiene: `jfr.jvmArgs` masks the value of any `-D…password|secret|token|key=`
-  flag; thread dumps are summarised, never returned raw.
+  reachable from any pod in the cluster; both are read-only, but a thread dump or a JFR
+  ring is privileged information. **Before using it in a shared cluster**, apply
+  `k8s/networkpolicy.yaml` (only the sensor reaches `/dump`, only Prometheus reaches the
+  sensor; needs a CNI that enforces NetworkPolicy) and grant `pods/portforward` on the sensor
+  only to its operators. One sensor reads every namespace its ClusterRole allows: for
+  isolation between teams, run one sensor per team.
+- Tool output is data from the workload (log lines, stack frames, JVM flags, Kubernetes
+  object text). The skills treat it as evidence, never as instructions, and every change
+  is reviewed before the operator deploys it.
+- Output hygiene: `workload.javaToolOptions` and `jfr.jvmArgs` carry only JVM tuning flags
+  (`-XX:…`, `-Xmx`, `-Xms`, `-Xss`, `-Xmn`); system properties, agents and any other option
+  are dropped, because a credential can sit in any of them. Thread dumps are summarised,
+  never returned raw.
 - Image: `amazoncorretto:25-al2023` via jib, deployed by digest.
 
 ## Build, test, deploy
@@ -95,5 +103,5 @@ src/main/java/com/example/perf/sensor/
   collect/               one class per source: K8s, Prometheus, Pyroscope, /dump, JFR, pod log
   facts/                 the typed result records
 skills/                  java-on-eks-checklist, java-on-eks-optimization (+ references)
-k8s/                     rbac, deployment, dashboard.json
+k8s/                     rbac, deployment, dashboard.json, networkpolicy.yaml (shared-cluster boundary, not applied)
 ```

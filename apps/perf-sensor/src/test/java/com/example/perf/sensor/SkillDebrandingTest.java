@@ -80,7 +80,7 @@ class SkillDebrandingTest {
     // scores UNKNOWN. Keep this list in sync with renames in the facts records.
     private static final List<String> RETIRED_FIELDS = List.of(
         "rssPeakMi", "rssFloorMi", "carriersParkedInPoolWait", "poolWaitCarriers", "futureGetOnRequestPath",
-        "cracHeap");
+        "cracHeap", "poolSizeTarget");
 
     @Test
     void skillsCiteNoRetiredFactNames() throws IOException {

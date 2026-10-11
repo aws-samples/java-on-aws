@@ -182,13 +182,12 @@ public class SensorService {
 
     /**
      * A blocking diagnosis: thread facts sampled over time WHILE THE OPERATOR'S LOAD RUNS.
-     * status OK, or BLOCKED (threads null) when no load is flowing right now.
-     * {@code poolSizeTarget}: the connection pool size the measurement asks for — the peak
-     * in-flight request threads — whenever request threads waited for a connection, whether or
-     * not the wait also came from a transaction boundary; null when none waited.
+     * status OK, or BLOCKED (threads null) when no load is flowing right now. Threads waiting
+     * for a pooled connection are evidence of contention; the sensor proposes no pool size: request
+     * concurrency is not database demand, and the database's connection budget is not measured.
      */
     public record BlockingResult(String status, String reason, ThreadFacts threads,
-                                 int durationSec, Double requestRatePerSec, Integer poolSizeTarget,
+                                 int durationSec, Double requestRatePerSec,
                                  String pod, int dumpsAttempted, int dumpsTaken) {}
 
     /** Dumps sampled over time from one pod: the aggregate, how many were tried and taken, and the elapsed time. */
@@ -535,7 +534,7 @@ public class SensorService {
             return new BlockingResult("BLOCKED",
                 ("no load flowing now: requestRate(1m)=%s rps (need > %s). Start the load run, then retry "
                     + "while it is running.").formatted(fmt(rateNow), fmt(minRequestRate)),
-                null, 0, rateNow, null, null, 0, 0);
+                null, 0, rateNow, null, 0, 0);
         }
         var s = threadDumpOverTime(service, dur * 1000L, gap);
         int elapsed = (int) Math.round(s.elapsedMs() / 1000.0);
@@ -543,7 +542,7 @@ public class SensorService {
         if (threads == null) {
             return new BlockingResult("BLOCKED",
                 "no thread dump could be taken: is the profiler sidecar attached (perf-profile/sidecar label) and its /dump reachable?",
-                null, elapsed, rateNow, null, s.pod(), s.attempted(), 0);
+                null, elapsed, rateNow, s.pod(), s.attempted(), 0);
         }
         boolean seen = threads.requestThreadsBlockedInFutureGet() > 0 || threads.requestThreadsWaitingForConnection() > 0;
         if (!seen && s.taken() < MIN_DUMP_SHARE * s.attempted()) {
@@ -551,11 +550,9 @@ public class SensorService {
             return new BlockingResult("BLOCKED",
                 ("only %d of %d thread dumps succeeded on %s: too few to rule out a request-path block. "
                     + "Check the profiler sidecar's /dump and retry.").formatted(s.taken(), s.attempted(), s.pod()),
-                null, elapsed, rateNow, null, s.pod(), s.attempted(), s.taken());
+                null, elapsed, rateNow, s.pod(), s.attempted(), s.taken());
         }
-        Integer poolSizeTarget = threads.requestThreadsWaitingForConnection() > 0
-            ? threads.requestThreadsActive() : null;
-        return new BlockingResult("OK", null, threads, elapsed, rateNow, poolSizeTarget, s.pod(), s.attempted(), s.taken());
+        return new BlockingResult("OK", null, threads, elapsed, rateNow, s.pod(), s.attempted(), s.taken());
     }
 
     // --- profileTop / startupLog -----------------------------------------------

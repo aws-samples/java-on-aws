@@ -1,5 +1,6 @@
 package com.example.perf.sensor.collect;
 
+import com.example.perf.sensor.facts.JvmOptions;
 import com.example.perf.sensor.facts.WorkloadFacts;
 import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
@@ -192,6 +193,7 @@ public class K8sCollector {
                         .filter(e -> "JAVA_TOOL_OPTIONS".equals(e.getName()))
                         .findFirst()
                         .map(V1EnvVar::getValue)
+                        .map(JvmOptions::tuningFlags)   // never system properties: they can hold credentials
                         .orElse(null);
                 }
                 readinessProbe = app.getReadinessProbe() != null;
