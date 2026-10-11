@@ -47,7 +47,9 @@ Do not read desired-state that `measure` already returns via `list_k8s_resources
 ## 2. Procedure — every question follows these five steps
 
 1. **Investigate.** `measure`, then the tool the question calls for (§4). Read the
-   app's `pom.xml` / `k8s/` / `src/` only for what the change needs.
+   app's `pom.xml` / `k8s/` / `src/` only for what the change needs. Call the tools again
+   for every question, also in a continued session: the operator rolled out a change since
+   the last answer, so a number from an earlier answer describes a pod that is gone.
 2. **Root cause.** One line: what the evidence shows and why it costs memory,
    startup time or latency. Name the tool and the signal
    (e.g. "from `sizeMemory`: workingSetPeak 366 Mi vs limit 2048 Mi").
