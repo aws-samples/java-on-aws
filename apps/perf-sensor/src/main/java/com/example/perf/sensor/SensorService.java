@@ -188,7 +188,16 @@ public class SensorService {
      * not the wait also came from a transaction boundary; null when none waited.
      */
     public record BlockingResult(String status, String reason, ThreadFacts threads,
-                                 int durationSec, Double requestRatePerSec, Integer poolSizeTarget) {}
+                                 int durationSec, Double requestRatePerSec, Integer poolSizeTarget,
+                                 String pod, int dumpsAttempted, int dumpsTaken) {}
+
+    /** Dumps sampled over time from one pod: the aggregate, how many were tried and taken, and the elapsed time. */
+    public record Sampling(ThreadFacts threads, String pod, int attempted, int taken, long elapsedMs) {}
+
+    /** Most dumps one diagnosis takes (60 s at 500 ms); each is a safepoint in the app JVM. */
+    static final int MAX_DUMPS = 120;
+    /** Share of the attempted dumps that must succeed before "no block seen" counts as evidence. */
+    static final double MIN_DUMP_SHARE = 0.8;
 
     public record ProfileTop(List<Frame> frames, Double jitShare, Double gcShare, Double futexWallShare, long samples) {}
 
@@ -226,6 +235,9 @@ public class SensorService {
                     Thread.currentThread().interrupt();
                 }
                 snap = k8s.collect(service, service);   // the pod aged; re-read uptime and Ready set
+                // A rollout during the wait replaced the pod: the new one starts from zero.
+                remaining = snap.uptimeSeconds() == null ? 0
+                    : Math.max(0, minUptimeSeconds - snap.uptimeSeconds().intValue());
             }
         }
         var f = facts.collect(service, mins, snap);
@@ -422,24 +434,29 @@ public class SensorService {
     }
 
     /**
-     * Sample the representative pod's thread dump up to {@code samples} times on a fixed
-     * {@code intervalMs} tick, within {@code samples × intervalMs} of wall time, and aggregate
+     * Sample the representative (newest Ready) pod's thread dump on a fixed {@code intervalMs}
+     * tick for {@code durationMs} of wall time (at most {@link #MAX_DUMPS} dumps), and aggregate
      * over TIME. A dump takes about half a second (jcmd attach, JSON write, fetch), so at the
-     * 500 ms default the dumps run back to back and the window, not the count, ends sampling. A request-path block on a virtual-thread app is brief — the vthread
-     * parks in {@code Future.get()} only for the downstream round-trip — so a single snapshot
-     * usually misses it. Counters are the PEAK concurrent value across samples; {@code byState}
-     * is the peak per state; {@code topBlockingFrames} counts are summed. Must be taken WHILE
-     * load flows. null when no dump could be taken.
+     * 500 ms default the dumps run back to back and the window, not the count, ends sampling.
+     * A request-path block on a virtual-thread app is brief — the vthread parks in
+     * {@code Future.get()} only for the downstream round-trip — so a single snapshot usually
+     * misses it. Counters are the PEAK concurrent value across samples; {@code byState} is the
+     * peak per state; {@code topBlockingFrames} counts are summed. Must be taken WHILE load
+     * flows. The result names the pod, the dumps tried and taken, and the elapsed time;
+     * {@code threads} is null when no dump could be taken.
      */
-    public ThreadFacts threadDumpOverTime(String service, int samples, long intervalMs) {
+    public Sampling threadDumpOverTime(String service, long durationMs, long intervalMs) {
         scope.check(service);
-        int n = Math.max(1, Math.min(samples <= 0 ? 5 : samples, 40));
         long gap = intervalMs <= 0 ? 1000L : Math.min(intervalMs, 5000L);
+        long window = Math.max(gap, durationMs);
+        int n = (int) Math.max(1, Math.min(window / gap, MAX_DUMPS));
         var snap = k8s.collect(service, service);
         var dumps = new ArrayList<ThreadFacts>();
         long start = System.nanoTime();
-        long deadline = start + n * gap * 1_000_000L;
+        long deadline = start + window * 1_000_000L;
+        int attempted = 0;
         for (int i = 0; i < n; i++) {
+            attempted++;
             var d = dump.threads(snap.appPodIP(), snap.appPodName());
             if (d != null) {
                 dumps.add(d);
@@ -459,10 +476,9 @@ public class SensorService {
                 }
             }
         }
-        if (dumps.isEmpty()) {
-            return null;
-        }
-        return aggregate(dumps, snap.appPodName(), Math::max);
+        long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
+        var threads = dumps.isEmpty() ? null : aggregate(dumps, snap.appPodName(), Math::max);
+        return new Sampling(threads, snap.appPodName(), attempted, dumps.size(), elapsedMs);
     }
 
     /**
@@ -505,29 +521,41 @@ public class SensorService {
      * 50 rps is present in a given dump with p ≈ 0.4, so 12 dumps missed it once in ~25 runs;
      * 36 dumps make a miss negligible.
      * Each dump is a safepoint in the app JVM; 40 in 20 s is the accepted cost of the diagnosis.
+     * {@code durationSec} in the result is the time actually sampled. A block seen in any dump
+     * is OK evidence; "no block seen" is BLOCKED unless {@link #MIN_DUMP_SHARE} of the dumps
+     * succeeded. One pod is sampled: the newest Ready pod, named in {@code pod}.
      */
     public BlockingResult diagnoseBlocking(String service, int durationSec, long intervalMs,
                                            double minRequestRate) {
         scope.check(service);
         int dur = Math.max(3, Math.min(durationSec <= 0 ? 20 : durationSec, 60));
         long gap = intervalMs <= 0 ? 500L : Math.min(intervalMs, 5000L);
-        int samples = Math.max(2, (int) ((dur * 1000L) / gap));
         Double rateNow = prometheus.requestRatePerSec(service, 1);
         if (rateNow == null || rateNow <= minRequestRate) {
             return new BlockingResult("BLOCKED",
                 ("no load flowing now: requestRate(1m)=%s rps (need > %s). Start the load run, then retry "
                     + "while it is running.").formatted(fmt(rateNow), fmt(minRequestRate)),
-                null, dur, rateNow, null);
+                null, 0, rateNow, null, null, 0, 0);
         }
-        var threads = threadDumpOverTime(service, samples, gap);
+        var s = threadDumpOverTime(service, dur * 1000L, gap);
+        int elapsed = (int) Math.round(s.elapsedMs() / 1000.0);
+        var threads = s.threads();
         if (threads == null) {
             return new BlockingResult("BLOCKED",
                 "no thread dump could be taken: is the profiler sidecar attached (perf-profile/sidecar label) and its /dump reachable?",
-                null, dur, rateNow, null);
+                null, elapsed, rateNow, null, s.pod(), s.attempted(), 0);
+        }
+        boolean seen = threads.requestThreadsBlockedInFutureGet() > 0 || threads.requestThreadsWaitingForConnection() > 0;
+        if (!seen && s.taken() < MIN_DUMP_SHARE * s.attempted()) {
+            // A block seen in any dump is evidence; "none seen" needs most of the dumps.
+            return new BlockingResult("BLOCKED",
+                ("only %d of %d thread dumps succeeded on %s: too few to rule out a request-path block. "
+                    + "Check the profiler sidecar's /dump and retry.").formatted(s.taken(), s.attempted(), s.pod()),
+                null, elapsed, rateNow, null, s.pod(), s.attempted(), s.taken());
         }
         Integer poolSizeTarget = threads.requestThreadsWaitingForConnection() > 0
             ? threads.requestThreadsActive() : null;
-        return new BlockingResult("OK", null, threads, dur, rateNow, poolSizeTarget);
+        return new BlockingResult("OK", null, threads, elapsed, rateNow, poolSizeTarget, s.pod(), s.attempted(), s.taken());
     }
 
     // --- profileTop / startupLog -----------------------------------------------

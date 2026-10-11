@@ -3,6 +3,7 @@ package com.example.perf.sensor.collect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.ObjectMapper;
@@ -11,6 +12,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -38,7 +40,11 @@ public class PrometheusClient {
 
     public PrometheusClient(@Value("${PROMETHEUS_URL:http://prometheus-server.monitoring}") String promUrl) {
         this.promUrl = promUrl.replaceAll("/$", "");
-        this.restClient = RestClient.builder().baseUrl(this.promUrl).build();
+        // Deadlines: a server that accepts and never answers must not hold a tool call open.
+        var factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(2));
+        factory.setReadTimeout(Duration.ofSeconds(15));
+        this.restClient = RestClient.builder().baseUrl(this.promUrl).requestFactory(factory).build();
     }
 
     /**

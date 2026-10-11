@@ -111,15 +111,18 @@ public class ChecklistService {
         // The two collections are independent: run the 20 s of thread dumps next to measure.
         var blockingTask = new FutureTask<>(() -> sensor.diagnoseBlocking(service, 20, 500, engine.minRequestRate()));
         Thread.ofVirtual().name("checklist-dumps-" + service).start(blockingTask);
-        var m = sensor.measure(service, 15, 0);
+        SensorService.MeasureResult m;
         SensorService.BlockingResult blocking;
         try {
+            m = sensor.measure(service, 15, 0);
             blocking = blockingTask.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("interrupted while sampling thread dumps", e);
         } catch (ExecutionException e) {
             throw new IllegalStateException("thread-dump sampling failed: " + e.getCause(), e.getCause());
+        } finally {
+            blockingTask.cancel(true);   // no-op when done; stops the dumps when measure failed or we were interrupted
         }
         var facts = new LinkedHashMap<String, Object>();
         facts.put("workload", plain(m.workload()));

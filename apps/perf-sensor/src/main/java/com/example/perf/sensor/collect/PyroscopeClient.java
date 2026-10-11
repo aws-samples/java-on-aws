@@ -5,6 +5,7 @@ import com.example.perf.sensor.facts.ProfileFacts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
@@ -14,6 +15,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,7 +72,11 @@ public class PyroscopeClient {
 
     public PyroscopeClient(@Value("${PYROSCOPE_URL:http://pyroscope.monitoring:4040}") String pyroscopeUrl) {
         this.pyroscopeUrl = pyroscopeUrl.replaceAll("/$", "");
-        this.restClient = RestClient.builder().baseUrl(this.pyroscopeUrl).build();
+        // Deadlines: a render of a 15 min window takes about a second; 20 s means the server is stuck.
+        var factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(2));
+        factory.setReadTimeout(Duration.ofSeconds(20));
+        this.restClient = RestClient.builder().baseUrl(this.pyroscopeUrl).requestFactory(factory).build();
     }
 
     /**

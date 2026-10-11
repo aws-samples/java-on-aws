@@ -4,8 +4,8 @@
 // without a collector or `kubectl exec`.
 //
 //   GET /dump?kind=threads  -> jcmd <pid> Thread.dump_to_file -format=json  (virtual threads
-//                              included) -> the JSON file; 503 if the JVM did not write it
-//   GET /dump?kind=heap     -> jcmd <pid> GC.heap_info + VM.flags (text)
+//                              included) -> the JSON file; 503 if jcmd failed or wrote no file
+//   GET /dump?kind=heap     -> jcmd <pid> GC.heap_info + VM.flags (text); 503 if jcmd failed
 //   GET /dump?kind=jfr      -> jcmd <pid> JFR.dump name=perf (the 10-min ring started by
 //                              profile-loop.sh) -> the .jfr file bytes (application/octet-stream)
 //   GET /healthz            -> ok
@@ -16,7 +16,10 @@
 //
 // Files the TARGET writes (thread dump JSON, on-demand JFR) go to PERF_DIR (/perf), the
 // dedicated emptyDir the inject policy mounts in both containers — read here at the same
-// path. Fallback when the volume is absent: the target's /tmp via /proc/<pid>/root.
+// path. Fallback when the volume is absent: the target's /tmp via /proc/<pid>/root. Every
+// request writes its own file and deletes it after reading, and a non-zero jcmd exit is a
+// 503: a failed dump never serves an earlier one. Requests run on a small pool, so a slow
+// dump does not hold up /healthz or the next request; each jcmd has a 25 s deadline.
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -28,17 +31,31 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 public class DumpServer {
+
+    private static final long JCMD_TIMEOUT_SECONDS = 25;
+    private static final AtomicLong REQUESTS = new AtomicLong();
+
+    /** jcmd's exit code (-1: did not finish or did not start) and its combined output. */
+    record Jcmd(int exit, String output) {
+        boolean ok() {
+            return exit == 0;
+        }
+    }
 
     public static void main(String[] args) throws IOException {
         int port = args.length > 0 ? Integer.parseInt(args[0]) : 9100;
         var server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/healthz", ex -> respond(ex, 200, "ok\n"));
         server.createContext("/dump", DumpServer::handleDump);
-        server.setExecutor(null);
+        // The default executor runs every handler on the dispatcher thread: one 25 s jcmd would
+        // block /healthz and every other request behind it.
+        server.setExecutor(Executors.newFixedThreadPool(4));
         System.out.println("[dump-server] listening on :" + port);
         server.start();
     }
@@ -75,7 +92,15 @@ public class DumpServer {
                     return;
                 }
             }
-            case "heap" -> body = jcmd(pid, "GC.heap_info") + "\n" + jcmd(pid, "VM.flags");
+            case "heap" -> {
+                var heap = jcmd(pid, "GC.heap_info");
+                var flags = heap.ok() ? jcmd(pid, "VM.flags") : heap;
+                if (!flags.ok()) {
+                    respond(ex, 503, "jcmd failed (exit " + flags.exit() + "): " + flags.output());
+                    return;
+                }
+                body = heap.output() + "\n" + flags.output();
+            }
             case "jfr" -> {
                 jfrDump(ex, pid);
                 return;
@@ -96,11 +121,12 @@ public class DumpServer {
      * output when there is no such recording.
      */
     private static void jfrDump(HttpExchange ex, long pid) throws IOException {
-        String path = perfDir() + "/perf-ondemand-" + pid + ".jfr";
-        String out = jcmd(pid, "JFR.dump", "name=perf", "filename=" + path);
+        String path = uniquePath("perf-ondemand-" + pid, ".jfr");
+        var out = jcmd(pid, "JFR.dump", "name=perf", "filename=" + path);
         var onSidecar = readable(pid, path);
-        if (!Files.isReadable(onSidecar)) {
-            respond(ex, 503, "JFR.dump produced no file: " + out);
+        if (!out.ok() || !Files.isReadable(onSidecar)) {
+            Files.deleteIfExists(onSidecar);
+            respond(ex, 503, "JFR.dump failed (exit " + out.exit() + "): " + out.output());
             return;
         }
         try {
@@ -155,40 +181,70 @@ public class DumpServer {
      * Full JSON thread dump (jcmd Thread.dump_to_file -format=json) — enumerates VIRTUAL
      * threads and their stacks, unlike Thread.print. jcmd writes the file in the TARGET's
      * filesystem; we read it back at the shared /perf path (or /proc/&lt;pid&gt;/root/&lt;path&gt;).
-     * Returns null when the JVM did not write the file: the caller answers 503 so the sensor
-     * reports UNKNOWN instead of parsing a non-JSON fallback as "no blocked threads".
+     * Returns null when jcmd failed or the JVM wrote no file: the caller answers 503 so the
+     * sensor reports UNKNOWN instead of parsing a non-JSON fallback as "no blocked threads".
+     * The file is this request's own and is deleted after reading.
      */
     private static String threadDumpJson(long pid) {
-        String path = perfDir() + "/perf-threads-" + pid + ".json";
-        jcmd(pid, "Thread.dump_to_file", "-overwrite", "-format=json", path);
+        String path = uniquePath("perf-threads-" + pid, ".json");
         try {
-            var onSidecar = readable(pid, path);
-            return Files.isReadable(onSidecar) ? Files.readString(onSidecar) : null;
+            var out = jcmd(pid, "Thread.dump_to_file", "-format=json", path);
+            var onSidecar = readable(pid, path);   // after jcmd: which path exists depends on the file
+            return out.ok() && Files.isReadable(onSidecar) ? Files.readString(onSidecar) : null;
         } catch (Exception e) {
             return null;
+        } finally {
+            for (var f : List.of(Path.of(path), Path.of("/proc/" + pid + "/root" + path))) {
+                try {
+                    Files.deleteIfExists(f);
+                } catch (IOException ignored) {
+                    // best-effort cleanup
+                }
+            }
         }
     }
 
-    /** Run jcmd against the target with JAVA_TOOL_OPTIONS nulled (per the gotcha). */
-    private static String jcmd(long pid, String... command) {
+    /** A file name in PERF_DIR no other request uses. */
+    private static String uniquePath(String prefix, String suffix) {
+        return perfDir() + "/" + prefix + "-" + System.nanoTime() + "-" + REQUESTS.incrementAndGet() + suffix;
+    }
+
+    /**
+     * Run jcmd against the target with JAVA_TOOL_OPTIONS nulled (per the gotcha). The output is
+     * drained on its own thread so the deadline holds even when jcmd keeps stdout open.
+     */
+    static Jcmd jcmd(long pid, String... command) {
+        Process proc = null;
         try {
             var full = new java.util.ArrayList<String>(List.of("jcmd", String.valueOf(pid)));
             full.addAll(List.of(command));
             var pb = new ProcessBuilder(full);
             pb.environment().remove("JAVA_TOOL_OPTIONS");
             pb.redirectErrorStream(true);
-            var proc = pb.start();
-            byte[] out;
-            try (InputStream in = proc.getInputStream()) {
-                out = in.readAllBytes();
-            }
-            if (!proc.waitFor(25, TimeUnit.SECONDS)) {
+            proc = pb.start();
+            var out = new java.io.ByteArrayOutputStream();
+            InputStream in = proc.getInputStream();
+            var drain = Thread.ofVirtual().start(() -> {
+                try (in) {
+                    in.transferTo(out);
+                } catch (IOException ignored) {
+                    // the process was destroyed
+                }
+            });
+            if (!proc.waitFor(JCMD_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                 proc.destroyForcibly();
-                return "jcmd " + String.join(" ", command) + " timed out\n";
+                drain.join(1000);
+                return new Jcmd(-1, "jcmd " + String.join(" ", command) + " timed out after " + JCMD_TIMEOUT_SECONDS + " s\n");
             }
-            return new String(out, StandardCharsets.UTF_8);
+            drain.join(5000);
+            return new Jcmd(proc.exitValue(), out.toString(StandardCharsets.UTF_8));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            if (proc != null) proc.destroyForcibly();
+            return new Jcmd(-1, "jcmd " + String.join(" ", command) + " interrupted\n");
         } catch (Exception e) {
-            return "jcmd " + String.join(" ", command) + " failed: " + e + "\n";
+            if (proc != null) proc.destroyForcibly();
+            return new Jcmd(-1, "jcmd " + String.join(" ", command) + " failed: " + e + "\n");
         }
     }
 

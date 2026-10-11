@@ -86,13 +86,21 @@ ASPROF="$AP_HOME/bin/asprof"
 LIB="$PERF_DIR/libasyncProfiler.so"
 
 # Clear any prior session, then start a rotating ctimer+wall recording. Fall back
-# to ctimer-only if the kernel/container rejects the wall-clock engine.
+# to ctimer-only if the kernel/container rejects the wall-clock engine. When neither
+# starts, say so and keep the /dump server and the JFR ring: thread dumps still work, and
+# the sensor reads the missing profiles as absent samples, not as an idle service.
 "$ASPROF" stop --libpath "$LIB" "$PID" 2>/dev/null || true
-"$ASPROF" start -e "$AP_EVENT" --wall "$AP_WALL" -i "$AP_INTERVAL" -o jfr \
-    -f "$PERF_DIR/perf-$PID-%t.jfr" --loop "$AP_LOOP" --libpath "$LIB" "$PID" \
-  || "$ASPROF" start -e "$AP_EVENT" -i "$AP_INTERVAL" -o jfr \
-    -f "$PERF_DIR/perf-$PID-%t.jfr" --loop "$AP_LOOP" --libpath "$LIB" "$PID"
-echo "[perf-profiler] async-profiler attached (event=$AP_EVENT wall=$AP_WALL loop=$AP_LOOP dir=$PERF_DIR)"
+PROFILING=1
+if "$ASPROF" start -e "$AP_EVENT" --wall "$AP_WALL" -i "$AP_INTERVAL" -o jfr \
+    -f "$PERF_DIR/perf-$PID-%t.jfr" --loop "$AP_LOOP" --libpath "$LIB" "$PID"; then
+  echo "[perf-profiler] async-profiler attached (event=$AP_EVENT wall=$AP_WALL loop=$AP_LOOP dir=$PERF_DIR)"
+elif "$ASPROF" start -e "$AP_EVENT" -i "$AP_INTERVAL" -o jfr \
+    -f "$PERF_DIR/perf-$PID-%t.jfr" --loop "$AP_LOOP" --libpath "$LIB" "$PID"; then
+  echo "[perf-profiler] async-profiler attached without wall-clock sampling (event=$AP_EVENT loop=$AP_LOOP dir=$PERF_DIR)"
+else
+  PROFILING=0
+  echo "[perf-profiler] ERROR: async-profiler did not attach to pid $PID; no CPU/wall profiles from this pod"
+fi
 
 # JVM-native JFR ring: the last 10 minutes of typed JVM events (ThreadPark with stacks —
 # incl. virtual threads —, VirtualThreadPinned, GCPhasePause, ContainerConfiguration,
@@ -110,24 +118,35 @@ else
   echo "[perf-profiler] JFR.start: $(tr '\n' ' ' </tmp/jfr-start.log)"
 fi
 
-# Ship completed (non-newest) rotated JFR files to Pyroscope, then delete them.
-# The newest file is skipped because async-profiler is still writing to it.
+# Ship completed (non-newest) rotated JFR files to Pyroscope; delete a file only after a 2xx.
+# The newest file is skipped because async-profiler is still writing to it. A failed upload
+# stays for the next round; beyond MAX_PENDING completed files (2 min at 15 s rotation) the
+# oldest are dropped, with a log line, so a Pyroscope outage cannot fill the scratch volume.
+# Each upload has a deadline, so a server that accepts and never answers does not stop the loop.
+MAX_PENDING="${MAX_PENDING:-8}"
 TMP="$VIEW"
 while [ -d "/proc/$PID" ]; do
   sleep 5
+  [ "$PROFILING" = 1 ] || continue
   set -- $(ls -1 "$TMP"/perf-"$PID"-*.jfr 2>/dev/null | sort)
   [ "$#" -lt 2 ] && continue
   last="${@: -1}"
-  for f in "$@"; do
-    [ "$f" = "$last" ] && continue
-    sz=$(stat -c%s "$f" 2>/dev/null || echo 0)
-    if [ "$sz" -gt 0 ]; then
-      code=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
-        -H 'Content-Type: application/octet-stream' --data-binary @"$f" \
-        "$PYROSCOPE_URL/ingest?name=$ENC&format=jfr&spyName=javaspy" || echo 000)
-      echo "[perf-profiler] pushed $(basename "$f") sz=$sz http=$code"
+  done_files=("${@:1:$#-1}")
+  drop=$(( ${#done_files[@]} - MAX_PENDING ))
+  for f in "${done_files[@]}"; do
+    if [ "$drop" -gt 0 ]; then
+      echo "[perf-profiler] dropped $(basename "$f") unsent: $((${#done_files[@]})) files pending"
+      rm -f "$f"; drop=$((drop - 1)); continue
     fi
-    rm -f "$f"
+    sz=$(wc -c < "$f" 2>/dev/null || echo 0); sz=${sz// /}
+    [ "$sz" -gt 0 ] || { rm -f "$f"; continue; }
+    code=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 30 -X POST \
+      -H 'Content-Type: application/octet-stream' --data-binary @"$f" \
+      "$PYROSCOPE_URL/ingest?name=$ENC&format=jfr&spyName=javaspy" || true)
+    case "$code" in
+      2??) echo "[perf-profiler] pushed $(basename "$f") sz=$sz http=$code"; rm -f "$f" ;;
+      *)   echo "[perf-profiler] upload of $(basename "$f") failed http=${code:-000}, kept for the next round"; break ;;
+    esac
   done
 done
 echo "[perf-profiler] target gone; exiting"

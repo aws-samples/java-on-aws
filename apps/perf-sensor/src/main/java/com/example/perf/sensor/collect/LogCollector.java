@@ -18,6 +18,8 @@ import java.util.regex.Pattern;
 @Component
 public class LogCollector {
 
+    private static final int LOG_LIMIT_BYTES = 1024 * 1024;
+
     private static final Logger logger = LoggerFactory.getLogger(LogCollector.class);
     // Spring Boot: "Started <App> in 12.3 seconds"; CRaC restore of an onRefresh checkpoint:
     // "Restored <App> in 0.2 seconds"; CRaC restore of a jcmd checkpoint taken after startup:
@@ -58,8 +60,11 @@ public class LogCollector {
             return null;
         }
         try {
+            // The startup line is near the start of the container's log: read at most the first
+            // MiB instead of a long-running pod's whole log.
             String log = core.readNamespacedPodLog(podName, namespace)
                 .container(container)
+                .limitBytes(LOG_LIMIT_BYTES)
                 .execute();
             return parse(log);
         } catch (Exception e) {

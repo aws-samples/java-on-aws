@@ -166,10 +166,11 @@ public class SensorMcpTools {
         and byState = PEAK concurrent across samples; topBlockingFrames counts summed) and
         poolSizeTarget (= requestThreadsActive when any request thread waited for a connection,
         else null: set the connection pool's maximum size to it when the configured size is
-        smaller, also when the wait came from a transaction boundary), or BLOCKED
+        smaller, also when the wait came from a transaction boundary), the pod sampled (the newest
+        Ready pod), dumpsAttempted, dumpsTaken and durationSec (the time actually sampled), or BLOCKED
         with a reason when the request rate over the last minute is not above minRequestRate (ask
-        the operator to start the load run and call again while it runs) or when no dump could be
-        taken (sidecar not attached).""")
+        the operator to start the load run and call again while it runs), when no dump could be
+        taken (sidecar not attached), or when too few dumps succeeded to rule a block out.""")
     public BlockingResult diagnoseBlocking(
         @ToolParam(description = SERVICE_PARAM) String service,
         @ToolParam(description = "how long to sample, seconds (default 20; clamped to 60)", required = false) Integer durationSec,
