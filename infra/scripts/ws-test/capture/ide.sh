@@ -1,11 +1,12 @@
 #!/bin/bash
 # =============================================================================
-# ide.sh tools|scm OUT_DIR — Code Editor screenshots of the workshop IDE (ide.mjs).
+# ide.sh open|tools|scm OUT_DIR — Code Editor screenshots of the workshop IDE (ide.mjs).
 #
 # Headless Chrome renders the terminal blank with GPU acceleration, so this sets
 # "terminal.integrated.gpuAcceleration": "off" in the IDE's user settings for the
 # capture and restores the file afterwards (also on failure).
 #
+#   open   the IDE as it opens (both terminals).
 #   tools  Claude lists the MCP tools. Never while a ws-test runs.
 #   scm    the diff between two commits of the app repo in Source Control: the repo is
 #          detached at the commit matching SCM_BASE (default "baseline: profiler
@@ -22,7 +23,7 @@ source "$DIR/../remote/env.sh"
 RUN="$DIR/../remote/run-on-ide.sh"
 
 WHAT="${1:-}"; OUT="${2:-.}"
-case "$WHAT" in tools|scm) ;; *) sed -n 3,17p "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
+case "$WHAT" in open|tools|scm) ;; *) sed -n 3,17p "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
 mkdir -p "$OUT"
 APP='~/environment/unicorn-store-spring'
 SETTINGS='~/.code-editor-server/data/User/settings.json'

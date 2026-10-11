@@ -5,6 +5,8 @@
 //          in the editor-area terminal lists the MCP tools of perf-sensor and eks-mcp, the
 //          Shell terminal in the panel -> OUT_DIR/tools.png. Starts an interactive Claude:
 //          never while a ws-test runs.
+//   open   the IDE as it opens: Explorer, the editor-area terminal, the Shell terminal
+//          -> OUT_DIR/open.png
 //   scm    the Source Control view with SCM_FILE's diff open (default deployment.yaml)
 //          -> OUT_DIR/scm.png
 import { join } from 'node:path';
@@ -13,7 +15,9 @@ import { open, palette, typeInTerminal, mask, clearToasts } from './ide-lib.mjs'
 const [what, out = '.'] = process.argv.slice(2);
 const { browser, page } = await open(process.env.IDE_URL);
 
-if (what === 'tools') {
+if (what === 'open') {
+  await page.waitForTimeout(6000);
+} else if (what === 'tools') {
   await page.locator('.editor-group-container .tab', { hasText: 'zsh' }).first().click();
   await page.waitForTimeout(800);
   await typeInTerminal(page, 'claude');
@@ -33,7 +37,7 @@ if (what === 'tools') {
     .first().click();
   await page.waitForTimeout(5000);
 } else {
-  console.error('usage: node ide.mjs tools|scm OUT_DIR');
+  console.error('usage: node ide.mjs open|tools|scm OUT_DIR');
   await browser.close();
   process.exit(2);
 }
