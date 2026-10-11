@@ -1,7 +1,8 @@
 """Sample mapping for the java-performance content (used by refresh.py).
 
-baseline: expand 1 = the profiler-attach block (rollout wait lines dropped), expand 3 =
-  the checklist block as raw markdown.
+setup: expand 0 = the environment check.
+baseline: expand 0 = the policy-view + attach block (rollout wait lines dropped), expand 2 =
+  the checklist answer as raw markdown.
 improve-manifest, improve-image, improve-code: two blocks each, the Claude question and
   the combined roll-out block. Expand 0 = Claude's answer wrapped at 110 columns,
   expand 1 = the roll-out block up to "Pod is" (image and code: only the build, rollout,
@@ -17,9 +18,11 @@ ROLLOUT_WAIT = r'^Waiting for deployment'
 
 
 def refresh(s):
+    s.set_expand('setup/index.en.md', 0, s.blocks('setup/index.en.md')[0])
+
     b = s.blocks('baseline/index.en.md')
-    s.set_expand('baseline/index.en.md', 1, drop(b[1], ROLLOUT_WAIT))
-    s.set_expand('baseline/index.en.md', 3, b[5], raw=True)
+    s.set_expand('baseline/index.en.md', 0, drop(b[0], ROLLOUT_WAIT))
+    s.set_expand('baseline/index.en.md', 2, b[2], raw=True)
 
     for page in ('improve-manifest', 'improve-image', 'improve-code'):
         md = page + '/index.en.md'
