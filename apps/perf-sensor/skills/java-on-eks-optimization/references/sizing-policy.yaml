@@ -6,8 +6,9 @@
 # sizeMemory: limits = roundUp(max(peak * peakFactor, floor * floorSafetyFactor)), one roundMi step
 #             lower when that still leaves peak * minPeakFactor and floor * floorSafetyFactor
 #             (a peak a few MiB either side of a rounding edge must not flip the limit by a step);
-#             requests = limits (Guaranteed memory QoS — JVM memory is stable after warm-up,
-#             and a Burstable JVM is the first OOM-kill candidate on a busy node).
+#             requests = limits (JVM memory is stable after warm-up; usage never exceeds the
+#             request, and under node memory pressure the kubelet evicts pods above their
+#             request first).
 # sizeCpu:    requests.cpu = min(roundUp(cpuSteadyCores * cpuFactor, roundMillicores), limits.cpu); limits.cpu unchanged
 #             (cpuSteadyCores: mean usage over the steady window after readiness, minus the JIT compiler
 #             threads' share of the CPU profile — measure.runtime.cpuMeanCores and cpuJitShare)
@@ -24,13 +25,6 @@ policy:
   minSamples: 100           # guard: min profile samples for a floor/peak
   minRequestRate: 1         # guard: rps that counts as "load observed" (sizing) / "load flowing" (diagnoseBlocking, last 1 min)
   minDeltaMi: 64            # guard: peak-floor MiB that counts as "load observed"
-
-# Heap flags baked into a CRaC checkpoint (Dockerfile.crac JAVA_HEAP_OPTS), as a share of
-# the pod memory limit. The checkpoint fixes MaxHeapSize/InitialHeapSize; MaxRAMPercentage
-# in the Deployment has no effect on a restored JVM.
-cracHeap:
-  xmxShareOfLimit: 0.75
-  xmsShareOfLimit: 0.50
 
 # Default look-back window (minutes) for measure / sizeMemory / sizeCpu / profileTop.
 windowMinutes: 15

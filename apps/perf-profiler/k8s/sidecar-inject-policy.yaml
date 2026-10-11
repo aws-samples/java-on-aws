@@ -25,13 +25,15 @@
 # The profiler is a BAKED image (Amazon Corretto 25 + async-profiler, built from
 # apps/perf-profiler) — no runtime download and no init container. The placeholders
 # below (__PERF_PROFILER_IMAGE__ pinned by digest, __CLUSTER_NAME__, __APP_UID__,
-# __PYROSCOPE_URL__) are substituted by deploy/java-on-amazon-eks/perf-profiler.sh.
+# __PYROSCOPE_URL__) are substituted by deploy/java-performance/perf-profiler.sh.
 #
 # CEL authoring notes (both verified on-cluster):
 #   1. patchType: ApplyConfiguration CANNOT set atomic fields (env.valueFrom.fieldRef,
 #      securityContext.capabilities.add) -> use JSONPatch.
 #   2. CEL will not widen heterogeneous map/list literals in a JSONPatch value
 #      (it unifies value types eagerly) -> every value is wrapped in dyn(...).
+#
+# Opting in also sets shareProcessNamespace: true on the pod (the sidecar must see the JVM).
 #
 # Prereq: Kyverno installed cluster-wide (by perf-profiler.sh / the bootstrap).
 # failurePolicy: Ignore so a Kyverno outage never blocks app pods from scheduling.
@@ -65,6 +67,28 @@ spec:
         has(object.metadata.labels) &&
         'perf-profile/sidecar' in object.metadata.labels &&
         object.metadata.labels['perf-profile/sidecar'] == 'true'
+    # The supported workload: the first container is the app, named like the pod's `app`
+    # label (the container the sensor reads), and runs as __APP_UID__ set explicitly on the
+    # container or the pod (attach needs the same UID; the image's USER is not visible at
+    # admission). The perf-profiler-opt-in ValidatingPolicy rejects other opt-ins with a message.
+    - name: supported-app-container
+      expression: >-
+        has(object.metadata.labels) && 'app' in object.metadata.labels
+        && object.spec.containers[0].name == object.metadata.labels['app']
+        && (has(object.spec.containers[0].securityContext) && has(object.spec.containers[0].securityContext.runAsUser)
+            ? object.spec.containers[0].securityContext.runAsUser == __APP_UID__
+            : has(object.spec.securityContext) && has(object.spec.securityContext.runAsUser)
+              && object.spec.securityContext.runAsUser == __APP_UID__)
+    # Idempotent and composable: no sidecar yet, and nothing the injection adds is in use (the
+    # two volume names, /perf in the app container, port 9100). A pod that fails this one
+    # starts without the sidecar: check the container list after the first apply.
+    - name: not-injected-no-conflict
+      expression: >-
+        !object.spec.containers.exists(c, c.name == 'perf-profiler'
+          || (has(c.ports) && c.ports.exists(p, p.containerPort == 9100)))
+        && (!has(object.spec.volumes) || !object.spec.volumes.exists(v, v.name == 'perf-scratch' || v.name == 'perf-tmp'))
+        && (!has(object.spec.containers[0].volumeMounts)
+            || !object.spec.containers[0].volumeMounts.exists(m, m.mountPath == '/perf'))
   mutations:
     - patchType: JSONPatch
       jsonPatch:

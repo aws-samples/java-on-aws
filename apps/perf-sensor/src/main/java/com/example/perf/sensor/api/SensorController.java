@@ -116,7 +116,7 @@ public class SensorController {
                 "output", "ThreadFacts {pod, timestamp, total, byState, virtualThreads, requestThreadsActive, requestThreadsBlockedInFutureGet, requestThreadsWaitingForConnection, blockedInsideTransaction, topBlockingFrames, sample} or null"),
             Map.of("name", "diagnoseBlocking",
                 "input", "service, durationSec=20, intervalMs=500, minRequestRate=1 — the operator's load run must be flowing",
-                "output", "{status OK|BLOCKED, reason, threads: ThreadFacts (peaks across samples, frames summed), durationSec, requestRatePerSec, poolSizeTarget}"),
+                "output", "{status OK|BLOCKED, reason, threads: ThreadFacts (peaks across samples, frames summed), durationSec (sampled), requestRatePerSec, pod, dumpsAttempted, dumpsTaken}"),
             Map.of("name", "profileTop",
                 "input", "service, type=cpu|wall, windowMinutes=15, limit=15",
                 "output", "{frames[{name, selfPct}], jitShare, gcShare, futexWallShare, samples}"),

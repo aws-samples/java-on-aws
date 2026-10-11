@@ -40,7 +40,7 @@ class SensorServiceTest {
     @Mock LogCollector logs;
 
     private SensorService sensor() {
-        return new SensorService(facts, k8s, prometheus, pyroscope, dump, logs);
+        return new SensorService(facts, k8s, prometheus, pyroscope, dump, logs, ServiceScope.of("svc", "shop"));
     }
 
     private static ThreadFacts dumpOf(String pod, int active, int blocked, int pool, int inTx,
@@ -92,7 +92,6 @@ class SensorServiceTest {
         assertThat(t.total()).isEqualTo(40);                       // peak, not 120
         assertThat(t.byState()).containsEntry("RUNNABLE", 7).containsEntry("WAITING", 21);
         assertThat(t.topBlockingFrames()).containsExactly(new ThreadFacts.FrameCount("CompletableFuture.get", 3));
-        assertThat(r.poolSizeTarget()).as("threads waited for a connection: size the pool to peak in-flight").isEqualTo(4);
     }
 
     @Test
@@ -103,22 +102,48 @@ class SensorServiceTest {
             return dumpOf("p1", 1, 0, 0, 0, Map.of("RUNNABLE", 1), null, 0);
         });
         long t0 = System.nanoTime();
-        var t = sensor().threadDumpOverTime("svc", 10, 100);   // window 10 × 100 ms = 1 s
+        var s = sensor().threadDumpOverTime("svc", 1000, 100);   // a 1 s window at 100 ms ticks
         long ms = (System.nanoTime() - t0) / 1_000_000L;
-        assertThat(t).isNotNull();
+        assertThat(s.threads()).isNotNull();
+        assertThat(s.taken()).isEqualTo(s.attempted());
         assertThat(ms).as("a 300 ms dump is not followed by another 100 ms gap: about 1.2 s, not 4 s").isLessThan(2000);
         verify(dump, org.mockito.Mockito.atMost(5)).threads("10.0.0.1", "p1");
     }
 
     @Test
-    void diagnoseBlocking_noConnectionWait_noPoolSizeTarget() {
+    void diagnoseBlocking_reportsTheTimeSampled_notTheTimeAskedFor() {
         when(prometheus.requestRatePerSec("svc", 1)).thenReturn(50.0);
         when(k8s.collect("svc", "svc")).thenReturn(snapshot("p1", "10.0.0.1"));
-        when(dump.threads("10.0.0.1", "p1")).thenReturn(
-            dumpOf("p1", 3, 1, 0, 1, Map.of("RUNNABLE", 5), "CompletableFuture.get", 1));
+        when(dump.threads("10.0.0.1", "p1")).thenReturn(dumpOf("p1", 2, 0, 0, 0, Map.of("RUNNABLE", 5), null, 0));
+        var r = sensor().diagnoseBlocking("svc", 4, 1000, 1);   // 4 s at 1 s ticks: 4 dumps over about 3 s
+        assertThat(r.status()).isEqualTo("OK");
+        assertThat(r.dumpsAttempted()).isEqualTo(4);
+        assertThat(r.durationSec()).isBetween(3, 4);
+        assertThat(r.pod()).isEqualTo("p1");
+    }
+
+    @Test
+    void diagnoseBlocking_tooFewDumps_isNotEvidenceOfNoBlock() {
+        when(prometheus.requestRatePerSec("svc", 1)).thenReturn(50.0);
+        when(k8s.collect("svc", "svc")).thenReturn(snapshot("p1", "10.0.0.1"));
+        var clean = dumpOf("p1", 2, 0, 0, 0, Map.of("RUNNABLE", 5), null, 0);
+        when(dump.threads("10.0.0.1", "p1")).thenReturn(clean, null, null);   // 1 of 3
+        var r = sensor().diagnoseBlocking("svc", 3, 1000, 1);
+        assertThat(r.status()).isEqualTo("BLOCKED");
+        assertThat(r.reason()).contains("only 1 of 3");
+        assertThat(r.threads()).isNull();
+    }
+
+    @Test
+    void diagnoseBlocking_aBlockSeenOnce_isEvidenceEvenWithFailedDumps() {
+        when(prometheus.requestRatePerSec("svc", 1)).thenReturn(50.0);
+        when(k8s.collect("svc", "svc")).thenReturn(snapshot("p1", "10.0.0.1"));
+        var blocked = dumpOf("p1", 3, 1, 0, 0, Map.of("WAITING", 5), "CompletableFuture.get", 1);
+        when(dump.threads("10.0.0.1", "p1")).thenReturn(blocked, null, null);
         var r = sensor().diagnoseBlocking("svc", 3, 1000, 1);
         assertThat(r.status()).isEqualTo("OK");
-        assertThat(r.poolSizeTarget()).isNull();
+        assertThat(r.dumpsTaken()).isEqualTo(1);
+        assertThat(r.threads().requestThreadsBlockedInFutureGet()).isEqualTo(1);
     }
 
     @Test

@@ -1,0 +1,49 @@
+# Network boundary for a shared cluster (reference, not applied by perf-sensor.sh). The
+# sensor's REST/MCP port and the profiler sidecar's /dump port have no authentication: with
+# these two policies only the sensor reaches /dump, and only Prometheus and the operator's
+# port-forward reach the sensor. Needs a CNI that enforces NetworkPolicy (on EKS: the VPC CNI
+# with network policy enabled). Replace <app-namespace> and <app-port>.
+#
+# 1. Profiled pods: /dump (9100) only from the sensor; the app port stays open to its callers
+#    (load balancer, Prometheus scrape). A policy that selects a pod denies every ingress it
+#    does not allow, so list each port the app serves.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: perf-profiler-dump
+  namespace: <app-namespace>
+spec:
+  podSelector:
+    matchLabels:
+      perf-profile/sidecar: "true"
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: monitoring}
+          podSelector:
+            matchLabels: {app: perf-sensor}
+      ports:
+        - {protocol: TCP, port: 9100}
+    - ports:
+        - {protocol: TCP, port: <app-port>}
+---
+# 2. The sensor: only Prometheus (it scrapes /actuator/prometheus). kubectl port-forward
+#    reaches the pod through the kubelet on its node, and traffic from the pod's node is
+#    always allowed (https://kubernetes.io/docs/concepts/services-networking/network-policies/),
+#    so RBAC on pods/portforward decides who uses that path: grant it only to the operators.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: perf-sensor
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels: {app: perf-sensor}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: prometheus, app.kubernetes.io/component: server}
+      ports:
+        - {protocol: TCP, port: 8080}

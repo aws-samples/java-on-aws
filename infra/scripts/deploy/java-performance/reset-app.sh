@@ -2,10 +2,14 @@
 # =============================================================================
 # reset-app.sh — put a used environment back to the workshop starting point.
 #
-# For repeated acceptance runs (apps/perf-sensor/ACCEPTANCE.md) on the same env.
+# For repeated ws-test runs on the same env (infra/scripts/ws-test/README.md).
 # Everything a run changes in the APP is reverted; the platform (monitoring,
 # profiler policy, sensor, boost controller, skills) is left as bootstrapped.
 #
+#   0. The load a run started is stopped: the loops and the artillery process of the
+#      current run (it outlives its loop for up to 600 s, and a second load on top doubles
+#      the request rate the next run measures). The sensor port-forward service is
+#      restarted, and a hand-started port-forward from an older run is stopped.
 #   1. ~/environment/unicorn-store-spring: hard reset to the commit
 #      "Starting point: containerized + deployed to EKS" (made by app-prepare.sh), untracked files removed
 #      (Dockerfile.aot/.crac, startup-cpu-boost.yaml, listener classes ...); then
@@ -13,7 +17,8 @@
 #      source (apps/unicorn-store-spring) and folded into that commit, so the
 #      starting point always carries the current versions.
 #   2. StartupCPUBoost CRs in the app namespace deleted (created in module 2;
-#      the CR outlives the manifest reset).
+#      the CR outlives the manifest reset), and every Kyverno NamespacedValidatingPolicy
+#      in the app namespace (module 5; the baseline manifest fails it).
 #   3. Baseline manifest applied (:latest, 1 vCPU / 2Gi, no sidecar label) and
 #      rolled out; image, resources and container list verified.
 #   4. ~/environment/baseline.txt removed.
@@ -52,6 +57,21 @@ PREBUILD=false
 
 [ -d "${APP_DIR}/.git" ] || { log_error "No git repo at ${APP_DIR}"; exit 1; }
 
+# 0. Stop the previous run's load and port-forward (loops first, then what they started).
+# common.sh sets -e: pkill exits 1 when nothing matches, which is the normal case here.
+pkill -f 'scripts/load.sh' 2>/dev/null || true; pkill -f 'artillery run' 2>/dev/null || true
+# A hand-started forward (loop first, then its kubectl) would hold 8090; the service's own
+# kubectl has --address in its command line and does not match.
+pkill -f 'while true; do kubectl -n monitoring port-forward' 2>/dev/null || true
+pkill -f 'kubectl -n monitoring port-forward svc/perf-sensor' 2>/dev/null || true
+sleep 2
+pgrep -f 'artillery run|scripts/load.sh' >/dev/null \
+  && log_warning "load still running: $(pgrep -af 'artillery run|scripts/load.sh' | head -3)" \
+  || log_success "load stopped"
+sudo systemctl restart perf-sensor-port-forward 2>/dev/null \
+  && log_success "port-forward service restarted (localhost:8090)" \
+  || log_warning "no perf-sensor-port-forward service (perf-sensor.sh install creates it)"
+
 # 1. App repo back to the starting point.
 START_SHA="$(git -C "${APP_DIR}" log --format=%H --grep="${START_MSG}" -n 1)"
 [ -n "${START_SHA}" ] || { log_error "Commit '${START_MSG}' not found in ${APP_DIR}"; exit 1; }
@@ -85,6 +105,14 @@ kubectl -n "${APP_NS}" delete startupcpuboost --all --ignore-not-found >/dev/nul
   && log_success "StartupCPUBoost CRs removed" \
   || log_warning "could not delete StartupCPUBoost CRs (CRD absent?)"
 
+# Module 5's Kyverno policy rejects the baseline manifest: remove every namespaced
+# validating policy in the app namespace.
+if kubectl -n "${APP_NS}" get namespacedvalidatingpolicies -o name 2>/dev/null | grep -q .; then
+  kubectl -n "${APP_NS}" delete namespacedvalidatingpolicies --all >/dev/null \
+    && log_success "Kyverno policies in ${APP_NS} removed"
+  sleep 5   # give Kyverno a moment to drop the deleted policy
+fi
+
 # 3. Baseline deployment.
 MANIFEST="${APP_DIR}/k8s/deployment.yaml"
 [ -f "${MANIFEST}" ] || { log_error "Manifest not found: ${MANIFEST}"; exit 1; }
@@ -92,6 +120,13 @@ log_info "Applying baseline manifest and waiting for rollout..."
 kubectl -n "${APP_NS}" apply -f "${MANIFEST}" >/dev/null \
   && kubectl -n "${APP_NS}" rollout status deploy/unicorn-store-spring --timeout=300s >/dev/null \
   || { log_error "baseline rollout failed"; exit 1; }
+# Wait for the previous pods to finish terminating (grace period up to 40 s), so the next
+# run starts from one pod, as a fresh environment does.
+for _ in $(seq 1 30); do
+  [ "$(kubectl -n "${APP_NS}" get pod -l app=unicorn-store-spring -o json \
+    | jq '[.items[] | select(.metadata.deletionTimestamp != null)] | length')" = 0 ] && break
+  sleep 3
+done
 
 # Read the NEW pod: right after rollout status the old one is still Terminating and
 # sorts first, so filter on phase=Running and no deletionTimestamp, newest first.
@@ -130,4 +165,4 @@ else
   log_info ":aot-prebuilt/:crac-prebuilt fallbacks untouched by the run (pass --prebuild to rebuild them from the shared source)"
 fi
 
-log_success "Environment at starting point. Next: bash ~/java-on-aws/infra/scripts/ws-test/java-performance.sh (see apps/perf-sensor/ACCEPTANCE.md)."
+log_success "Environment at starting point. Next: bash ~/java-on-aws/infra/scripts/ws-test/java-performance.sh (see infra/scripts/ws-test/README.md)."

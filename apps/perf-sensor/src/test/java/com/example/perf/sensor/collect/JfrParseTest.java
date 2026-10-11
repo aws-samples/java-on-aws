@@ -47,10 +47,15 @@ class JfrParseTest {
     }
 
     @Test
-    void jvmArgs_credentialValuesAreMasked_flagNamesStay() {
-        String args = "-Xmx512m -Dspring.datasource.password=s3cr3t -Dapi.token=abc.def -Dserver.port=8080 -DAPI_KEY=xyz";
-        assertThat(JfrCollector.redact(args))
-            .isEqualTo("-Xmx512m -Dspring.datasource.password=*** -Dapi.token=*** -Dserver.port=8080 -DAPI_KEY=***");
+    void jvmArgs_keepOnlyTuningFlags_noSystemPropertyLeaves() {
+        // A key without a credential-looking name and a quoted value with a space both leaked
+        // through the old name-based mask.
+        String args = "-Xmx512m -XX:+UseSerialGC -XX:MaxRAMPercentage=75 -Dspring.datasource.password=s3cr3t "
+            + "-Dsigning.key=abc -Ddb.password=\"very secret\" -javaagent:/a.jar=token=x -XX:ActiveProcessorCount=1 "
+            + "-XX:OnOutOfMemoryError=\"kill -9 %p\" -XX:CRaCCheckpointTo=/opt/crac-files";
+        assertThat(com.example.perf.sensor.facts.JvmOptions.tuningFlags(args)).isEqualTo(
+            "-Xmx512m -XX:+UseSerialGC -XX:MaxRAMPercentage=75 -XX:ActiveProcessorCount=1 -XX:CRaCCheckpointTo=/opt/crac-files");
+        assertThat(com.example.perf.sensor.facts.JvmOptions.tuningFlags(null)).isNull();
     }
 
     @Test

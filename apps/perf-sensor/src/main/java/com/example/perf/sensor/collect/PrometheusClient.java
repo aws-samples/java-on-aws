@@ -3,6 +3,7 @@ package com.example.perf.sensor.collect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.ObjectMapper;
@@ -11,6 +12,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -38,7 +40,11 @@ public class PrometheusClient {
 
     public PrometheusClient(@Value("${PROMETHEUS_URL:http://prometheus-server.monitoring}") String promUrl) {
         this.promUrl = promUrl.replaceAll("/$", "");
-        this.restClient = RestClient.builder().baseUrl(this.promUrl).build();
+        // Deadlines: a server that accepts and never answers must not hold a tool call open.
+        var factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(2));
+        factory.setReadTimeout(Duration.ofSeconds(15));
+        this.restClient = RestClient.builder().baseUrl(this.promUrl).requestFactory(factory).build();
     }
 
     /**
@@ -67,21 +73,79 @@ public class PrometheusClient {
 
     /**
      * HTTP request rate (req/s) over the window from Micrometer
-     * {@code http_server_requests_seconds_count}. Signals whether the window saw
-     * real traffic (so a memory peak reflects load). null if the metric is absent.
+     * {@code http_server_requests_seconds_count}, actuator endpoints (probes, scrapes)
+     * excluded, for the given pods (null: every pod of the service). Signals whether the
+     * window saw real traffic (so a memory peak reflects load). null if the metric is absent.
      */
+    public Double requestRatePerSec(String app, String podRegex, int mins) {
+        return scalar("sum(rate(http_server_requests_seconds_count" + appSel(app, podRegex) + win(mins) + "))");
+    }
+
+    /** {@link #requestRatePerSec(String, String, int)} over every pod of the service. */
     public Double requestRatePerSec(String app, int mins) {
-        return scalar("sum(rate(http_server_requests_seconds_count{application=\"" + app + "\"}[" + mins + "m]))");
+        return requestRatePerSec(app, null, mins);
     }
 
     /**
-     * Mean CPU usage of the app container over the last {@code seconds}, cores (worst pod). A
+     * Mean CPU usage of the app container over the last {@code seconds}, cores, per pod. A
      * mean, not a percentile: it reads the same on a 60 s window and a 15 min one, so a pod
      * measured two minutes or ten minutes after a restart gets a comparable figure.
+     *
+     * <p>Not {@code rate()}: cAdvisor updates the counter only every 15–30 s and the scrapes in
+     * between repeat the value, so a 60 s rate sees one or two real updates and its
+     * extrapolation over the stale samples read 0.10 cores where the counter grew by 0.28 cores
+     * per second. The mean here is the counter's growth between its first and last update inside
+     * the window, divided by the time between those updates (raw samples, {@link #updateMean}).
      */
-    public Double cpuUsageMeanCores(String namespace, String container, String podRegex, int seconds) {
-        return scalar("max(rate(container_cpu_usage_seconds_total"
-            + sel(namespace, container, podRegex) + "[" + seconds + "s]))");
+    public Map<String, Double> cpuUsageMeanCoresByPod(String namespace, String container, String podRegex, int seconds) {
+        var out = new LinkedHashMap<String, Double>();
+        // 60 s of lead-in: the first sample inside the window is an update only if it differs
+        // from the sample before it.
+        String query = "container_cpu_usage_seconds_total" + sel(namespace, container, podRegex) + "[" + (seconds + 60) + "s]";
+        try {
+            var url = promUrl + "/api/v1/query?query=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
+            var body = restClient.get().uri(URI.create(url)).retrieve().body(String.class);
+            var result = MAPPER.readTree(body).path("data").path("result");
+            double windowStart = System.currentTimeMillis() / 1000.0 - seconds;
+            for (var series : result) {
+                var pod = series.path("metric").path("pod").asText(null);
+                if (pod == null) continue;
+                var samples = new java.util.ArrayList<double[]>();
+                for (var v : series.path("values")) {
+                    Double value = finite(v.get(1).asText());
+                    if (value != null) samples.add(new double[] {v.get(0).asDouble(), value});
+                }
+                Double mean = updateMean(samples, windowStart);
+                if (mean != null) out.merge(pod, mean, Math::max);
+            }
+        } catch (Exception e) {
+            logger.warn("Prometheus cpu samples failed [{}]: {}", query, e.getMessage());
+        }
+        return out;
+    }
+
+    /**
+     * Mean rate of a counter from its updates at or after {@code windowStart}: (last update value
+     * − first update value) / (time between them). An update is a sample whose value differs from
+     * the one before it; a repeated value is a scrape that saw no new cAdvisor reading. A decrease
+     * (container restart) starts over. null with fewer than two updates in the window.
+     */
+    static Double updateMean(java.util.List<double[]> samples, double windowStart) {
+        double[] first = null, last = null;
+        Double prev = null;
+        for (var s : samples) {
+            boolean update = prev != null && s[1] != prev;
+            if (prev != null && s[1] < prev) {
+                first = null;   // counter reset
+                last = null;
+            }
+            prev = s[1];
+            if (!update || s[0] < windowStart) continue;
+            if (first == null) first = s;
+            last = s;
+        }
+        if (first == null || last == first || last[0] <= first[0]) return null;
+        return (last[1] - first[1]) / (last[0] - first[0]);
     }
 
     /**
@@ -100,16 +164,16 @@ public class PrometheusClient {
         return r == null || r.isNaN() || r.isInfinite() ? null : r;
     }
 
-    /** Mean HTTP latency over the window, ms, non-actuator URIs (rate(sum)/rate(count)); null if no traffic. */
-    public Double latencyMeanMs(String app, int mins) {
-        Double s = scalar("sum(rate(http_server_requests_seconds_sum{application=\"" + app + "\",uri!~\"/actuator.*\"}" + win(mins) + "))"
-            + " / sum(rate(http_server_requests_seconds_count{application=\"" + app + "\",uri!~\"/actuator.*\"}" + win(mins) + "))");
-        return s == null || s.isNaN() ? null : s * 1000.0;
+    /** Mean HTTP latency over the window, ms, non-actuator URIs (rate(sum)/rate(count)), given pods; null if no traffic. */
+    public Double latencyMeanMs(String app, String podRegex, int mins) {
+        Double s = scalar("sum(rate(http_server_requests_seconds_sum" + appSel(app, podRegex) + win(mins) + "))"
+            + " / sum(rate(http_server_requests_seconds_count" + appSel(app, podRegex) + win(mins) + "))");
+        return s == null ? null : s * 1000.0;
     }
 
-    /** Max HTTP latency seen in the window, ms, non-actuator URIs (Micrometer decaying max). */
-    public Double latencyMaxMs(String app, int mins) {
-        Double s = scalar("max(max_over_time(http_server_requests_seconds_max{application=\"" + app + "\",uri!~\"/actuator.*\"}" + win(mins) + "))");
+    /** Max HTTP latency seen in the window, ms, non-actuator URIs (Micrometer decaying max), given pods. */
+    public Double latencyMaxMs(String app, String podRegex, int mins) {
+        Double s = scalar("max(max_over_time(http_server_requests_seconds_max" + appSel(app, podRegex) + win(mins) + "))");
         return s == null ? null : s * 1000.0;
     }
 
@@ -146,8 +210,9 @@ public class PrometheusClient {
                 for (var series : result) {
                     var pod = series.path("metric").path("pod").asText(null);
                     var val = series.path("value");
-                    if (pod != null && val.isArray() && val.size() == 2) {
-                        out.put(pod, Double.parseDouble(val.get(1).asText()));
+                    Double v = val.isArray() && val.size() == 2 ? finite(val.get(1).asText()) : null;
+                    if (pod != null && v != null) {
+                        out.put(pod, v);
                     }
                 }
             }
@@ -155,6 +220,17 @@ public class PrometheusClient {
             logger.warn("Prometheus vectorByPod failed [{}]: {}", query, e.getMessage());
         }
         return out;
+    }
+
+    /**
+     * Micrometer series of the app, no actuator URIs, for the given pods. Not scoped by the
+     * series' namespace label: an application may set that tag itself, and one restored from a
+     * CRaC checkpoint reports what it read at build time (outside a pod: "default"). The pod
+     * label comes from Prometheus' Kubernetes discovery.
+     */
+    private static String appSel(String app, String podRegex) {
+        return "{application=\"" + app + "\",uri!~\"/actuator.*\""
+            + (podRegex == null ? "" : ",pod=~\"" + podRegex + "\"") + "}";
     }
 
     private static String sel(String namespace, String container, String podRegex) {
@@ -177,13 +253,20 @@ public class PrometheusClient {
             }
             // instant vector sample: "value": [ <ts>, "<number>" ]
             var val = result.get(0).path("value");
-            if (val.isArray() && val.size() == 2) {
-                return Double.parseDouble(val.get(1).asText());
-            }
-            return null;
+            return val.isArray() && val.size() == 2 ? finite(val.get(1).asText()) : null;
         } catch (Exception e) {
             logger.warn("Prometheus query failed [{}]: {}", query, e.getMessage());
             return null;
+        }
+    }
+
+    /** A sample value, or null for NaN, +Inf and -Inf (PromQL prints them for 0/0 and x/0). */
+    static Double finite(String value) {
+        try {
+            double v = Double.parseDouble(value);
+            return Double.isFinite(v) ? v : null;
+        } catch (NumberFormatException e) {
+            return null;   // "+Inf" / "-Inf" are not Java literals
         }
     }
 

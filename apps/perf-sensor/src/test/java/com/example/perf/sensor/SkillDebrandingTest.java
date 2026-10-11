@@ -1,6 +1,7 @@
 package com.example.perf.sensor;
 
 import org.junit.jupiter.api.Test;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -61,10 +62,25 @@ class SkillDebrandingTest {
         assertThat(text).as("floorFactor retired: requests == limits").doesNotContain("floorFactor");
     }
 
+    // A YAML folded scalar keeps a "#" as text: a comment inside JAVA_TOOL_OPTIONS reaches the
+    // JVM as an option and the container does not start ("Unrecognized option: #").
+    @Test
+    @SuppressWarnings("unchecked")
+    void memoryFragmentPassesOnlyJvmOptions() throws IOException {
+        var fragment = (Map<String, Object>) new Yaml().load(
+            Files.readString(Path.of("skills/java-on-eks-optimization/references/deployment-resources.yaml")));
+        var env = (List<Map<String, String>>) fragment.get("env");
+        String options = env.stream().filter(e -> "JAVA_TOOL_OPTIONS".equals(e.get("name")))
+            .map(e -> e.get("value")).findFirst().orElseThrow();
+        assertThat(options).doesNotContain("#");
+        assertThat(options.split(" ")).allMatch(o -> o.startsWith("-XX:"));
+    }
+
     // Fact names the sensor no longer returns; a skill that still cites one reads null and
     // scores UNKNOWN. Keep this list in sync with renames in the facts records.
     private static final List<String> RETIRED_FIELDS = List.of(
-        "rssPeakMi", "rssFloorMi", "carriersParkedInPoolWait", "poolWaitCarriers", "futureGetOnRequestPath");
+        "rssPeakMi", "rssFloorMi", "carriersParkedInPoolWait", "poolWaitCarriers", "futureGetOnRequestPath",
+        "cracHeap", "poolSizeTarget");
 
     @Test
     void skillsCiteNoRetiredFactNames() throws IOException {

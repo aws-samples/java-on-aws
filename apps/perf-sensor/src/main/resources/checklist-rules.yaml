@@ -19,12 +19,12 @@ minRequestRate: 1.0
 
 items:
   - id: 1
-    practice: Memory Guaranteed and honoured
-    requires: [workload.memRequestMi, workload.memLimitMi]
+    practice: Memory request equals limit, no OOM kill
+    requires: [workload.memRequestMi, workload.memLimitMi, runtime.restarts]
     values:
       req: workload.memRequestMi
       lim: workload.memLimitMi
-      restarts: "has(runtime.restarts) ? runtime.restarts : 0.0"
+      restarts: runtime.restarts
       oom: "has(runtime.lastTerminationReason) && runtime.lastTerminationReason == 'OOMKilled'"
       op: "req == lim ? '==' : '≠'"
       last: "oom ? ', last termination OOMKilled' : ''"
@@ -116,6 +116,7 @@ items:
       s: runtime.startupSeconds
       need: 2.0 * s
       startupProbe: "has(workload.startupProbe) && workload.startupProbe && has(workload.startupBudgetSeconds)"
+      readiness: "has(workload.readinessProbe) && workload.readinessProbe"
       sb: "has(workload.startupBudgetSeconds) ? workload.startupBudgetSeconds : 0.0"
       noDelay: "(has(workload.startupInitialDelaySeconds) ? workload.startupInitialDelaySeconds : 0.0) == 0.0 && (has(workload.readinessInitialDelaySeconds) ? workload.readinessInitialDelaySeconds : 0.0) == 0.0"
       lb: "has(workload.livenessBudgetSeconds) ? workload.livenessBudgetSeconds : 0.0"
@@ -125,21 +126,22 @@ items:
       startupOp: "startupProbe && sb >= need ? '≥' : '<'"
       liveOp: "livenessOk ? '≥' : '<'"
       pathOp: "pathsDiffer ? '≠' : '=='"
-      probeNote: "startupProbe ? '' : 'no startupProbe; '"
+      probeNote: "(startupProbe ? '' : 'no startupProbe; ') + (readiness ? '' : 'no readinessProbe; ')"
       delayNote: "noDelay ? '' : '; initialDelaySeconds set'"
-    pass: "startupProbe && sb >= need && noDelay && livenessOk && pathsDiffer"
+    pass: "startupProbe && readiness && sb >= need && noDelay && livenessOk && pathsDiffer"
     evidence: "{probeNote}startupBudget {sb}s {startupOp} 2×{s:3}={need:2}s; livenessBudget {lb}s {liveOp}30 and {liveOp}3×gcMax {gcMax:1}ms; liveness {pathOp} readiness path{delayNote}"
 
   - id: 10
     practice: Shutdown budget is consistent
     requires: [workload.terminationGracePeriodSeconds, workload.preStopSleepSeconds]
+    unknown: "preStop hook other than a plain sleep: its duration cannot be read from the manifest"
     values:
       grace: workload.terminationGracePeriodSeconds
       preStop: workload.preStopSleepSeconds
       need: preStop + 30.0
       op: "grace >= need ? '≥' : '<'"
     pass: grace >= need
-    evidence: "grace {grace}s {op} preStop {preStop}s + 30 = {need}s"
+    evidence: "grace {grace}s {op} preStop {preStop}s + 30 s assumed drain = {need}s"
 
   - id: 11
     practice: Request path does not block on downstream calls
@@ -151,7 +153,9 @@ items:
       waiting: threads.requestThreadsWaitingForConnection
       inTx: threads.blockedInsideTransaction
       txNote: "inTx > 0.0 ? ' (holds a DB connection)' : ''"
-    pass: blocked == 0.0 && waiting == 0.0
+    # Threads waiting for a pooled connection are contention evidence, not a blocked downstream
+    # call: a pool size has to fit the database's connection budget, which is not measured.
+    pass: blocked == 0.0
     evidence: "blockedInFutureGet {blocked}, waitingForConnection {waiting}, blockedInsideTransaction {inTx}{txNote}"
 
   - id: 12

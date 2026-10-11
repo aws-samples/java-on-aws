@@ -1,6 +1,7 @@
 package com.example.perf.sensor.checklist;
 
 import com.example.perf.sensor.SensorService;
+import com.example.perf.sensor.ServiceScope;
 import com.example.perf.sensor.collect.K8sCollector;
 import com.example.perf.sensor.collect.PrometheusClient;
 import org.slf4j.Logger;
@@ -52,10 +53,12 @@ public class ChecklistService {
     private final K8sCollector k8s;
     private final PrometheusClient prometheus;
     private final ChecklistEngine engine;
+    private final ServiceScope scope;
 
-    public ChecklistService(SensorService sensor, K8sCollector k8s, PrometheusClient prometheus,
+    public ChecklistService(SensorService sensor, K8sCollector k8s, PrometheusClient prometheus, ServiceScope scope,
                             @Value("${CHECKLIST_RULES:}") String rulesFile) {
         this.sensor = sensor;
+        this.scope = scope;
         this.k8s = k8s;
         this.prometheus = prometheus;
         try (InputStream in = rulesFile.isBlank()
@@ -69,6 +72,7 @@ public class ChecklistService {
     }
 
     public Settle settle(String service, int minUptimeSeconds) {
+        scope.check(service);
         var snap = k8s.collect(service, service);
         int uptime = snap.uptimeSeconds() == null ? 0 : snap.uptimeSeconds().intValue();
         int remaining = Math.max(0, minUptimeSeconds - uptime);
@@ -107,15 +111,18 @@ public class ChecklistService {
         // The two collections are independent: run the 20 s of thread dumps next to measure.
         var blockingTask = new FutureTask<>(() -> sensor.diagnoseBlocking(service, 20, 500, engine.minRequestRate()));
         Thread.ofVirtual().name("checklist-dumps-" + service).start(blockingTask);
-        var m = sensor.measure(service, 15, 0);
+        SensorService.MeasureResult m;
         SensorService.BlockingResult blocking;
         try {
+            m = sensor.measure(service, 15, 0);
             blocking = blockingTask.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("interrupted while sampling thread dumps", e);
         } catch (ExecutionException e) {
             throw new IllegalStateException("thread-dump sampling failed: " + e.getCause(), e.getCause());
+        } finally {
+            blockingTask.cancel(true);   // no-op when done; stops the dumps when measure failed or we were interrupted
         }
         var facts = new LinkedHashMap<String, Object>();
         facts.put("workload", plain(m.workload()));

@@ -57,7 +57,8 @@ public class SensorMcpTools {
 
     @Tool(description = """
         Measure a Java service on EKS: Kubernetes desired-state (requests/limits in MiB/cores,
-        cpu resizePolicy, JAVA_TOOL_OPTIONS, image tag, replicas, probes with paths/budgets/initial
+        cpu resizePolicy, the JVM tuning flags of JAVA_TOOL_OPTIONS (-XX/-Xmx/-Xms/-Xss only; system
+        properties are never returned), image tag, replicas, probes with paths/budgets/initial
         delays, terminationGracePeriodSeconds, preStop sleep, sidecars) plus measured runtime
         (working-set floor/peak MiB, heap committed MiB, observed MaxHeapSize/InitialHeapSize MiB,
         GC name, effective CPUs, steady-state CPU usage cores (cpuSteadyCores = cpuMeanCores, the mean over the steady
@@ -67,7 +68,9 @@ public class SensorMcpTools {
         summary (jit/gc/futex shares of the whole profile, samples), the JVM's own JFR ring facts (jfr: container
         limits as the JVM read them incl. effectiveCpuCount, jvmArgs, GC pauses count/max/total,
         VirtualThreadPinned, top monitors, safepoint total, JIT compilation count/time), and the
-        window {uptimeSeconds, samples, requestRatePerSec}. Facts only — everything the checklist
+        window {uptimeSeconds, samples, requestRatePerSec}, and jvmFlags for the current limits
+        (javaHeapOpts -Xmx/-Xms at 75/50 % of limits.memory for an image that bakes the heap, such as
+        a CRaC checkpoint; activeProcessorCount = ceil(limits.cpu)): copy them, do not compute them. Facts only — everything the checklist
         needs except the thread dump under load. Deterministic; no LLM. minUptimeSeconds: if the
         current pod is younger than this, the sensor waits up to 30 s per call and reports
         window.settleRemainingSeconds; while > 0, tell the user how long is left and call again
@@ -90,8 +93,9 @@ public class SensorMcpTools {
         REQUIRED and supplied by the caller (the optimization skill owns the numbers; this tool owns
         only the arithmetic): limits = roundUpMi(max(peak*peakFactor, floor*floorSafetyFactor)), one
         roundMi step lower when that still leaves peak*minPeakFactor and floor*floorSafetyFactor (note
-        says so); requests = limits (Guaranteed memory QoS); MaxRAMPercentage = 75;
-        InitialRAMPercentage = 50; GC = cpuLimit <= 1 ? SerialGC : G1GC.""")
+        says so); requests = limits; MaxRAMPercentage = 75;
+        InitialRAMPercentage = 50; GC = cpuLimit <= 1 ? SerialGC : G1GC; javaHeapOpts = the -Xmx/-Xms
+        for the new limit, for an image that bakes the heap (CRaC checkpoint).""")
     public SizeResult sizeMemory(
         @ToolParam(description = SERVICE_PARAM) String service,
         @ToolParam(description = "Look-back window in minutes") int windowMinutes,
@@ -115,7 +119,8 @@ public class SensorMcpTools {
         roundUp(cpuSteadyCores * cpuFactor, roundMillicores) as millicores, capped at limits.cpu
         (clampedToLimit=true with a note when capped: the container is CPU-bound at this load);
         limits.cpu is returned UNCHANGED (the boot spike is handled by a startup CPU boost /
-        in-place resize, not by a permanently high request). All policy parameters are REQUIRED
+        in-place resize, not by a permanently high request). activeProcessorCount is the JVM flag
+        that pins the processor count to the limit. All policy parameters are REQUIRED
         and supplied by the caller (the optimization skill owns the numbers).""")
     public CpuResult sizeCpu(
         @ToolParam(description = SERVICE_PARAM) String service,
@@ -159,13 +164,12 @@ public class SensorMcpTools {
         platform threads) — sampling dumps under load catches it on any image, including CRaC.
         Returns status OK with aggregated thread facts (requestThreadsActive,
         requestThreadsBlockedInFutureGet, blockedInsideTransaction, requestThreadsWaitingForConnection
-        and byState = PEAK concurrent across samples; topBlockingFrames counts summed) and
-        poolSizeTarget (= requestThreadsActive when any request thread waited for a connection,
-        else null: set the connection pool's maximum size to it when the configured size is
-        smaller, also when the wait came from a transaction boundary), or BLOCKED
+        and byState = PEAK concurrent across samples; topBlockingFrames counts summed: evidence of
+        contention, not a pool size), the pod sampled (the newest
+        Ready pod), dumpsAttempted, dumpsTaken and durationSec (the time actually sampled), or BLOCKED
         with a reason when the request rate over the last minute is not above minRequestRate (ask
-        the operator to start the load run and call again while it runs) or when no dump could be
-        taken (sidecar not attached).""")
+        the operator to start the load run and call again while it runs), when no dump could be
+        taken (sidecar not attached), or when too few dumps succeeded to rule a block out.""")
     public BlockingResult diagnoseBlocking(
         @ToolParam(description = SERVICE_PARAM) String service,
         @ToolParam(description = "how long to sample, seconds (default 20; clamped to 60)", required = false) Integer durationSec,

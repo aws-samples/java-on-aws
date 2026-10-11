@@ -17,9 +17,12 @@ never uses.
   (load) from cAdvisor and computes
   `limits = roundUp(max(peak × peakFactor, floor × floorSafetyFactor))`,
   `requests = limits`.
-- **Requests equal limits** (Guaranteed memory QoS): JVM memory is stable after
-  warm-up, and a pod whose request is below its limit is the first OOM-kill
-  candidate when a node runs short.
+- **Requests equal limits**: JVM memory is stable after warm-up, so the pod never uses
+  more than its request. Under node memory pressure the kubelet evicts pods whose usage
+  exceeds their request first
+  ([Kubernetes: node-pressure eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/#pod-selection-for-kubelet-eviction)).
+  This is not the Guaranteed QoS class: that needs CPU requests equal to limits as well, and
+  the CPU request stays below the limit on purpose.
 - GC follows CPU shape: on **≤ 1 vCPU / small heap**, SerialGC is the right
   collector; G1GC regresses there (more threads, more overhead). The tool returns
   `SerialGC` when `cpuLimit ≤ 1`.

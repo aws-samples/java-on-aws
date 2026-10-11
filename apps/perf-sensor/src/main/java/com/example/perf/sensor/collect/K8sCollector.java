@@ -1,5 +1,6 @@
 package com.example.perf.sensor.collect;
 
+import com.example.perf.sensor.facts.JvmOptions;
 import com.example.perf.sensor.facts.WorkloadFacts;
 import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
@@ -52,8 +53,12 @@ public class K8sCollector {
     /** A Ready pod's name + IP (for per-pod fan-out, e.g. thread-dump sampling). */
     public record PodRef(String name, String ip) {}
 
-    /** A Ready pod of a profiled workload: where it runs, what it is called, which container is the app. */
-    public record ProfiledPod(String namespace, String pod, String service, String appContainer) {}
+    /**
+     * A Ready pod of a profiled workload: where it runs, what it is called, which container is
+     * the app, and when that container's current run started ({@code appStartedAt}): a
+     * container restart inside the same pod is a new JVM with a new startup.
+     */
+    public record ProfiledPod(String namespace, String pod, String service, String appContainer, String appStartedAt) {}
 
     private final CoreV1Api core;
     private final AppsV1Api apps;
@@ -111,8 +116,15 @@ public class K8sCollector {
                     String container = p.getSpec() == null || p.getSpec().getContainers() == null ? null
                         : p.getSpec().getContainers().stream().map(V1Container::getName)
                             .filter(n -> !sidecarName.equals(n)).findFirst().orElse(null);
+                    String startedAt = container == null || p.getStatus() == null || p.getStatus().getContainerStatuses() == null
+                        ? null
+                        : p.getStatus().getContainerStatuses().stream()
+                            .filter(cs -> container.equals(cs.getName()) && cs.getState() != null
+                                && cs.getState().getRunning() != null && cs.getState().getRunning().getStartedAt() != null)
+                            .map(cs -> cs.getState().getRunning().getStartedAt().toString())
+                            .findFirst().orElse(null);
                     return new ProfiledPod(meta.getNamespace(), meta.getName(),
-                        service != null ? service : meta.getNamespace(), container);
+                        service != null ? service : meta.getNamespace(), container, startedAt);
                 })
                 .filter(pp -> pp.appContainer() != null)
                 .toList();
@@ -150,7 +162,7 @@ public class K8sCollector {
             String livenessPath = null, readinessPath = null;
             Integer livenessBudget = null, startupBudget = null;
             Integer startupInitialDelay = null, readinessInitialDelay = null;
-            Integer preStopSleep = 0;
+            Integer preStopSleep = 0;   // no hook; null when the hook's duration cannot be read
             // Pod-level: terminationGracePeriodSeconds defaults to 30 when unset.
             Long grace = spec != null && spec.getTemplate().getSpec() != null
                 && spec.getTemplate().getSpec().getTerminationGracePeriodSeconds() != null
@@ -181,6 +193,7 @@ public class K8sCollector {
                         .filter(e -> "JAVA_TOOL_OPTIONS".equals(e.getName()))
                         .findFirst()
                         .map(V1EnvVar::getValue)
+                        .map(JvmOptions::tuningFlags)   // never system properties: they can hold credentials
                         .orElse(null);
                 }
                 readinessProbe = app.getReadinessProbe() != null;
@@ -291,20 +304,36 @@ public class K8sCollector {
         return probe.getInitialDelaySeconds() == null ? 0 : probe.getInitialDelaySeconds();
     }
 
-    /** Seconds slept by a preStop hook: exec `sleep N` / `sh -c "sleep N"`, or the K8s 1.30+ sleep action. 0 when none. */
-    static int preStopSleepSeconds(V1Container app) {
+    /**
+     * Seconds slept by a preStop hook: the Kubernetes sleep action, exec {@code ["sleep", "N"]},
+     * or exec {@code [sh|bash, "-c", "sleep N"]} with nothing else in the script. 0 when there is
+     * no hook; null for any other hook, whose duration cannot be read from the manifest.
+     */
+    static Integer preStopSleepSeconds(V1Container app) {
         var lc = app.getLifecycle();
         if (lc == null || lc.getPreStop() == null) return 0;
         var pre = lc.getPreStop();
         if (pre.getSleep() != null && pre.getSleep().getSeconds() != null) {
             return (int) pre.getSleep().getSeconds().longValue();
         }
-        if (pre.getExec() != null && pre.getExec().getCommand() != null) {
-            var m = Pattern.compile("sleep\\s+(\\d+)")
-                .matcher(String.join(" ", pre.getExec().getCommand()));
-            if (m.find()) return Integer.parseInt(m.group(1));
+        if (pre.getExec() == null || pre.getExec().getCommand() == null) return null;
+        var cmd = pre.getExec().getCommand();
+        if (cmd.size() == 2 && SLEEP_BINARY.matcher(cmd.get(0)).matches()) {
+            return seconds(cmd.get(1));
         }
-        return 0;
+        if (cmd.size() == 3 && SHELL.matcher(cmd.get(0)).matches() && "-c".equals(cmd.get(1))) {
+            var m = SLEEP_SCRIPT.matcher(cmd.get(2));
+            return m.matches() ? Integer.valueOf(m.group(1)) : null;
+        }
+        return null;
+    }
+
+    private static final Pattern SLEEP_BINARY = Pattern.compile("(/usr)?(/bin/)?sleep");
+    private static final Pattern SHELL = Pattern.compile("(/usr)?(/bin/)?(sh|bash)");
+    private static final Pattern SLEEP_SCRIPT = Pattern.compile("\\s*sleep\\s+(\\d+)\\s*;?\\s*");
+
+    private static Integer seconds(String s) {
+        return s.matches("\\d+") ? Integer.valueOf(s) : null;
     }
 
     /** Label selector from the Deployment's own matchLabels; falls back to serviceLabel=deployment. */

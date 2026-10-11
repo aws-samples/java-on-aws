@@ -9,7 +9,7 @@
 # cluster is still being created, which is the longest wait of the bootstrap.
 #
 #   A  background   app-prepare (repo + :latest), prebuild fallbacks, profiler image,
-#                   sensor image, claude-code.sh, prompt
+#                   sensor image, claude-code.sh, IDE terminal layout, prompt
 #   B  cluster      eks.sh (waits for ACTIVE), nodepool-pin, metrics-server
 #   C  monitoring   Prometheus, Pyroscope, Grafana (shared setup/monitoring.sh)
 #      --- wait for A ---
@@ -50,6 +50,7 @@ stage "A (background): repo + images + Claude Code"
   bash "$DEPLOY/perf-profiler.sh" build
   bash "$DEPLOY/perf-sensor.sh" build
   bash "$DEPLOY/claude-code.sh"
+  bash "$DEPLOY/ide-layout.sh"
   # Prompt: drop vcs, kubecontext and aws segments (three terminals, less noise).
   P10K="$HOME/.p10k.zsh"
   if [ -f "$P10K" ]; then

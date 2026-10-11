@@ -1,6 +1,7 @@
 package com.example.perf.sensor.collect;
 
 import com.example.perf.sensor.facts.JfrFacts;
+import com.example.perf.sensor.facts.JvmOptions;
 import com.example.perf.sensor.facts.JfrFacts.Compilation;
 import com.example.perf.sensor.facts.JfrFacts.ContainerConfig;
 import com.example.perf.sensor.facts.JfrFacts.FrameCount;
@@ -34,8 +35,8 @@ import java.util.regex.Pattern;
 /**
  * Fetches the app JVM's JFR ring through the profiler sidecar ({@code /dump?kind=jfr}) and
  * reduces it to {@link JfrFacts} with the JDK's own {@code jdk.jfr.consumer}. Read-only,
- * best-effort: null when the sidecar or the recording is unavailable. Credential-looking
- * system properties in {@code jvmArgs} are masked before the facts leave the sensor. The ring is the
+ * best-effort: null when the sidecar or the recording is unavailable. {@code jvmArgs} keeps
+ * only the JVM tuning flags ({@link JvmOptions}): no system property leaves the sensor. The ring is the
  * retrospective source for what the JVM itself saw: container limits, its arguments, GC
  * pauses, pinning, contention, safepoints, JIT volume. It does NOT carry virtual-thread
  * parks (JFR emits jdk.ThreadPark only for platform threads), so request-path blocking
@@ -134,7 +135,7 @@ public class JfrCollector {
                         // null when the JVM was started without -XX flags: keep "" so the caller can tell
                         // "event seen, no args" from "ring unavailable" (null).
                         String a = e.getString("jvmArguments");
-                        jvmArgs = a == null ? "" : redact(a);
+                        jvmArgs = a == null ? "" : JvmOptions.tuningFlags(a);
                     }
                     case "jdk.GCPhasePause" -> {
                         double ms = millis(e.getDuration());
@@ -232,16 +233,6 @@ public class JfrCollector {
             .limit(TOP)
             .map(en -> new FrameCount(en.getKey(), en.getValue()))
             .toList();
-    }
-
-    // -Dspring.datasource.password=..., -Dapi.token=... : the flag name stays (it tells the
-    // reader what was configured), the value is masked before it leaves the sensor.
-    private static final Pattern SECRET_FLAG =
-        Pattern.compile("(?i)(-D[\\w.\\-]*(password|passwd|secret|token|credential|apikey|api[._-]?key)[\\w.\\-]*=)\\S+");
-
-    /** Mask the value of any system property whose name suggests a credential (package-visible for tests). */
-    static String redact(String jvmArgs) {
-        return SECRET_FLAG.matcher(jvmArgs).replaceAll("$1***");
     }
 
     private static Double quotaCores(RecordedEvent e) {

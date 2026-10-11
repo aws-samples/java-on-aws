@@ -3,7 +3,9 @@
 # build.sh <tag> [dockerfile]
 #
 # Build + push a unicorn-store-spring image to the workshop ECR repo, resolving the
-# account/region and the Aurora build-args (SSM + Secrets Manager) — no placeholders.
+# account/region and the Aurora settings (SSM + Secrets Manager) — no placeholders. URL and
+# user go in as build args, the password as the BuildKit secret "db-password" (a Dockerfile
+# that needs it mounts it into one RUN step; it is not in the build args or layer history).
 # Run on the amd64 "ide" instance (in the VPC, so the DB is reachable when a build
 # step runs the app).
 #
@@ -40,13 +42,14 @@ DB_URL="$(aws ssm get-parameter --name workshop-db-connection-string --query Par
 DB_JSON="$(aws secretsmanager get-secret-value --secret-id workshop-db-secret --query SecretString --output text)"
 DB_USER="$(printf '%s' "$DB_JSON" | python3 -c 'import sys,json;print(json.load(sys.stdin)["username"])')"
 DB_PASS="$(printf '%s' "$DB_JSON" | python3 -c 'import sys,json;print(json.load(sys.stdin)["password"])')"
+export DB_PASS   # read by docker build --secret ...,env=DB_PASS
 
 echo "[build] ECR login ($ECR)..." >&2
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ECR" >/dev/null
 aws ecr describe-repositories --repository-names "$APP" --region "$REGION" >/dev/null 2>&1 \
   || aws ecr create-repository --repository-name "$APP" --region "$REGION" >/dev/null
 
-echo "[build] docker build -f $DOCKERFILE -> ${REPO}:${TAG} (build-args from SSM/Secrets)..." >&2
+echo "[build] docker build -f $DOCKERFILE -> ${REPO}:${TAG} (database settings from SSM/Secrets)..." >&2
 # EXTRA_BUILD_ARGS: space-separated ARG names whose values are taken from the environment
 # (docker's `--build-arg NAME` form), so values with spaces survive.
 EXTRA_ARGS=()
@@ -54,7 +57,7 @@ for name in ${EXTRA_BUILD_ARGS:-}; do EXTRA_ARGS+=(--build-arg "$name"); done
 docker build \
   --build-arg "SPRING_DATASOURCE_URL=${DB_URL}" \
   --build-arg "SPRING_DATASOURCE_USERNAME=${DB_USER}" \
-  --build-arg "SPRING_DATASOURCE_PASSWORD=${DB_PASS}" \
+  --secret id=db-password,env=DB_PASS \
   "${EXTRA_ARGS[@]}" \
   -t "${REPO}:${TAG}" -f "$DOCKERFILE" .
 docker push "${REPO}:${TAG}"

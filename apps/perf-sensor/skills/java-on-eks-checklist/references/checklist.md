@@ -21,14 +21,16 @@ thresholds are stated bars, not constants: 5 s for startup (12-factor: "a few se
 
 | # | Practice | Rule | Evidence |
 |---|---|---|---|
-| 1 | Memory is Guaranteed and honoured | `memRequestMi == memLimitMi`, both set; AND `restarts == 0` or `lastTerminationReason != OOMKilled` | `workload.memRequestMi`, `workload.memLimitMi`, `runtime.restarts`, `runtime.lastTerminationReason` |
+| 1 | Memory request equals limit, no OOM kill | `memRequestMi == memLimitMi`, both set; AND `restarts == 0` or `lastTerminationReason != OOMKilled` (UNKNOWN without the pod status) | `workload.memRequestMi`, `workload.memLimitMi`, `runtime.restarts`, `runtime.lastTerminationReason` |
 | 2 | Limit sized from the measured working set | `memLimitMi / workingSetPeakMi ≤ 2.5` *under load* | `workload.memLimitMi`, `runtime.workingSetPeakMi`, `window.requestRatePerSec` |
 | 3 | Heap follows the container | observed `maxHeapMi / memLimitMi` between 0.50 and 0.80. How the bound was set does not matter: `MaxRAMPercentage`, ergonomics, or an `-Xmx` derived from the limit (a CRaC checkpoint has to bake `-Xmx`) all pass if the ratio holds; note the mechanism from `jfr.jvmArgs` | `runtime.maxHeapMi`, `workload.memLimitMi`, `jfr.jvmArgs` |
 | 4 | Heap starts near its steady size | observed `initialHeapMi / maxHeapMi ≥ 0.50` | `runtime.initialHeapMi`, `runtime.maxHeapMi` |
 
-Why: the JVM sizes heap and GC from the cgroup limit; a request below the limit makes
-the pod Burstable and the first OOM-kill candidate on a busy node (1). Node capacity
-is reserved by the limit, so the limit must track what the pod uses (2). The default
+Why: the JVM sizes heap and GC from the cgroup limit. With the request equal to the limit
+the pod never uses more than its request, and under node memory pressure the kubelet evicts
+pods above their request first (1). This is not the Guaranteed QoS class while the CPU
+request is below the limit. The request then reserves the limit on the node, so the limit
+must track what the pod uses (2). The default
 heap ceiling is 25 % of the limit, which wastes the container; 75 % leaves room for
 metaspace, threads and code cache (3). A tiny initial heap pays for repeated heap
 growth during boot (4). Observed `MaxHeapSize`/`InitialHeapSize` come from `VM.flags` and
@@ -36,7 +38,8 @@ the arguments from the JVM's own `jdk.JVMInformation`, so they hold on any image
 a CRaC restore where flags live in the checkpoint and not in the Deployment.
 Sources: AWS Containers blog — *JVM memory, CPU, and classpath best practices for Java
 containers on AWS*; Microsoft — *Containerize your Java applications for Kubernetes*;
-JDK `java` tool reference (container support, `MaxRAMPercentage`, `InitialRAMPercentage`).
+JDK `java` tool reference (container support, `MaxRAMPercentage`, `InitialRAMPercentage`);
+Kubernetes — *Node-pressure eviction* (pod selection for kubelet eviction).
 
 ## CPU
 
@@ -78,8 +81,8 @@ production readiness checklist* (right-sizing); Kube Startup CPU Boost.
 | # | Practice | Rule | Evidence |
 |---|---|---|---|
 | 8 | Fast startup | `startupSeconds ≤ 5` | `runtime.startupSeconds` |
-| 9 | Probe budgets match observed behaviour | `startupProbe` present AND `startupBudgetSeconds ≥ 2 × startupSeconds` AND `startupInitialDelaySeconds == 0` AND `readinessInitialDelaySeconds == 0`; AND `livenessBudgetSeconds ≥ 30` AND `livenessBudgetSeconds × 1000 ≥ 3 × jfr.gc.maxMs` (when the ring has GC pauses); AND `livenessPath != readinessPath` | `workload.startupProbe`, `workload.startupBudgetSeconds`, `workload.startupInitialDelaySeconds`, `workload.readinessInitialDelaySeconds`, `workload.livenessBudgetSeconds`, `jfr.gc.maxMs`, `workload.livenessPath`, `workload.readinessPath`, `runtime.startupSeconds` |
-| 10 | Shutdown budget is consistent | `terminationGracePeriodSeconds ≥ preStopSleepSeconds + 30` (30 = Spring Boot's default graceful-shutdown timeout) | `workload.terminationGracePeriodSeconds`, `workload.preStopSleepSeconds` |
+| 9 | Probe budgets match observed behaviour | `startupProbe` and `readinessProbe` present AND `startupBudgetSeconds ≥ 2 × startupSeconds` AND `startupInitialDelaySeconds == 0` AND `readinessInitialDelaySeconds == 0`; AND `livenessBudgetSeconds ≥ 30` AND `livenessBudgetSeconds × 1000 ≥ 3 × jfr.gc.maxMs` (when the ring has GC pauses); AND `livenessPath != readinessPath` | `workload.startupProbe`, `workload.readinessProbe`, `workload.startupBudgetSeconds`, `workload.startupInitialDelaySeconds`, `workload.readinessInitialDelaySeconds`, `workload.livenessBudgetSeconds`, `jfr.gc.maxMs`, `workload.livenessPath`, `workload.readinessPath`, `runtime.startupSeconds` |
+| 10 | Shutdown budget is consistent | `terminationGracePeriodSeconds ≥ preStopSleepSeconds + 30` (30 = Spring Boot's default graceful-shutdown timeout, assumed: the sensor cannot read the app's configuration). `preStopSleepSeconds` is read only from the sleep action, `sleep N` or `sh -c "sleep N"`; any other hook is UNKNOWN | `workload.terminationGracePeriodSeconds`, `workload.preStopSleepSeconds` |
 
 Why: a disposable process starts in seconds so rollouts and scale-outs are fast (8).
 A startup probe gives the JVM its boot budget via `failureThreshold × periodSeconds`,
@@ -98,7 +101,7 @@ pauses vs probe timing); learnk8s (SIGTERM handling, probe semantics).
 
 | # | Practice | Rule | Evidence |
 |---|---|---|---|
-| 11 | Request path does not block on downstream calls | `diagnoseBlocking` status OK and `threads.requestThreadsBlockedInFutureGet == 0` and `threads.requestThreadsWaitingForConnection == 0` *under load* (UNKNOWN when BLOCKED); cite `blockedInsideTransaction` when > 0 — the block holds a DB connection | `diagnoseBlocking.threads.requestThreadsBlockedInFutureGet`, `blockedInsideTransaction`, `requestThreadsWaitingForConnection`, `topBlockingFrames` |
+| 11 | Request path does not block on downstream calls | `diagnoseBlocking` status OK and `threads.requestThreadsBlockedInFutureGet == 0` *under load* (UNKNOWN when BLOCKED); cite `blockedInsideTransaction` when > 0 — the block holds a DB connection. `requestThreadsWaitingForConnection` is shown as evidence and not scored: pool contention is a sizing decision against the database's connection budget | `diagnoseBlocking.threads.requestThreadsBlockedInFutureGet`, `blockedInsideTransaction`, `requestThreadsWaitingForConnection`, `topBlockingFrames` |
 | 12 | Latency under load is bounded | `latencyMeanMs ≤ 100` *under load*; cite `jfr.pinned`, `jfr.monitorTop`, `jfr.safepointTotalMs`, `jfr.gc.maxMs` as the in-JVM context | `runtime.latencyMeanMs`, `runtime.latencyMaxMs`, `window.requestRatePerSec`, `jfr.*` |
 
 Why: a request thread parked in `Future.get()` adds the downstream round-trip to every

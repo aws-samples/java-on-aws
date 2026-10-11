@@ -15,7 +15,7 @@ import java.util.List;
  * @param recordingStart   first event timestamp in the dump (ISO-8601)
  * @param recordingEnd     last event timestamp in the dump (ISO-8601)
  * @param container        jdk.ContainerConfiguration — limits as the JVM read them
- * @param jvmArgs          jdk.JVMInformation.jvmArguments (flags incl. ENTRYPOINT/JAVA_TOOL_OPTIONS)
+ * @param jvmArgs          the JVM tuning flags of jdk.JVMInformation.jvmArguments (incl. ENTRYPOINT/JAVA_TOOL_OPTIONS), {@link JvmOptions}
  * @param gc               jdk.GCPhasePause aggregate
  * @param pinned           jdk.VirtualThreadPinned aggregate (synchronized blocks pinning carriers)
  * @param monitorTop       jdk.JavaMonitorEnter top monitors by total blocked time, with the waiting frame

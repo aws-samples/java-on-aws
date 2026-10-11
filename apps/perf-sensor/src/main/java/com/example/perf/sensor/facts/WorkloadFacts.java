@@ -19,7 +19,7 @@ import java.util.List;
  * @param memLimitMi         limits.memory in MiB; null if unset
  * @param cpuResizePolicy    true when the container declares a CPU resizePolicy (in-place resize enabled)
  * @param cpuResizeRestartPolicy the CPU resizePolicy restart value (e.g. "NotRequired"), or null
- * @param javaToolOptions    value of the JAVA_TOOL_OPTIONS env var, or null if unset
+ * @param javaToolOptions    the JVM tuning flags in the JAVA_TOOL_OPTIONS env var ({@link JvmOptions}), or null if unset
  * @param readinessProbe     true when the app container declares a readinessProbe
  * @param startupProbe       true when the app container declares a startupProbe
  * @param runAsNonRoot       true when the app container (or pod) securityContext sets runAsNonRoot: true
@@ -34,7 +34,7 @@ import java.util.List;
  * @param startupInitialDelaySeconds  startupProbe.initialDelaySeconds (0 when unset; padding, not a budget), or null when no probe
  * @param readinessInitialDelaySeconds readinessProbe.initialDelaySeconds (0 when unset), or null when no probe
  * @param terminationGracePeriodSeconds pod terminationGracePeriodSeconds (K8s default 30 when unset)
- * @param preStopSleepSeconds  seconds slept by a preStop exec/sleep hook (0 when no hook)
+ * @param preStopSleepSeconds  seconds slept by a preStop sleep action or plain `sleep N` exec hook (0 when no hook, null for any other hook)
  */
 public record WorkloadFacts(
     String namespace,

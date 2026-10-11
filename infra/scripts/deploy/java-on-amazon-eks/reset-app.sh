@@ -2,7 +2,7 @@
 # =============================================================================
 # reset-app.sh — put a used environment back to the workshop starting point.
 #
-# For repeated acceptance runs (apps/perf-sensor/ACCEPTANCE.md) on the same env.
+# For repeated ws-test runs on the same env (infra/scripts/ws-test/README.md).
 # Everything a run changes in the APP is reverted; the platform (monitoring,
 # profiler policy, sensor, boost controller, skills) is left as bootstrapped.
 #
@@ -130,4 +130,4 @@ else
   log_info ":aot-prebuilt/:crac-prebuilt fallbacks untouched by the run (pass --prebuild to rebuild them from the shared source)"
 fi
 
-log_success "Environment at starting point. Next: bash ~/java-on-aws/infra/scripts/ws-test/java-on-amazon-eks.sh (see apps/perf-sensor/ACCEPTANCE.md)."
+log_success "Environment at starting point. Next: bash ~/java-on-aws/infra/scripts/ws-test/java-on-amazon-eks.sh (see infra/scripts/ws-test/README.md)."

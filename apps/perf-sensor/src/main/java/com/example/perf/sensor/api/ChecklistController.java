@@ -32,6 +32,7 @@ public class ChecklistController {
 
     private static final ObjectMapper MAPPER = JsonMapper.builder().build();
     private static final int MAX_WAIT_SECONDS = 300;
+    private static final int MAX_SCORE_SECONDS = 120;   // measure + 20 s of dumps take about 25 s
     private static final int TICK_SECONDS = 5;
 
     private final ChecklistService checklist;
@@ -71,27 +72,51 @@ public class ChecklistController {
                 s = checklist.settle(service, minUptimeSeconds);
             }
             emit(out, progress, "\n");
+            if (s.remainingSeconds() > 0) {
+                // The wait cap ran out (or a rollout restarted the pod): the same SETTLING answer
+                // the MCP tool gives, never a score of a pod younger than asked for.
+                var r = checklist.checklist(service, minUptimeSeconds, 0);
+                out.print(json ? MAPPER.writeValueAsString(r) : body(r, format));
+                out.flush();
+                return;
+            }
         }
         String note = s.note();
         emit(out, progress, "Measuring ");
         var task = new FutureTask<>(() -> checklist.score(service, note));
         Thread.ofVirtual().name("checklist-" + service).start(task);
         ChecklistResult r;
-        while (true) {
-            try {
-                r = task.get(TICK_SECONDS, TimeUnit.SECONDS);
-                break;
-            } catch (TimeoutException e) {
-                emit(out, progress, ".");
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
-            } catch (ExecutionException e) {
-                emit(out, progress, "\n");
-                out.print(json ? MAPPER.writeValueAsString(java.util.Map.of("status", "ERROR",
-                    "reason", String.valueOf(e.getCause()))) : "checklist failed: " + e.getCause() + "\n");
-                return;
+        int measured = 0;
+        try {
+            while (true) {
+                try {
+                    r = task.get(TICK_SECONDS, TimeUnit.SECONDS);
+                    break;
+                } catch (TimeoutException e) {
+                    measured += TICK_SECONDS;
+                    if (measured >= MAX_SCORE_SECONDS) {
+                        emit(out, progress, "\n");
+                        out.print(json ? MAPPER.writeValueAsString(java.util.Map.of("status", "ERROR",
+                            "reason", "measurement took longer than " + MAX_SCORE_SECONDS + " s"))
+                            : "checklist failed: measurement took longer than " + MAX_SCORE_SECONDS + " s\n");
+                        return;
+                    }
+                    emit(out, progress, ".");
+                    if (out.checkError()) {
+                        return;   // the client disconnected: stop measuring for nobody
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                } catch (ExecutionException e) {
+                    emit(out, progress, "\n");
+                    out.print(json ? MAPPER.writeValueAsString(java.util.Map.of("status", "ERROR",
+                        "reason", String.valueOf(e.getCause()))) : "checklist failed: " + e.getCause() + "\n");
+                    return;
+                }
             }
+        } finally {
+            task.cancel(true);   // the caller left, the deadline passed, or it is done (no-op)
         }
         emit(out, progress, "\n\n");
         out.print(json ? MAPPER.writeValueAsString(r) : body(r, format));

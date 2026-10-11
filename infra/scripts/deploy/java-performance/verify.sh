@@ -53,12 +53,12 @@ kubectl -n kube-startup-cpu-boost-system get deploy kube-startup-cpu-boost-contr
   && log_success "Startup CPU Boost controller present" || log_warning "Startup CPU Boost controller missing (manual resize path still works)"
 kubectl -n monitoring rollout status deploy/perf-sensor --timeout=60s >/dev/null 2>&1 && log_success "perf-sensor Ready" || fail "perf-sensor not Ready"
 
-# 5. Sensor answers with facts for the app (measure over a port-forward).
-kubectl -n monitoring port-forward svc/perf-sensor 18090:8080 >/dev/null 2>&1 &
-PF=$!
-sleep 4
-M="$(curl -s --max-time 60 "localhost:18090/api/v1/measure/${APP_NS}" || true)"
-kill "${PF}" 2>/dev/null || true
+# 5. Sensor answers with facts for the app, over the IDE's port-forward service (what
+#    Claude Code and the content use).
+systemctl is-active --quiet perf-sensor-port-forward && log_success "port-forward service active" \
+  || fail "systemd service perf-sensor-port-forward not active (perf-sensor.sh install)"
+for _ in $(seq 1 15); do curl -sf localhost:8090/actuator/health >/dev/null 2>&1 && break; sleep 2; done
+M="$(curl -s --max-time 60 "localhost:8090/api/v1/measure/${APP_NS}" || true)"
 echo "${M}" | jq -e '.workload.memLimitMi != null and .runtime.uptimeSeconds != null' >/dev/null 2>&1 \
   && log_success "perf-sensor measures ${APP_NS} (limit $(echo "${M}" | jq -r .workload.memLimitMi) Mi, uptime $(echo "${M}" | jq -r .runtime.uptimeSeconds) s)" \
   || fail "perf-sensor returned no workload/runtime facts for ${APP_NS}: $(echo "${M}" | head -c 300)"

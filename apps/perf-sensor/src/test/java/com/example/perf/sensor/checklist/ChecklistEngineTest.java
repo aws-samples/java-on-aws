@@ -30,7 +30,7 @@ class ChecklistEngineTest {
         f.put("workload", new HashMap<>(Map.ofEntries(
             Map.entry("memRequestMi", 2048.0), Map.entry("memLimitMi", 2048.0),
             Map.entry("cpuRequestCores", 1.0), Map.entry("cpuLimitCores", 1.0),
-            Map.entry("startupProbe", true), Map.entry("startupBudgetSeconds", 50.0),
+            Map.entry("startupProbe", true), Map.entry("readinessProbe", true), Map.entry("startupBudgetSeconds", 50.0),
             Map.entry("startupInitialDelaySeconds", 0.0), Map.entry("readinessInitialDelaySeconds", 0.0),
             Map.entry("livenessBudgetSeconds", 30.0),
             Map.entry("livenessPath", "/actuator/health/liveness"),
@@ -75,7 +75,7 @@ class ChecklistEngineTest {
         assertThat(item(items, 8).evidence()).isEqualTo("startup 17.06s > 5s bar");
         assertThat(item(items, 9).evidence())
             .isEqualTo("startupBudget 50s ≥ 2×17.06=34.12s; livenessBudget 30s ≥30 and ≥3×gcMax 144.8ms; liveness ≠ readiness path");
-        assertThat(item(items, 10).evidence()).isEqualTo("grace 30s < preStop 10s + 30 = 40s");
+        assertThat(item(items, 10).evidence()).isEqualTo("grace 30s < preStop 10s + 30 s assumed drain = 40s");
         assertThat(item(items, 11).evidence())
             .isEqualTo("blockedInFutureGet 1, waitingForConnection 2, blockedInsideTransaction 1 (holds a DB connection)");
         assertThat(item(items, 12).evidence())
@@ -94,7 +94,7 @@ class ChecklistEngineTest {
         var items = shipped().evaluate(f);
         assertThat(ChecklistEngine.score(items)).isEqualTo(12);
         assertThat(item(items, 6).evidence()).isEqualTo("request 0.2 ≤ roundUp(2.5 × steady 0.116 = 0.29, 50m) = 0.3");
-        assertThat(item(items, 10).evidence()).isEqualTo("grace 40s ≥ preStop 10s + 30 = 40s");
+        assertThat(item(items, 10).evidence()).isEqualTo("grace 40s ≥ preStop 10s + 30 s assumed drain = 40s");
         assertThat(item(items, 11).evidence()).isEqualTo("blockedInFutureGet 0, waitingForConnection 0, blockedInsideTransaction 0");
     }
 
@@ -108,6 +108,31 @@ class ChecklistEngineTest {
         assertThat(item(items, 6).evidence()).startsWith("no steady-state CPU");
         assertThat(item(items, 11).verdict()).isEqualTo(Verdict.UNKNOWN);
         assertThat(item(items, 11).icon()).isEqualTo("🟡");
+    }
+
+    @Test
+    void poolWaits_areEvidence_notAFailure() {
+        var f = baseline();
+        f.put("threads", Map.of("requestThreadsBlockedInFutureGet", 0.0,
+            "requestThreadsWaitingForConnection", 1.0, "blockedInsideTransaction", 0.0));
+        var eleven = item(shipped().evaluate(f), 11);
+        assertThat(eleven.verdict()).isEqualTo(Verdict.PASS);
+        assertThat(eleven.evidence()).contains("waitingForConnection 1");
+    }
+
+    @Test
+    void absentEvidence_isNotPassing() {
+        var f = baseline();
+        group(f, "runtime").remove("restarts");           // no pod status: OOM kills unknown
+        group(f, "workload").put("readinessProbe", false);
+        group(f, "workload").remove("readinessPath");
+        group(f, "workload").remove("preStopSleepSeconds"); // a hook whose duration cannot be read
+        var items = shipped().evaluate(f);
+        assertThat(item(items, 1).verdict()).isEqualTo(Verdict.UNKNOWN);
+        assertThat(item(items, 9).verdict()).isEqualTo(Verdict.FAIL);
+        assertThat(item(items, 9).evidence()).startsWith("no readinessProbe; ");
+        assertThat(item(items, 10).verdict()).isEqualTo(Verdict.UNKNOWN);
+        assertThat(item(items, 10).evidence()).startsWith("preStop hook other than a plain sleep");
     }
 
     @Test
@@ -136,6 +161,25 @@ class ChecklistEngineTest {
         assertThat(md).startsWith("Score: 5/12\n\n| | # | Practice | Evidence |\n|---|---|---|---|\n");
         assertThat(md.lines().filter(l -> l.startsWith("| ✅") || l.startsWith("| ❌"))).hasSize(12);
         assertThat(ChecklistEngine.text(items)).contains("❌  2  Limit sized from working set");
+    }
+
+    @Test
+    void text_wrapsTheEvidenceUnderItsColumn() {
+        var items = List.of(
+            new Item(9, "Probe budgets match observed behaviour", Verdict.PASS,
+                "startupBudget 50s ≥ 2×0.1=0.2s; livenessBudget 30s ≥30 and ≥3×gcMax 7ms; liveness ≠ readiness path"),
+            new Item(11, "Request path does not block on downstream calls", Verdict.PASS, "short"));
+        var lines = ChecklistEngine.text(items).lines().skip(2).toList();
+        // 47-character practice column: evidence starts at column 56, 54 columns wide
+        assertThat(lines).hasSize(3);
+        assertThat(lines.get(0)).endsWith("startupBudget 50s ≥ 2×0.1=0.2s; livenessBudget 30s ≥30");
+        assertThat(lines.get(1)).isEqualTo(" ".repeat(56) + "and ≥3×gcMax 7ms; liveness ≠ readiness path");
+        assertThat(lines).allSatisfy(l -> assertThat(l.codePointCount(0, l.length()) + 1).isLessThanOrEqualTo(ChecklistEngine.TEXT_WIDTH));
+    }
+
+    @Test
+    void wrap_keepsAnOverlongWordWhole() {
+        assertThat(ChecklistEngine.wrap("a bbbbbbbb c", 4)).containsExactly("a", "bbbbbbbb", "c");
     }
 
     @Test

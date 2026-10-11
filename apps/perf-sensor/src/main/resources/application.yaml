@@ -2,13 +2,15 @@
 # perf-sensor — Spring Boot 4 / Spring AI 2 MCP server (streamable-http) + REST.
 # Deterministic sensors only: no Bedrock, no Spring AI chat, no AWS SDK.
 #
-# Environment (set in k8s/deployment.yaml by deploy/java-on-amazon-eks/perf-sensor.sh):
+# Environment (set in k8s/deployment.yaml by deploy/<workshop>/perf-sensor.sh):
 #   PROMETHEUS_URL       default http://prometheus-server.monitoring
 #   PYROSCOPE_URL        default http://pyroscope.monitoring:4040
 #   DUMP_PORT            profiler sidecar /dump port, default 9100
 #   SERVICE_LABEL        pod label carrying the service name, default app
 #   REQUEST_PACKAGE      REQUIRED — the app's request-path package (e.g. com.example.shop);
 #                        a thread is "request path" when this package is on its stack
+#   SENSOR_SERVICES      REQUIRED — comma-separated workloads the sensor answers for (their
+#                        request package is REQUEST_PACKAGE); any other service is refused
 #   PROFILED_POD_LABEL   selector for pods whose startup the sensor publishes,
 #                        default perf-profile/sidecar=true (the profiler opt-in label)
 #   PROFILER_CONTAINER   sidecar container name to skip when finding the app container,
