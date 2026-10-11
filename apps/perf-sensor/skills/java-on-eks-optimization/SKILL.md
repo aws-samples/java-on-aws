@@ -156,10 +156,12 @@ Read the file and pass the values through. The *why* for each:
   `measure` for the in-JVM context (`jfr.pinned`, `jfr.monitorTop`, `jfr.gc.maxMs`,
   `jfr.safepointTotalMs`, `latencyMeanMs`).
   It names the blocking frame and `file:line` (`…CompletableFuture.get`) on **any image,
-  including CRaC**. Do **not** use `profileTop wall` to find this. Artifact: the
-  non-blocking change; if `blockedInsideTransaction > 0`, also move the remote call out of
-  the transaction (after commit — the connection is held for the round-trip otherwise; read
-  the `@Transactional` method in `src/` to show it). Leave the connection pool size alone:
+  including CRaC**. Do **not** use `profileTop wall` to find this. Artifact, both parts every
+  time: (1) remove the blocking wait (`.get()`, `.join()`) from the request path, so the call
+  returns at once and a failure is logged in a callback; (2) if `blockedInsideTransaction > 0`,
+  also move the call after commit (the connection is held for the round-trip otherwise; read
+  the `@Transactional` method in `src/` to show it). After-commit alone still blocks: the
+  `afterCommit` callback runs on the request thread, inside the transaction interceptor. Leave the connection pool size alone:
   `requestThreadsWaitingForConnection` is contention evidence, not a size (see the pool entry
   below). Reference: `blocking-calls.md`.
 - **"right-size again" / "re-size" / "re-measure after the change" / "the sizing is stale"** →
@@ -192,8 +194,9 @@ Read the file and pass the values through. The *why* for each:
   `in-place-resize.md`.
 - **Combined: "fix the slow writes, size it again and fix item 10"** → the latency, "right-size
   again" and item 10 entries in one pass: `diagnoseBlocking` while the load runs, then `measure`,
-  `sizeMemory`, `sizeCpu`. One change: the non-blocking code change (plus the transaction boundary
-  when the evidence calls for it; the pool size stays); memory and CPU from the sizing tools; on a
+  `sizeMemory`, `sizeCpu`. One change: the non-blocking code change, both parts of the latency entry
+  (no `.get()` on the request path, and after commit when the block sat in a transaction; the
+  pool size stays); memory and CPU from the sizing tools; on a
   CRaC image `JAVA_HEAP_OPTS` in `Dockerfile.crac` = `sizeMemory.javaHeapOpts` (the code change
   needs a rebuild anyway, so one build takes both); `terminationGracePeriodSeconds`. References:
   `blocking-calls.md`, `right-size-memory.md`, `shutdown-budget.md`.
