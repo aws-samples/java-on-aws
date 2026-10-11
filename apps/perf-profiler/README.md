@@ -38,7 +38,7 @@ The app image is never modified: one label on the pod template opts a workload i
 
 ## Deploy
 
-`infra/scripts/deploy/java-on-amazon-eks/perf-profiler.sh` (`build`, `install`, or both)
+`infra/scripts/deploy/<workshop>/perf-profiler.sh` (java-performance or java-on-amazon-eks; `build`, `install`, or both)
 builds and pushes the image, installs Kyverno (chart pinned), and applies the policy with the image pinned by digest,
 the cluster name, the app UID (`APP_UID`, default 1000) and the Pyroscope URL substituted.
 A supported workload: the **first container is the app**, named like the pod's `app` label
@@ -70,4 +70,7 @@ rather than a blocked rollout; check the container list after the first apply.
   `ASYNC_PROFILER_VERSION` **and** `ASYNC_PROFILER_SHA256` in the Dockerfile.
 - `PERF_DIR` (default `/perf`) is where the app JVM writes and the sidecar reads; without
   the volume the sidecar falls back to the target's `/tmp` through `/proc/<pid>/root`.
-- Replaces the retired privileged `perf-collector` DaemonSet.
+- In the java-performance and java-on-amazon-eks workshops it replaces the
+  `perf-collector` DaemonSet. The java-on-aws workshop still installs perf-collector
+  (`infra/scripts/deploy/java-on-aws/6-perf-platform-eks.sh`, `infra/scripts/setup/perf-platform.sh`),
+  which runs privileged, as root and with `hostPID`.

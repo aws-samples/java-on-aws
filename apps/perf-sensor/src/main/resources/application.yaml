@@ -2,7 +2,7 @@
 # perf-sensor — Spring Boot 4 / Spring AI 2 MCP server (streamable-http) + REST.
 # Deterministic sensors only: no Bedrock, no Spring AI chat, no AWS SDK.
 #
-# Environment (set in k8s/deployment.yaml by deploy/java-on-amazon-eks/perf-sensor.sh):
+# Environment (set in k8s/deployment.yaml by deploy/<workshop>/perf-sensor.sh):
 #   PROMETHEUS_URL       default http://prometheus-server.monitoring
 #   PYROSCOPE_URL        default http://pyroscope.monitoring:4040
 #   DUMP_PORT            profiler sidecar /dump port, default 9100

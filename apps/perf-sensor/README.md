@@ -78,14 +78,16 @@ Environment variables are listed in `src/main/resources/application.yaml`.
 
 ```bash
 mvn -o test                                             # unit tests, no cluster needed
-infra/scripts/deploy/java-on-amazon-eks/perf-sensor.sh  # build (jib, push, digest) then install (RBAC, Deployment, dashboard); or `build` / `install` alone
-infra/scripts/deploy/java-on-amazon-eks/claude-code.sh   # skills + .mcp.json + Claude permissions on the IDE
+infra/scripts/deploy/java-performance/perf-sensor.sh    # build (jib, push, digest) then install (RBAC, Deployment, dashboard); or `build` / `install` alone
+infra/scripts/deploy/java-performance/claude-code.sh     # skills + .mcp.json + Claude permissions on the IDE
 kubectl -n monitoring port-forward svc/perf-sensor 8090:8080
 curl -s localhost:8090/api/v1/measure/<service> | jq .
 curl -sN "localhost:8090/api/v1/checklist/<service>?format=text&wait=true"
 ```
 
-`perf-sensor.sh` takes `APP_NS` and `REQUEST_PACKAGE` for the workload; the Grafana
+The java-on-amazon-eks workshop has its own copies of these scripts under
+`infra/scripts/deploy/java-on-amazon-eks/`. `perf-sensor.sh` takes `APP_NS`, `REQUEST_PACKAGE`
+and `SENSOR_SERVICES` for the workload; the Grafana
 dashboard is `k8s/dashboard.json`. The java-performance workshop runs as a ws-test, with the
 acceptance criteria for the skills: [infra/scripts/ws-test/README.md](../../infra/scripts/ws-test/README.md).
 
