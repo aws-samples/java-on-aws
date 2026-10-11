@@ -19,9 +19,9 @@ WS_TEST_BLOCK_10_1
 
 ws_skip_block 2 'Check the environment' 'Check the environment' 31 33 'text' '' 'copy action disabled'
 
-ws_skip_block 3 'Start Claude Code' 'In the Claude terminal:' 46 46 'bash' '' 'interactive terminal UI'
+ws_skip_block 3 'Start Claude Code' 'In the Claude terminal:' 48 48 'bash' '' 'interactive terminal UI'
 
-ws_run_block 4 'Start Claude Code' 'With -p, Claude Code prints the answer and exits. Later calls with -c continue the same session:' 64 64 'bash' 'non-interactive' <<'WS_TEST_BLOCK_10_4'
+ws_run_block 4 'Start Claude Code' 'With -p, Claude Code prints the answer and exits. Later calls with -c continue the same session:' 66 66 'bash' 'non-interactive' <<'WS_TEST_BLOCK_10_4'
 cd ~/environment && claude -p "List the MCP tools you can see from perf-sensor and eks-mcp, names only."
 WS_TEST_BLOCK_10_4
 
@@ -82,7 +82,7 @@ WS_TEST_BLOCK_100_1
 
 ws_skip_block 2 'The injection policy' 'The injection policy' 47 57 'text' '' 'copy action disabled'
 
-ws_run_block 3 'The sensor' 'It scores the service against twelve practices. The rules are a ConfigMap of CEL expressions that anyone can read. Item 6 checks that the CPU request is no more than 2.5 times the CPU the service uses in steady state:' 70 71 'bash' '' <<'WS_TEST_BLOCK_100_3'
+ws_run_block 3 'The sensor' 'The sensor' 70 71 'bash' '' <<'WS_TEST_BLOCK_100_3'
 kubectl -n monitoring get configmap perf-sensor-checklist-rules -o jsonpath='{.data.checklist-rules\.yaml}' \
   | yq '.items[] | select(.id == 6)'
 WS_TEST_BLOCK_100_3
