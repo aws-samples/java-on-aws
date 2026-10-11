@@ -39,6 +39,7 @@ IMAGE_FILE="${STATE_DIR}/perf-sensor.image"
 NS="monitoring"
 APP_NS="${APP_NS:-unicorn-store-spring}"                 # namespace == Deployment == container of the workload
 REQUEST_PACKAGE="${REQUEST_PACKAGE:-com.unicorn.store}"  # the app's request-path package
+SENSOR_SERVICES="${SENSOR_SERVICES:-${APP_NS}}"          # workloads the sensor answers for (request package above)
 
 build() {
   # The ECR repo is normally created on first push by the account's creation template,
@@ -86,7 +87,7 @@ install() {
   rules_sha="$(sha256sum "${rules}" | cut -c1-16)"
 
   log_info "Deploying perf-sensor to ${NS} (REQUEST_PACKAGE=${REQUEST_PACKAGE})..."
-  sed -e "s|__IMAGE__|${image_ref}|g" -e "s|__NS__|${NS}|g" -e "s|__REQUEST_PACKAGE__|${REQUEST_PACKAGE}|g" \
+  sed -e "s|__IMAGE__|${image_ref}|g" -e "s|__NS__|${NS}|g" -e "s|__REQUEST_PACKAGE__|${REQUEST_PACKAGE}|g" -e "s|__SENSOR_SERVICES__|${SENSOR_SERVICES}|g" \
     -e "s|__RULES_SHA__|${rules_sha}|g" "${K8S_DIR}/deployment.yaml" | kubectl apply -f - >/dev/null
   # The image is pinned by digest and the rules by hash, so a changed image or rules file
   # is a changed pod template: no rollout restart needed.

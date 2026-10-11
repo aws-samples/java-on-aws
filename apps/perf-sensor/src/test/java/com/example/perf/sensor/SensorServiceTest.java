@@ -40,7 +40,7 @@ class SensorServiceTest {
     @Mock LogCollector logs;
 
     private SensorService sensor() {
-        return new SensorService(facts, k8s, prometheus, pyroscope, dump, logs);
+        return new SensorService(facts, k8s, prometheus, pyroscope, dump, logs, ServiceScope.of("svc", "shop"));
     }
 
     private static ThreadFacts dumpOf(String pod, int active, int blocked, int pool, int inTx,

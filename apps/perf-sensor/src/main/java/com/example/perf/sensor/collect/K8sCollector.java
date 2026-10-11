@@ -52,8 +52,12 @@ public class K8sCollector {
     /** A Ready pod's name + IP (for per-pod fan-out, e.g. thread-dump sampling). */
     public record PodRef(String name, String ip) {}
 
-    /** A Ready pod of a profiled workload: where it runs, what it is called, which container is the app. */
-    public record ProfiledPod(String namespace, String pod, String service, String appContainer) {}
+    /**
+     * A Ready pod of a profiled workload: where it runs, what it is called, which container is
+     * the app, and when that container's current run started ({@code appStartedAt}): a
+     * container restart inside the same pod is a new JVM with a new startup.
+     */
+    public record ProfiledPod(String namespace, String pod, String service, String appContainer, String appStartedAt) {}
 
     private final CoreV1Api core;
     private final AppsV1Api apps;
@@ -111,8 +115,15 @@ public class K8sCollector {
                     String container = p.getSpec() == null || p.getSpec().getContainers() == null ? null
                         : p.getSpec().getContainers().stream().map(V1Container::getName)
                             .filter(n -> !sidecarName.equals(n)).findFirst().orElse(null);
+                    String startedAt = container == null || p.getStatus() == null || p.getStatus().getContainerStatuses() == null
+                        ? null
+                        : p.getStatus().getContainerStatuses().stream()
+                            .filter(cs -> container.equals(cs.getName()) && cs.getState() != null
+                                && cs.getState().getRunning() != null && cs.getState().getRunning().getStartedAt() != null)
+                            .map(cs -> cs.getState().getRunning().getStartedAt().toString())
+                            .findFirst().orElse(null);
                     return new ProfiledPod(meta.getNamespace(), meta.getName(),
-                        service != null ? service : meta.getNamespace(), container);
+                        service != null ? service : meta.getNamespace(), container, startedAt);
                 })
                 .filter(pp -> pp.appContainer() != null)
                 .toList();

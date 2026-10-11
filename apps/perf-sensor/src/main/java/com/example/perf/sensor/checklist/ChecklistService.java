@@ -1,6 +1,7 @@
 package com.example.perf.sensor.checklist;
 
 import com.example.perf.sensor.SensorService;
+import com.example.perf.sensor.ServiceScope;
 import com.example.perf.sensor.collect.K8sCollector;
 import com.example.perf.sensor.collect.PrometheusClient;
 import org.slf4j.Logger;
@@ -52,10 +53,12 @@ public class ChecklistService {
     private final K8sCollector k8s;
     private final PrometheusClient prometheus;
     private final ChecklistEngine engine;
+    private final ServiceScope scope;
 
-    public ChecklistService(SensorService sensor, K8sCollector k8s, PrometheusClient prometheus,
+    public ChecklistService(SensorService sensor, K8sCollector k8s, PrometheusClient prometheus, ServiceScope scope,
                             @Value("${CHECKLIST_RULES:}") String rulesFile) {
         this.sensor = sensor;
+        this.scope = scope;
         this.k8s = k8s;
         this.prometheus = prometheus;
         try (InputStream in = rulesFile.isBlank()
@@ -69,6 +72,7 @@ public class ChecklistService {
     }
 
     public Settle settle(String service, int minUptimeSeconds) {
+        scope.check(service);
         var snap = k8s.collect(service, service);
         int uptime = snap.uptimeSeconds() == null ? 0 : snap.uptimeSeconds().intValue();
         int remaining = Math.max(0, minUptimeSeconds - uptime);

@@ -87,55 +87,75 @@ public class FactsCollector {
             floor = prometheus.workingSetFloorMi(service, container, pods, mins);
         }
         Double peak = prometheus.workingSetPeakMi(service, container, pods, mins);
-        Double startup = currentStartup(service, snap.readyPodNames());
+        Double startup = currentStartup(service, snap.readyPodNames());   // pods null: API unavailable
         var heap = dump.heap(snap.appPodIP());
         var ring = jfr.collect(snap.appPodIP(), snap.appPodName());
         // Traffic facts (Micrometer, fleet-wide) over the window clipped to the current pod's
         // lifetime, so a pod that has seen no load yet does not inherit the previous pod's traffic.
         int trafficMins = uptime == null ? mins : (int) Math.max(1, Math.min(mins, Math.floor(uptime / 60.0)));
-        Double requestRate = prometheus.requestRatePerSec(service, trafficMins);
+        Double requestRate = prometheus.requestRatePerSec(service, pods, trafficMins);
         // Latency describes steady state: exclude the boot minute once the pod has one, so the
         // first slow requests do not fail the latency bar. Younger pods use the lifetime window.
         int latencyMins = steadyMins > 0 ? steadyMins : trafficMins;
-        Double latencyMean = prometheus.latencyMeanMs(service, latencyMins);
-        Double latencyMax = prometheus.latencyMaxMs(service, latencyMins);
+        Double latencyMean = prometheus.latencyMeanMs(service, pods, latencyMins);
+        Double latencyMax = prometheus.latencyMaxMs(service, pods, latencyMins);
         // CPU and throttling describe steady state: the window starts after readiness and after
         // the JIT stopped dominating, so boot CPU never sizes the request. Within 2 min of a
         // restart the JIT is still compiling, so the steady CPU is the window's mean minus the
         // compiler threads' share of the CPU profile over the same window: compilation ends, the
         // load's CPU stays. A pod measured later has less JIT to subtract and reads the same.
+        // Per pod (the mean and the JIT share of the same pod), then the worst pod.
         Double steadyStart = steadyStartSeconds(uptime, startup, ring, to);
         Integer steadySecs = null;
-        Double cpuMean = null;
-        Double cpuJitShare = null;
+        SteadyCpu cpu = SteadyCpu.NONE;
         Double throttled = null;
         if (steadyStart != null) {
             steadySecs = (int) Math.min(mins * 60L, Math.floor(uptime - steadyStart));
-            cpuMean = prometheus.cpuUsageMeanCores(service, container, pods, steadySecs);
-            cpuJitShare = pyroscope.cpuJitShare(service, to.minusSeconds(steadySecs).toString(), to.toString());
+            cpu = steadyCpu(service, container, pods, steadySecs, to);
             throttled = prometheus.cpuThrottledRatio(service, container, pods, Math.min(300, steadySecs));
         } else if (uptime == null) {
             // No pod age (Kubernetes API unavailable): the requested window, boot included.
-            cpuMean = prometheus.cpuUsageMeanCores(service, container, pods, mins * 60);
-            cpuJitShare = pyroscope.cpuJitShare(service, from.toString(), to.toString());
+            cpu = steadyCpu(service, container, pods, mins * 60, to);
         }
-        Double cpuSteady = withoutJit(cpuMean, cpuJitShare);
         // effectiveCpuCount: what the JVM itself reported (jdk.ContainerConfiguration); null
         // without the ring. The limit is not a stand-in: item 5 compares the two.
         Integer effectiveCpu = ring != null && ring.container() != null ? ring.container().effectiveCpuCount() : null;
         var runtime = new RuntimeFacts(floor, peak,
             heap.heapUsedMi(), heap.heapCommittedMi(), heap.gcName(),
             effectiveCpu, startup, snap.restarts(), uptime, requestRate,
-            heap.maxHeapMi(), heap.initialHeapMi(), cpuSteady, cpuMean, cpuJitShare, steadyStart, steadySecs,
+            heap.maxHeapMi(), heap.initialHeapMi(), cpu.steadyCores(), cpu.meanCores(), cpu.jitShare(), steadyStart, steadySecs,
             throttled, latencyMean, latencyMax,
             snap.lastTerminationReason());
 
-        ProfileFacts profile = pyroscope.summarize(service, from.toString(), to.toString(), 15);
+        ProfileFacts profile = pyroscope.summarize(service, pods, from.toString(), to.toString(), 15);
 
-        logger.info("facts collected service={} window={}m workload={} workingSet=[{},{}] startup={} steady={}s from {}s cpu={} (jit {}%) samples={}",
-            service, mins, workload != null, floor, peak, startup, steadySecs, steadyStart, cpuSteady, cpuJitShare,
-            profile.samples());
+        logger.info("facts collected service={} window={}m workload={} workingSet=[{},{}] startup={} steady={}s from {}s cpu={} (pod {}, jit {}%) samples={}",
+            service, mins, workload != null, floor, peak, startup, steadySecs, steadyStart, cpu.steadyCores(), cpu.pod(),
+            cpu.jitShare(), profile.samples());
         return new Facts(workload, runtime, profile, ring);
+    }
+
+    /** The worst pod's steady CPU: its mean, its own JIT share, and the mean without that share. */
+    record SteadyCpu(String pod, Double meanCores, Double jitShare, Double steadyCores) {
+        static final SteadyCpu NONE = new SteadyCpu(null, null, null, null);
+    }
+
+    /**
+     * Per pod over the last {@code seconds}: mean CPU (cAdvisor) minus that pod's JIT share
+     * (Pyroscope, same window); the pod with the highest result. A fleet JIT share subtracted
+     * from the busiest pod would mix pods: one that only compiles would lower another's load.
+     */
+    SteadyCpu steadyCpu(String service, String container, String podRegex, int seconds, Instant to) {
+        var from = to.minusSeconds(seconds).toString();
+        SteadyCpu worst = SteadyCpu.NONE;
+        for (var e : prometheus.cpuUsageMeanCoresByPod(service, container, podRegex, seconds).entrySet()) {
+            Double jit = pyroscope.cpuJitShare(service, e.getKey(), from, to.toString());
+            Double steady = withoutJit(e.getValue(), jit);
+            if (worst.steadyCores() == null || steady > worst.steadyCores()) {
+                worst = new SteadyCpu(e.getKey(), e.getValue(), jit, steady);
+            }
+        }
+        return worst;
     }
 
     /** Mean CPU minus the JIT's percent share; the mean as it is when no profile covers the window. */
@@ -184,25 +204,26 @@ public class FactsCollector {
     }
 
     /**
-     * Startup of the slowest CURRENT pod. Source order: the sensor's own log-derived gauge
-     * (Started/Restored line of each pod — the only source that is right for a CRaC restore),
-     * then application.ready.time per pod, then the fleet max.
+     * Startup of the slowest CURRENT pod, resolved per pod: the sensor's own log-derived gauge
+     * (Started/Restored line — the only source that is right for a CRaC restore), else that
+     * pod's application.ready.time. null while any Ready pod has neither (a maximum over part
+     * of the pods could miss the slowest). The fleet max only when the Ready set is unknown.
      */
     Double currentStartup(String service, List<String> readyPods) {
-        if (readyPods != null && !readyPods.isEmpty()) {
-            for (var perPod : List.of(prometheus.perPodStartupFromLog(service), prometheus.perPodStartup(service))) {
-                var current = perPod.entrySet().stream()
-                    .filter(e -> readyPods.contains(e.getKey()))
-                    .mapToDouble(Map.Entry::getValue).max();
-                if (current.isPresent()) {
-                    return current.getAsDouble();
-                }
-            }
+        if (readyPods == null) {
+            return prometheus.startupSeconds(service);
         }
-        return prometheus.startupSeconds(service);
+        if (readyPods.isEmpty()) {
+            return null;
+        }
+        var perPod = perPodStartup(service, readyPods);
+        if (perPod.size() < readyPods.size()) {
+            return null;
+        }
+        return perPod.values().stream().mapToDouble(Double::doubleValue).max().orElseThrow();
     }
 
-    /** Per-pod startup, same source order as {@link #currentStartup}, restricted to the given pods. */
+    /** Per-pod startup, log gauge else application.ready.time, for the given pods (pods without either are absent). */
     public Map<String, Double> perPodStartup(String service, List<String> readyPods) {
         var fromLog = prometheus.perPodStartupFromLog(service);
         var fromMetric = prometheus.perPodStartup(service);

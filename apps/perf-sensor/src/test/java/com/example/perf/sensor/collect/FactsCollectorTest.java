@@ -38,7 +38,7 @@ class FactsCollectorTest {
 
     private FactsCollector collector() {
         when(dump.heap(any())).thenReturn(DumpCollector.HeapInfo.empty());
-        when(pyroscope.summarize(anyString(), anyString(), anyString(), anyInt()))
+        when(pyroscope.summarize(anyString(), any(), anyString(), anyString(), anyInt()))
             .thenReturn(new ProfileFacts(List.of(), List.of(), null, null, null, 0));
         return new FactsCollector(k8s, prometheus, pyroscope, dump, jfr);
     }
@@ -46,6 +46,11 @@ class FactsCollectorTest {
     private static K8sCollector.Snapshot snap(Double uptime, List<String> ready) {
         return new K8sCollector.Snapshot(null, 0, "10.0.0.1", ready.isEmpty() ? null : ready.getFirst(),
             "shop", uptime, null, ready);
+    }
+
+    /** Pod p1 started (application.ready.time) in {@code seconds}. */
+    private void startup(double seconds) {
+        when(prometheus.perPodStartup("shop")).thenReturn(Map.of("p1", seconds));
     }
 
     /** A JFR ring whose JIT was busy until {@code busySeconds} after the container started. */
@@ -75,14 +80,14 @@ class FactsCollectorTest {
 
     @Test
     void youngPod_hasNoFloorNoThrottleNoSteadyCpu_trafficWindowIsOneMinute() {
-        when(prometheus.startupSeconds("shop")).thenReturn(null);   // startup unknown: boot minute + margin
+        // startup unknown: boot minute + margin
         var f = collector().collect("shop", 15, snap(45.0, List.of("p1")));
         verify(prometheus, never()).workingSetFloorMi(any(), any(), any(), anyInt());
         verify(prometheus, never()).cpuThrottledRatio(any(), any(), any(), anyInt());
-        verify(prometheus, never()).cpuUsageMeanCores(any(), any(), any(), anyInt());
-        verify(pyroscope, never()).cpuJitShare(any(), any(), any());
-        verify(prometheus).requestRatePerSec("shop", 1);
-        verify(prometheus).latencyMeanMs("shop", 1);
+        verify(prometheus, never()).cpuUsageMeanCoresByPod(any(), any(), any(), anyInt());
+        verify(pyroscope, never()).cpuJitShare(any(), any(), any(), any());
+        verify(prometheus).requestRatePerSec("shop", "p1", 1);
+        verify(prometheus).latencyMeanMs("shop", "p1", 1);
         verify(prometheus).workingSetPeakMi("shop", "shop", "p1", 15);
         assertThat(f.runtime().workingSetFloorMi()).isNull();
         assertThat(f.runtime().cpuThrottledRatio()).isNull();
@@ -94,9 +99,9 @@ class FactsCollectorTest {
     void freshColdPod_steadyIsTheMeanAfterReadinessMinusTheJit() {
         // startup 15 s: steady from 15 + 10 = 25 s; at 120 s that is 95 s. Mean 0.42 cores, of
         // which the compiler threads took 25 % -> 0.315 cores of load.
-        when(prometheus.startupSeconds("shop")).thenReturn(15.0);
-        when(prometheus.cpuUsageMeanCores("shop", "shop", "p1", 95)).thenReturn(0.42);
-        when(pyroscope.cpuJitShare(eq("shop"), anyString(), anyString())).thenReturn(25.0);
+        startup(15.0);
+        when(prometheus.cpuUsageMeanCoresByPod("shop", "shop", "p1", 95)).thenReturn(Map.of("p1", 0.42));
+        when(pyroscope.cpuJitShare(eq("shop"), eq("p1"), anyString(), anyString())).thenReturn(25.0);
         var f = collector().collect("shop", 15, snap(120.0, List.of("p1")));
         verify(prometheus).cpuThrottledRatio("shop", "shop", "p1", 95);
         assertThat(f.runtime().cpuMeanCores()).isEqualTo(0.42);
@@ -107,12 +112,25 @@ class FactsCollectorTest {
     }
 
     @Test
+    void twoPods_eachPodLosesOnlyItsOwnJit() {
+        // p1 serves load at 1.0 core; p2 spends half of its 1.0 core compiling. A fleet share
+        // subtracted from the busiest pod would read 0.5; per pod the worst load is p1's 1.0.
+        when(prometheus.perPodStartup("shop")).thenReturn(Map.of("p1", 15.0, "p2", 15.0));
+        when(prometheus.cpuUsageMeanCoresByPod("shop", "shop", "p1|p2", 95)).thenReturn(Map.of("p1", 1.0, "p2", 1.0));
+        when(pyroscope.cpuJitShare(eq("shop"), eq("p1"), anyString(), anyString())).thenReturn(0.0);
+        when(pyroscope.cpuJitShare(eq("shop"), eq("p2"), anyString(), anyString())).thenReturn(50.0);
+        var f = collector().collect("shop", 15, snap(120.0, List.of("p1", "p2")));
+        assertThat(f.runtime().cpuSteadyCores()).isEqualTo(1.0);
+        assertThat(f.runtime().cpuJitShare()).isEqualTo(0.0);
+    }
+
+    @Test
     void busyJit_movesTheSteadyStartPastReadiness() {
         // JIT busy until 80 s, readiness at 25 s: steady from 80 s, 100 s at uptime 180 s.
-        when(prometheus.startupSeconds("shop")).thenReturn(15.0);
+        startup(15.0);
         when(jfr.collect(any(), any())).thenReturn(ringJitBusyUntil(180.0, 80.0));
         var f = collector().collect("shop", 15, snap(180.0, List.of("p1")));
-        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1", 100);
+        verify(prometheus).cpuUsageMeanCoresByPod("shop", "shop", "p1", 100);
         verify(prometheus).cpuThrottledRatio("shop", "shop", "p1", 100);
         assertThat(f.runtime().steadyStartSeconds()).isBetween(79.0, 81.0);
     }
@@ -120,19 +138,19 @@ class FactsCollectorTest {
     @Test
     void jitBusyAlmostToNow_keepsASixtySecondWindow() {
         // four 15 s scrapes: a 30 s window held two and came back empty on a restored pod.
-        when(prometheus.startupSeconds("shop")).thenReturn(15.0);
+        startup(15.0);
         when(jfr.collect(any(), any())).thenReturn(ringJitBusyUntil(120.0, 115.0));
         var f = collector().collect("shop", 15, snap(120.0, List.of("p1")));
-        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1", 60);
+        verify(prometheus).cpuUsageMeanCoresByPod("shop", "shop", "p1", 60);
         assertThat(f.runtime().steadyStartSeconds()).isEqualTo(60.0);
     }
 
     @Test
     void coldPodLessThanAMinutePastReadiness_hasNoSteadyCpu() {
         // ready at 25 s, uptime 80 s: 55 s of steady state, under the 60 s minimum.
-        when(prometheus.startupSeconds("shop")).thenReturn(15.0);
+        startup(15.0);
         var f = collector().collect("shop", 15, snap(80.0, List.of("p1")));
-        verify(prometheus, never()).cpuUsageMeanCores(any(), any(), any(), anyInt());
+        verify(prometheus, never()).cpuUsageMeanCoresByPod(any(), any(), any(), anyInt());
         assertThat(f.runtime().cpuSteadyCores()).isNull();
         assertThat(f.runtime().steadyStartSeconds()).isNull();
     }
@@ -140,32 +158,31 @@ class FactsCollectorTest {
     @Test
     void restoredPod_hasNoBootToExclude() {
         // CRaC restore in 0.06 s: steady from 10.06 s, 109 s at uptime 120 s.
-        when(prometheus.startupSeconds("shop")).thenReturn(0.06);
+        startup(0.06);
         collector().collect("shop", 15, snap(120.0, List.of("p1")));
-        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1", 109);
+        verify(prometheus).cpuUsageMeanCoresByPod("shop", "shop", "p1", 109);
     }
 
     @Test
     void settledPod_cpuIsTheMeanOverTheWholeSteadyWindow() {
-        when(prometheus.startupSeconds("shop")).thenReturn(null);
         collector().collect("shop", 15, snap(600.0, List.of("p1", "p2")));
         // no startup known: steady from 60 + 10 = 70 s -> 530 s; throttle capped at 300 s.
         // Floor and latency: (600-60)/60 = 9 min.
-        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1|p2", 530);
+        verify(prometheus).cpuUsageMeanCoresByPod("shop", "shop", "p1|p2", 530);
         verify(prometheus).cpuThrottledRatio("shop", "shop", "p1|p2", 300);
         verify(prometheus).workingSetFloorMi("shop", "shop", "p1|p2", 9);
-        verify(prometheus).latencyMeanMs("shop", 9);
-        verify(prometheus).latencyMaxMs("shop", 9);
-        verify(prometheus).requestRatePerSec("shop", 10);
+        verify(prometheus).latencyMeanMs("shop", "p1|p2", 9);
+        verify(prometheus).latencyMaxMs("shop", "p1|p2", 9);
+        verify(prometheus).requestRatePerSec("shop", "p1|p2", 10);
     }
 
     @Test
     void oldPod_windowsAreTheRequestedWindow() {
         collector().collect("shop", 15, snap(3600.0, List.of("p1")));
         verify(prometheus).workingSetFloorMi("shop", "shop", "p1", 15);
-        verify(prometheus).cpuUsageMeanCores("shop", "shop", "p1", 900);
-        verify(prometheus).latencyMeanMs("shop", 15);
-        verify(prometheus).requestRatePerSec("shop", 15);
+        verify(prometheus).cpuUsageMeanCoresByPod("shop", "shop", "p1", 900);
+        verify(prometheus).latencyMeanMs("shop", "p1", 15);
+        verify(prometheus).requestRatePerSec("shop", "p1", 15);
         verify(prometheus).cpuThrottledRatio("shop", "shop", "p1", 300);
     }
 
@@ -178,20 +195,31 @@ class FactsCollectorTest {
     }
 
     @Test
-    void startup_prefersTheLogGauge_thenReadyTime_restrictedToCurrentPods() {
+    void startup_prefersTheLogGauge_thenReadyTime_perCurrentPod() {
         var c = new FactsCollector(k8s, prometheus, pyroscope, dump, jfr);
         when(prometheus.perPodStartupFromLog("shop")).thenReturn(Map.of("old", 14.0, "p1", 0.06));
         when(prometheus.perPodStartup("shop")).thenReturn(Map.of("p1", 13.0, "p2", 12.5));
         assertThat(c.currentStartup("shop", List.of("p1"))).isEqualTo(0.06);
+        // p1 has a log line, p2 only the metric: the slowest current pod is p2.
+        assertThat(c.currentStartup("shop", List.of("p1", "p2"))).isEqualTo(12.5);
         assertThat(c.perPodStartup("shop", List.of("p1", "p2")))
             .containsEntry("p1", 0.06).containsEntry("p2", 12.5).doesNotContainKey("old");
     }
 
     @Test
-    void startup_fallsBackToFleetMax_withoutReadyPods() {
+    void startup_isUnknownWhileACurrentPodHasNone() {
+        var c = new FactsCollector(k8s, prometheus, pyroscope, dump, jfr);
+        when(prometheus.perPodStartupFromLog("shop")).thenReturn(Map.of("p1", 0.06));
+        when(prometheus.perPodStartup("shop")).thenReturn(Map.of());
+        assertThat(c.currentStartup("shop", List.of("p1", "p2"))).isNull();
+    }
+
+    @Test
+    void startup_fallsBackToFleetMax_onlyWhenTheReadySetIsUnknown() {
         var c = new FactsCollector(k8s, prometheus, pyroscope, dump, jfr);
         when(prometheus.startupSeconds("shop")).thenReturn(9.0);
-        assertThat(c.currentStartup("shop", List.of())).isEqualTo(9.0);
+        assertThat(c.currentStartup("shop", null)).isEqualTo(9.0);
+        assertThat(c.currentStartup("shop", List.of())).isNull();
         verify(prometheus, never()).perPodStartupFromLog(eq("shop"));
     }
 }

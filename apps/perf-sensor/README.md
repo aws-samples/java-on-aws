@@ -41,9 +41,13 @@ Every number in a tool result names its source; a fact that cannot be read is `n
 - **`REQUEST_PACKAGE` is required.** A thread is "request path" when this package is on
   its stack; the sensor refuses to start without it (`k8s/deployment.yaml`, set by
   `perf-sensor.sh`).
-- **Profiled workloads** are discovered by the profiler opt-in label
-  (`PROFILED_POD_LABEL`, default `perf-profile/sidecar=true`), so one sensor serves every
-  opted-in service in the cluster.
+- **`SENSOR_SERVICES` is required**: the workloads the sensor answers for, all with the
+  request package above. Any other service, and any name that is not a Kubernetes name, is
+  refused (REST 400, an MCP tool error): its stacks would never match the package and its
+  blocking counts would read 0. For several applications with different packages, run one
+  sensor per package.
+- **Startup** is published for every pod with the profiler opt-in label
+  (`PROFILED_POD_LABEL`, default `perf-profile/sidecar=true`).
 
 Environment variables are listed in `src/main/resources/application.yaml`.
 

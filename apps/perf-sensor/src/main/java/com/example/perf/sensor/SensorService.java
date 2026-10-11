@@ -51,15 +51,17 @@ public class SensorService {
     private final PyroscopeClient pyroscope;
     private final DumpCollector dump;
     private final LogCollector logs;
+    private final ServiceScope scope;
 
     public SensorService(FactsCollector facts, K8sCollector k8s, PrometheusClient prometheus,
-                         PyroscopeClient pyroscope, DumpCollector dump, LogCollector logs) {
+                         PyroscopeClient pyroscope, DumpCollector dump, LogCollector logs, ServiceScope scope) {
         this.facts = facts;
         this.k8s = k8s;
         this.prometheus = prometheus;
         this.pyroscope = pyroscope;
         this.dump = dump;
         this.logs = logs;
+        this.scope = scope;
     }
 
     // --- records returned by the tools/endpoints -------------------------------
@@ -201,6 +203,7 @@ public class SensorService {
      * can narrate progress, before collecting.
      */
     public MeasureResult measure(String service, int windowMinutes, int minUptimeSeconds) {
+        scope.check(service);
         int mins = norm(windowMinutes);
         int waited = 0, remaining = 0;
         String note = null;
@@ -257,6 +260,7 @@ public class SensorService {
 
     /** Collect facts and size. */
     public SizeResult sizeMemory(String service, int windowMinutes, SizeParams p) {
+        scope.check(service);
         return sizeMemory(facts.collect(service, norm(windowMinutes)), p);
     }
 
@@ -329,6 +333,7 @@ public class SensorService {
     // --- sizeCpu (arithmetic + guard) ------------------------------------------
 
     public CpuResult sizeCpu(String service, int windowMinutes, CpuParams p) {
+        scope.check(service);
         return sizeCpu(facts.collect(service, norm(windowMinutes)), p);
     }
 
@@ -396,6 +401,7 @@ public class SensorService {
      * merged). sampleN <= 1 = newest pod only. null when no dump could be taken or parsed.
      */
     public ThreadFacts threadDump(String service, int sampleN) {
+        scope.check(service);
         var refs = k8s.readyPodRefs(service, service);
         if (refs.isEmpty()) {
             var snap = k8s.collect(service, service);   // fallback to the representative pod
@@ -426,6 +432,7 @@ public class SensorService {
      * load flows. null when no dump could be taken.
      */
     public ThreadFacts threadDumpOverTime(String service, int samples, long intervalMs) {
+        scope.check(service);
         int n = Math.max(1, Math.min(samples <= 0 ? 5 : samples, 40));
         long gap = intervalMs <= 0 ? 1000L : Math.min(intervalMs, 5000L);
         var snap = k8s.collect(service, service);
@@ -501,6 +508,7 @@ public class SensorService {
      */
     public BlockingResult diagnoseBlocking(String service, int durationSec, long intervalMs,
                                            double minRequestRate) {
+        scope.check(service);
         int dur = Math.max(3, Math.min(durationSec <= 0 ? 20 : durationSec, 60));
         long gap = intervalMs <= 0 ? 500L : Math.min(intervalMs, 5000L);
         int samples = Math.max(2, (int) ((dur * 1000L) / gap));
@@ -525,13 +533,15 @@ public class SensorService {
     // --- profileTop / startupLog -----------------------------------------------
 
     public ProfileTop profileTop(String service, String type, int windowMinutes, int limit) {
+        scope.check(service);
         var to = Instant.now();
         var from = to.minus(Duration.ofMinutes(norm(windowMinutes)));
-        var t = pyroscope.top(service, type, from.toString(), to.toString(), limit <= 0 ? 15 : limit);
+        var t = pyroscope.top(service, null, type, from.toString(), to.toString(), limit <= 0 ? 15 : limit);
         return new ProfileTop(t.frames(), t.jitShare(), t.gcShare(), t.futexWallShare(), t.samples());
     }
 
     public StartupResult startupLog(String service) {
+        scope.check(service);
         var snap = k8s.collect(service, service);
         var line = logs.lastStartup(service, snap.appPodName(), snap.appContainer() != null ? snap.appContainer() : service);
         if (line == null) {

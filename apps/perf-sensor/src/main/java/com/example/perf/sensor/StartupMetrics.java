@@ -40,7 +40,8 @@ public class StartupMetrics {
     private final MultiGauge gauge;
     private final String podLabelSelector;
     private final String sidecarName;
-    // Per-pod cache (namespace/pod) of the parsed startup seconds, so a known pod's log is read once.
+    // Cache of the parsed startup seconds per JVM (namespace/pod/container start), so a known
+    // pod's log is read once and a container restart in the same pod is read again.
     private final Map<String, Double> byPod = new HashMap<>();
 
     public StartupMetrics(K8sCollector k8s, LogCollector logs, MeterRegistry registry,
@@ -85,6 +86,6 @@ public class StartupMetrics {
     }
 
     private static String key(ProfiledPod p) {
-        return p.namespace() + "/" + p.pod();
+        return p.namespace() + "/" + p.pod() + "@" + p.appStartedAt();
     }
 }

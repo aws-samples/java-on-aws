@@ -36,7 +36,7 @@ class SizeMemoryTest {
     // sizing-policy.yaml: cpuFactor, roundMillicores, warmSeconds, minSamples, minRequestRate, minDeltaMi
     static final CpuParams CPU_POLICY = new CpuParams(1.5, 50, 120, 100, 1, 64);
 
-    private final SensorService sensor = new SensorService(null, null, null, null, null, null);
+    private final SensorService sensor = new SensorService(null, null, null, null, null, null, ServiceScope.of("shop", "svc"));
 
     static Facts fixture(String name) throws IOException {
         try (var in = SizeMemoryTest.class.getResourceAsStream("/fixtures/" + name + ".json")) {

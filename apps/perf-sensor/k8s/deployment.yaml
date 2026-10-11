@@ -44,6 +44,7 @@ spec:
             - {name: DUMP_PORT, value: "9100"}
             - {name: SERVICE_LABEL, value: "app"}
             - {name: REQUEST_PACKAGE, value: "__REQUEST_PACKAGE__"}
+            - {name: SENSOR_SERVICES, value: "__SENSOR_SERVICES__"}
             - {name: PROFILED_POD_LABEL, value: "perf-profile/sidecar=true"}
             - {name: PROFILER_CONTAINER, value: "perf-profiler"}
             - {name: CHECKLIST_RULES, value: "/config/checklist/checklist-rules.yaml"}

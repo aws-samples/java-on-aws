@@ -67,20 +67,26 @@ public class PrometheusClient {
 
     /**
      * HTTP request rate (req/s) over the window from Micrometer
-     * {@code http_server_requests_seconds_count}. Signals whether the window saw
-     * real traffic (so a memory peak reflects load). null if the metric is absent.
+     * {@code http_server_requests_seconds_count}, actuator endpoints (probes, scrapes)
+     * excluded, for the given pods (null: every pod of the service). Signals whether the
+     * window saw real traffic (so a memory peak reflects load). null if the metric is absent.
      */
+    public Double requestRatePerSec(String app, String podRegex, int mins) {
+        return scalar("sum(rate(http_server_requests_seconds_count" + appSel(app, podRegex) + win(mins) + "))");
+    }
+
+    /** {@link #requestRatePerSec(String, String, int)} over every pod of the service. */
     public Double requestRatePerSec(String app, int mins) {
-        return scalar("sum(rate(http_server_requests_seconds_count{application=\"" + app + "\"}[" + mins + "m]))");
+        return requestRatePerSec(app, null, mins);
     }
 
     /**
-     * Mean CPU usage of the app container over the last {@code seconds}, cores (worst pod). A
+     * Mean CPU usage of the app container over the last {@code seconds}, cores, per pod. A
      * mean, not a percentile: it reads the same on a 60 s window and a 15 min one, so a pod
      * measured two minutes or ten minutes after a restart gets a comparable figure.
      */
-    public Double cpuUsageMeanCores(String namespace, String container, String podRegex, int seconds) {
-        return scalar("max(rate(container_cpu_usage_seconds_total"
+    public Map<String, Double> cpuUsageMeanCoresByPod(String namespace, String container, String podRegex, int seconds) {
+        return vectorByPod("max by (pod) (rate(container_cpu_usage_seconds_total"
             + sel(namespace, container, podRegex) + "[" + seconds + "s]))");
     }
 
@@ -100,16 +106,16 @@ public class PrometheusClient {
         return r == null || r.isNaN() || r.isInfinite() ? null : r;
     }
 
-    /** Mean HTTP latency over the window, ms, non-actuator URIs (rate(sum)/rate(count)); null if no traffic. */
-    public Double latencyMeanMs(String app, int mins) {
-        Double s = scalar("sum(rate(http_server_requests_seconds_sum{application=\"" + app + "\",uri!~\"/actuator.*\"}" + win(mins) + "))"
-            + " / sum(rate(http_server_requests_seconds_count{application=\"" + app + "\",uri!~\"/actuator.*\"}" + win(mins) + "))");
-        return s == null || s.isNaN() ? null : s * 1000.0;
+    /** Mean HTTP latency over the window, ms, non-actuator URIs (rate(sum)/rate(count)), given pods; null if no traffic. */
+    public Double latencyMeanMs(String app, String podRegex, int mins) {
+        Double s = scalar("sum(rate(http_server_requests_seconds_sum" + appSel(app, podRegex) + win(mins) + "))"
+            + " / sum(rate(http_server_requests_seconds_count" + appSel(app, podRegex) + win(mins) + "))");
+        return s == null ? null : s * 1000.0;
     }
 
-    /** Max HTTP latency seen in the window, ms, non-actuator URIs (Micrometer decaying max). */
-    public Double latencyMaxMs(String app, int mins) {
-        Double s = scalar("max(max_over_time(http_server_requests_seconds_max{application=\"" + app + "\",uri!~\"/actuator.*\"}" + win(mins) + "))");
+    /** Max HTTP latency seen in the window, ms, non-actuator URIs (Micrometer decaying max), given pods. */
+    public Double latencyMaxMs(String app, String podRegex, int mins) {
+        Double s = scalar("max(max_over_time(http_server_requests_seconds_max" + appSel(app, podRegex) + win(mins) + "))");
         return s == null ? null : s * 1000.0;
     }
 
@@ -156,6 +162,12 @@ public class PrometheusClient {
             logger.warn("Prometheus vectorByPod failed [{}]: {}", query, e.getMessage());
         }
         return out;
+    }
+
+    /** Micrometer series of the app: application == namespace (the naming contract), no actuator URIs. */
+    private static String appSel(String app, String podRegex) {
+        return "{application=\"" + app + "\",namespace=\"" + app + "\",uri!~\"/actuator.*\""
+            + (podRegex == null ? "" : ",pod=~\"" + podRegex + "\"") + "}";
     }
 
     private static String sel(String namespace, String container, String podRegex) {

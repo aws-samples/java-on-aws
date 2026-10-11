@@ -73,11 +73,17 @@ public class PyroscopeClient {
         this.restClient = RestClient.builder().baseUrl(this.pyroscopeUrl).build();
     }
 
-    /** Ranked leaf functions with self% for a profile type ("cpu"/"wall"), plus whole-profile shares. */
-    public ProfileData profile(String service, String profileType, String fromIso, String toIso, int limit) {
+    /**
+     * Ranked leaf functions with self% for a profile type ("cpu"/"wall"), plus whole-profile
+     * shares, for the service's pods matching {@code podRegex} (null: every pod) in the
+     * namespace of the same name (the naming contract; the profiler labels each upload with
+     * namespace and pod).
+     */
+    public ProfileData profile(String service, String podRegex, String profileType, String fromIso, String toIso, int limit) {
         var pt = resolveProfileType(profileType);
         try {
-            var query = pt + "{service_name=\"" + service + "\"}";
+            var query = pt + "{service_name=\"" + service + "\",namespace=\"" + service + "\""
+                + (podRegex == null ? "" : ",pod=~\"" + podRegex + "\"") + "}";
             var from = Instant.parse(fromIso);
             var to = Instant.parse(toIso);
             var response = restClient.get()
@@ -125,9 +131,9 @@ public class PyroscopeClient {
      * CPU + wall profile summary over the window: top frames of each, and the
      * JIT / GC (CPU) and futex (wall) shares. {@code samples} is the CPU sample count.
      */
-    public ProfileFacts summarize(String service, String fromIso, String toIso, int topN) {
-        var cpu = profile(service, "cpu", fromIso, toIso, topN);
-        var wall = profile(service, "wall", fromIso, toIso, topN);
+    public ProfileFacts summarize(String service, String podRegex, String fromIso, String toIso, int topN) {
+        var cpu = profile(service, podRegex, "cpu", fromIso, toIso, topN);
+        var wall = profile(service, podRegex, "wall", fromIso, toIso, topN);
         if (!cpu.hasSamples() && !wall.hasSamples()) {
             return new ProfileFacts(List.of(), List.of(), null, null, null, 0);
         }
@@ -138,17 +144,17 @@ public class PyroscopeClient {
             cpu.samples());
     }
 
-    /** JIT share of the CPU profile over the window, percent; null without CPU samples. */
-    public Double cpuJitShare(String service, String fromIso, String toIso) {
-        var cpu = profile(service, "cpu", fromIso, toIso, 1);
+    /** JIT share of the given pods' CPU profile over the window, percent; null without CPU samples. */
+    public Double cpuJitShare(String service, String podRegex, String fromIso, String toIso) {
+        var cpu = profile(service, podRegex, "cpu", fromIso, toIso, 1);
         return cpu.hasSamples() ? cpu.jitShare() : null;
     }
 
     /** JIT (cpu) / GC (cpu) / futex (wall) share for a single requested type, plus frames. */
     public record TopResult(List<Frame> frames, Double jitShare, Double gcShare, Double futexWallShare, long samples) {}
 
-    public TopResult top(String service, String type, String fromIso, String toIso, int limit) {
-        var data = profile(service, type, fromIso, toIso, limit);
+    public TopResult top(String service, String podRegex, String type, String fromIso, String toIso, int limit) {
+        var data = profile(service, podRegex, type, fromIso, toIso, limit);
         boolean cpu = isCpu(type);
         return new TopResult(data.frames(),
             cpu && data.hasSamples() ? data.jitShare() : null,
