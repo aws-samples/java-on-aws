@@ -57,8 +57,9 @@ PREBUILD=false
 [ -d "${APP_DIR}/.git" ] || { log_error "No git repo at ${APP_DIR}"; exit 1; }
 
 # 0. Stop the previous run's load and port-forward (loops first, then what they started).
-pkill -f 'scripts/load.sh' 2>/dev/null; pkill -f 'artillery run' 2>/dev/null
-pkill -f 'port-forward svc/perf-sensor' 2>/dev/null
+# common.sh sets -e: pkill exits 1 when nothing matches, which is the normal case here.
+pkill -f 'scripts/load.sh' 2>/dev/null || true; pkill -f 'artillery run' 2>/dev/null || true
+pkill -f 'port-forward svc/perf-sensor' 2>/dev/null || true
 sleep 2
 pgrep -f 'artillery run|scripts/load.sh' >/dev/null \
   && log_warning "load still running: $(pgrep -af 'artillery run|scripts/load.sh' | head -3)" \
