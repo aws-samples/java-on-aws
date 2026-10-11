@@ -170,9 +170,14 @@ public class PrometheusClient {
         return out;
     }
 
-    /** Micrometer series of the app: application == namespace (the naming contract), no actuator URIs. */
+    /**
+     * Micrometer series of the app, no actuator URIs, for the given pods. Not scoped by the
+     * series' namespace label: an application may set that tag itself, and one restored from a
+     * CRaC checkpoint reports what it read at build time (outside a pod: "default"). The pod
+     * label comes from Prometheus' Kubernetes discovery.
+     */
     private static String appSel(String app, String podRegex) {
-        return "{application=\"" + app + "\",namespace=\"" + app + "\",uri!~\"/actuator.*\""
+        return "{application=\"" + app + "\",uri!~\"/actuator.*\""
             + (podRegex == null ? "" : ",pod=~\"" + podRegex + "\"") + "}";
     }
 
