@@ -120,7 +120,9 @@ Read the file and pass the values through. The *why* for each:
 
 - **"reduce memory"** → `measure`, then `sizeMemory` (params above). Explain footprint
   vs heap from the evidence (working-set floor/peak vs heap committed vs observed
-  `maxHeapMi`). Artifact: `deployment-resources.yaml` with the returned values. Say that
+  `maxHeapMi`). Name how the heap is bounded from `jfr.jvmArgs`: without `-Xmx` or
+  `MaxRAMPercentage` there it is the JVM default, 25 % of the limit. Artifact:
+  `deployment-resources.yaml` with the returned values. Say that
   a second pass after a load run is part of the method (the heap moves with the limit).
   Reference: `right-size-memory.md`.
 - **"start faster without changing the image"** → `measure`, `startupLog`, `sizeCpu`.
