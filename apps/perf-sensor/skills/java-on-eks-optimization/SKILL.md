@@ -213,7 +213,9 @@ Read the file and pass the values through. The *why* for each:
 ## 5. Answer format
 
 Every answer, the policy one included, starts with the first `Root cause` line: no preamble
-about the work you did, and no answer that only names the items it covered.
+about the work you did, and no answer that only names the items it covered. Write it once,
+after the last tool call, as plain text: no Markdown headings or bold labels, and no line
+before `Root cause` such as a note that an edit is in place.
 
 ```
 Root cause: <one line, with tool + signal>
