@@ -1,10 +1,9 @@
 // ide.mjs tools|scm OUT_DIR — Code Editor screenshots (run through ide.sh, which prepares
 // the IDE and sets IDE_URL and WS_ACCOUNT).
 //
-//   tools  the IDE as it opens (deploy/java-performance/ide-layout.sh): Claude Code started
-//          in the editor-area terminal lists the MCP tools of perf-sensor and eks-mcp, the
-//          Shell terminal in the panel -> OUT_DIR/tools.png. Starts an interactive Claude:
-//          never while a ws-test runs.
+//   tools  Claude Code in a fresh editor-area terminal lists the MCP tools of perf-sensor and
+//          eks-mcp, the Shell terminal in the panel -> OUT_DIR/tools.png. Starts interactive
+//          Claude sessions (two, see below): never while a ws-test runs.
 //   open   the IDE as it opens: Explorer, the editor-area terminal, the Shell terminal
 //          -> OUT_DIR/open.png
 //   scm    the Source Control view with SCM_FILE's diff open (default deployment.yaml)
@@ -18,8 +17,24 @@ const { browser, page } = await open(process.env.IDE_URL);
 if (what === 'open') {
   await page.waitForTimeout(6000);
 } else if (what === 'tools') {
+  // The first terminal that runs Claude Code activates its VS Code extension, which then
+  // asks to relaunch that terminal and marks its tab with a warning badge for the rest of
+  // the session. So: run Claude once in a throwaway terminal, close it, and take the shot in
+  // a second one, where the extension's variables are set at creation and no badge appears.
+  const newTerminal = () =>
+    page.locator('.editor-group-container .editor-actions .codicon-plus').first().click();
   await page.locator('.editor-group-container .tab', { hasText: 'zsh' }).first().click();
   await page.waitForTimeout(800);
+  await newTerminal();
+  await page.waitForTimeout(4000);
+  await typeInTerminal(page, 'claude');
+  await page.waitForTimeout(18000);
+  await typeInTerminal(page, '/exit');
+  await page.waitForTimeout(4000);
+  await typeInTerminal(page, 'exit');       // closes the throwaway terminal and its tab
+  await page.waitForTimeout(3000);
+  await newTerminal();
+  await page.waitForTimeout(4000);
   await typeInTerminal(page, 'claude');
   await page.waitForTimeout(15000);
   await typeInTerminal(page, 'List the MCP tools you can see from perf-sensor and eks-mcp, names only.');
