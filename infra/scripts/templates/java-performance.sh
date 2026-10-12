@@ -15,7 +15,7 @@
 #      --- wait for A ---
 #   D  app          app-deploy (namespace, Pod Identity, manifests)      } in
 #   E  platform     perf-profiler install, startup-cpu-boost, perf-sensor } parallel
-#      placement    platform Deployments/StatefulSets → general-purpose NodePool
+#      placement    platform Deployments/StatefulSets → own platform NodePool
 #   F  verify       ALB answers, sensor measures, Claude wiring present
 #
 # Each stage script is idempotent and runnable on its own from the IDE.
@@ -65,10 +65,12 @@ A_PID=$!
 stage "B: EKS cluster"
 run "EKS cluster configured"        "$SETUP/eks.sh"
 try "NodePool pinned to m6a"        "$DEPLOY/nodepool-pin.sh"
+run "Platform NodePool created"     "$DEPLOY/platform-placement.sh" pool
 try "metrics-server installed"      "$DEPLOY/metrics-server.sh"
 
 # --- C: monitoring ---------------------------------------------------------------------
 stage "C: monitoring (Prometheus, Pyroscope, Grafana)"
+export MONITORING_NODEPOOL=platform   # monitoring.sh installs the stack onto the platform pool
 run "Monitoring stack deployed"     "$SETUP/monitoring.sh"
 
 # --- wait for A -------------------------------------------------------------------------
@@ -101,7 +103,7 @@ cat "$D_LOG"; cat "$E_LOG"
 [ "$E_RC" -eq 0 ] && log_success "$(stamp)Stage E done (profiler, boost, sensor)" || { log_error "$(stamp)Stage E FAILED"; exit 1; }
 
 # --- platform placement: platform pods off the app's node ------------------------------
-run "Platform on the general-purpose NodePool" "$DEPLOY/platform-placement.sh"
+run "Platform on its own NodePool" "$DEPLOY/platform-placement.sh"
 
 # --- F: verify --------------------------------------------------------------------------
 stage "F: verify"

@@ -1,51 +1,50 @@
 """Sample mapping for the java-performance content (used by refresh.py).
 
-setup: expand 0 = the environment check.
-baseline: expand 0 = the policy-view + attach block (rollout wait lines dropped), expand 2 =
-  the checklist answer as raw markdown. The profile-link block (block 3) has no expand.
-improve-manifest, improve-code: two blocks each, the Claude question and the combined
-  roll-out block. Expand 0 = Claude's answer wrapped at 110 columns, expand 1 = the roll-out
-  block up to "Pod is" (code: only the build, rollout, startup and heap-flag lines), expand 2 =
-  the checklist from "Score:".
-improve-image: the AOT question and its build block, the CRaC question and its build block,
-  then the profile link (no expand). Expands 0–4 = AOT answer, AOT build lines, CRaC answer,
-  CRaC build lines up to "Pod is", the checklist from "Score:".
-enforce: expand 0 = Claude's answer, expand 1 = the apply block.
+Each change in a module is split into short steps, each with its own block: Build (image
+and code modules), Roll out (apply, rollout, startup line, commit), Score (the checklist).
+Build blocks have no expand; Roll out expands drop the rollout wait lines; Score expands
+start at "Score:". See refresh() for the blocks and expands per page.
 
 A block re-run by hand replaces its expand with that real output; this mapping then
 overwrites it on the next refresh, so re-run the block or restore the expand from git.
 """
-from refresh import drop, keep, since, until, wrap
+from refresh import drop, since, wrap
 
 ROLLOUT_WAIT = r'^Waiting for deployment'
-BUILD_LINES = ('[build] docker build', '[build] pushed', 'deployment', '20', '-XX')
 
 
 def refresh(s):
     s.set_expand('setup/index.en.md', 0, s.blocks('setup/index.en.md')[0])
 
+    # baseline: read the policy, opt in, the rule (expand 2 is the rule YAML, not refreshed),
+    # the checklist question, the profile link (no expand).
     b = s.blocks('baseline/index.en.md')
-    s.set_expand('baseline/index.en.md', 0, drop(b[0], ROLLOUT_WAIT))
-    s.set_expand('baseline/index.en.md', 2, b[2], raw=True)
+    s.set_expand('baseline/index.en.md', 0, b[0])
+    s.set_expand('baseline/index.en.md', 1, drop(b[1], ROLLOUT_WAIT))
+    s.set_expand('baseline/index.en.md', 3, b[3], raw=True)
 
-    for page in ('improve-manifest', 'improve-code'):
-        md = page + '/index.en.md'
-        question, run = s.blocks(md)
-        s.set_expand(md, 0, wrap(question))
-        head = drop(until(run, 'Pod is'), ROLLOUT_WAIT)
-        if page != 'improve-manifest':
-            head = keep(head, *BUILD_LINES)
-        s.set_expand(md, 1, head)
-        s.set_expand(md, 2, since(run, 'Score:'))
+    # manifest: question, roll out, score.
+    md = 'improve-manifest/index.en.md'
+    question, rollout, score = s.blocks(md)
+    s.set_expand(md, 0, wrap(question))
+    s.set_expand(md, 1, drop(rollout, ROLLOUT_WAIT))
+    s.set_expand(md, 2, since(score, 'Score:'))
 
-    # improve-image: AOT question + build block, CRaC question + build block, profile link.
+    # image: AOT question, build, roll out; CRaC question, build, roll out, score; profile link.
     md = 'improve-image/index.en.md'
-    aot_q, aot_run, crac_q, crac_run = s.blocks(md)[:4]
+    aot_q, _, aot_rollout, crac_q, _, crac_rollout, crac_score = s.blocks(md)[:7]
     s.set_expand(md, 0, wrap(aot_q))
-    s.set_expand(md, 1, keep(drop(aot_run, ROLLOUT_WAIT), *BUILD_LINES))
+    s.set_expand(md, 1, drop(aot_rollout, ROLLOUT_WAIT))
     s.set_expand(md, 2, wrap(crac_q))
-    s.set_expand(md, 3, keep(drop(until(crac_run, 'Pod is'), ROLLOUT_WAIT), *BUILD_LINES))
-    s.set_expand(md, 4, since(crac_run, 'Score:'))
+    s.set_expand(md, 3, drop(crac_rollout, ROLLOUT_WAIT))
+    s.set_expand(md, 4, since(crac_score, 'Score:'))
+
+    # code: question, build, roll out, score.
+    md = 'improve-code/index.en.md'
+    question, _, rollout, score = s.blocks(md)
+    s.set_expand(md, 0, wrap(question))
+    s.set_expand(md, 1, drop(rollout, ROLLOUT_WAIT))
+    s.set_expand(md, 2, since(score, 'Score:'))
 
     question, run = s.blocks('enforce/index.en.md')
     s.set_expand('enforce/index.en.md', 0, wrap(question))
