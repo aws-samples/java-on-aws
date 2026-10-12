@@ -174,8 +174,13 @@ pyroscope:
       prometheus.io/scrape: "true"
       prometheus.io/port: "4040"
       prometheus.io/path: /metrics
+  # The metastore (the index of the blocks in S3) lives on the data volume: on an emptyDir
+  # a rescheduled pod starts with an empty index and every earlier profile, still in S3,
+  # becomes unqueryable. A PVC (the default gp3 class from eks.sh) keeps it across moves,
+  # like Prometheus and Grafana.
   persistence:
-    enabled: false
+    enabled: true
+    size: 10Gi
   resources:
     requests:
       cpu: 200m
