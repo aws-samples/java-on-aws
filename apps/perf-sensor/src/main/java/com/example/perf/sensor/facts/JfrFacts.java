@@ -14,7 +14,8 @@ import java.util.List;
  * @param pod              pod the ring was dumped from
  * @param recordingStart   first event timestamp in the dump (ISO-8601)
  * @param recordingEnd     last event timestamp in the dump (ISO-8601)
- * @param container        jdk.ContainerConfiguration — limits as the JVM read them
+ * @param container        jdk.ContainerConfiguration — limits as the JVM read them, from the
+ *                         earliest event in the ring (its first chunk, seconds after start)
  * @param jvmArgs          the JVM tuning flags of jdk.JVMInformation.jvmArguments (incl. ENTRYPOINT/JAVA_TOOL_OPTIONS), {@link JvmOptions}
  * @param gc               jdk.GCPhasePause aggregate
  * @param pinned           jdk.VirtualThreadPinned aggregate (synchronized blocks pinning carriers)

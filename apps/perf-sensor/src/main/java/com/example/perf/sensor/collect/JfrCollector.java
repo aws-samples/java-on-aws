@@ -102,6 +102,7 @@ public class JfrCollector {
     JfrFacts parse(Path file, String podName) throws IOException {
         Instant first = null, last = null;
         ContainerConfig container = null;
+        Instant containerAt = null;
         String jvmArgs = null;
         int gcCount = 0;
         double gcMax = 0, gcTotal = 0;
@@ -126,11 +127,19 @@ public class JfrCollector {
                     if (last == null || t.isAfter(last)) last = t;
                 }
                 switch (e.getEventType().getName()) {
-                    case "jdk.ContainerConfiguration" -> container = new ContainerConfig(
-                        (int) e.getLong("effectiveCpuCount"),
-                        quotaCores(e),
-                        e.getLong("memoryLimit") > 0 ? e.getLong("memoryLimit") / (1024.0 * 1024.0) : null,
-                        e.getString("containerType"));
+                    // One event per chunk, read from the cgroup at the chunk's start; every
+                    // ring dump starts a chunk. Keep the earliest: the container as the JVM saw
+                    // it in its first seconds (during a startup boost), not at the last dump.
+                    case "jdk.ContainerConfiguration" -> {
+                        if (container == null || (t != null && containerAt != null && t.isBefore(containerAt))) {
+                            containerAt = t;
+                            container = new ContainerConfig(
+                                (int) e.getLong("effectiveCpuCount"),
+                                quotaCores(e),
+                                e.getLong("memoryLimit") > 0 ? e.getLong("memoryLimit") / (1024.0 * 1024.0) : null,
+                                e.getString("containerType"));
+                        }
+                    }
                     case "jdk.JVMInformation" -> {
                         // null when the JVM was started without -XX flags: keep "" so the caller can tell
                         // "event seen, no args" from "ring unavailable" (null).
