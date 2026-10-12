@@ -6,7 +6,7 @@ set -Eeuo pipefail
 WS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${WS_SCRIPT_DIR}/runtime.sh"
 ws_begin_run 'Java performance optimization' "${WS_SCRIPT_DIR}/reports/java-performance" 5 "$@"
-ws_set_executable_total 16
+ws_set_executable_total 20
 ws_set_default_timeout 600
 ws_source_environment '/etc/profile.d/workshop.sh'
 
@@ -59,7 +59,7 @@ ws_end_page
 
 ws_begin_page 'Measure the baseline' 100 'baseline/index.en.md'
 
-ws_run_block 1 'The injection policy' 'The injection policy' 25 42 'bash' '' <<'WS_TEST_BLOCK_100_1'
+ws_run_block 1 'The injection policy' 'The injection policy' 25 48 'bash' '' <<'WS_TEST_BLOCK_100_1'
 # when the policy applies: a CEL condition on the pod's labels
 kubectl get mutatingpolicy inject-perf-profiler -o yaml | yq '.spec.matchConditions[0].expression'
 
@@ -72,26 +72,42 @@ yq -i '.spec.template.metadata.labels."perf-profile/sidecar" = "true"' ~/environ
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 
+# startup line of the new pod
+kubectl -n unicorn-store-spring logs -c unicorn-store-spring $(kubectl -n unicorn-store-spring get pod \
+  -l app=unicorn-store-spring --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].metadata.name}') \
+  | grep -E "Started StoreApplication|restored JVM"
+
 # the manifest lists one container, the running pod has two: admission added the sidecar
 echo "manifest: $(yq '.spec.template.spec.containers[].name' ~/environment/unicorn-store-spring/k8s/deployment.yaml | xargs)"
-echo "pod:      $(kubectl -n unicorn-store-spring get pod -l app=unicorn-store-spring -o jsonpath='{.items[0].spec.containers[*].name}')"
+echo "pod:      $(kubectl -n unicorn-store-spring get pod -l app=unicorn-store-spring \
+  --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].spec.containers[*].name}')"
 
 git -C ~/environment/unicorn-store-spring add -A \
   && git -C ~/environment/unicorn-store-spring commit -q -m "baseline: profiler attached"
 WS_TEST_BLOCK_100_1
 
-ws_skip_block 2 'The injection policy' 'The injection policy' 47 57 'text' '' 'copy action disabled'
+ws_skip_block 2 'The injection policy' 'The injection policy' 53 64 'text' '' 'copy action disabled'
 
-ws_run_block 3 'The sensor' 'The sensor' 70 71 'bash' '' <<'WS_TEST_BLOCK_100_3'
+ws_run_block 3 'The sensor' 'The sensor' 77 78 'bash' '' <<'WS_TEST_BLOCK_100_3'
 kubectl -n monitoring get configmap perf-sensor-checklist-rules -o jsonpath='{.data.checklist-rules\.yaml}' \
   | yq '.items[] | select(.id == 6)'
 WS_TEST_BLOCK_100_3
 
-ws_skip_block 4 'The sensor' 'The sensor' 76 88 'yaml' '' 'copy action disabled'
+ws_skip_block 4 'The sensor' 'The sensor' 83 95 'yaml' '' 'copy action disabled'
 
-ws_run_block 5 'Ask for the baseline' 'In the Shell terminal:' 109 109 'bash' 'non-interactive' <<'WS_TEST_BLOCK_100_5'
+ws_run_block 5 'Ask for the baseline' 'In the Shell terminal:' 116 116 'bash' 'non-interactive' <<'WS_TEST_BLOCK_100_5'
 cd ~/environment && claude -c -p "How is unicorn-store-spring doing against best practices?"
 WS_TEST_BLOCK_100_5
+
+ws_run_block 6 'Where the start spends its CPU' 'In the Shell terminal, print a link to the CPU profile of the new pod'"'"'s first 90 seconds in Grafana:' 129 135 'bash' '' <<'WS_TEST_BLOCK_100_6'
+POD=$(kubectl -n unicorn-store-spring get pod -l app=unicorn-store-spring \
+  --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].metadata.name}')
+START=$(date -d "$(kubectl -n unicorn-store-spring get pod $POD -o jsonpath='{.status.startTime}')" +%s)
+GRAFANA_URL=$(kubectl -n monitoring get svc grafana -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
+echo "http://${GRAFANA_URL}/a/grafana-pyroscope-app/explore?explorationType=flame-graph&var-dataSource=pyroscope\
+&var-serviceName=unicorn-store-spring&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds\
+&var-filters=pod%7C%3D%7C${POD}&from=${START}000&to=$((START + 90))000"
+WS_TEST_BLOCK_100_6
 
 ws_end_page
 
@@ -101,11 +117,11 @@ ws_run_block 1 'Improve the manifest' 'In the Shell terminal:' 23 23 'bash' 'non
 cd ~/environment && claude -c -p "Right-size the memory and CPU of unicorn-store-spring and make it start faster without changing the image."
 WS_TEST_BLOCK_200_1
 
-ws_skip_block 2 'Review the change' 'Review the change' 49 76 'text' '' 'copy action disabled'
+ws_skip_block 2 'Review the change' 'Review the change' 49 74 'text' '' 'copy action disabled'
 
-ws_skip_block 3 'Review the change' '- requests.cpu and ActiveProcessorCount=1 come from sizeCpu. limits.cpu stays at 1' 94 115 'yaml' '' 'copy action disabled'
+ws_skip_block 3 'Review the change' '- resizePolicy with restartPolicy: NotRequired for CPU states that a CPU change needs no restart. It is the default on current Kubernetes, and the prerequisite for the resize the controller performs' 93 114 'yaml' '' 'copy action disabled'
 
-ws_run_block 4 'Roll out, verify and score' 'In the Shell terminal:' 127 148 'bash' '' 900 <<'WS_TEST_BLOCK_200_4'
+ws_run_block 4 'Roll out, verify and score' 'In the Shell terminal:' 126 149 'bash' '' 900 <<'WS_TEST_BLOCK_200_4'
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/startup-cpu-boost.yaml
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
@@ -115,8 +131,10 @@ kubectl -n unicorn-store-spring exec deploy/unicorn-store-spring -c unicorn-stor
   sh -c 'unset JAVA_TOOL_OPTIONS; jcmd $(jcmd -l | grep -v JCmd | cut -d" " -f1) VM.flags' \
   | tr ' ' '\n' | grep -E 'MaxHeapSize|InitialHeapSize|UseSerialGC|ActiveProcessorCount'
 
-# startup with the boost
-curl -s localhost:8090/api/v1/startupLog/unicorn-store-spring | jq -r .line
+# startup line of the new pod, with the boost
+kubectl -n unicorn-store-spring logs -c unicorn-store-spring $(kubectl -n unicorn-store-spring get pod \
+  -l app=unicorn-store-spring --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].metadata.name}') \
+  | grep -E "Started StoreApplication|restored JVM"
 
 # what the JVM saw at start (the boosted quota) and what the cgroup allows now
 sleep 30
@@ -130,25 +148,52 @@ git -C ~/environment/unicorn-store-spring add -A \
 curl -sN "localhost:8090/api/v1/checklist/unicorn-store-spring?format=text&wait=true"
 WS_TEST_BLOCK_200_4
 
-ws_skip_block 5 'Roll out, verify and score' 'Roll out, verify and score' 155 165 'text' '' 'copy action disabled'
+ws_skip_block 5 'Roll out, verify and score' 'Roll out, verify and score' 156 166 'text' '' 'copy action disabled'
 
-ws_skip_block 6 'The score' 'The score' 192 210 'text' '' 'copy action disabled'
+ws_skip_block 6 'The score' 'The score' 193 211 'text' '' 'copy action disabled'
 
 ws_end_page
 
 ws_begin_page 'Improve the image' 300 'improve-image/index.en.md'
 
-ws_run_block 1 'Improve the image' 'In the Shell terminal:' 23 23 'bash' 'non-interactive' <<'WS_TEST_BLOCK_300_1'
-cd ~/environment && claude -c -p "How can unicorn-store-spring start in under a second?"
+ws_run_block 1 'Without changing the code' 'In the Shell terminal:' 25 25 'bash' 'non-interactive' <<'WS_TEST_BLOCK_300_1'
+cd ~/environment && claude -c -p "Make unicorn-store-spring start faster without changing its code."
 WS_TEST_BLOCK_300_1
 
-ws_skip_block 2 'Review the change' 'Review the change' 42 75 'text' '' 'copy action disabled'
+ws_skip_block 2 'Review the change' 'Review the change' 43 57 'text' '' 'copy action disabled'
 
-ws_skip_block 3 'Review the change' '- k8s/deployment.yaml: JAVATOOLOPTIONS removed. A restored JVM keeps the flags of the checkpoint, and a GC flag in the environment stops the restore' 88 131 'dockerfile' '' 'copy action disabled'
+ws_run_block 3 'Build, roll out and check the startup' 'In the Shell terminal:' 68 83 'bash' '' 1500 <<'WS_TEST_BLOCK_300_3'
+# ≈ 2 min: builds the jar, trains and creates the cache; pushes :aot
+~/environment/unicorn-store-spring/scripts/build.sh aot Dockerfile.aot
 
-ws_skip_block 4 'Review the change' '- Line 44: -XX:CRaCRestoreFrom restores instead of starting. There are no GC or heap flags: they came with the checkpoint' 144 174 'java' '' 'copy action disabled'
+# point the Deployment at the :aot tag and roll it out
+yq -i '.spec.template.spec.containers[0].image |= sub(":[^:]+$"; ":aot")' \
+  ~/environment/unicorn-store-spring/k8s/deployment.yaml
+kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
+kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 
-ws_run_block 5 'Build, roll out, verify and score' 'In the Shell terminal. The build starts the application inside Docker, warms it up, checkpoints, and pushes the :crac tag:' 187 207 'bash' '' 1500 <<'WS_TEST_BLOCK_300_5'
+# startup line of the new pod
+kubectl -n unicorn-store-spring logs -c unicorn-store-spring $(kubectl -n unicorn-store-spring get pod \
+  -l app=unicorn-store-spring --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].metadata.name}') \
+  | grep -E "Started StoreApplication|restored JVM"
+
+git -C ~/environment/unicorn-store-spring add -A \
+  && git -C ~/environment/unicorn-store-spring commit -q -m "aot cache"
+WS_TEST_BLOCK_300_3
+
+ws_skip_block 4 'Build, roll out and check the startup' 'Build, roll out and check the startup' 88 92 'text' '' 'copy action disabled'
+
+ws_run_block 5 'With a code change' 'In the Shell terminal:' 113 113 'bash' 'non-interactive' <<'WS_TEST_BLOCK_300_5'
+cd ~/environment && claude -c -p "Can unicorn-store-spring start even faster if its code may change?"
+WS_TEST_BLOCK_300_5
+
+ws_skip_block 6 'Review the change' 'Review the change' 132 168 'text' '' 'copy action disabled'
+
+ws_skip_block 7 'Review the change' '- k8s/deployment.yaml: JAVATOOLOPTIONS removed. A restored JVM keeps the flags of the checkpoint, and a GC flag in the environment stops the restore' 181 224 'dockerfile' '' 'copy action disabled'
+
+ws_skip_block 8 'Review the change' '- Line 44: -XX:CRaCRestoreFrom restores instead of starting. There are no GC or heap flags: they came with the checkpoint' 237 267 'java' '' 'copy action disabled'
+
+ws_run_block 9 'Build, roll out, verify and score' 'In the Shell terminal:' 280 302 'bash' '' 1500 <<'WS_TEST_BLOCK_300_9'
 # ≈ 3 min: builds, starts, warms up, checkpoints; pushes :crac
 ~/environment/unicorn-store-spring/scripts/build.sh crac Dockerfile.crac
 
@@ -158,8 +203,10 @@ yq -i '.spec.template.spec.containers[0].image |= sub(":[^:]+$"; ":crac")' \
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
 
-# startup line: "restored", well under a second
-curl -s localhost:8090/api/v1/startupLog/unicorn-store-spring | jq -r .line
+# startup line of the new pod
+kubectl -n unicorn-store-spring logs -c unicorn-store-spring $(kubectl -n unicorn-store-spring get pod \
+  -l app=unicorn-store-spring --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].metadata.name}') \
+  | grep -E "Started StoreApplication|restored JVM"
 
 # heap flags came from the checkpoint, not from the Deployment
 kubectl -n unicorn-store-spring exec deploy/unicorn-store-spring -c unicorn-store-spring -- \
@@ -170,11 +217,21 @@ git -C ~/environment/unicorn-store-spring add -A \
   && git -C ~/environment/unicorn-store-spring commit -q -m "crac"
 
 curl -sN "localhost:8090/api/v1/checklist/unicorn-store-spring?format=text&wait=true"
-WS_TEST_BLOCK_300_5
+WS_TEST_BLOCK_300_9
 
-ws_skip_block 6 'Where the restored start spends its CPU' 'Where the restored start spends its CPU' 232 241 'text' '' 'copy action disabled'
+ws_run_block 10 'Where the restored start spends its CPU' 'Print the same link for the restored pod:' 324 330 'bash' '' <<'WS_TEST_BLOCK_300_10'
+POD=$(kubectl -n unicorn-store-spring get pod -l app=unicorn-store-spring \
+  --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].metadata.name}')
+START=$(date -d "$(kubectl -n unicorn-store-spring get pod $POD -o jsonpath='{.status.startTime}')" +%s)
+GRAFANA_URL=$(kubectl -n monitoring get svc grafana -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
+echo "http://${GRAFANA_URL}/a/grafana-pyroscope-app/explore?explorationType=flame-graph&var-dataSource=pyroscope\
+&var-serviceName=unicorn-store-spring&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds\
+&var-filters=pod%7C%3D%7C${POD}&from=${START}000&to=$((START + 90))000"
+WS_TEST_BLOCK_300_10
 
-ws_skip_block 7 'The score' 'The score' 257 275 'text' '' 'copy action disabled'
+ws_skip_block 11 'Where the restored start spends its CPU' 'Search for ClassLoader: 13% of the baseline pod'"'"'s window in this run, 1% after the restore. Search for CompileBroker: the JIT compiler threads still take about half of the window.' 339 348 'text' '' 'copy action disabled'
+
+ws_skip_block 12 'The score' 'The score' 364 382 'text' '' 'copy action disabled'
 
 ws_end_page
 
@@ -184,14 +241,19 @@ ws_run_block 1 'Improve the code' 'In the Shell terminal:' 23 23 'bash' 'non-int
 cd ~/environment && claude -c -p "Why do some writes to unicorn-store-spring take seconds under load? Fix it, size the service again and fix item 10."
 WS_TEST_BLOCK_400_1
 
-ws_skip_block 2 'Review the change' 'Review the change' 41 75 'text' '' 'copy action disabled'
+ws_skip_block 2 'Review the change' 'Review the change' 41 79 'text' '' 'copy action disabled'
 
-ws_run_block 3 'Build, roll out, verify and score' 'In the Shell terminal. The image tag stays :crac with a new digest, and the Deployment changed, so apply rolls out both:' 96 110 'bash' '' 1500 <<'WS_TEST_BLOCK_400_3'
+ws_run_block 3 'Build, roll out, verify and score' 'The image tag stays :crac with a new digest, and the Deployment changed, so apply rolls out both. In the Shell terminal:' 100 119 'bash' '' 1500 <<'WS_TEST_BLOCK_400_3'
 # code and heap flags changed: rebuild the checkpoint (≈ 2 min)
 ~/environment/unicorn-store-spring/scripts/build.sh crac Dockerfile.crac
 
 kubectl -n unicorn-store-spring apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl -n unicorn-store-spring rollout status deploy/unicorn-store-spring --timeout=300s
+
+# startup line of the new pod
+kubectl -n unicorn-store-spring logs -c unicorn-store-spring $(kubectl -n unicorn-store-spring get pod \
+  -l app=unicorn-store-spring --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].metadata.name}') \
+  | grep -E "Started StoreApplication|restored JVM"
 
 # heap flags from the new checkpoint: 75 % / 50 % of the new limit
 kubectl -n unicorn-store-spring exec deploy/unicorn-store-spring -c unicorn-store-spring -- \
@@ -204,9 +266,9 @@ git -C ~/environment/unicorn-store-spring add -A \
 curl -sN "localhost:8090/api/v1/checklist/unicorn-store-spring?format=text&wait=true"
 WS_TEST_BLOCK_400_3
 
-ws_skip_block 4 'The pool and the database' 'The pool and the database' 129 135 'text' '' 'copy action disabled'
+ws_skip_block 4 'The pool and the database' 'The pool and the database' 138 145 'text' '' 'copy action disabled'
 
-ws_skip_block 5 'The score' 'The score' 151 169 'text' '' 'copy action disabled'
+ws_skip_block 5 'The score' 'The score' 161 179 'text' '' 'copy action disabled'
 
 ws_end_page
 
@@ -216,11 +278,11 @@ ws_run_block 1 'Enforce the practices' 'In the Shell terminal:' 23 23 'bash' 'no
 cd ~/environment && claude -c -p "Turn the checklist items that can be checked on the manifest into a Kyverno policy for unicorn-store-spring."
 WS_TEST_BLOCK_500_1
 
-ws_skip_block 2 'Review the policy' 'Review the policy' 44 65 'text' '' 'copy action disabled'
+ws_skip_block 2 'Review the policy' 'Review the policy' 44 66 'text' '' 'copy action disabled'
 
-ws_skip_block 3 'Review the policy' 'Two of the seven validations in k8s/policy.yaml:' 72 84 'yaml' '' 'copy action disabled'
+ws_skip_block 3 'Review the policy' 'Two of the seven validations in k8s/policy.yaml:' 73 85 'yaml' '' 'copy action disabled'
 
-ws_run_block 4 'Apply and test' 'In the Shell terminal:' 97 109 'bash' '' <<'WS_TEST_BLOCK_500_4'
+ws_run_block 4 'Apply and test' 'In the Shell terminal:' 98 110 'bash' '' <<'WS_TEST_BLOCK_500_4'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/policy.yaml
 
 # the background scan reports the running Deployment
@@ -236,13 +298,13 @@ git -C ~/environment/unicorn-store-spring add -A \
   && git -C ~/environment/unicorn-store-spring commit -q -m "kyverno policy"
 WS_TEST_BLOCK_500_4
 
-ws_skip_block 5 'Apply and test' 'Apply and test' 114 118 'text' '' 'copy action disabled'
+ws_skip_block 5 'Apply and test' 'Apply and test' 115 119 'text' '' 'copy action disabled'
 
 ws_end_page
 
 ws_begin_page 'Results' 650 'results/index.en.md'
 
-ws_skip_block 1 'Choosing for your own workloads' 'Choosing for your own workloads' 29 48 '' '' 'informational block without language'
+ws_skip_block 1 'Choosing for your own workloads' 'Choosing for your own workloads' 30 49 '' '' 'informational block without language'
 
 ws_end_page
 

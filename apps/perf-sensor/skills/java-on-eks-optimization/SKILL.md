@@ -204,13 +204,16 @@ Read the file and pass the values through. The *why* for each:
   → `measure` (the items must pass on the current Deployment, or the policy rejects its next
   update: say which fail and fix them in the same change). Artifact: `k8s/policy.yaml` from
   `kyverno-policy.yaml`, `<namespace>` filled, expressions verbatim. It covers items 1, 3, 9
-  and 10; name the others as runtime items the sensor keeps scoring. Close with the step-5
-  line. Reference: `kyverno-policy.md`.
+  and 10; name the others as runtime items the sensor keeps scoring. The answer takes the
+  section 5 format like every other: `Root cause` is that a regression reaches the cluster
+  before the next measurement, `Evidence` is `measure`'s values for items 1, 3, 9 and 10 on
+  the current Deployment. Reference: `kyverno-policy.md`.
 - **"how are we doing / score"** → run the `java-on-eks-checklist` skill.
 
 ## 5. Answer format
 
-The answer starts with the first `Root cause` line: no preamble about the work you did.
+Every answer, the policy one included, starts with the first `Root cause` line: no preamble
+about the work you did, and no answer that only names the items it covered.
 
 ```
 Root cause: <one line, with tool + signal>

@@ -15,6 +15,7 @@
 #      --- wait for A ---
 #   D  app          app-deploy (namespace, Pod Identity, manifests)      } in
 #   E  platform     perf-profiler install, startup-cpu-boost, perf-sensor } parallel
+#      placement    platform Deployments/StatefulSets → general-purpose NodePool
 #   F  verify       ALB answers, sensor measures, Claude wiring present
 #
 # Each stage script is idempotent and runnable on its own from the IDE.
@@ -98,6 +99,9 @@ E_RC=0; wait "$E_PID" || E_RC=$?
 cat "$D_LOG"; cat "$E_LOG"
 [ "$D_RC" -eq 0 ] && log_success "$(stamp)Stage D done (app deployed)" || { log_error "$(stamp)Stage D FAILED"; exit 1; }
 [ "$E_RC" -eq 0 ] && log_success "$(stamp)Stage E done (profiler, boost, sensor)" || { log_error "$(stamp)Stage E FAILED"; exit 1; }
+
+# --- platform placement: platform pods off the app's node ------------------------------
+run "Platform on the general-purpose NodePool" "$DEPLOY/platform-placement.sh"
 
 # --- F: verify --------------------------------------------------------------------------
 stage "F: verify"

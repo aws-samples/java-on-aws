@@ -7,7 +7,10 @@
 #
 # Writes ~/.code-editor-server/data/User/tasks.json (task "Shell", runOn folderOpen) and
 # sets "task.allowAutomaticTasks": "on" in the user settings (without it Code Editor asks
-# before running the task). Runs as ec2-user after ide/code-editor.sh. Idempotent.
+# before running the task) and "terminal.integrated.environmentChangesIndicator": "off" (the
+# Claude Code extension asks to relaunch every terminal Claude runs in, which otherwise marks
+# the tab with a warning badge for the rest of the session). Runs as ec2-user after
+# ide/code-editor.sh. Idempotent.
 # =============================================================================
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,7 +21,8 @@ SETTINGS="${USER_DIR}/settings.json"
 [ -f "${SETTINGS}" ] || { log_error "no Code Editor user settings at ${SETTINGS} (ide/code-editor.sh)"; exit 1; }
 
 tmp="$(mktemp)"
-jq '. + {"workbench.startupEditor": "terminal", "task.allowAutomaticTasks": "on"}' "${SETTINGS}" > "${tmp}"
+jq '. + {"workbench.startupEditor": "terminal", "task.allowAutomaticTasks": "on",
+         "terminal.integrated.environmentChangesIndicator": "off"}' "${SETTINGS}" > "${tmp}"
 mv "${tmp}" "${SETTINGS}"
 
 cat > "${USER_DIR}/tasks.json" <<'JSON'
