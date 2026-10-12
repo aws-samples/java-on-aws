@@ -38,6 +38,17 @@ DATASOURCE_FILE="grafana-datasource.yaml"
 GRAFANA_VALUES_FILE="grafana-values.yaml"
 
 WORK=""
+
+# Optional NodePool for the stack: MONITORING_NODEPOOL, set by a workshop template that keeps
+# the platform off its app's node (java-performance). Applied at install, so the PVCs of
+# Prometheus, Pyroscope and Grafana bind in that pool's zone from the start. Unset: no
+# selector, the charts install as before.
+PROM_POOL=(); PYRO_POOL=(); GRAFANA_POOL=()
+if [ -n "${MONITORING_NODEPOOL:-}" ]; then
+    PROM_POOL=(--set-string "server.nodeSelector.karpenter\\.sh/nodepool=${MONITORING_NODEPOOL}")
+    PYRO_POOL=(--set-string "pyroscope.nodeSelector.karpenter\\.sh/nodepool=${MONITORING_NODEPOOL}")
+    GRAFANA_POOL=(--set-string "nodeSelector.karpenter\\.sh/nodepool=${MONITORING_NODEPOOL}")
+fi
 cleanup() {
   rm -f "$VALUES_FILE" "$DATASOURCE_FILE" "$GRAFANA_VALUES_FILE"
   [[ -n "$WORK" ]] && rm -rf "$WORK"
@@ -79,7 +90,7 @@ EOF
 
 log_info "Deploying Prometheus..."
 helm upgrade --install prometheus prometheus-community/prometheus \
-  --namespace "$NAMESPACE" \
+  --namespace "$NAMESPACE" ${PROM_POOL[@]+"${PROM_POOL[@]}"} \
   --values "$VALUES_FILE" >>"$LOG" 2>&1 \
   || { log_error "Prometheus helm install failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 
@@ -203,7 +214,7 @@ pyroscope:
 EOF
 
 helm upgrade --install pyroscope grafana/pyroscope \
-    --namespace "${NAMESPACE}" \
+    --namespace "${NAMESPACE}" ${PYRO_POOL[@]+"${PYRO_POOL[@]}"} \
     --values "${WORK}/pyroscope-values.yaml" >>"$LOG" 2>&1 \
     || { log_error "Pyroscope helm install failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 log_info "Pyroscope install submitted (readiness checked after Grafana)"
@@ -291,7 +302,7 @@ EOF
 
 log_info "Deploying Grafana..."
 helm upgrade --install grafana grafana-community/grafana \
-  --namespace "$NAMESPACE" \
+  --namespace "$NAMESPACE" ${GRAFANA_POOL[@]+"${GRAFANA_POOL[@]}"} \
   --values "$GRAFANA_VALUES_FILE" >>"$LOG" 2>&1 \
   || { log_error "Grafana helm install failed — last 40 lines of $LOG:"; tail -n 40 "$LOG"; exit 1; }
 

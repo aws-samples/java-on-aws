@@ -6,15 +6,22 @@
 # workloads have no selector, so Karpenter places them wherever there is room, usually on
 # the app's 4-vCPU node. There the app shares physical cores (SMT) with Prometheus,
 # Pyroscope and Kyverno, and the session's measurements move with that load (startup and
-# steady CPU 10–60 % higher in a test run). This script pins every platform Deployment and
-# StatefulSet to the Auto Mode built-in `general-purpose` NodePool, so the `workshop` node
-# carries only the app and the DaemonSets. The app manifest is unchanged.
+# steady CPU 10–60 % higher in a test run). This script creates a `platform` NodePool and
+# pins every platform Deployment and StatefulSet to it, so the `workshop` node carries only
+# the app and the DaemonSets. The app manifest is unchanged.
+#
+# The pool admits only instances with at least 4 vCPU and 8 GiB (c6a.xlarge is the cheapest
+# match): the platform requests about 1.5 vCPU and 4.4 GiB, so one node holds all of it. On
+# the built-in general-purpose pool Karpenter started a c6a.large per batch of pending pods
+# and kept two (do-not-disrupt blocks the merge), at more cost than one c6a.xlarge.
 #
 # Namespaces: monitoring (Prometheus, Grafana, Pyroscope, Alloy, sensor), kyverno,
 # kube-startup-cpu-boost-system, and metrics-server in kube-system. Pods move once, at
 # bootstrap; Prometheus, Grafana and Pyroscope keep their data on their PVCs. The pods are
-# marked do-not-disrupt, so consolidation does not move them later.
-# Idempotent. Run after the platform installs (template stage E). A later `helm upgrade`
+# marked do-not-disrupt and the pool consolidates only when empty, so nothing moves them later.
+# Idempotent. `platform-placement.sh pool` creates only the NodePool (template stage B, so
+# monitoring.sh installs onto it via MONITORING_NODEPOOL); without an argument it also pins
+# the workloads (after stage E). A later `helm upgrade`
 # of one of these releases drops the selector: run this script again afterwards.
 # =============================================================================
 set -uo pipefail
@@ -22,12 +29,54 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../../lib/common.sh"
 
-POOL="${PLATFORM_NODEPOOL:-general-purpose}"
-kubectl get nodepool "${POOL}" >/dev/null 2>&1 || { log_error "NodePool ${POOL} not found (EKS Auto Mode built-in pools disabled?)"; exit 1; }
+POOL="${PLATFORM_NODEPOOL:-platform}"
 
-# do-not-disrupt: the general-purpose pool consolidates underutilized nodes after 30 s. A
-# consolidation during the session would move the sensor or Kyverno in the middle of a
-# checklist or an admission; the annotation keeps their nodes until the pods go.
+kubectl apply -f - <<EOF >/dev/null || { log_error "NodePool ${POOL} could not be created"; exit 1; }
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: ${POOL}
+spec:
+  template:
+    spec:
+      nodeClassRef:
+        group: eks.amazonaws.com
+        kind: NodeClass
+        name: default
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: eks.amazonaws.com/instance-category
+          operator: In
+          values: ["c", "m"]
+        - key: eks.amazonaws.com/instance-generation
+          operator: Gt
+          values: ["5"]
+        - key: eks.amazonaws.com/instance-cpu
+          operator: Gt
+          values: ["3"]
+        - key: eks.amazonaws.com/instance-memory
+          operator: Gt
+          values: ["8000"]
+  limits:
+    cpu: "16"
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 5m
+EOF
+log_info "NodePool ${POOL}: at least 4 vCPU and 8 GiB, consolidation WhenEmpty"
+# `pool`: only the NodePool (template stage B, before monitoring.sh installs onto it).
+[ "${1:-}" = pool ] && exit 0
+
+# do-not-disrupt: a consolidation during the session would move the sensor or Kyverno in
+# the middle of a checklist or an admission; the annotation keeps their node until the pods go.
 PATCH="{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"karpenter.sh/do-not-disrupt\":\"true\"}},\"spec\":{\"nodeSelector\":{\"karpenter.sh/nodepool\":\"${POOL}\"}}}}}"
 RC=0
 pin() {   # pin NAMESPACE KIND/NAME...
