@@ -120,7 +120,8 @@ Numbers vary with the measured working set (memory `max(1.4 × peak, 1.5 × floo
 |---|---|---|---|---|
 | Measure the baseline | `checklist` | — | 5/12 | ❌ 2 3 4 6 8 10 11 (6: a 1-core request is several times the steady CPU) |
 | Improve the manifest | `sizeMemory`, `sizeCpu`, `startupLog` | `k8s/deployment.yaml`, `k8s/startup-cpu-boost.yaml` | 9/12 | 2 3 4 6 → ✅; 8 halves (≈ 15 s → ≈ 8 s); `jfr.container` effectiveCpuCount 1 with `cpuQuotaCores` 2.0; `cpu.max` 1 core after the resize |
-| Improve the image | `startupLog`, `measure` | `pom.xml`, one Java file, `Dockerfile.crac`, `k8s/deployment.yaml` | 10/12 | 8 → ✅ (Restored, < 0.1 s); 3 4 5 stay ✅ from the checkpoint; 2 may sit near its bar (the restored pod's working set is lower under a limit sized for the cold one) |
+| Improve the image, AOT | `startupLog`, `profileTop` | `Dockerfile.aot` | (no checklist) | startup line *Started* in about a third of the boosted cold start |
+| Improve the image, CRaC | `startupLog`, `measure` | `pom.xml`, one Java file, `Dockerfile.crac`, `k8s/deployment.yaml` | 10/12 | 8 → ✅ (Restored, < 0.1 s); 3 4 5 stay ✅ from the checkpoint; 2 may sit near its bar (the restored pod's working set is lower under a limit sized for the cold one) |
 | Improve the code | `diagnoseBlocking`, `sizeMemory`, `sizeCpu` | `UnicornService.java`, `k8s/deployment.yaml` (sizes, `terminationGracePeriodSeconds`), `Dockerfile.crac` | 12/12 | 10 11 → ✅ (blocked 0, in-transaction 0; pool waits shown, not scored); memory steps down, new heap baked into the checkpoint, rebuild stated |
 | Enforce the practices | `measure` | `k8s/policy.yaml` | 12/12 | none; the policy matches `references/kyverno-policy.yaml`; the PolicyReport shows the running Deployment passing; an apply with `-Xmx` is denied with the item 3 message |
 
