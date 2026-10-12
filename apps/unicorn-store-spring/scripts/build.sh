@@ -60,6 +60,12 @@ docker build \
   --secret id=db-password,env=DB_PASS \
   "${EXTRA_ARGS[@]}" \
   -t "${REPO}:${TAG}" -f "$DOCKERFILE" .
-docker push "${REPO}:${TAG}"
+# A push can stall without output (seen once: 20 min for two layers that usually take
+# seconds). Bound each attempt and retry; layers already uploaded are not sent again.
+for attempt in 1 2 3; do
+    if timeout 180 docker push "${REPO}:${TAG}"; then break; fi
+    [ "${attempt}" = 3 ] && { echo "[build] push failed 3 times" >&2; exit 1; }
+    echo "[build] push did not finish in 180 s, retrying (${attempt}/3)..." >&2
+done
 echo "[build] pushed ${REPO}:${TAG}" >&2
 echo "${REPO}:${TAG}"
