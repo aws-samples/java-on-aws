@@ -35,8 +35,9 @@ RUN --mount=type=cache,target=/root/.m2 mvn clean package -DskipTests -ntp && mv
 # has never served a request, so the restored JVM starts in 0.2 s and then JITs the whole
 # request path under production load (seconds of compilation on a 1-vCPU quota: throttling
 # and latency in the first minutes). Start the app, drive WARMUP_REQUESTS through the hot
-# path, then checkpoint with jcmd. Open FDs are reported (collect-fd-stacktraces) so a
-# missing Resource hook fails loudly.
+# path, then checkpoint with jcmd. Each warm-up request is bounded to 10 s and a failed one
+# is skipped: the warm-up only compiles the hot path, one request must not stop the build.
+# Open FDs are reported (collect-fd-stacktraces) so a missing Resource hook fails loudly.
 # GC, HEAP BOUNDS AND CPU COUNT ARE BAKED INTO THE CHECKPOINT and cannot change at restore:
 #  - GC: SerialGC for a <= 1 vCPU pod (the CRaC JDK would otherwise default to G1).
 #  - Heap: JAVA_HEAP_OPTS sets -Xmx/-Xms from the pod's memory limit (75 % / 50 % of
@@ -70,7 +71,7 @@ RUN --mount=type=secret,id=db-password set -e; \
       -jar /app.jar & PID=$!; \
     for i in $(seq 1 90); do curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1 && break; sleep 1; done; \
     curl -sf http://localhost:8080/actuator/health >/dev/null; \
-    for i in $(seq 1 ${WARMUP_REQUESTS}); do eval "${WARMUP_CMD}"; done; \
+    for i in $(seq 1 ${WARMUP_REQUESTS}); do timeout 10 sh -c "${WARMUP_CMD}" || true; done; \
     sleep 2; jcmd ${PID} JDK.checkpoint; wait ${PID} || true; \
     test -d /opt/crac-files
 
