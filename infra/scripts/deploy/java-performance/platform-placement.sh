@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# platform-placement.sh — keep the platform off the application's node (java-performance only).
+# platform-placement.sh — keep the platform off the application's node (java-performance, java-on-amazon-eks).
 #
 # The app selects the `workshop` NodePool (karpenter.sh/nodepool: workshop). The platform
 # workloads have no selector, so Karpenter places them wherever there is room, usually on

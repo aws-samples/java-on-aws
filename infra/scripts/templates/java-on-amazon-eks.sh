@@ -9,12 +9,13 @@
 # cluster is still being created, which is the longest wait of the bootstrap.
 #
 #   A  background   app-prepare (repo + :latest), prebuild fallbacks, profiler image,
-#                   sensor image, claude-code.sh, prompt
+#                   sensor image, claude-code.sh, IDE terminal layout, prompt
 #   B  cluster      eks.sh (waits for ACTIVE), nodepool-pin, metrics-server
 #   C  monitoring   Prometheus, Pyroscope, Grafana (shared setup/monitoring.sh)
 #      --- wait for A ---
 #   D  app          app-deploy (namespace, Pod Identity, manifests)      } in
 #   E  platform     perf-profiler install, startup-cpu-boost, perf-sensor } parallel
+#      placement    platform Deployments/StatefulSets → own platform NodePool
 #   F  verify       ALB answers, sensor measures, Claude wiring present
 #
 # Each stage script is idempotent and runnable on its own from the IDE.
@@ -50,6 +51,7 @@ stage "A (background): repo + images + Claude Code"
   bash "$DEPLOY/perf-profiler.sh" build
   bash "$DEPLOY/perf-sensor.sh" build
   bash "$DEPLOY/claude-code.sh"
+  bash "$DEPLOY/ide-layout.sh"
   # Prompt: drop vcs, kubecontext and aws segments (three terminals, less noise).
   P10K="$HOME/.p10k.zsh"
   if [ -f "$P10K" ]; then
@@ -63,10 +65,12 @@ A_PID=$!
 stage "B: EKS cluster"
 run "EKS cluster configured"        "$SETUP/eks.sh"
 try "NodePool pinned to m6a"        "$DEPLOY/nodepool-pin.sh"
+run "Platform NodePool created"     "$DEPLOY/platform-placement.sh" pool
 try "metrics-server installed"      "$DEPLOY/metrics-server.sh"
 
 # --- C: monitoring ---------------------------------------------------------------------
 stage "C: monitoring (Prometheus, Pyroscope, Grafana)"
+export MONITORING_NODEPOOL=platform   # monitoring.sh installs the stack onto the platform pool
 run "Monitoring stack deployed"     "$SETUP/monitoring.sh"
 
 # --- wait for A -------------------------------------------------------------------------
@@ -97,6 +101,9 @@ E_RC=0; wait "$E_PID" || E_RC=$?
 cat "$D_LOG"; cat "$E_LOG"
 [ "$D_RC" -eq 0 ] && log_success "$(stamp)Stage D done (app deployed)" || { log_error "$(stamp)Stage D FAILED"; exit 1; }
 [ "$E_RC" -eq 0 ] && log_success "$(stamp)Stage E done (profiler, boost, sensor)" || { log_error "$(stamp)Stage E FAILED"; exit 1; }
+
+# --- platform placement: platform pods off the app's node ------------------------------
+run "Platform on its own NodePool" "$DEPLOY/platform-placement.sh"
 
 # --- F: verify --------------------------------------------------------------------------
 stage "F: verify"
