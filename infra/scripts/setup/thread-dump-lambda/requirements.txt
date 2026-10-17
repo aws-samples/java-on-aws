@@ -1,4 +1,4 @@
 boto3==1.43.39
-kubernetes==36.0.2
+kubernetes==36.0.3
 awscli==1.45.39
 requests==2.34.2
