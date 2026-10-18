@@ -1,0 +1,47 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TransactionSearchSetup",
+      "Effect": "Allow",
+      "Action": [
+        "xray:GetTraceSegmentDestination",
+        "xray:UpdateTraceSegmentDestination",
+        "xray:GetIndexingRules",
+        "xray:UpdateIndexingRule",
+        "application-signals:StartDiscovery",
+        "cloudtrail:CreateServiceLinkedChannel",
+        "logs:DescribeResourcePolicies",
+        "logs:PutResourcePolicy"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ApplicationSignalsServiceLinkedRole",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::*:role/aws-service-role/application-signals.cloudwatch.amazonaws.com/*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": "application-signals.cloudwatch.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "GatewayLogDelivery",
+      "Effect": "Allow",
+      "Action": [
+        "logs:PutDeliverySource",
+        "logs:PutDeliveryDestination",
+        "logs:CreateDelivery",
+        "logs:GetDelivery*",
+        "logs:DeleteDelivery*"
+      ],
+      "Resource": [
+        "arn:aws:logs:*:{{.AccountId}}:delivery-source:*",
+        "arn:aws:logs:*:{{.AccountId}}:delivery-destination:*",
+        "arn:aws:logs:*:{{.AccountId}}:delivery:*"
+      ]
+    }
+  ]
+}

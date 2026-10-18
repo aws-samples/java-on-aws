@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Booking - Corporate Travel Portal</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="booking">
+<header><strong>Corporate Travel Portal</strong><a href="index.html">Flights</a><a href="hotels.html">Hotels</a><a href="booking.html">Booking</a><a href="deals/tokyo-hotels.html">Deals</a></header>
+<main>
+<h1>Booking request</h1>
+<form id="booking" class="search">
+<label>Traveler<input name="traveler" required></label>
+<label>Flight<input name="flight" required></label>
+<label>From<input name="from" required></label>
+<label>To<input name="to" required></label>
+<label>Date<input name="date" type="date" required></label>
+<label>Price (EUR)<input name="price"></label>
+<button>Request booking</button>
+</form>
+<p id="confirmation" class="notice">Fill in the form and request the booking.</p>
+</main>
+<footer>Example Corp travel desk - workshop demo site</footer>
+<script src="portal.js"></script>
+</body></html>

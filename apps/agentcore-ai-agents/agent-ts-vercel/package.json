@@ -1,0 +1,40 @@
+{
+  "name": "aiagent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx main.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^5.0.116",
+    "@ai-sdk/mcp": "^2.0.76",
+    "@ai-sdk/otel": "^1.0.142",
+    "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.1152.0",
+    "@aws-sdk/client-bedrock-agentcore": "^3.1152.0",
+    "@aws-sdk/client-bedrock-agentcore-control": "^3.1152.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1152.0",
+    "@aws-sdk/client-s3": "^3.1152.0",
+    "@aws-sdk/credential-providers": "^3.1152.0",
+    "@aws-sdk/s3-request-presigner": "^3.1152.0",
+    "@aws-sdk/types": "^3.974.6",
+    "@aws/aws-distro-opentelemetry-node-autoinstrumentation": "^0.13.0",
+    "@fastify/static": "^10.1.6",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@opentelemetry/api": "^1.9.1",
+    "@smithy/signature-v4": "^5.7.4",
+    "ai": "^7.0.141",
+    "bedrock-agentcore": "^0.4.5",
+    "jose": "^6.2.12",
+    "playwright": "^1.64.1",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "aws-sdk-client-mock": "^4.1.0",
+    "typescript": "^7.0.2"
+  }
+}

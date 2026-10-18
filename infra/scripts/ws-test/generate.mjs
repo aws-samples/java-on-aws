@@ -138,11 +138,22 @@ function visibleHtmlContent(line, commentOpen) {
   return { visible, commentOpen: insideComment };
 }
 
+// Tab path from the outermost to the innermost tab ("python-strands/manual"): --skipTab and
+// --onlyTab match a block inside nested tabs by any of its tab ids.
 function currentTabId(containers) {
-  for (let index = containers.length - 1; index >= 0; index -= 1) {
-    if (containers[index].name === 'tab') return containers[index].id || '';
-  }
-  return '';
+  return containers
+    .filter((container) => container.name === 'tab' && container.id)
+    .map((container) => container.id)
+    .join('/');
+}
+
+// Tab ids that share a tabs container, so --onlyTab ID can skip the siblings of ID.
+const tabGroups = new Map();
+
+function registerTabGroup(container) {
+  if (container.name !== 'tabs' || container.tabIds.size < 2) return;
+  const ids = [...container.tabIds].sort();
+  tabGroups.set(ids.join(' '), ids);
 }
 
 function updateContainers(visibleLine, containers) {
@@ -152,7 +163,7 @@ function updateContainers(visibleLine, containers) {
     const containerIndex = containers.findLastIndex(
       (container) => container.delimiterLength === delimiterLength,
     );
-    if (containerIndex >= 0) containers.splice(containerIndex);
+    if (containerIndex >= 0) containers.splice(containerIndex).forEach(registerTabGroup);
     return true;
   }
 
@@ -161,10 +172,14 @@ function updateContainers(visibleLine, containers) {
 
   const name = openingMatch[2];
   const attributes = parseAttributes(openingMatch[3] ?? '');
+  if (name === 'tab' && attributes.id) {
+    containers.findLast((container) => container.name === 'tabs')?.tabIds.add(attributes.id);
+  }
   containers.push({
     delimiterLength: openingMatch[1].length,
     name,
     id: name === 'tab' ? attributes.id : '',
+    tabIds: new Set(),
   });
   return true;
 }
@@ -326,6 +341,7 @@ function renderWorkshop(pages, config) {
     `ws_begin_run ${shellQuote(config.title)} "\${WS_SCRIPT_DIR}/reports/${config.template}" ${config.delay} "$@"`,
     `ws_set_executable_total ${enabledBlockCount}`,
     `ws_set_default_timeout ${config.timeout}`,
+    ...[...tabGroups.values()].map((ids) => `ws_tab_group ${ids.map(shellQuote).join(' ')}`),
     ...config.environmentFiles.map((path) => `ws_source_environment ${shellQuote(path)}`),
     '',
   ];

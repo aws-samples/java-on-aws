@@ -1,0 +1,32 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "GatewayConnectors",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:InvokeWebSearch",
+        "bedrock:AgenticRetrieveStream",
+        "bedrock:InvokeGuardrailChecks"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AbTestSpans",
+      "Effect": "Allow",
+      "Action": [
+        "logs:StartQuery",
+        "logs:GetQueryResults",
+        "logs:StopQuery",
+        "logs:FilterLogEvents",
+        "logs:GetLogEvents",
+        "logs:DescribeIndexPolicies",
+        "logs:PutIndexPolicy"
+      ],
+      "Resource": [
+        "arn:aws:logs:*:{{.AccountId}}:log-group:aws/spans",
+        "arn:aws:logs:*:{{.AccountId}}:log-group:aws/spans:*"
+      ]
+    }
+  ]
+}

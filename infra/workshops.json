@@ -45,6 +45,18 @@
     {
       "template": "java-ai-agents-advanced",
       "repository": "java-ai-agents-advanced"
+    },
+    {
+      "template": "agentcore-ai-agents",
+      "repository": "agentcore-ai-agents",
+      "test": {
+        "enabled": true,
+        "title": "Building AI agents with Amazon Bedrock AgentCore",
+        "environmentFiles": [
+          "/etc/profile.d/workshop.sh",
+          "/home/ec2-user/environment/.envrc"
+        ]
+      }
     }
   ]
 }

@@ -238,7 +238,8 @@ public class Ide extends Construct {
 
             if ("java-spring-ai-agents".equals(props.getTemplateType())
                 || "java-ai-agents".equals(props.getTemplateType())
-                || "java-ai-agents-advanced".equals(props.getTemplateType())) {
+                || "java-ai-agents-advanced".equals(props.getTemplateType())
+                || "agentcore-ai-agents".equals(props.getTemplateType())) {
                 String agentCoreManagedToolsPolicyJson = loadFile("/agentcore-managed-tools-policy.json");
                 var agentCoreManagedToolsPolicyDocument = PolicyDocument.fromJson(
                     new JSONObject(agentCoreManagedToolsPolicyJson).toMap());
@@ -249,7 +250,8 @@ public class Ide extends Construct {
             }
 
             if ("java-ai-agents".equals(props.getTemplateType())
-                || "java-ai-agents-advanced".equals(props.getTemplateType())) {
+                || "java-ai-agents-advanced".equals(props.getTemplateType())
+                || "agentcore-ai-agents".equals(props.getTemplateType())) {
                 String agentCoreIdentityPolicyJson = loadFile("/agentcore-identity-policy.json")
                     .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
                 var agentCoreIdentityPolicyDocument = PolicyDocument.fromJson(
@@ -259,13 +261,30 @@ public class Ide extends Construct {
                     .build();
                 this.ideRole.addManagedPolicy(agentCoreIdentityPolicy);
             }
+
+            // agentcore-ai-agents: Transaction Search setup, Gateway log delivery
+            if ("agentcore-ai-agents".equals(props.getTemplateType())) {
+                String agentCoreAiAgentsPolicyJson = loadFile("/agentcore-ai-agents-policy.json")
+                    .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
+                var agentCoreAiAgentsPolicy = ManagedPolicy.Builder.create(this, "AgentCoreAiAgentsPolicy")
+                    .document(PolicyDocument.fromJson(new JSONObject(agentCoreAiAgentsPolicyJson).toMap()))
+                    .build();
+                this.ideRole.addManagedPolicy(agentCoreAiAgentsPolicy);
+            }
         }
 
         if (!"base".equals(props.getTemplateType()) && props.isPermissionsBoundary()) {
             // Create permissions boundary for roles created by workshop scripts
             String boundaryJson = loadFile("/workshop-boundary.json")
                 .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
-            var boundaryDocument = PolicyDocument.fromJson(new JSONObject(boundaryJson).toMap());
+            var boundary = new JSONObject(boundaryJson);
+            // agentcore-ai-agents: statements its Gateway and runtime roles need on top of the shared boundary
+            if ("agentcore-ai-agents".equals(props.getTemplateType())) {
+                var additions = new JSONObject(loadFile("/workshop-boundary-agentcore-ai-agents.json")
+                    .replace("{{.AccountId}}", Aws.ACCOUNT_ID));
+                additions.getJSONArray("Statement").forEach(statement -> boundary.getJSONArray("Statement").put(statement));
+            }
+            var boundaryDocument = PolicyDocument.fromJson(boundary.toMap());
             ManagedPolicy.Builder.create(this, "WorkshopBoundary")
                 .managedPolicyName("workshop-boundary")
                 .document(boundaryDocument)
@@ -553,6 +572,11 @@ public class Ide extends Construct {
 
     public Role getIdeRole() {
         return ideRole;
+    }
+
+    /** Secret {prefix}-ide-password (JSON key "password"). */
+    public Secret getIdePasswordSecret() {
+        return ideSecretsManagerPassword;
     }
 
     /**

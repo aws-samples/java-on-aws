@@ -1,0 +1,22 @@
+[project]
+name = "aiagent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aws-opentelemetry-distro~=0.18.0",
+    "bedrock-agentcore>=1.24.1",
+    "boto3>=1.43.114",
+    "langchain>=1.4.6",
+    "langchain-aws>=1.8.2",
+    "langchain-mcp-adapters>=0.3.2",
+    "langgraph>=1.2.15",
+    "langgraph-checkpoint-aws>=1.2.5",
+    "mcp~=1.24.0",
+    "mcp-proxy-for-aws>=1.7.0",
+    "opentelemetry-instrumentation-langchain>=0.62.4",
+    "playwright>=1.64.0",
+    "pydantic-settings>=2.16.0",
+    "pyjwt[crypto]>=2.15.1",
+]

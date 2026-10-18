@@ -26,6 +26,12 @@ block's timeout, `ws-test: false` in the front matter skips a page. A block fail
 non-zero exit under `set -Eeuo pipefail`; there is no expected-failure attribute, so an
 intended failure is written `cmd || echo "rejected, as intended"`.
 
+Tabs: `--skipTab ID[,ID...]` skips blocks inside the listed tabs; `--onlyTab ID[,ID...]` runs
+only the listed tabs of each tab group that contains one of them and skips their siblings
+(`--onlyTab python-strands` skips the other framework tabs, other tab groups stay). Both
+match any tab of a block's tab path, so nested tabs (`script` inside a framework tab, or the
+reverse) are covered.
+
 A run writes `reports/<workshop>/<run>/` (git-ignored): `output.log` (each block's output
 after a `Source: <page>:<lines>` line), `summary.md` (per-block status and duration),
 `failure.md` for a failed block, `events.jsonl`, `junit.xml`.

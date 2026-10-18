@@ -93,6 +93,8 @@ public class WorkshopStack extends Stack {
         boolean isSpringAi = "java-spring-ai-agents".equals(templateType);
         boolean isAiAgents = "java-ai-agents".equals(templateType);
         boolean isAiAgentsAdvanced = "java-ai-agents-advanced".equals(templateType);
+        // agentcore-ai-agents: java-ai-agents(-advanced) infrastructure plus the travel portal and the calendar
+        boolean isAgentCore = "agentcore-ai-agents".equals(templateType);
         boolean isFullTemplate = isJavaOnAws || isEks || isSpringAi;
         boolean needsDatabase = isFullTemplate;
 
@@ -108,7 +110,7 @@ public class WorkshopStack extends Stack {
             .gitBranch(gitBranch)
             .templateType(templateType)
             .workshopId(workshopId)
-            .ideArch((isAiAgents || isAiAgentsAdvanced) ? Ide.IdeArch.ARM64 : Ide.IdeArch.X86_64_AMD)
+            .ideArch((isAiAgents || isAiAgentsAdvanced || isAgentCore) ? Ide.IdeArch.ARM64 : Ide.IdeArch.X86_64_AMD)
             .iamPolicies(loadIamPolicies(templateType))
             // Boundary for roles created from the IDE; java-on-aws and java-on-amazon-eks create none
             .permissionsBoundary(!isJavaOnAws && !isEks)
@@ -151,7 +153,7 @@ public class WorkshopStack extends Stack {
             ? List.of("perf-profiler", "perf-sensor")
             : isSpringAi
                 ? List.of("aiagent", "mcpserver")
-                : (isAiAgents || isAiAgentsAdvanced)
+                : (isAiAgents || isAiAgentsAdvanced || isAgentCore)
                     ? List.of("aiagent", "backoffice")
                     : List.of();
         EcrRegistry ecrRegistry = new EcrRegistry(this, "EcrRegistry",
@@ -490,13 +492,31 @@ public class WorkshopStack extends Stack {
             }
         }
 
+        // agentcore-ai-agents: corporate travel portal (AgentCore Browser, guardrails) and
+        // corporate calendar (AgentCore Identity, 3LO); their SSM parameters are read by the content
+        List<software.amazon.awscdk.services.s3.IBucket> cleanupBuckets = new java.util.ArrayList<>(
+            List.of(workshopBucket.getBucket(), workshopBucket.getAccessLogBucket()));
+        if (isAgentCore) {
+            TravelPortal travelPortal = new TravelPortal(this, "TravelPortal",
+                TravelPortal.TravelPortalProps.builder()
+                    .prefix(prefix)
+                    .build());
+            cleanupBuckets.add(travelPortal.getBucket());
+
+            new CalendarApi(this, "Calendar",
+                CalendarApi.CalendarApiProps.builder()
+                    .prefix(prefix)
+                    .passwordSecret(ide.getIdePasswordSecret())
+                    .build());
+        }
+
         // Pre-delete cleanup (removes VPC endpoints, CloudWatch logs, S3 contents before stack deletion)
         // Runs for all templates
         new CfnPreDeleteCleanup(this, "CfnPreDeleteCleanup",
             CfnPreDeleteCleanup.CfnPreDeleteCleanupProps.builder()
                 .prefix(prefix)
                 .vpc(vpc.getVpc())
-                .buckets(java.util.List.of(workshopBucket.getBucket(), workshopBucket.getAccessLogBucket()))
+                .buckets(cleanupBuckets)
                 .build());
     }
 }

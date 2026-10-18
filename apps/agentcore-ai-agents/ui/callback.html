@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent - Connecting</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- AgentCore Identity redirects here after the user's consent, with ?session_id=...
+         The page hands the session to the AI agent, which binds it to the signed-in user (CompleteResourceTokenAuth). -->
+    <div class="login-screen">
+        <div class="login-bg-pattern"></div>
+        <div class="login-card">
+            <div class="login-brand">
+                <div class="login-icon-wrap">
+                    <img src="icon.svg" alt="AI Agent" class="login-icon" />
+                </div>
+                <h1 id="title" class="login-title">Connecting...</h1>
+                <p id="message" class="login-subtitle"></p>
+            </div>
+        </div>
+    </div>
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+    // The chat's theme: light unless the user chose dark
+    if (localStorage.getItem('theme') !== 'dark') document.documentElement.classList.add('light');
+    (async () => {
+        const title = document.getElementById('title');
+        const message = document.getElementById('message');
+        const sessionUri = new URLSearchParams(location.search).get('session_id');
+        const config = await loadConfig();
+        const auth = loadAuth();
+        if (!sessionUri || !auth) {
+            title.textContent = 'Connection failed';
+            message.textContent = sessionUri ? 'Sign in to the AI agent first, then try again.' : 'No session in the link.';
+            return;
+        }
+        const headers = {'Content-Type': 'application/json', 'Accept': 'text/plain, text/event-stream'};
+        if (config.authType === 'cognito' || config.mode === 'aws') {
+            headers['Authorization'] = `Bearer ${auth.accessToken}`;
+        } else {
+            // Local runs: the user name is the actor, as in the chat
+            headers['Authorization'] = auth.username;
+            headers['X-Amzn-Bedrock-AgentCore-Runtime-Session-Id'] = auth.username;
+        }
+        const response = await fetch(getApiEndpoint(config), {
+            method: 'POST', headers, body: JSON.stringify({oauthSession: sessionUri})
+        });
+        title.textContent = response.ok ? 'Connected' : 'Connection failed';
+        message.textContent = response.ok
+            ? 'You can close this tab and send your question again in the chat.'
+            : `The AI agent answered ${response.status}.`;
+    })();
+    </script>
+</body>
+</html>

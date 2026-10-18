@@ -1,0 +1,14 @@
+From: Alice Schmidt <alice@example.com>
+To: Travel Desk
+Subject: Trip to AI Summit Tokyo
+
+Hi team,
+
+I'd like to attend the AI Summit in Tokyo. The conference runs from November 18 to 20, 2026.
+I'll fly out of Berlin on the 16th so I can adjust to the time difference, and come back on the 21st.
+Economy is fine, but please try for a window seat. For the hotel, something close to the venue
+in Shinjuku, four stars at most - I don't need anything fancy. My manager Bob approved a budget
+of about 3500 EUR for the whole trip.
+
+Thanks,
+Alice

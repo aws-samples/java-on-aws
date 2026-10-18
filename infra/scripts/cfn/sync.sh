@@ -13,6 +13,7 @@ SHARED_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/iam-policy.json"
 ROLE_MANAGEMENT_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/iam-role-management-policy.json"
 AGENTCORE_IDENTITY_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/agentcore-identity-policy.json"
 AGENTCORE_MANAGED_TOOLS_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/agentcore-managed-tools-policy.json"
+AGENTCORE_AI_AGENTS_POLICY_FILE="$INFRA_DIR/cdk/src/main/resources/agentcore-ai-agents-policy.json"
 POLICY_DIR="$INFRA_DIR/cdk/src/main/resources/iam"
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
@@ -134,7 +135,7 @@ for index in "${selected_indexes[@]}"; do
     }
     log_success "Synced $ROLE_MANAGEMENT_POLICY_FILE to $repository/static/iam-role-management-policy.json"
 
-    if [[ "$template" == "java-spring-ai-agents" || "$template" == "java-ai-agents" || "$template" == "java-ai-agents-advanced" ]]; then
+    if [[ "$template" == "java-spring-ai-agents" || "$template" == "java-ai-agents" || "$template" == "java-ai-agents-advanced" || "$template" == "agentcore-ai-agents" ]]; then
         cp "$AGENTCORE_MANAGED_TOOLS_POLICY_FILE" "$target_dir/agentcore-managed-tools-policy.json" || {
             log_error "Failed to copy AgentCore managed tools policy for $template"
             exit 1
@@ -142,12 +143,20 @@ for index in "${selected_indexes[@]}"; do
         log_success "Synced $AGENTCORE_MANAGED_TOOLS_POLICY_FILE to $repository/static/agentcore-managed-tools-policy.json"
     fi
 
-    if [[ "$template" == "java-ai-agents" || "$template" == "java-ai-agents-advanced" ]]; then
+    if [[ "$template" == "java-ai-agents" || "$template" == "java-ai-agents-advanced" || "$template" == "agentcore-ai-agents" ]]; then
         cp "$AGENTCORE_IDENTITY_POLICY_FILE" "$target_dir/agentcore-identity-policy.json" || {
             log_error "Failed to copy AgentCore Identity policy for $template"
             exit 1
         }
         log_success "Synced $AGENTCORE_IDENTITY_POLICY_FILE to $repository/static/agentcore-identity-policy.json"
+    fi
+
+    if [[ "$template" == "agentcore-ai-agents" ]]; then
+        cp "$AGENTCORE_AI_AGENTS_POLICY_FILE" "$target_dir/agentcore-ai-agents-policy.json" || {
+            log_error "Failed to copy agentcore-ai-agents policy for $template"
+            exit 1
+        }
+        log_success "Synced $AGENTCORE_AI_AGENTS_POLICY_FILE to $repository/static/agentcore-ai-agents-policy.json"
     fi
 
     synced_count=$((synced_count + 1))

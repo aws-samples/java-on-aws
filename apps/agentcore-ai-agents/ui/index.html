@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script>if(localStorage.getItem('theme')!=='dark')document.documentElement.classList.add('light')</script>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-bg-pattern"></div>
+        <div class="login-card">
+            <div class="login-brand">
+                <div class="login-icon-wrap">
+                    <img src="icon.svg" alt="AI Agent" class="login-icon" />
+                </div>
+                <h1 class="login-title">AI Agent</h1>
+                <p id="loginMessage" class="login-subtitle">Sign in to start chatting</p>
+            </div>
+
+            <form id="loginForm" class="login-form">
+                <div class="input-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required autocomplete="username">
+                </div>
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn-primary">Sign In →</button>
+            </form>
+
+            <div id="loginError" class="login-error hidden"></div>
+        </div>
+    </div>
+
+    <!-- Chat Screen -->
+    <div id="chatScreen" class="chat-screen hidden">
+        <header class="chat-header">
+            <div class="header-inner">
+                <div class="header-left">
+                    <img src="icon.svg" alt="AI Agent" class="header-icon" />
+                    <span class="header-title">AI Agent</span>
+                    <select id="modelSelect" class="model-select hidden" aria-label="Select model"></select>
+                </div>
+                <div class="header-right">
+                    <span id="userDisplay" class="header-user"></span>
+                    <button id="logoutBtn" class="btn-icon" title="Sign out">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                </button>
+                    <button id="themeToggle" class="btn-icon" aria-label="Toggle theme"><span id="themeIcon">☀️</span></button>
+                </div>
+            </div>
+        </header>
+
+        <div class="messages-area" id="messageContainer">
+                <div class="msg msg-ai">
+                    <div class="msg-bubble msg-bubble-ai">
+                        <p>Hello — how can I help you today?</p>
+                    </div>
+                </div>
+        </div>
+
+        <div class="input-area">
+            <button id="scrollBottomBtn" class="scroll-bottom-btn" onclick="scrollToBottom()">↓</button>
+            <div class="input-bar-wrap">
+                <form id="chatForm" class="input-bar">
+                    <input type="file" id="fileInput" class="hidden" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf">
+                    <button type="button" id="uploadBtn" class="hidden btn-attach" title="Upload document">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                    </button>
+                    <textarea id="userInput" placeholder="Ask anything…" maxlength="10000" rows="1"></textarea>
+                    <button type="submit" class="btn-send" aria-label="Send message">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </form>
+                <div id="filePreview" class="file-preview hidden">
+                    <div class="file-preview-header">
+                        <span id="fileName" class="file-name"></span>
+                        <button type="button" id="clearFileBtn" class="btn-clear-file">✕</button>
+                    </div>
+                    <img id="filePreviewImg" class="file-preview-img hidden" onclick="openImageModal(this.src)" title="Click to enlarge" />
+                    <div id="pdfPreview" class="pdf-preview hidden" title="Click to open PDF">
+                        <span>📄</span>
+                        <span>Open PDF</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal-overlay hidden" onclick="closeImageModal()">
+        <img id="modalImage" class="modal-image" />
+        <button class="modal-close" onclick="closeImageModal()">✕</button>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    <script src="chat.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

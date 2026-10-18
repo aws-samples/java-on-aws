@@ -21,6 +21,8 @@ WS_CURRENT_BLOCK_SELECTED=1
 WS_CURRENT_BLOCK_SKIP_REASON=""
 declare -a WS_SKIP_WEIGHTS=()
 declare -a WS_SKIP_TABS=()
+declare -a WS_ONLY_TABS=()
+declare -a WS_TAB_GROUPS=()
 WS_CURRENT_PAGE=""
 WS_CURRENT_WEIGHT=""
 WS_CURRENT_SOURCE=""
@@ -316,7 +318,7 @@ ws_restore_runtime_guards() {
 
 ws_filter_usage() {
   cat <<EOF
-Usage: ${0##*/} [--from WEIGHT[:BLOCK]] [--to WEIGHT[:BLOCK]] [--skip WEIGHT[,WEIGHT...]] [--skipTab ID[,ID...]] [--verbose]
+Usage: ${0##*/} [--from WEIGHT[:BLOCK]] [--to WEIGHT[:BLOCK]] [--skip WEIGHT[,WEIGHT...]] [--skipTab ID[,ID...]] [--onlyTab ID[,ID...]] [--verbose]
 
 Filters:
   --from POSITION Run at or after WEIGHT[:BLOCK] (inclusive). A page-only
@@ -328,6 +330,10 @@ Filters:
                   and 311 skips only 311.
   --skipTab LIST  Skip code blocks inside tabs whose IDs appear in the
                   comma-separated list. Blocks outside tabs are unaffected.
+  --onlyTab LIST  Run only the listed tabs of each tab group that contains
+                  one of them (--onlyTab python-strands skips its sibling
+                  tabs). Other tab groups and blocks outside tabs are
+                  unaffected.
 
 Output:
   -v, --verbose   Print each block's command output on the console as well as
@@ -404,12 +410,50 @@ ws_add_skip_tabs() {
   done
 }
 
+ws_add_only_tabs() {
+  local value="$1"
+  local item
+  local -a items=()
+  [[ -n "$value" && "$value" != ,* && "$value" != *, && "$value" != *,,* ]] || \
+    ws_argument_error "--onlyTab requires a comma-separated list of tab IDs"
+  IFS=',' read -r -a items <<<"$value"
+  for item in "${items[@]}"; do
+    [[ "$item" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || \
+      ws_argument_error "--onlyTab values must be tab IDs containing only letters, numbers, dot, underscore, or hyphen"
+    WS_ONLY_TABS+=("$item")
+  done
+}
+
+# Called by the generated script: tab ids that share one tabs container.
+ws_tab_group() {
+  WS_TAB_GROUPS+=("$*")
+}
+
+ws_in_list() {
+  local needle="$1" item
+  shift
+  for item in "$@"; do [[ "$item" == "$needle" ]] && return 0; done
+  return 1
+}
+
+# tab_id is the tab path from the generator ("outer/inner"); every segment is checked.
 ws_tab_is_skipped() {
   local tab_id="$1"
-  local skipped_tab
+  local segment group only_tab
+  local -a segments group_ids
   [[ -n "$tab_id" ]] || return 1
-  for skipped_tab in "${WS_SKIP_TABS[@]}"; do
-    [[ "$tab_id" == "$skipped_tab" ]] && return 0
+  IFS='/' read -r -a segments <<< "$tab_id"
+  for segment in "${segments[@]}"; do
+    (( ${#WS_SKIP_TABS[@]} > 0 )) && ws_in_list "$segment" "${WS_SKIP_TABS[@]}" && return 0
+    (( ${#WS_ONLY_TABS[@]} > 0 )) || continue
+    ws_in_list "$segment" "${WS_ONLY_TABS[@]}" && continue
+    for group in "${WS_TAB_GROUPS[@]}"; do
+      read -r -a group_ids <<< "$group"
+      ws_in_list "$segment" "${group_ids[@]}" || continue
+      for only_tab in "${WS_ONLY_TABS[@]}"; do
+        ws_in_list "$only_tab" "${group_ids[@]}" && return 0
+      done
+    done
   done
   return 1
 }
@@ -418,7 +462,7 @@ ws_parse_filter_args() {
   local value
   while (( $# > 0 )); do
     case "$1" in
-      --from|--to|--skip|--skipTab)
+      --from|--to|--skip|--skipTab|--onlyTab)
         value="$1"
         shift
         (( $# > 0 )) || ws_argument_error "$value requires a value"
@@ -439,6 +483,9 @@ ws_parse_filter_args() {
           --skipTab)
             ws_add_skip_tabs "$1"
             ;;
+          --onlyTab)
+            ws_add_only_tabs "$1"
+            ;;
         esac
         ;;
       --from=*)
@@ -456,6 +503,9 @@ ws_parse_filter_args() {
         ;;
       --skipTab=*)
         ws_add_skip_tabs "${1#*=}"
+        ;;
+      --onlyTab=*)
+        ws_add_only_tabs "${1#*=}"
         ;;
       -v|--verbose)
         WS_VERBOSE=1
@@ -591,6 +641,11 @@ EOF
     skip_tab_display=$(IFS=,; echo "${WS_SKIP_TABS[*]}")
     echo "Skipped tabs: ${skip_tab_display}"
   fi
+  if (( ${#WS_ONLY_TABS[@]} > 0 )); then
+    local only_tab_display
+    only_tab_display=$(IFS=,; echo "${WS_ONLY_TABS[*]}")
+    echo "Only tabs: ${only_tab_display}"
+  fi
   [[ "$WS_VERBOSE" == "1" ]] && echo "Block output: console and output.log"
   return 0
 }
@@ -685,7 +740,7 @@ ws_run_block() {
     return 0
   fi
   if ws_tab_is_skipped "$WS_CURRENT_TAB"; then
-    ws_record_skip "tab '$WS_CURRENT_TAB' matches --skipTab"
+    ws_record_skip "tab '$WS_CURRENT_TAB' is excluded by --skipTab/--onlyTab"
     return 0
   fi
 
@@ -799,7 +854,7 @@ ws_skip_block() {
   elif [[ "$WS_CURRENT_BLOCK_SELECTED" != "1" ]]; then
     reason="$WS_CURRENT_BLOCK_SKIP_REASON"
   elif ws_tab_is_skipped "$WS_CURRENT_TAB"; then
-    reason="tab '$WS_CURRENT_TAB' matches --skipTab"
+    reason="tab '$WS_CURRENT_TAB' is excluded by --skipTab/--onlyTab"
   fi
   ws_record_skip "$reason"
 }

@@ -1,0 +1,7 @@
+[{
+  "name": "extractReceipt",
+  "description": "Read a receipt or invoice (image or PDF in S3) with Bedrock Data Automation. Returns merchant, city, date, total amount, currency, tax, category, and payment method, with a confidence score per field and the fields with low confidence.",
+  "inputSchema": {"type": "object",
+    "properties": {"s3Uri": {"type": "string", "description": "S3 URI of the uploaded receipt, for example s3://bucket/artifacts/uploads/receipt.png"}},
+    "required": ["s3Uri"]}
+}]

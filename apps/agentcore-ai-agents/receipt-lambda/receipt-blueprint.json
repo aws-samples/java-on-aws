@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Receipt or invoice for a business travel expense: hotel, transport, meals",
+  "class": "Travel receipt",
+  "type": "object",
+  "properties": {
+    "merchant_name": {"type": "string", "inferenceType": "explicit", "instruction": "Name of the business that issued the receipt"},
+    "merchant_city": {"type": "string", "inferenceType": "inferred", "instruction": "City of the merchant"},
+    "receipt_date": {"type": "string", "inferenceType": "inferred", "instruction": "Date of the purchase, or the check-out date for hotels, in YYYY-MM-DD format"},
+    "total_amount": {"type": "number", "inferenceType": "explicit", "instruction": "Total amount paid, including tax and tip"},
+    "currency": {"type": "string", "inferenceType": "inferred", "instruction": "ISO 4217 code of the currency of the total amount, for example EUR, JPY, USD"},
+    "tax_amount": {"type": "number", "inferenceType": "explicit", "instruction": "Tax included in the total (VAT, MwSt, consumption tax); 0 if not shown"},
+    "category": {"type": "string", "inferenceType": "inferred", "instruction": "Expense category, one of: HOTEL, TRANSPORT, MEALS, OTHER"},
+    "payment_method": {"type": "string", "inferenceType": "inferred", "instruction": "Payment type only, for example VISA, Mastercard, debit card, cash. Never include card numbers or digits"}
+  }
+}

@@ -1,0 +1,15 @@
+body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; color: #1d2733; background: #f4f6f9; }
+header { background: #123a63; color: #fff; padding: 14px 32px; display: flex; gap: 28px; align-items: baseline; }
+header strong { font-size: 20px; }
+header a { color: #cfe3ff; text-decoration: none; }
+main { max-width: 1040px; margin: 24px auto; background: #fff; padding: 24px 32px; border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+th, td { border-bottom: 1px solid #dde3ea; padding: 8px 10px; text-align: left; font-size: 14px; }
+th { background: #eef2f7; }
+td.num { text-align: right; white-space: nowrap; }
+form.search { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 20px; }
+label { display: flex; flex-direction: column; font-size: 13px; gap: 4px; }
+input, select { padding: 6px 8px; font-size: 14px; }
+button { background: #123a63; color: #fff; border: 0; padding: 8px 18px; border-radius: 4px; font-size: 14px; }
+.notice { background: #fff6dc; border-left: 4px solid #e0a800; padding: 10px 14px; }
+footer { text-align: center; font-size: 12px; color: #6b7785; margin: 16px; }
