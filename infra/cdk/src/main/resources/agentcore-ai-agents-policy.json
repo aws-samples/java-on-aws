@@ -9,6 +9,8 @@
         "xray:UpdateTraceSegmentDestination",
         "xray:GetIndexingRules",
         "xray:UpdateIndexingRule",
+        "xray:PutResourcePolicy",
+        "xray:ListResourcePolicies",
         "application-signals:StartDiscovery",
         "logs:DescribeResourcePolicies",
         "logs:PutResourcePolicy"
