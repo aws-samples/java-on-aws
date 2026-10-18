@@ -9382,7 +9382,7 @@ Steps:
 2. Use the code interpreter for every calculation (totals, per-night rates, currency conversion).
 3. Answer with COMPLIANT or NOT COMPLIANT, each rule checked with the policy quote, and the approvals required.
 4. When the request asks for a report, write it as Markdown to /tmp/audit-report.md and upload it with this shell command:
-   python3 -c "import boto3,os,uuid; s3=boto3.client('s3'); k=f'artifacts/audit/{uuid.uuid4()}/audit-report.md'; s3.upload_file('/tmp/audit-report.md', os.environ['ARTIFACTS_BUCKET'], k, ExtraArgs={'ContentType':'text/markdown'}); print(s3.generate_presigned_url('get_object', Params={'Bucket': os.environ['ARTIFACTS_BUCKET'], 'Key': k}, ExpiresIn=3600))"
+   python3 -c "import boto3,os,uuid; s3=boto3.client('s3'); k=f'artifacts/audit/{uuid.uuid4()}/audit-report.md'; s3.upload_file('/tmp/audit-report.md', os.environ['ARTIFACTS_BUCKET'], k, ExtraArgs={'ContentType':'text/markdown; charset=utf-8'}); print(s3.generate_presigned_url('get_object', Params={'Bucket': os.environ['ARTIFACTS_BUCKET'], 'Key': k}, ExpiresIn=3600))"
    Put the printed link on the last line of the answer as: Report: <link>
 EOF
 WS_TEST_BLOCK_1200_5
@@ -16077,9 +16077,9 @@ ws_run_block 33 'Redeploying the AI agent' '3. Ask the deployed AI agent as alic
 ~/workshop/scripts/ask-runtime.sh ask "Add an expense of 4200 EUR for my business class flight to Tokyo on 2026-10-05."
 WS_TEST_BLOCK_1600_33
 
-ws_skip_block 34 'Testing the deployed AI agent' '3. Sign out, sign in as bob, and approve alice'"'"'s expense. Replace EXP-XXXXXXXX with the reference from step 1:' 1528 1528 '' 'java-spring-ai' 'informational block without language'
+ws_skip_block 34 'Testing the deployed AI agent' '3. Sign out, sign in as bob, and approve alice'"'"'s expense. Replace EXP-XXXXXXXX with the reference from step 1:' 1532 1532 '' 'java-spring-ai' 'informational block without language'
 
-ws_run_block 35 'Committing changes' 'Committing changes' 1549 1551 'bash' '' <<'WS_TEST_BLOCK_1600_35'
+ws_run_block 35 'Committing changes' 'Committing changes' 1553 1555 'bash' '' <<'WS_TEST_BLOCK_1600_35'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add the JWT Gateway for the backoffice tools"
