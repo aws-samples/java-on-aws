@@ -8080,7 +8080,7 @@ ws_run_block 25 'Testing the sign-in' '3. Stop the application:' 1246 1246 'bash
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_1000_25
 
-ws_run_block 26 'Turning on observability' '1. AgentCore Observability needs CloudWatch Transaction Search, once per account and Region. Check the status, and enable it when it is not active:' 1254 1267 'bash' '' <<'WS_TEST_BLOCK_1000_26'
+ws_run_block 26 'Turning on observability' 'Turning on observability' 1254 1267 'bash' '' <<'WS_TEST_BLOCK_1000_26'
 if [ "$(aws xray get-trace-segment-destination --no-cli-pager --query '[Destination, Status]' --output text)" != "CloudWatchLogs	ACTIVE" ]; then
   aws logs put-resource-policy --policy-name TransactionSearchXRayAccess --no-cli-pager --policy-document "{
     \"Version\": \"2012-10-17\",
@@ -8097,29 +8097,12 @@ fi
 aws xray get-trace-segment-destination --no-cli-pager --output text
 WS_TEST_BLOCK_1000_26
 
-ws_run_block 27 'Turning on observability' '2. The Gateway delivers its own logs and traces too: each request with the tool call, its target, and, once you add policies, the authorization decision. Turn on both for the Gateway:' 1279 1292 'bash' '' <<'WS_TEST_BLOCK_1000_27'
-GATEWAY_ARN=$(aws bedrock-agentcore-control get-gateway --gateway-identifier "${GATEWAY_ID}" --no-cli-pager \
-  --query 'gatewayArn' --output text)
-aws logs create-log-group --log-group-name "/aws/vendedlogs/bedrock-agentcore/gateway/${GATEWAY_ID}" --no-cli-pager 2>/dev/null || true
-aws logs put-delivery-source --name "${GATEWAY_ID}-logs" --resource-arn "${GATEWAY_ARN}" --log-type APPLICATION_LOGS --no-cli-pager > /dev/null
-aws logs put-delivery-destination --name "${GATEWAY_ID}-logs" --no-cli-pager --delivery-destination-configuration \
-  "destinationResourceArn=arn:aws:logs:${AWS_REGION}:${ACCOUNT_ID}:log-group:/aws/vendedlogs/bedrock-agentcore/gateway/${GATEWAY_ID}" > /dev/null
-aws logs put-delivery-source --name "${GATEWAY_ID}-traces" --resource-arn "${GATEWAY_ARN}" --log-type TRACES --no-cli-pager > /dev/null
-aws logs put-delivery-destination --name "${GATEWAY_ID}-traces" --delivery-destination-type XRAY --no-cli-pager > /dev/null
-for NAME in "${GATEWAY_ID}-logs" "${GATEWAY_ID}-traces"; do
-  [ "$(aws logs describe-deliveries --no-cli-pager --query "length(deliveries[?deliverySourceName=='${NAME}'])" --output text)" != "0" ] || \
-    aws logs create-delivery --delivery-source-name "${NAME}" --no-cli-pager \
-      --delivery-destination-arn "arn:aws:logs:${AWS_REGION}:${ACCOUNT_ID}:delivery-destination:${NAME}" > /dev/null
-done
-echo "export GATEWAY_LOG_GROUP=/aws/vendedlogs/bedrock-agentcore/gateway/${GATEWAY_ID}" >> ~/environment/.envrc
-WS_TEST_BLOCK_1000_27
-
-ws_run_block 28 'Packaging the AI agent as a container' '1. Add ADOT for Python. Strands Agents creates OpenTelemetry spans for every agent invocation, model call, and tool call as soon as a tracer provider exists; ADOT provides the tracer provider and the exporter:' 1309 1310 'bash' 'python-strands' <<'WS_TEST_BLOCK_1000_28'
+ws_run_block 27 'Packaging the AI agent as a container' '1. Add ADOT for Python. Strands Agents creates OpenTelemetry spans for every agent invocation, model call, and tool call as soon as a tracer provider exists; ADOT provides the tracer provider and the exporter:' 1286 1287 'bash' 'python-strands' <<'WS_TEST_BLOCK_1000_27'
 cd ~/environment/aiagent
 uv add "aws-opentelemetry-distro~=0.18.0"
-WS_TEST_BLOCK_1000_28
+WS_TEST_BLOCK_1000_27
 
-ws_run_block 29 'Packaging the AI agent as a container' '2. Create the Dockerfile:' 1316 1337 'dockerfile' 'python-strands' <<'WS_TEST_BLOCK_1000_29'
+ws_run_block 28 'Packaging the AI agent as a container' '2. Create the Dockerfile:' 1293 1314 'dockerfile' 'python-strands' <<'WS_TEST_BLOCK_1000_28'
 cat <<'EOF' > ~/environment/aiagent/Dockerfile
 FROM public.ecr.aws/docker/library/python:3.13-slim-trixie
 RUN pip install --no-cache-dir uv
@@ -8142,9 +8125,9 @@ USER bedrock_agentcore
 EXPOSE 8080
 CMD ["opentelemetry-instrument", "python", "main.py"]
 EOF
-WS_TEST_BLOCK_1000_29
+WS_TEST_BLOCK_1000_28
 
-ws_run_block 30 'Packaging the AI agent as a container' '3. Keep local files and the static/ folder out of the image:' 1348 1356 'bash' 'python-strands' <<'WS_TEST_BLOCK_1000_30'
+ws_run_block 29 'Packaging the AI agent as a container' '3. Keep local files and the static/ folder out of the image:' 1325 1333 'bash' 'python-strands' <<'WS_TEST_BLOCK_1000_29'
 cat > ~/environment/aiagent/.dockerignore << 'EOF'
 .venv/
 __pycache__/
@@ -8154,9 +8137,9 @@ __pycache__/
 .env.*
 static/
 EOF
-WS_TEST_BLOCK_1000_30
+WS_TEST_BLOCK_1000_29
 
-ws_run_block 31 'Packaging the AI agent as a container' '1. Replace the content of pom.xml to add the OpenTelemetry starter:' 1375 1560 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_31'
+ws_run_block 30 'Packaging the AI agent as a container' '1. Replace the content of pom.xml to add the OpenTelemetry starter:' 1352 1537 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_30'
 cat <<'EOF' > ~/environment/aiagent/pom.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -8343,9 +8326,9 @@ cat <<'EOF' > ~/environment/aiagent/pom.xml
 
 </project>
 EOF
-WS_TEST_BLOCK_1000_31
+WS_TEST_BLOCK_1000_30
 
-ws_run_block 32 'Packaging the AI agent as a container' '2. Replace the content of application.properties to record every request:' 1568 1609 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_32'
+ws_run_block 31 'Packaging the AI agent as a container' '2. Replace the content of application.properties to record every request:' 1545 1586 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_31'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -8388,9 +8371,9 @@ spring.security.oauth2.resourceserver.jwt.issuer-uri=${COGNITO_ISSUER_URI:}
 management.tracing.sampling.probability=1.0
 management.otlp.metrics.export.enabled=false
 EOF
-WS_TEST_BLOCK_1000_32
+WS_TEST_BLOCK_1000_31
 
-ws_run_block 33 'Packaging the AI agent as a container' '3. Create ObservabilityConfig.java:' 1617 1649 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_33'
+ws_run_block 32 'Packaging the AI agent as a container' '3. Create ObservabilityConfig.java:' 1594 1626 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_32'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ObservabilityConfig.java
 package com.example.agent;
 
@@ -8424,9 +8407,9 @@ public class ObservabilityConfig {
     }
 }
 EOF
-WS_TEST_BLOCK_1000_33
+WS_TEST_BLOCK_1000_32
 
-ws_run_block 34 'Packaging the AI agent as a container' '4. Create GenAiObservationFilter.java:' 1659 1787 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_34'
+ws_run_block 33 'Packaging the AI agent as a container' '4. Create GenAiObservationFilter.java:' 1636 1764 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_33'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/GenAiObservationFilter.java
 package com.example.agent;
 
@@ -8556,9 +8539,9 @@ public class GenAiObservationFilter implements ObservationFilter {
     }
 }
 EOF
-WS_TEST_BLOCK_1000_34
+WS_TEST_BLOCK_1000_33
 
-ws_run_block 35 'Packaging the AI agent as a container' '5. Create the Dockerfile with the ADOT Java agent:' 1798 1816 'dockerfile' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_35'
+ws_run_block 34 'Packaging the AI agent as a container' '5. Create the Dockerfile with the ADOT Java agent:' 1775 1793 'dockerfile' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_34'
 cat <<'EOF' > ~/environment/aiagent/Dockerfile
 FROM public.ecr.aws/amazoncorretto/amazoncorretto:25-al2023-headless
 
@@ -8578,14 +8561,14 @@ ENV JAVA_TOOL_OPTIONS="-javaagent:/app/aws-opentelemetry-agent.jar" \
 EXPOSE 8080
 CMD ["java", "-jar", "/app/app.jar"]
 EOF
-WS_TEST_BLOCK_1000_35
+WS_TEST_BLOCK_1000_34
 
-ws_run_block 36 'Packaging the AI agent as a container' '1. LangGraph does not create OpenTelemetry spans itself. The OpenTelemetry instrumentation for LangChain creates a span for every agent invocation, model call, and tool call with the GenAI semantic conventions, under the scope opentelemetry.instrumentation.langchain that AgentCore Evaluations reads; ADOT loads it at startup and provides the tracer provider and the exporter. Add both:' 1834 1835 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_36'
+ws_run_block 35 'Packaging the AI agent as a container' '1. LangGraph does not create OpenTelemetry spans itself. The OpenTelemetry instrumentation for LangChain creates a span for every agent invocation, model call, and tool call with the GenAI semantic conventions, under the scope opentelemetry.instrumentation.langchain that AgentCore Evaluations reads; ADOT loads it at startup and provides the tracer provider and the exporter. Add both:' 1811 1812 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_35'
 cd ~/environment/aiagent
 uv add "aws-opentelemetry-distro~=0.18.0" "opentelemetry-instrumentation-langchain~=0.62.4"
-WS_TEST_BLOCK_1000_36
+WS_TEST_BLOCK_1000_35
 
-ws_run_block 37 'Packaging the AI agent as a container' '2. Create the Dockerfile:' 1841 1862 'dockerfile' 'python-langgraph' <<'WS_TEST_BLOCK_1000_37'
+ws_run_block 36 'Packaging the AI agent as a container' '2. Create the Dockerfile:' 1818 1839 'dockerfile' 'python-langgraph' <<'WS_TEST_BLOCK_1000_36'
 cat <<'EOF' > ~/environment/aiagent/Dockerfile
 FROM public.ecr.aws/docker/library/python:3.13-slim-trixie
 RUN pip install --no-cache-dir uv
@@ -8608,9 +8591,9 @@ USER bedrock_agentcore
 EXPOSE 8080
 CMD ["opentelemetry-instrument", "python", "main.py"]
 EOF
-WS_TEST_BLOCK_1000_37
+WS_TEST_BLOCK_1000_36
 
-ws_run_block 38 'Packaging the AI agent as a container' '3. Keep local files and the static/ folder out of the image:' 1873 1881 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_38'
+ws_run_block 37 'Packaging the AI agent as a container' '3. Keep local files and the static/ folder out of the image:' 1850 1858 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_37'
 cat > ~/environment/aiagent/.dockerignore << 'EOF'
 .venv/
 __pycache__/
@@ -8620,14 +8603,14 @@ __pycache__/
 .env.*
 static/
 EOF
-WS_TEST_BLOCK_1000_38
+WS_TEST_BLOCK_1000_37
 
-ws_run_block 39 'Packaging the AI agent as a container' '1. Add ADOT for Node.js, which registers the OpenTelemetry SDK, instruments HTTP and the AWS SDK, and exports the spans with the settings that AgentCore Runtime provides, and @ai-sdk/otel, which creates spans with the GenAI semantic conventions for every streamText() call, model call, and tool call:' 1894 1895 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_1000_39'
+ws_run_block 38 'Packaging the AI agent as a container' '1. Add ADOT for Node.js, which registers the OpenTelemetry SDK, instruments HTTP and the AWS SDK, and exports the spans with the settings that AgentCore Runtime provides, and @ai-sdk/otel, which creates spans with the GenAI semantic conventions for every streamText() call, model call, and tool call:' 1871 1872 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_1000_38'
 cd ~/environment/aiagent
 npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation @ai-sdk/otel @opentelemetry/api
-WS_TEST_BLOCK_1000_39
+WS_TEST_BLOCK_1000_38
 
-ws_run_block 40 'Packaging the AI agent as a container' '2. Create telemetry.ts, which connects the AI SDK to OpenTelemetry. The tracer opentelemetry.instrumentation.vercelai puts the spans into a scope that AgentCore Evaluations reads:' 1901 1916 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1000_40'
+ws_run_block 39 'Packaging the AI agent as a container' '2. Create telemetry.ts, which connects the AI SDK to OpenTelemetry. The tracer opentelemetry.instrumentation.vercelai puts the spans into a scope that AgentCore Evaluations reads:' 1878 1893 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1000_39'
 cat <<'EOF' > ~/environment/aiagent/telemetry.ts
 // Loaded before main.ts in the container (`--import ./telemetry.ts` in the Dockerfile), after ADOT has registered the OpenTelemetry SDK
 import { OpenTelemetry } from '@ai-sdk/otel';
@@ -8644,9 +8627,9 @@ registerTelemetry(
   }),
 );
 EOF
-WS_TEST_BLOCK_1000_40
+WS_TEST_BLOCK_1000_39
 
-ws_run_block 41 'Packaging the AI agent as a container' '3. Create the Dockerfile:' 1928 1946 'dockerfile' 'ts-vercel' <<'WS_TEST_BLOCK_1000_41'
+ws_run_block 40 'Packaging the AI agent as a container' '3. Create the Dockerfile:' 1905 1923 'dockerfile' 'ts-vercel' <<'WS_TEST_BLOCK_1000_40'
 cat <<'EOF' > ~/environment/aiagent/Dockerfile
 FROM public.ecr.aws/docker/library/node:22-slim
 
@@ -8666,9 +8649,9 @@ USER bedrock_agentcore
 EXPOSE 8080
 CMD ["node", "--require", "@aws/aws-distro-opentelemetry-node-autoinstrumentation/register", "--import", "tsx", "--import", "./telemetry.ts", "main.ts"]
 EOF
-WS_TEST_BLOCK_1000_41
+WS_TEST_BLOCK_1000_40
 
-ws_run_block 42 'Packaging the AI agent as a container' '4. Keep local files and the static/ folder out of the image:' 1957 1964 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_1000_42'
+ws_run_block 41 'Packaging the AI agent as a container' '4. Keep local files and the static/ folder out of the image:' 1934 1941 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_1000_41'
 cat > ~/environment/aiagent/.dockerignore << 'EOF'
 node_modules/
 dist/
@@ -8677,18 +8660,18 @@ dist/
 .env.*
 static/
 EOF
-WS_TEST_BLOCK_1000_42
+WS_TEST_BLOCK_1000_41
 
-ws_run_block 43 'Deploying the AI agent to AgentCore Runtime' '1. Create the ECR repository:' 1977 1982 'bash' '' <<'WS_TEST_BLOCK_1000_43'
+ws_run_block 42 'Deploying the AI agent to AgentCore Runtime' '1. Create the ECR repository:' 1954 1959 'bash' '' <<'WS_TEST_BLOCK_1000_42'
 aws ecr describe-repositories --repository-names "aiagent" --region ${AWS_REGION} \
   --no-cli-pager > /dev/null 2>&1 || \
 aws ecr create-repository \
   --repository-name "aiagent" \
   --region ${AWS_REGION} \
   --no-cli-pager
-WS_TEST_BLOCK_1000_43
+WS_TEST_BLOCK_1000_42
 
-ws_run_block 44 'Deploying the AI agent to AgentCore Runtime' '2. Create the IAM role that AgentCore Runtime assumes for the AI agent:' 1988 2008 'bash' '' <<'WS_TEST_BLOCK_1000_44'
+ws_run_block 43 'Deploying the AI agent to AgentCore Runtime' '2. Create the IAM role that AgentCore Runtime assumes for the AI agent:' 1965 1985 'bash' '' <<'WS_TEST_BLOCK_1000_43'
 cat > /tmp/trust-policy.json << EOF
 {
   "Version": "2012-10-17",
@@ -8710,9 +8693,9 @@ aws iam create-role \
   --permissions-boundary "arn:aws:iam::${ACCOUNT_ID}:policy/workshop-boundary" \
   --assume-role-policy-document file:///tmp/trust-policy.json \
   --no-cli-pager
-WS_TEST_BLOCK_1000_44
+WS_TEST_BLOCK_1000_43
 
-ws_run_block 45 'Deploying the AI agent to AgentCore Runtime' '3. Attach the permissions policy. It is broad to keep the workshop short; scope actions and resources to what the AI agent needs in production:' 2017 2039 'bash' '' <<'WS_TEST_BLOCK_1000_45'
+ws_run_block 44 'Deploying the AI agent to AgentCore Runtime' '3. Attach the permissions policy. It is broad to keep the workshop short; scope actions and resources to what the AI agent needs in production:' 1994 2016 'bash' '' <<'WS_TEST_BLOCK_1000_44'
 cat > /tmp/aiagent-policy.json << EOF
 {
   "Version": "2012-10-17",
@@ -8736,9 +8719,9 @@ aws iam put-role-policy \
   --policy-name "AgentCoreExecutionPolicy" \
   --policy-document file:///tmp/aiagent-policy.json \
   --no-cli-pager
-WS_TEST_BLOCK_1000_45
+WS_TEST_BLOCK_1000_44
 
-ws_run_block 46 'Deploying the AI agent to AgentCore Runtime' '4. Allow the role to upload and sign the artifacts:' 2048 2054 'bash' '' <<'WS_TEST_BLOCK_1000_46'
+ws_run_block 45 'Deploying the AI agent to AgentCore Runtime' '4. Allow the role to upload and sign the artifacts:' 2025 2031 'bash' '' <<'WS_TEST_BLOCK_1000_45'
 aws iam put-role-policy --role-name "aiagent-runtime-role" --policy-name "ArtifactsS3Policy" --no-cli-pager \
   --policy-document '{
     "Version": "2012-10-17",
@@ -8746,9 +8729,9 @@ aws iam put-role-policy --role-name "aiagent-runtime-role" --policy-name "Artifa
       "Action": ["s3:PutObject", "s3:GetObject"],
       "Resource": "arn:aws:s3:::'${ARTIFACTS_BUCKET}'/artifacts/*"}]
   }'
-WS_TEST_BLOCK_1000_46
+WS_TEST_BLOCK_1000_45
 
-ws_run_block 47 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2065 2073 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1000_47'
+ws_run_block 46 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2042 2050 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1000_46'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
@@ -8758,9 +8741,9 @@ cd ~/environment/aiagent
 docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 
 docker push "${ECR_URI}:latest"
-WS_TEST_BLOCK_1000_47
+WS_TEST_BLOCK_1000_46
 
-ws_run_block 48 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2085 2094 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1000_48'
+ws_run_block 47 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2062 2071 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1000_47'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
@@ -8771,9 +8754,21 @@ cd ~/environment/aiagent
 docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 
 docker push "${ECR_URI}:latest"
+WS_TEST_BLOCK_1000_47
+
+ws_run_block 48 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2084 2092 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1000_48'
+ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
+
+aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
+  docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+cd ~/environment/aiagent
+docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
+
+docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1000_48
 
-ws_run_block 49 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2107 2115 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1000_49'
+ws_run_block 49 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2104 2112 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1000_49'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
@@ -8785,19 +8780,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1000_49
 
-ws_run_block 50 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2127 2135 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1000_50'
-ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
-
-aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
-  docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-
-cd ~/environment/aiagent
-docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
-
-docker push "${ECR_URI}:latest"
-WS_TEST_BLOCK_1000_50
-
-ws_run_block 51 'Deploying the AI agent to AgentCore Runtime' '6. Create the AgentCore Runtime, or update it if it exists. The application reads its configuration from environment variables, so the runtime gets the values from ~/environment/.envrc:' 2150 2172 'bash' 'python-strands' 300 <<'WS_TEST_BLOCK_1000_51'
+ws_run_block 50 'Deploying the AI agent to AgentCore Runtime' '6. Create the AgentCore Runtime, or update it if it exists. The application reads its configuration from environment variables, so the runtime gets the values from ~/environment/.envrc:' 2127 2149 'bash' 'python-strands' 300 <<'WS_TEST_BLOCK_1000_50'
 source ~/environment/.envrc
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
@@ -8821,9 +8804,9 @@ else
     "${RUNTIME_CONFIG[@]}" > /dev/null
 fi
 echo "export AIAGENT_RUNTIME_ID=${AIAGENT_RUNTIME_ID}" >> ~/environment/.envrc
-WS_TEST_BLOCK_1000_51
+WS_TEST_BLOCK_1000_50
 
-ws_run_block 52 'Deploying the AI agent to AgentCore Runtime' '- 16-22: Create the runtime aiagent, or give an existing one a new version with the new image' 2187 2219 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_52'
+ws_run_block 51 'Deploying the AI agent to AgentCore Runtime' '- 16-22: Create the runtime aiagent, or give an existing one a new version with the new image' 2164 2196 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_51'
 source ~/environment/.envrc
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
@@ -8857,9 +8840,9 @@ fi
 aws bedrock-agentcore-control update-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
   "${RUNTIME_CONFIG[@]}" --environment-variables "$(runtime_env "${AIAGENT_RUNTIME_ID}")" > /dev/null
 echo "export AIAGENT_RUNTIME_ID=${AIAGENT_RUNTIME_ID}" >> ~/environment/.envrc
-WS_TEST_BLOCK_1000_52
+WS_TEST_BLOCK_1000_51
 
-ws_run_block 53 'Deploying the AI agent to AgentCore Runtime' '- 31-32: Every run updates the runtime: a new version with the new image and the exporter settings' 2233 2255 'bash' 'python-langgraph' 300 <<'WS_TEST_BLOCK_1000_53'
+ws_run_block 52 'Deploying the AI agent to AgentCore Runtime' '- 31-32: Every run updates the runtime: a new version with the new image and the exporter settings' 2210 2232 'bash' 'python-langgraph' 300 <<'WS_TEST_BLOCK_1000_52'
 source ~/environment/.envrc
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
@@ -8883,9 +8866,9 @@ else
     "${RUNTIME_CONFIG[@]}" > /dev/null
 fi
 echo "export AIAGENT_RUNTIME_ID=${AIAGENT_RUNTIME_ID}" >> ~/environment/.envrc
-WS_TEST_BLOCK_1000_53
+WS_TEST_BLOCK_1000_52
 
-ws_run_block 54 'Deploying the AI agent to AgentCore Runtime' '- 16-22: Create the runtime aiagent, or give an existing one a new version with the new image' 2268 2290 'bash' 'ts-vercel' 300 <<'WS_TEST_BLOCK_1000_54'
+ws_run_block 53 'Deploying the AI agent to AgentCore Runtime' '- 16-22: Create the runtime aiagent, or give an existing one a new version with the new image' 2245 2267 'bash' 'ts-vercel' 300 <<'WS_TEST_BLOCK_1000_53'
 source ~/environment/.envrc
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
@@ -8909,25 +8892,43 @@ else
     "${RUNTIME_CONFIG[@]}" > /dev/null
 fi
 echo "export AIAGENT_RUNTIME_ID=${AIAGENT_RUNTIME_ID}" >> ~/environment/.envrc
-WS_TEST_BLOCK_1000_54
+WS_TEST_BLOCK_1000_53
 
-ws_run_block 55 'Deploying the AI agent to AgentCore Runtime' '7. Wait for the runtime to become ready:' 2305 2310 'bash' '' 900 <<'WS_TEST_BLOCK_1000_55'
+ws_run_block 54 'Deploying the AI agent to AgentCore Runtime' '7. Wait for the runtime to become ready:' 2282 2287 'bash' '' 900 <<'WS_TEST_BLOCK_1000_54'
 echo -n "Waiting for runtime"
 until [ "$(aws bedrock-agentcore-control get-agent-runtime \
   --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --region ${AWS_REGION} \
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do
   echo -n "."; sleep 5
 done && echo " READY"
-WS_TEST_BLOCK_1000_55
+WS_TEST_BLOCK_1000_54
 
-ws_run_block 56 'Deploying the AI agent to AgentCore Runtime' '8. Save the endpoint of the runtime:' 2316 2319 'bash' '' <<'WS_TEST_BLOCK_1000_56'
+ws_run_block 55 'Deploying the AI agent to AgentCore Runtime' '8. Save the endpoint of the runtime:' 2293 2296 'bash' '' <<'WS_TEST_BLOCK_1000_55'
 RUNTIME_ARN="arn:aws:bedrock-agentcore:${AWS_REGION}:${ACCOUNT_ID}:runtime/${AIAGENT_RUNTIME_ID}"
 AIAGENT_ENDPOINT="https://bedrock-agentcore.${AWS_REGION}.amazonaws.com/runtimes/$(echo -n "${RUNTIME_ARN}" | jq -sRr @uri)/invocations?qualifier=DEFAULT"
 
 echo "export AIAGENT_ENDPOINT=${AIAGENT_ENDPOINT}" >> ~/environment/.envrc
+WS_TEST_BLOCK_1000_55
+
+ws_run_block 56 'Deploying the AI agent to AgentCore Runtime' '9. The Gateway delivers its own logs and traces too: each request with the tool call, its target, and, once you add policies, the authorization decision. Turn on both for the Gateway:' 2302 2316 'bash' '' 900 <<'WS_TEST_BLOCK_1000_56'
+until [ "$(aws xray get-trace-segment-destination --query Status --output text --no-cli-pager)" = "ACTIVE" ]; do sleep 15; done
+GATEWAY_ARN=$(aws bedrock-agentcore-control get-gateway --gateway-identifier "${GATEWAY_ID}" --no-cli-pager \
+  --query 'gatewayArn' --output text)
+aws logs create-log-group --log-group-name "/aws/vendedlogs/bedrock-agentcore/gateway/${GATEWAY_ID}" --no-cli-pager 2>/dev/null || true
+aws logs put-delivery-source --name "${GATEWAY_ID}-logs" --resource-arn "${GATEWAY_ARN}" --log-type APPLICATION_LOGS --no-cli-pager > /dev/null
+aws logs put-delivery-destination --name "${GATEWAY_ID}-logs" --no-cli-pager --delivery-destination-configuration \
+  "destinationResourceArn=arn:aws:logs:${AWS_REGION}:${ACCOUNT_ID}:log-group:/aws/vendedlogs/bedrock-agentcore/gateway/${GATEWAY_ID}" > /dev/null
+aws logs put-delivery-source --name "${GATEWAY_ID}-traces" --resource-arn "${GATEWAY_ARN}" --log-type TRACES --no-cli-pager > /dev/null
+aws logs put-delivery-destination --name "${GATEWAY_ID}-traces" --delivery-destination-type XRAY --no-cli-pager > /dev/null
+for NAME in "${GATEWAY_ID}-logs" "${GATEWAY_ID}-traces"; do
+  [ "$(aws logs describe-deliveries --no-cli-pager --query "length(deliveries[?deliverySourceName=='${NAME}'])" --output text)" != "0" ] || \
+    aws logs create-delivery --delivery-source-name "${NAME}" --no-cli-pager \
+      --delivery-destination-arn "arn:aws:logs:${AWS_REGION}:${ACCOUNT_ID}:delivery-destination:${NAME}" > /dev/null
+done
+echo "export GATEWAY_LOG_GROUP=/aws/vendedlogs/bedrock-agentcore/gateway/${GATEWAY_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_56
 
-ws_run_block 57 'Testing the deployed AI agent' '1. Get a token for alice and send a request to the runtime:' 2327 2339 'bash' '' 300 <<'WS_TEST_BLOCK_1000_57'
+ws_run_block 57 'Testing the deployed AI agent' '1. Get a token for alice and send a request to the runtime:' 2329 2341 'bash' '' 300 <<'WS_TEST_BLOCK_1000_57'
 TOKEN=$(aws cognito-idp initiate-auth \
   --client-id "${AIAGENT_CLIENT_ID}" \
   --auth-flow USER_PASSWORD_AUTH \
@@ -8943,7 +8944,7 @@ curl -N -s --fail-with-body -X POST "${AIAGENT_ENDPOINT}" \
   -d '{"prompt":"Hi, I am alice"}'; echo
 WS_TEST_BLOCK_1000_57
 
-ws_run_block 58 'Testing the deployed AI agent' '2. Read the status of the runtime and the output of the container in its log group:' 2347 2351 'bash' '' <<'WS_TEST_BLOCK_1000_58'
+ws_run_block 58 'Testing the deployed AI agent' '2. Read the status of the runtime and the output of the container in its log group:' 2349 2353 'bash' '' <<'WS_TEST_BLOCK_1000_58'
 aws bedrock-agentcore-control get-agent-runtime \
   --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
   --region ${AWS_REGION} \
@@ -8951,14 +8952,14 @@ aws bedrock-agentcore-control get-agent-runtime \
   --query '{status:status,lastUpdated:lastUpdatedAt}'
 WS_TEST_BLOCK_1000_58
 
-ws_run_block 59 'Testing the deployed AI agent' 'Testing the deployed AI agent' 2355 2358 'bash' '' <<'WS_TEST_BLOCK_1000_59'
+ws_run_block 59 'Testing the deployed AI agent' 'Testing the deployed AI agent' 2357 2360 'bash' '' <<'WS_TEST_BLOCK_1000_59'
 aws logs tail "/aws/bedrock-agentcore/runtimes/${AIAGENT_RUNTIME_ID}-DEFAULT" \
   --region ${AWS_REGION} \
   --since 1h \
   --no-cli-pager
 WS_TEST_BLOCK_1000_59
 
-ws_run_block 60 'Testing the deployed AI agent' '3. Check that the conversation outlives the runtime session. ask-runtime.sh signs in as a Cognito user and sends a prompt to the runtime, like the curl call. Tell the AI agent a detail, stop the session, and ask for the detail in the same session:' 2364 2368 'bash' '' 300 <<'WS_TEST_BLOCK_1000_60'
+ws_run_block 60 'Testing the deployed AI agent' '3. Check that the conversation outlives the runtime session. ask-runtime.sh signs in as a Cognito user and sends a prompt to the runtime, like the curl call. Tell the AI agent a detail, stop the session, and ask for the detail in the same session:' 2366 2370 'bash' '' 300 <<'WS_TEST_BLOCK_1000_60'
 SESSION_ID="tokyo-budget-$(date +%s)-0123456789abcdef"
 ~/workshop/scripts/ask-runtime.sh ask \
   "My hotel budget for Tokyo is 130 USD per night. Confirm in one sentence." "${SESSION_ID}"
@@ -8966,14 +8967,14 @@ SESSION_ID="tokyo-budget-$(date +%s)-0123456789abcdef"
 ~/workshop/scripts/ask-runtime.sh ask "Which hotel budget did I give you?" "${SESSION_ID}"
 WS_TEST_BLOCK_1000_60
 
-ws_run_block 61 'Testing the deployed AI agent' '4. List the versions and the endpoints of the runtime:' 2378 2381 'bash' '' <<'WS_TEST_BLOCK_1000_61'
+ws_run_block 61 'Testing the deployed AI agent' '4. List the versions and the endpoints of the runtime:' 2380 2383 'bash' '' <<'WS_TEST_BLOCK_1000_61'
 aws bedrock-agentcore-control list-agent-runtime-versions --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
   --no-cli-pager --query 'agentRuntimes[].{version: agentRuntimeVersion, status: status}' --output table
 aws bedrock-agentcore-control list-agent-runtime-endpoints --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
   --no-cli-pager --query 'runtimeEndpoints[].{name: name, liveVersion: liveVersion}' --output table
 WS_TEST_BLOCK_1000_61
 
-ws_run_block 62 'Evaluating sessions online' 'Start the online evaluation with two built-in evaluators, so that the sessions of the next modules are scored as you go:' 2391 2403 'bash' '' 300 <<'WS_TEST_BLOCK_1000_62'
+ws_run_block 62 'Evaluating sessions online' 'Start the online evaluation with two built-in evaluators, so that the sessions of the next modules are scored as you go:' 2393 2405 'bash' '' 300 <<'WS_TEST_BLOCK_1000_62'
 LOG_GROUP="/aws/bedrock-agentcore/runtimes/${AIAGENT_RUNTIME_ID}-DEFAULT"
 ONLINE_EVALUATION_CONFIG_ID=$(aws bedrock-agentcore-control list-online-evaluation-configs --no-cli-pager \
   --query "onlineEvaluationConfigs[?onlineEvaluationConfigName=='aiagent_online'].onlineEvaluationConfigId | [0]" --output text)
@@ -8989,7 +8990,7 @@ until [ "$(aws bedrock-agentcore-control get-online-evaluation-config --online-e
 echo "export ONLINE_EVALUATION_CONFIG_ID=${ONLINE_EVALUATION_CONFIG_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_62
 
-ws_run_block 63 'Hosting the UI' '1. Create the S3 bucket for the UI:' 2419 2430 'bash' '' <<'WS_TEST_BLOCK_1000_63'
+ws_run_block 63 'Hosting the UI' '1. Create the S3 bucket for the UI:' 2421 2432 'bash' '' <<'WS_TEST_BLOCK_1000_63'
 UI_BUCKET=$(aws s3api list-buckets --no-cli-pager \
   --query "Buckets[?starts_with(Name, 'aiagent-ui-${ACCOUNT_ID}-')].Name | [0]" --output text)
 if [ "${UI_BUCKET}" = "None" ]; then
@@ -9004,7 +9005,7 @@ fi
 echo "export UI_BUCKET=${UI_BUCKET}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_63
 
-ws_run_block 64 'Hosting the UI' '2. Create the Origin Access Identity (OAI) that lets CloudFront read the private bucket, the bucket policy, and the distribution:' 2438 2516 'bash' '' 300 <<'WS_TEST_BLOCK_1000_64'
+ws_run_block 64 'Hosting the UI' '2. Create the Origin Access Identity (OAI) that lets CloudFront read the private bucket, the bucket policy, and the distribution:' 2440 2518 'bash' '' 300 <<'WS_TEST_BLOCK_1000_64'
 OAI_ID=$(aws cloudfront list-cloud-front-origin-access-identities --no-cli-pager \
   --query "CloudFrontOriginAccessIdentityList.Items[?Comment=='OAI for aiagent UI'].Id | [0]" --output text)
 if [ "${OAI_ID}" = "None" ]; then
@@ -9086,7 +9087,7 @@ fi
 echo "export UI_DOMAIN=${UI_DOMAIN}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_64
 
-ws_run_block 65 'Hosting the UI' '3. Write config.json and upload the files:' 2528 2552 'bash' 'python-strands' <<'WS_TEST_BLOCK_1000_65'
+ws_run_block 65 'Hosting the UI' '3. Write config.json and upload the files:' 2530 2554 'bash' 'python-strands' <<'WS_TEST_BLOCK_1000_65'
 cd ~/environment
 cat > ~/environment/aiagent/static/config.json << EOF
 {
@@ -9114,7 +9115,7 @@ for file in ${UI_DIR}/*.html ${UI_DIR}/*.js ${UI_DIR}/*.css ${UI_DIR}/*.json ${U
 done
 WS_TEST_BLOCK_1000_65
 
-ws_run_block 66 'Hosting the UI' '- 7: The attachment button of the UI, for receipts in the Bedrock Data Automation module' 2562 2586 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_66'
+ws_run_block 66 'Hosting the UI' '- 7: The attachment button of the UI, for receipts in the Bedrock Data Automation module' 2564 2588 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_66'
 cd ~/environment
 cat > ~/environment/aiagent/src/main/resources/static/config.json << EOF
 {
@@ -9142,7 +9143,7 @@ for file in ${UI_DIR}/*.html ${UI_DIR}/*.js ${UI_DIR}/*.css ${UI_DIR}/*.json ${U
 done
 WS_TEST_BLOCK_1000_66
 
-ws_run_block 67 'Hosting the UI' '- 7: The attachment button of the UI, for receipts in the Bedrock Data Automation module' 2596 2620 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_67'
+ws_run_block 67 'Hosting the UI' '- 7: The attachment button of the UI, for receipts in the Bedrock Data Automation module' 2598 2622 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_67'
 cd ~/environment
 cat > ~/environment/aiagent/static/config.json << EOF
 {
@@ -9170,7 +9171,7 @@ for file in ${UI_DIR}/*.html ${UI_DIR}/*.js ${UI_DIR}/*.css ${UI_DIR}/*.json ${U
 done
 WS_TEST_BLOCK_1000_67
 
-ws_run_block 68 'Hosting the UI' '- 7: The attachment button of the UI, for receipts in the Bedrock Data Automation module' 2630 2654 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_1000_68'
+ws_run_block 68 'Hosting the UI' '- 7: The attachment button of the UI, for receipts in the Bedrock Data Automation module' 2632 2656 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_1000_68'
 cd ~/environment
 cat > ~/environment/aiagent/static/config.json << EOF
 {
@@ -9198,7 +9199,7 @@ for file in ${UI_DIR}/*.html ${UI_DIR}/*.js ${UI_DIR}/*.css ${UI_DIR}/*.json ${U
 done
 WS_TEST_BLOCK_1000_68
 
-ws_run_block 69 'Hosting the UI' '4. Wait until CloudFront serves the UI. A new distribution takes a few minutes:' 2666 2670 'bash' '' 1800 <<'WS_TEST_BLOCK_1000_69'
+ws_run_block 69 'Hosting the UI' '4. Wait until CloudFront serves the UI. A new distribution takes a few minutes:' 2668 2672 'bash' '' 1800 <<'WS_TEST_BLOCK_1000_69'
 echo -n "Waiting for CloudFront"
 until [ "$(curl -s -o /dev/null -w "%{http_code}" "https://${UI_DOMAIN}" 2>/dev/null)" = "200" ]; do
   echo -n "."; sleep 15
@@ -9206,17 +9207,17 @@ done && echo " READY"
 echo "UI URL: https://${UI_DOMAIN}"
 WS_TEST_BLOCK_1000_69
 
-ws_run_block 70 'Testing the UI' '1. Open the UI and sign in as alice with the password of Code Editor:' 2678 2680 'bash' '' <<'WS_TEST_BLOCK_1000_70'
+ws_run_block 70 'Testing the UI' '1. Open the UI and sign in as alice with the password of Code Editor:' 2680 2682 'bash' '' <<'WS_TEST_BLOCK_1000_70'
 echo "UI URL: https://${UI_DOMAIN}"
 echo "username: alice"
 echo "password: ${IDE_PASSWORD}"
 WS_TEST_BLOCK_1000_70
 
-ws_run_block 71 'Testing the UI' '3. Check that every resource of the workshop so far is in place. The script only reads, and ends with End state complete:' 2696 2696 'bash' '' 300 <<'WS_TEST_BLOCK_1000_71'
+ws_run_block 71 'Testing the UI' '3. Check that every resource of the workshop so far is in place. The script only reads, and ends with End state complete:' 2698 2698 'bash' '' 300 <<'WS_TEST_BLOCK_1000_71'
 ~/workshop/scripts/check-state.sh
 WS_TEST_BLOCK_1000_71
 
-ws_run_block 72 'Committing changes' 'Committing changes' 2702 2704 'bash' '' <<'WS_TEST_BLOCK_1000_72'
+ws_run_block 72 'Committing changes' 'Committing changes' 2704 2706 'bash' '' <<'WS_TEST_BLOCK_1000_72'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Deploy the AI agent"
