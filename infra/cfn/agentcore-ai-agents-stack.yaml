@@ -176,6 +176,117 @@ Resources:
       UserPoolId:
         Ref: CalendarUserPool8D43B6B0
     Type: AWS::Cognito::UserPoolClient
+  CalendarApi36616322:
+    Properties:
+      Description: Corporate calendar API (agentcore-ai-agents workshop)
+      Name: workshop-calendar-api
+      ProtocolType: HTTP
+      Tags:
+        WorkshopDeploymentId:
+          Ref: AWS::StackId
+        WorkshopId: agentcore-ai-agents
+        WorkshopOwner: cloudformation
+    Type: AWS::ApiGatewayV2::Api
+  CalendarApiAccessLogsB071F8C7:
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: /aws/apigateway/workshop-calendar-api
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: agentcore-ai-agents
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
+  CalendarApiCalendarPoolAuthorizer631F7D39:
+    Properties:
+      ApiId:
+        Ref: CalendarApi36616322
+      AuthorizerType: JWT
+      IdentitySource:
+        - $request.header.Authorization
+      JwtConfiguration:
+        Audience:
+          - Ref: CalendarAgentCoreClientCAA18DBC
+        Issuer:
+          Fn::Join:
+            - ""
+            - - https://cognito-idp.
+              - Ref: AWS::Region
+              - .amazonaws.com/
+              - Ref: CalendarUserPool8D43B6B0
+      Name: CalendarPoolAuthorizer
+    Type: AWS::ApiGatewayV2::Authorizer
+  CalendarApiDefaultStage6FBBFEEE:
+    Properties:
+      AccessLogSettings:
+        DestinationArn:
+          Fn::GetAtt:
+            - CalendarApiAccessLogsB071F8C7
+            - Arn
+        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","requestTime":"$context.requestTime","routeKey":"$context.routeKey","status":"$context.status","authorizerError":"$context.authorizer.error","integrationError":"$context.integrationErrorMessage"}'
+      ApiId:
+        Ref: CalendarApi36616322
+      AutoDeploy: true
+      StageName: $default
+      Tags:
+        WorkshopDeploymentId:
+          Ref: AWS::StackId
+        WorkshopId: agentcore-ai-agents
+        WorkshopOwner: cloudformation
+    Type: AWS::ApiGatewayV2::Stage
+  CalendarApiGETeventsB3424E9C:
+    Properties:
+      ApiId:
+        Ref: CalendarApi36616322
+      AuthorizationScopes:
+        - calendar/read
+      AuthorizationType: JWT
+      AuthorizerId:
+        Ref: CalendarApiCalendarPoolAuthorizer631F7D39
+      RouteKey: GET /events
+      Target:
+        Fn::Join:
+          - ""
+          - - integrations/
+            - Ref: CalendarApiGETeventsEventsIntegrationCE2A81B5
+    Type: AWS::ApiGatewayV2::Route
+  CalendarApiGETeventsEventsIntegrationCE2A81B5:
+    Properties:
+      ApiId:
+        Ref: CalendarApi36616322
+      IntegrationType: AWS_PROXY
+      IntegrationUri:
+        Fn::GetAtt:
+          - CalendarFunction60941CAE
+          - Arn
+      PayloadFormatVersion: "2.0"
+    Type: AWS::ApiGatewayV2::Integration
+  CalendarApiGETeventsEventsIntegrationPermission58F9DDB4:
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - CalendarFunction60941CAE
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:"
+            - Ref: AWS::Region
+            - ":"
+            - Ref: AWS::AccountId
+            - ":"
+            - Ref: CalendarApi36616322
+            - /*/*/events
+    Type: AWS::Lambda::Permission
   CalendarClientIdParameterFB9CBB15:
     Properties:
       Description: Corporate calendar app client for AgentCore Identity (agentcore-ai-agents workshop)
@@ -195,7 +306,7 @@ Resources:
     Properties:
       Code:
         ZipFile: |
-          """Corporate calendar API (Lambda function URL): GET /events with a bearer token of the calendar user pool."""
+          """Corporate calendar API (behind an API Gateway HTTP API with a JWT authorizer): GET /events with a bearer token of the calendar user pool."""
           import json
           import os
           import urllib.error
@@ -263,14 +374,6 @@ Resources:
           Value: cloudformation
       Timeout: 10
     Type: AWS::Lambda::Function
-  CalendarFunctionFunctionUrl3CD51D85:
-    Properties:
-      AuthType: NONE
-      TargetFunctionArn:
-        Fn::GetAtt:
-          - CalendarFunction60941CAE
-          - Arn
-    Type: AWS::Lambda::Url
   CalendarFunctionRoleC068B162:
     Properties:
       AssumeRolePolicyDocument:
@@ -296,26 +399,6 @@ Resources:
         - Key: WorkshopOwner
           Value: cloudformation
     Type: AWS::IAM::Role
-  CalendarFunctioninvokefunction5E69E20B:
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName:
-        Fn::GetAtt:
-          - CalendarFunction60941CAE
-          - Arn
-      InvokedViaFunctionUrl: true
-      Principal: "*"
-    Type: AWS::Lambda::Permission
-  CalendarFunctioninvokefunctionurlB5EF049B:
-    Properties:
-      Action: lambda:InvokeFunctionUrl
-      FunctionName:
-        Fn::GetAtt:
-          - CalendarFunction60941CAE
-          - Arn
-      FunctionUrlAuthType: NONE
-      Principal: "*"
-    Type: AWS::Lambda::Permission
   CalendarPoolIdParameter37826686:
     Properties:
       Description: Corporate calendar user pool ID (agentcore-ai-agents workshop)
@@ -340,16 +423,9 @@ Resources:
         WorkshopOwner: cloudformation
       Type: String
       Value:
-        Fn::Join:
-          - ""
-          - - https://
-            - Fn::Select:
-                - 2
-                - Fn::Split:
-                    - /
-                    - Fn::GetAtt:
-                        - CalendarFunctionFunctionUrl3CD51D85
-                        - FunctionUrl
+        Fn::GetAtt:
+          - CalendarApi36616322
+          - ApiEndpoint
     Type: AWS::SSM::Parameter
   CalendarUserPool8D43B6B0:
     DeletionPolicy: Delete
@@ -913,7 +989,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1792334407797"
+      ContentHash: "1792344576393"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -1553,7 +1629,6 @@ Resources:
         Statement:
           - Action:
               - application-signals:StartDiscovery
-              - cloudtrail:CreateServiceLinkedChannel
               - logs:DescribeResourcePolicies
               - logs:PutResourcePolicy
               - xray:GetIndexingRules
@@ -1563,6 +1638,15 @@ Resources:
             Effect: Allow
             Resource: "*"
             Sid: TransactionSearchSetup
+          - Action: cloudtrail:CreateServiceLinkedChannel
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:cloudtrail:*:"
+                  - Ref: AWS::AccountId
+                  - :channel/aws-service-channel/application-signals/*
+            Sid: ApplicationSignalsCloudTrailChannel
           - Action: iam:CreateServiceLinkedRole
             Condition:
               StringEquals:
@@ -4101,7 +4185,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261018164007"
+            - "-20261018192936"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -4185,7 +4269,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261018164007"
+            - "-20261018192936"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

@@ -10,11 +10,16 @@
         "xray:GetIndexingRules",
         "xray:UpdateIndexingRule",
         "application-signals:StartDiscovery",
-        "cloudtrail:CreateServiceLinkedChannel",
         "logs:DescribeResourcePolicies",
         "logs:PutResourcePolicy"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "ApplicationSignalsCloudTrailChannel",
+      "Effect": "Allow",
+      "Action": "cloudtrail:CreateServiceLinkedChannel",
+      "Resource": "arn:aws:cloudtrail:*:{{.AccountId}}:channel/aws-service-channel/application-signals/*"
     },
     {
       "Sid": "ApplicationSignalsServiceLinkedRole",

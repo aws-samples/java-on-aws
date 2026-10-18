@@ -5,8 +5,18 @@ import io.github.cdklabs.cdknag.NagSuppressions;
 import software.amazon.awscdk.Aws;
 import software.amazon.awscdk.CustomResource;
 import software.amazon.awscdk.Duration;
-import software.amazon.awscdk.Fn;
 import software.amazon.awscdk.RemovalPolicy;
+import software.amazon.awscdk.aws_apigatewayv2_authorizers.HttpJwtAuthorizer;
+import software.amazon.awscdk.aws_apigatewayv2_authorizers.HttpJwtAuthorizerProps;
+import software.amazon.awscdk.aws_apigatewayv2_integrations.HttpLambdaIntegration;
+import software.amazon.awscdk.services.apigateway.AccessLogFormat;
+import software.amazon.awscdk.services.apigatewayv2.AddRoutesOptions;
+import software.amazon.awscdk.services.apigatewayv2.HttpApi;
+import software.amazon.awscdk.services.apigatewayv2.HttpMethod;
+import software.amazon.awscdk.services.apigatewayv2.HttpStageOptions;
+import software.amazon.awscdk.services.apigatewayv2.IAccessLogDestination;
+import software.amazon.awscdk.services.apigatewayv2.IAccessLogSettings;
+import software.amazon.awscdk.services.apigatewayv2.LogGroupLogDestination;
 import software.amazon.awscdk.services.cognito.CfnUserPoolClient;
 import software.amazon.awscdk.services.cognito.CognitoDomainOptions;
 import software.amazon.awscdk.services.cognito.ManagedLoginVersion;
@@ -25,10 +35,9 @@ import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
-import software.amazon.awscdk.services.lambda.FunctionUrl;
-import software.amazon.awscdk.services.lambda.FunctionUrlAuthType;
-import software.amazon.awscdk.services.lambda.FunctionUrlOptions;
 import software.amazon.awscdk.services.lambda.Runtime;
+import software.amazon.awscdk.services.logs.LogGroup;
+import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.secretsmanager.ISecret;
 import software.amazon.awscdk.services.ssm.StringParameter;
 import software.constructs.Construct;
@@ -47,8 +56,9 @@ import java.util.Map;
  *   calendar/read, app client "agentcore" with a secret (the participant sets its callback URL
  *   to the AgentCore credential provider's callback), users alice and bob with the IDE password
  * - Lambda {prefix}-calendar-api (apps/agentcore-ai-agents/calendar-api/handler.py, inline code)
- *   behind a public function URL; the handler
- *   checks the bearer token with the pool's userInfo endpoint
+ *   behind the HTTP API {prefix}-calendar-api: GET /events with a JWT authorizer (issuer: the pool,
+ *   audience: the agentcore client, scope calendar/read), access logs in /aws/apigateway/{prefix}-calendar-api;
+ *   the handler also checks the bearer token with the pool's userInfo endpoint and reads the username there
  * - SSM parameters {prefix}-calendar-url, {prefix}-calendar-pool-id, {prefix}-calendar-client-id
  */
 public class CalendarApi extends Construct {
@@ -165,13 +175,48 @@ public class CalendarApi extends Construct {
             .role(apiRole)
             .environment(Map.of("USERINFO_URL", domain.baseUrl() + "/oauth2/userInfo"))
             .build();
-        // Public URL; CDK adds the lambda:InvokeFunctionUrl and lambda:InvokeFunction (via URL) permissions
-        FunctionUrl functionUrl = function.addFunctionUrl(FunctionUrlOptions.builder()
-            .authType(FunctionUrlAuthType.NONE)
+        // HTTP API in front of the function: API Gateway rejects requests without a valid token of the pool
+        // (Cognito access tokens carry client_id instead of aud; the JWT authorizer checks it as the audience)
+        HttpApi api = HttpApi.Builder.create(this, "Api")
+            .apiName(prefix + "-calendar-api")
+            .description("Corporate calendar API (agentcore-ai-agents workshop)")
+            .createDefaultStage(false)
+            .build();
+        HttpJwtAuthorizer authorizer = new HttpJwtAuthorizer("CalendarPoolAuthorizer",
+            "https://cognito-idp." + Aws.REGION + ".amazonaws.com/" + userPool.getUserPoolId(),
+            HttpJwtAuthorizerProps.builder().jwtAudience(List.of(client.getRef())).build());
+        api.addRoutes(AddRoutesOptions.builder()
+            .path("/events")
+            .methods(List.of(HttpMethod.GET))
+            .integration(new HttpLambdaIntegration("EventsIntegration", function))
+            .authorizer(authorizer)
+            .authorizationScopes(List.of("calendar/read"))
+            .build());
+        LogGroup accessLogs = LogGroup.Builder.create(this, "ApiAccessLogs")
+            .logGroupName("/aws/apigateway/" + prefix + "-calendar-api")
+            .retention(RetentionDays.ONE_WEEK)
+            .removalPolicy(RemovalPolicy.DESTROY)
+            .build();
+        api.addStage("DefaultStage", HttpStageOptions.builder()
+            .stageName("$default")
+            .autoDeploy(true)
+            .accessLogSettings(new IAccessLogSettings() {
+                @Override
+                public IAccessLogDestination getDestination() {
+                    return new LogGroupLogDestination(accessLogs);
+                }
+
+                @Override
+                public AccessLogFormat getFormat() {
+                    return AccessLogFormat.custom("{\"requestId\":\"$context.requestId\",\"ip\":\"$context.identity.sourceIp\","
+                        + "\"requestTime\":\"$context.requestTime\",\"routeKey\":\"$context.routeKey\",\"status\":\"$context.status\","
+                        + "\"authorizerError\":\"$context.authorizer.error\",\"integrationError\":\"$context.integrationErrorMessage\"}");
+                }
+            })
             .build());
 
-        // Function URL without the trailing slash: https://<id>.lambda-url.<region>.on.aws
-        String calendarUrl = "https://" + Fn.select(2, Fn.split("/", functionUrl.getUrl()));
+        // https://<id>.execute-api.<region>.amazonaws.com (the $default stage has no path)
+        String calendarUrl = api.getApiEndpoint();
         StringParameter.Builder.create(this, "UrlParameter")
             .parameterName(prefix + "-calendar-url")
             .description("Corporate calendar API URL (agentcore-ai-agents workshop)")

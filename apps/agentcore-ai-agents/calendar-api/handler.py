@@ -1,4 +1,4 @@
-"""Corporate calendar API (Lambda function URL): GET /events with a bearer token of the calendar user pool."""
+"""Corporate calendar API (behind an API Gateway HTTP API with a JWT authorizer): GET /events with a bearer token of the calendar user pool."""
 import json
 import os
 import urllib.error
