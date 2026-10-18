@@ -2,7 +2,7 @@
 
 # agentcore-ai-agents workshop post-deploy script
 # Base development tools (Docker, jq, direnv, uv, nvm) are already installed by ide/tools.sh during bootstrap;
-# the workshop code is in ~/java-on-aws/apps/agentcore-ai-agents.
+# the workshop code is in ~/java-on-aws/apps/agentcore-ai-agents, and the files the content uses are copied to ~/workshop.
 # Model note: the workshop uses Claude Sonnet 4.6; Claude Sonnet 5 / 5.5 need an AWS Marketplace
 # subscription per account, which the participant role cannot make (aws-marketplace:Subscribe).
 
@@ -19,6 +19,17 @@ export NVM_DIR="$HOME/.nvm"
 source "$NVM_DIR/nvm.sh"
 retry_critical "Node.js 22" "nvm install 22 >/dev/null"
 nvm alias default 22 >/dev/null
+
+# Phase 2: the files the content uses, in ~/workshop (outside the editor's ~/environment; the content never reads
+# ~/java-on-aws). The IDE stand-in of the content repository (docs/spikes/ws-test/run-workshop.sh) makes the same copy.
+log_info "Phase 2: workshop files in ~/workshop..."
+APP_DIR="$HOME/java-on-aws/apps/agentcore-ai-agents"
+mkdir -p "$HOME/workshop"
+cp -R "$APP_DIR/scripts" "$APP_DIR/ui" "$APP_DIR/samples" "$APP_DIR/receipt-lambda" "$HOME/workshop/"
+for BACKOFFICE in backoffice-java backoffice-python backoffice-ts; do
+  mkdir -p "$HOME/workshop/$BACKOFFICE"
+  cp -R "$APP_DIR/$BACKOFFICE/app" "$HOME/workshop/$BACKOFFICE/"
+done
 
 log_success "agentcore-ai-agents workshop post-deploy setup completed successfully!"
 
