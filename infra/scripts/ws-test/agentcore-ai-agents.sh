@@ -62,7 +62,7 @@ aws bedrock-runtime converse --no-cli-pager \
   --query '{text: output.message.content[0].text, stopReason: stopReason, usage: usage}'
 WS_TEST_BLOCK_200_1
 
-ws_skip_block 2 'Calling the Converse API' '- 6: The answer, the stop reason, and the token usage' 86 96 'json' '' 'copy action disabled'
+ws_skip_block 2 'Calling the Converse API' '- 6: The answer, the stop reason, and the token usage' 85 95 'json' '' 'copy action disabled'
 
 ws_run_block 3 'Calling the Converse API' '2. Limit the answer to 10 tokens:' 112 116 'bash' '' <<'WS_TEST_BLOCK_200_3'
 aws bedrock-runtime converse --no-cli-pager \
@@ -875,7 +875,7 @@ cd ~/environment/aiagent
 uv run extract_trip.py ~/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
 WS_TEST_BLOCK_300_17
 
-ws_skip_block 18 'Extracting a trip request from an email' 'Extracting a trip request from an email' 645 656 'json' 'python-strands' 'copy action disabled'
+ws_skip_block 18 'Extracting a trip request from an email' 'Extracting a trip request from an email' 644 655 'json' 'python-strands' 'copy action disabled'
 
 ws_run_block 19 'Extracting a trip request from an email' 'Extracting a trip request from an email' 663 665 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_300_19'
 cd ~/environment/aiagent
@@ -883,21 +883,21 @@ cd ~/environment/aiagent
   -Dspring-boot.run.arguments=${HOME}/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
 WS_TEST_BLOCK_300_19
 
-ws_skip_block 20 'Extracting a trip request from an email' 'Extracting a trip request from an email' 671 682 'json' 'java-spring-ai' 'copy action disabled'
+ws_skip_block 20 'Extracting a trip request from an email' 'Extracting a trip request from an email' 670 681 'json' 'java-spring-ai' 'copy action disabled'
 
 ws_run_block 21 'Extracting a trip request from an email' 'Extracting a trip request from an email' 689 690 'bash' 'python-langgraph' 300 <<'WS_TEST_BLOCK_300_21'
 cd ~/environment/aiagent
 uv run extract_trip.py ~/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
 WS_TEST_BLOCK_300_21
 
-ws_skip_block 22 'Extracting a trip request from an email' 'Extracting a trip request from an email' 696 707 'json' 'python-langgraph' 'copy action disabled'
+ws_skip_block 22 'Extracting a trip request from an email' 'Extracting a trip request from an email' 695 706 'json' 'python-langgraph' 'copy action disabled'
 
 ws_run_block 23 'Extracting a trip request from an email' 'Extracting a trip request from an email' 714 715 'bash' 'ts-vercel' 300 <<'WS_TEST_BLOCK_300_23'
 cd ~/environment/aiagent
 npx tsx extract-trip.ts ~/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
 WS_TEST_BLOCK_300_23
 
-ws_skip_block 24 'Extracting a trip request from an email' 'Extracting a trip request from an email' 721 732 'json' 'ts-vercel' 'copy action disabled'
+ws_skip_block 24 'Extracting a trip request from an email' 'Extracting a trip request from an email' 720 731 'json' 'ts-vercel' 'copy action disabled'
 
 ws_run_block 25 'Extracting a trip request from an email' 'Check the destination in the result:' 741 741 'bash' '' <<'WS_TEST_BLOCK_300_25'
 jq -e '.destination | test("Tokyo")' /tmp/trip-request.json
@@ -5417,13 +5417,13 @@ curl -s -X POST http://localhost:8000/mcp \
   }' | jq .
 WS_TEST_BLOCK_910_26
 
-ws_skip_block 27 'Testing the MCP server' 'Testing the MCP server' 669 692 '' 'python-strands' 'informational block without language'
+ws_skip_block 27 'Testing the MCP server' 'Testing the MCP server' 668 691 'json' 'python-strands' 'copy action disabled'
 
-ws_skip_block 28 'Testing the MCP server' 'Testing the MCP server' 701 724 '' 'java-spring-ai' 'informational block without language'
+ws_skip_block 28 'Testing the MCP server' 'Testing the MCP server' 700 723 'json' 'java-spring-ai' 'copy action disabled'
 
-ws_skip_block 29 'Testing the MCP server' 'Testing the MCP server' 733 756 '' 'python-langgraph' 'informational block without language'
+ws_skip_block 29 'Testing the MCP server' 'Testing the MCP server' 732 755 'json' 'python-langgraph' 'copy action disabled'
 
-ws_skip_block 30 'Testing the MCP server' 'Testing the MCP server' 765 780 '' 'ts-vercel' 'informational block without language'
+ws_skip_block 30 'Testing the MCP server' 'Testing the MCP server' 764 779 'text' 'ts-vercel' 'copy action disabled'
 
 ws_run_block 31 'Testing the MCP server' '2. List the tools:' 789 792 'bash' '' <<'WS_TEST_BLOCK_910_31'
 curl -s -X POST http://localhost:8000/mcp \
@@ -5432,13 +5432,13 @@ curl -s -X POST http://localhost:8000/mcp \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | jq '.result.tools[] | {name}'
 WS_TEST_BLOCK_910_31
 
-ws_skip_block 32 'Testing the MCP server' 'Testing the MCP server' 801 812 '' 'python-strands' 'informational block without language'
+ws_skip_block 32 'Testing the MCP server' 'Testing the MCP server' 800 811 'json' 'python-strands' 'copy action disabled'
 
-ws_skip_block 33 'Testing the MCP server' 'Testing the MCP server' 821 832 '' 'java-spring-ai' 'informational block without language'
+ws_skip_block 33 'Testing the MCP server' 'Testing the MCP server' 820 831 'json' 'java-spring-ai' 'copy action disabled'
 
-ws_skip_block 34 'Testing the MCP server' 'Testing the MCP server' 841 852 '' 'python-langgraph' 'informational block without language'
+ws_skip_block 34 'Testing the MCP server' 'Testing the MCP server' 840 851 'json' 'python-langgraph' 'copy action disabled'
 
-ws_skip_block 35 'Testing the MCP server' 'Testing the MCP server' 861 872 '' 'ts-vercel' 'informational block without language'
+ws_skip_block 35 'Testing the MCP server' 'Testing the MCP server' 860 871 'text' 'ts-vercel' 'copy action disabled'
 
 ws_run_block 36 'Testing the MCP server' '3. Register a trip:' 881 902 'bash' '' <<'WS_TEST_BLOCK_910_36'
 DEPARTURE=$(date -d "+7 days" +%Y-%m-%d 2>/dev/null || date -v+7d +%Y-%m-%d)
@@ -5465,15 +5465,15 @@ curl -s -X POST http://localhost:8000/mcp \
   }" | jq '.result.content[0].text'
 WS_TEST_BLOCK_910_36
 
-ws_skip_block 37 'Testing the MCP server' 'Testing the MCP server' 911 911 '' 'python-strands' 'informational block without language'
+ws_skip_block 37 'Testing the MCP server' 'Testing the MCP server' 910 910 'json' 'python-strands' 'copy action disabled'
 
-ws_skip_block 38 'Testing the MCP server' 'Testing the MCP server' 920 920 '' 'java-spring-ai' 'informational block without language'
+ws_skip_block 38 'Testing the MCP server' 'Testing the MCP server' 919 919 'json' 'java-spring-ai' 'copy action disabled'
 
 ws_skip_block 39 'Testing the MCP server' 'Testing the MCP server' 924 926 '' 'java-spring-ai' 'informational block without language'
 
-ws_skip_block 40 'Testing the MCP server' 'Testing the MCP server' 935 935 '' 'python-langgraph' 'informational block without language'
+ws_skip_block 40 'Testing the MCP server' 'Testing the MCP server' 934 934 'json' 'python-langgraph' 'copy action disabled'
 
-ws_skip_block 41 'Testing the MCP server' 'Testing the MCP server' 944 944 '' 'ts-vercel' 'informational block without language'
+ws_skip_block 41 'Testing the MCP server' 'Testing the MCP server' 943 943 'text' 'ts-vercel' 'copy action disabled'
 
 ws_run_block 42 'Testing the MCP server' 'Stop the MCP server:' 953 953 'bash' '' <<'WS_TEST_BLOCK_910_42'
 ~/workshop/scripts/local-app.sh stop ~/environment/backoffice
@@ -5849,7 +5849,7 @@ curl -s -X POST "${MCP_ENDPOINT}" \
   | jq '.result.tools[] | {name}'
 WS_TEST_BLOCK_920_22
 
-ws_skip_block 23 'Testing the MCP server on AgentCore Runtime' 'The first request after a deployment starts a session and can take a few seconds.' 527 538 '' '' 'informational block without language'
+ws_skip_block 23 'Testing the MCP server on AgentCore Runtime' 'The first request after a deployment starts a session and can take a few seconds.' 526 537 'json' '' 'copy action disabled'
 
 ws_run_block 24 'Creating the Gateway' '1. Create the IAM role that the Gateway assumes:' 546 565 'bash' '' <<'WS_TEST_BLOCK_920_24'
 cat > /tmp/trust-policy.json << EOF
@@ -10530,7 +10530,7 @@ for TEXT in "Which stocks should I buy with my per diem savings?" \
 done
 WS_TEST_BLOCK_1300_3
 
-ws_skip_block 4 'Creating the guardrail' '- 3: Payment data is masked, the other two requests are blocked' 180 182 '' '' 'informational block without language'
+ws_skip_block 4 'Creating the guardrail' '- 3: Payment data is masked, the other two requests are blocked' 179 181 'text' '' 'copy action disabled'
 
 ws_run_block 5 'Creating the guardrail' '4. Read the trace for the investment question:' 190 193 'bash' '' <<'WS_TEST_BLOCK_1300_5'
 aws bedrock-runtime apply-guardrail --guardrail-identifier "${GUARDRAIL_ID}" \
@@ -12800,7 +12800,7 @@ echo "${ANSWER}"
 CONSENT_URL=$(grep -oE 'https://[^ )>"]*authorize[^ )>"]*' <<< "${ANSWER}" | head -1 || true)
 if [ -n "${CONSENT_URL}" ]; then
   SESSION_URI=$(~/workshop/scripts/oauth-sign-in.sh "${CONSENT_URL}" alice "${IDE_PASSWORD}")
-  ~/workshop/scripts/local-app.sh oauth "${SESSION_URI}" | tee /dev/stderr | grep -q "calendar is connected"
+  ~/workshop/scripts/local-app.sh oauth "${SESSION_URI}" | grep "calendar is connected"
   ~/workshop/scripts/local-app.sh ask "Check my calendar: am I free for the Tokyo trip from November 16 to 21?"
 fi
 ~/workshop/scripts/local-app.sh stop
@@ -12883,7 +12883,7 @@ echo "${ANSWER}"
 CONSENT_URL=$(grep -oE 'https://[^ )>"]*authorize[^ )>"]*' <<< "${ANSWER}" | head -1 || true)
 if [ -n "${CONSENT_URL}" ]; then
   SESSION_URI=$(~/workshop/scripts/oauth-sign-in.sh "${CONSENT_URL}" alice "${IDE_PASSWORD}")
-  ~/workshop/scripts/ask-runtime.sh oauth "${SESSION_URI}" | tee /dev/stderr | grep -q "calendar is connected"
+  ~/workshop/scripts/ask-runtime.sh oauth "${SESSION_URI}" | grep "calendar is connected"
   ~/workshop/scripts/ask-runtime.sh ask "Check my calendar: am I free for the Tokyo trip from November 16 to 21?"
 fi
 WS_TEST_BLOCK_1400_28
@@ -13967,7 +13967,7 @@ aws lambda invoke --function-name mcp-receipt-reader --cli-binary-format raw-in-
 jq . /tmp/receipt.json
 WS_TEST_BLOCK_1500_25
 
-ws_skip_block 26 'Creating the receipt tool' '- 4: The output has the fields, the confidence per field, and the fields with low confidence (about 20 seconds)' 1311 1316 '' '' 'informational block without language'
+ws_skip_block 26 'Creating the receipt tool' '- 4: The output has the fields, the confidence per field, and the fields with low confidence (about 20 seconds)' 1310 1315 'text' '' 'copy action disabled'
 
 ws_run_block 27 'Adding file attachments to the AI agent' '1. Create attachments.py:' 1358 1389 'python' 'python-strands' <<'WS_TEST_BLOCK_1500_27'
 cat <<'EOF' > ~/environment/aiagent/attachments.py
@@ -15092,7 +15092,7 @@ EXPENSE=$(gateway_call "${JWT_GATEWAY_URL}" backoffice___createExpense \
 gateway_call "${JWT_GATEWAY_URL}" backoffice___submitExpense "{\"expenseReference\": \"${EXPENSE}\"}" "${ALICE_TOKEN}" | jq -r .status
 gateway_call "${JWT_GATEWAY_URL}" backoffice___approveExpense "{\"expenseReference\": \"${EXPENSE}\", \"approverId\": \"alice\"}" "${ALICE_TOKEN}"
 gateway_call "${JWT_GATEWAY_URL}" backoffice___approveExpense "{\"expenseReference\": \"${EXPENSE}\", \"approverId\": \"bob\"}" "${BOB_TOKEN}" \
-  | jq -r '"\(.expenseReference) \(.status) by \(.approvedBy)"' | tee /dev/stderr | grep -q APPROVED
+  | jq -r '"\(.expenseReference) \(.status) by \(.approvedBy)"' | grep APPROVED
 WS_TEST_BLOCK_1600_17
 
 ws_run_block 18 'Calling the backoffice as the user' '1. Replace the content of mcptools.py:' 387 415 'python' 'python-strands' <<'WS_TEST_BLOCK_1600_18'
@@ -16169,7 +16169,7 @@ evaluate "${EVAL_SESSION_ID}" --evaluator-arn arn:aws:bedrock-agentcore:::evalua
   arn:aws:bedrock-agentcore:::evaluator/Builtin.Helpfulness arn:aws:bedrock-agentcore:::evaluator/Builtin.ToolSelectionAccuracy
 WS_TEST_BLOCK_1800_1
 
-ws_skip_block 2 'Evaluating a session on demand' '- 12-13: Built-in evaluators have account-independent ARNs' 64 66 '' '' 'informational block without language'
+ws_skip_block 2 'Evaluating a session on demand' '- 12-13: Built-in evaluators have account-independent ARNs' 63 65 'text' '' 'copy action disabled'
 
 ws_run_block 3 'Evaluating a session on demand' '2. Check the session against ground truth:' 74 77 'bash' '' 900 <<'WS_TEST_BLOCK_1800_3'
 evaluate "${EVAL_SESSION_ID}" --evaluator-arn arn:aws:bedrock-agentcore:::evaluator/Builtin.GoalSuccessRate \
