@@ -19,31 +19,35 @@ ws_skip_block 1 'Deploying Code Editor' '2. Deploy the CloudFormation stack (15-
 
 ws_skip_block 2 'Deploying Code Editor' '3. Get the Code Editor URL:' 46 47 'bash' 'own-account' 'own account only'
 
-ws_run_block 3 'Working in Code Editor' '3. Check the AWS identity, the account and Region, and Docker:' 66 68 'bash' '' <<'WS_TEST_BLOCK_100_3'
+ws_skip_block 3 'Cleaning up after the workshop' '1. In a Code Editor terminal, list the resources that the workshop created, then delete them. The script finds them by the names the workshop uses, asks for the stack name before it deletes anything, and keeps the stack:' 55 56 'bash' 'own-account' 'own account only'
+
+ws_skip_block 4 'Cleaning up after the workshop' '2. In CloudShell, delete the stack, then the bucket from step 2 of the deployment:' 62 64 'bash' 'own-account' 'own account only'
+
+ws_run_block 5 'Working in Code Editor' '3. Check the AWS identity, the account and Region, and Docker:' 83 85 'bash' '' <<'WS_TEST_BLOCK_100_5'
 aws sts get-caller-identity --query Arn --output text --no-cli-pager
 echo "Account: ${ACCOUNT_ID}, Region: ${AWS_REGION}"
 docker --version
-WS_TEST_BLOCK_100_3
-
-ws_run_block 4 'Working in Code Editor' '4. Save the framework you build the AI agent with:' 79 79 'bash' 'python-strands' <<'WS_TEST_BLOCK_100_4'
-mkdir -p ~/environment && echo "export FRAMEWORK=python-strands" >> ~/environment/.envrc
-WS_TEST_BLOCK_100_4
-
-ws_run_block 5 'Working in Code Editor' 'Working in Code Editor' 86 86 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_100_5'
-mkdir -p ~/environment && echo "export FRAMEWORK=java-spring-ai" >> ~/environment/.envrc
 WS_TEST_BLOCK_100_5
 
-ws_run_block 6 'Working in Code Editor' 'Working in Code Editor' 93 93 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_100_6'
-mkdir -p ~/environment && echo "export FRAMEWORK=python-langgraph" >> ~/environment/.envrc
+ws_run_block 6 'Working in Code Editor' '4. Save the framework you build the AI agent with:' 96 96 'bash' 'python-strands' <<'WS_TEST_BLOCK_100_6'
+mkdir -p ~/environment && echo "export FRAMEWORK=python-strands" >> ~/environment/.envrc
 WS_TEST_BLOCK_100_6
 
-ws_run_block 7 'Working in Code Editor' 'Working in Code Editor' 100 100 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_100_7'
-mkdir -p ~/environment && echo "export FRAMEWORK=ts-vercel" >> ~/environment/.envrc
+ws_run_block 7 'Working in Code Editor' 'Working in Code Editor' 103 103 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_100_7'
+mkdir -p ~/environment && echo "export FRAMEWORK=java-spring-ai" >> ~/environment/.envrc
 WS_TEST_BLOCK_100_7
 
-ws_run_block 8 'Working in Code Editor' '5. The workshop keeps the values that later steps need, such as resource IDs and URLs, in ~/environment/.envrc. Allow direnv to load the file in every terminal in ~/environment and its subfolders:' 109 109 'bash' '' <<'WS_TEST_BLOCK_100_8'
-direnv allow ~/environment
+ws_run_block 8 'Working in Code Editor' 'Working in Code Editor' 110 110 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_100_8'
+mkdir -p ~/environment && echo "export FRAMEWORK=python-langgraph" >> ~/environment/.envrc
 WS_TEST_BLOCK_100_8
+
+ws_run_block 9 'Working in Code Editor' 'Working in Code Editor' 117 117 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_100_9'
+mkdir -p ~/environment && echo "export FRAMEWORK=ts-vercel" >> ~/environment/.envrc
+WS_TEST_BLOCK_100_9
+
+ws_run_block 10 'Working in Code Editor' '5. The workshop keeps the values that later steps need, such as resource IDs and URLs, in ~/environment/.envrc. Allow direnv to load the file in every terminal in ~/environment and its subfolders:' 126 126 'bash' '' <<'WS_TEST_BLOCK_100_10'
+direnv allow ~/environment
+WS_TEST_BLOCK_100_10
 
 ws_end_page
 

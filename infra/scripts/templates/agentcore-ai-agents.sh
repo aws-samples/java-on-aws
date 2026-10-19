@@ -26,6 +26,7 @@ log_info "Phase 2: workshop files in ~/workshop..."
 APP_DIR="$HOME/java-on-aws/apps/agentcore-ai-agents"
 mkdir -p "$HOME/workshop"
 cp -R "$APP_DIR/scripts" "$APP_DIR/ui" "$APP_DIR/samples" "$APP_DIR/receipt-lambda" "$HOME/workshop/"
+cp "$HOME/java-on-aws/infra/scripts/cleanup/agentcore-ai-agents.sh" "$HOME/workshop/scripts/cleanup.sh"
 for BACKOFFICE in backoffice-java backoffice-python backoffice-ts; do
   mkdir -p "$HOME/workshop/$BACKOFFICE"
   cp -R "$APP_DIR/$BACKOFFICE/app" "$HOME/workshop/$BACKOFFICE/"
