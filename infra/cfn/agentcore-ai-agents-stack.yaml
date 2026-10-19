@@ -989,7 +989,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1792351752476"
+      ContentHash: "1792389440563"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -1152,12 +1152,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: feat/agentcore-ai-agents
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: agentcore-ai-agents
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: feat/agentcore-ai-agents
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1656,6 +1656,15 @@ Resources:
             Effect: Allow
             Resource: arn:aws:iam::*:role/aws-service-role/application-signals.cloudwatch.amazonaws.com/*
             Sid: ApplicationSignalsServiceLinkedRole
+          - Action: cloudfront:DeleteCloudFrontOriginAccessIdentity
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:cloudfront::"
+                  - Ref: AWS::AccountId
+                  - :origin-access-identity/*
+            Sid: CloudFrontOriginAccessIdentityCleanup
           - Action:
               - logs:CreateDelivery
               - logs:DeleteDelivery*
@@ -4187,7 +4196,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261018212912"
+            - "-20261019075720"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -4271,7 +4280,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261018212912"
+            - "-20261019075720"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

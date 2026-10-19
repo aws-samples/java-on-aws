@@ -35,6 +35,12 @@
       }
     },
     {
+      "Sid": "CloudFrontOriginAccessIdentityCleanup",
+      "Effect": "Allow",
+      "Action": "cloudfront:DeleteCloudFrontOriginAccessIdentity",
+      "Resource": "arn:aws:cloudfront::{{.AccountId}}:origin-access-identity/*"
+    },
+    {
       "Sid": "GatewayLogDelivery",
       "Effect": "Allow",
       "Action": [
