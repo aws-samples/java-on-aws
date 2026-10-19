@@ -267,6 +267,14 @@ function decodeEventData(data) {
     return data;
 }
 
+// The agents stream only text: after a tool call the next text part starts right after the previous one
+// ("right away!Here's"). Tokens inside a text part start with a space, so a sentence end followed by a capital
+// letter, a heading, bold text, a table, or an emoji at an event boundary is a new text part: start a new paragraph.
+function appendTextPart(text, part) {
+    if (/[.!?:]$/.test(text) && /^(\p{Lu}|#|\*\*|\||\p{Extended_Pictographic})/u.test(part)) return text + '\n\n' + part;
+    return text + part;
+}
+
 function scrollMsgToTop(button) {
     const msg = button.closest('.msg');
     chatState.chatScreen.scrollTo({ top: msg.offsetTop - getHeaderHeight(), behavior: 'smooth' });
@@ -444,7 +452,7 @@ async function processStreamingResponse(response, loadingId = null) {
                         eventDataLines.push(line.startsWith(dataPrefix) ? line.substring(dataPrefix.length) : line.substring(5));
                     } else if (line === '' || line === '\r') {
                         if (eventDataLines.length > 0) {
-                            fullResponse += decodeEventData(eventDataLines.join('\n'));
+                            fullResponse = appendTextPart(fullResponse, decodeEventData(eventDataLines.join('\n')));
                             eventDataLines = [];
                         }
                     }
@@ -461,7 +469,7 @@ async function processStreamingResponse(response, loadingId = null) {
             if (messageDiv) updateStreamingMessage(messageDiv, fullResponse, false);
         }
 
-        if (eventDataLines.length > 0) fullResponse += decodeEventData(eventDataLines.join('\n'));
+        if (eventDataLines.length > 0) fullResponse = appendTextPart(fullResponse, decodeEventData(eventDataLines.join('\n')));
     } finally {
         clearInterval(pauseCheckInterval);
         if (pauseIndicator) pauseIndicator.remove();
