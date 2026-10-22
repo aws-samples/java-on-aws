@@ -197,14 +197,35 @@ install_kiro_cli() {
 
 install_claude_code() {
     log_info "Installing Claude Code..."
-    retry_optional "Claude Code" \
-        "curl -fsSL https://claude.ai/install.sh -o /tmp/claude_install.sh && bash /tmp/claude_install.sh"
+    # The installer is rate limited at times (HTTP 429 on every attempt within 20 s at stack
+    # creation): retry with a growing wait (about 4 min in total), then fall back to the npm
+    # package, which comes from the npm registry. Workshops run Claude Code, so the bootstrap
+    # stops when neither works.
+    local attempt delay=5
+    for attempt in 1 2 3 4 5 6 7 8; do
+        if curl -fsSL https://claude.ai/install.sh -o /tmp/claude_install.sh && bash /tmp/claude_install.sh; then
+            break
+        fi
+        echo "❌ Failed attempt ${attempt}/8: Claude Code installer"
+        [ "${attempt}" = 8 ] && break
+        echo "Waiting ${delay}s before retry..."
+        sleep "${delay}"
+        delay=$(( delay * 2 > 60 ? 60 : delay * 2 ))
+    done
+    if ! $HOME/.local/bin/claude --version >/dev/null 2>&1; then
+        log_info "Claude Code installer unavailable, installing from npm..."
+        if retry_optional "Claude Code (npm)" "npm install -g @anthropic-ai/claude-code"; then
+            mkdir -p "$HOME/.local/bin"
+            ln -sf "$(npm prefix -g)/bin/claude" "$HOME/.local/bin/claude"
+        fi
+    fi
 
     if $HOME/.local/bin/claude --version >/dev/null 2>&1; then
         local version=$($HOME/.local/bin/claude --version 2>/dev/null | head -1)
         echo "✅ Success: Claude Code $version"
     else
-        echo "⚠️  Warning: Claude Code installation could not be verified"
+        echo "💥 FATAL: Claude Code could not be installed (installer and npm both failed)"
+        exit 1
     fi
 
     # Default config for ALL workshops (not workshop-specific): route Claude Code to
