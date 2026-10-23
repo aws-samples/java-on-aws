@@ -215,7 +215,7 @@ If the thread dump appears incomplete or insufficient for complete analysis, cle
         logger.info(f"Invoking Bedrock with payload ... ")
         try:
             response = bedrock.invoke_model(
-                modelId="global.anthropic.claude-sonnet-4-6",
+                modelId="global.anthropic.claude-sonnet-4-20250514-v1:0",
                 body=payload
             )
             body = json.loads(response.get("body").read())

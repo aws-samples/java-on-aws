@@ -23,7 +23,7 @@ spring:
       converse:
         chat:
           options:
-            model: global.anthropic.claude-sonnet-4-6
+            model: anthropic.claude-sonnet-4-20250514-v1:0
             max-tokens: 10000
 
 # === Analyzer Configuration ===

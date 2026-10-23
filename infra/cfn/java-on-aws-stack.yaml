@@ -1,10 +1,3 @@
-# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: MIT-0
-Conditions:
-  IdeIsUsEast1C8D91B94:
-    Fn::Equals:
-      - Ref: AWS::Region
-      - us-east-1
 Metadata:
   cdk_nag:
     rules_to_suppress:
@@ -230,9 +223,6 @@ Resources:
     Properties:
       Code:
         ZipFile: |
-          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-          # SPDX-License-Identifier: MIT-0
-
           import boto3
           import time
           import cfnresponse
@@ -542,7 +532,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1792775891616"
+      ContentHash: "1790786799686"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -759,9 +749,6 @@ Resources:
     Properties:
       Code:
         ZipFile: |
-          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-          # SPDX-License-Identifier: MIT-0
-
           import json
           import os
           import urllib.request
@@ -975,9 +962,6 @@ Resources:
     Properties:
       Code:
         ZipFile: |
-          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-          # SPDX-License-Identifier: MIT-0
-
           import json
           import os
           import time
@@ -1706,14 +1690,7 @@ Resources:
                           - Fn::GetAtt:
                               - IdeElasticIP3327A0B5
                               - PublicIp
-                  - "."
-                  - Fn::If:
-                      - IdeIsUsEast1C8D91B94
-                      - compute-1.amazonaws.com
-                      - Fn::Join:
-                          - ""
-                          - - Ref: AWS::Region
-                            - .compute.amazonaws.com
+                  - .compute-1.amazonaws.com
             Id: WorkshopStackIdeDistributionOrigin10FECA386
       Tags:
         - Key: WorkshopDeploymentId
@@ -1763,8 +1740,6 @@ Resources:
             - - |-
                 #!/bin/bash
                 #!/bin/bash
-                # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-                # SPDX-License-Identifier: MIT-0
                 set -e
 
                 # Minimal EC2 UserData script - downloads and runs full bootstrap
@@ -1936,9 +1911,6 @@ Resources:
     Properties:
       Code:
         ZipFile: |-
-          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-          # SPDX-License-Identifier: MIT-0
-
           import boto3
           import traceback
           import cfnresponse
@@ -2210,9 +2182,6 @@ Resources:
     Properties:
       Code:
         ZipFile: |-
-          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-          # SPDX-License-Identifier: MIT-0
-
           import boto3
           import json
           import traceback
@@ -2384,10 +2353,12 @@ Resources:
               ForAllValues:StringEquals:
                 aws-marketplace:ProductId:
                   - prod-xdkflymybwmvi
-                  - prod-ffvjxvh4ltq64
+                  - prod-mxcfnwvpd6kb4
+                  - prod-jhuafngbly644
                   - prod-5ukwuglpt66kg
-                  - prod-pjfguoisodbd6
-                  - prod-e5xo6z26ie45g
+                  - prod-ffvjxvh4ltq64
+                  - prod-if5d653ow7ehg
+                  - prod-4ezhkeia6k2cs
               "Null":
                 aws-marketplace:ProductId: "false"
             Effect: Allow
@@ -2400,10 +2371,12 @@ Resources:
               ForAllValues:StringEquals:
                 aws-marketplace:ProductId:
                   - prod-xdkflymybwmvi
-                  - prod-ffvjxvh4ltq64
+                  - prod-mxcfnwvpd6kb4
+                  - prod-jhuafngbly644
                   - prod-5ukwuglpt66kg
-                  - prod-pjfguoisodbd6
-                  - prod-e5xo6z26ie45g
+                  - prod-ffvjxvh4ltq64
+                  - prod-if5d653ow7ehg
+                  - prod-4ezhkeia6k2cs
             Effect: Allow
             Resource: "*"
             Sid: MarketplaceManageAnthropic
@@ -2493,25 +2466,6 @@ Resources:
             Effect: Deny
             Resource: "*"
             Sid: DenyPurchases
-          - Action:
-              - ec2:AcceptVpcPeeringConnection
-              - ec2:CreateVpcPeeringConnection
-              - ec2:ModifyFpgaImageAttribute
-              - ec2:ModifyImageAttribute
-              - ec2:ModifySnapshotAttribute
-              - ecr:PutRegistryPolicy
-              - ecr:PutReplicationConfiguration
-              - ecr:SetRepositoryPolicy
-              - rds:ModifyDBClusterSnapshotAttribute
-              - rds:ModifyDBSnapshotAttribute
-              - s3:PutBucketAcl
-              - s3:PutBucketOwnershipControls
-              - s3:PutBucketPolicy
-              - s3:PutBucketPublicAccessBlock
-              - s3:PutObjectAcl
-            Effect: Deny
-            Resource: "*"
-            Sid: DenySharingAndExposure
         Version: "2012-10-17"
     Type: AWS::IAM::ManagedPolicy
   IdePolicyjavaonawsD35AC45E:
@@ -2677,9 +2631,6 @@ Resources:
     Properties:
       Code:
         ZipFile: |-
-          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-          # SPDX-License-Identifier: MIT-0
-
           from __future__ import print_function
           import boto3
           import traceback
@@ -3050,9 +3001,6 @@ Resources:
     Properties:
       Code:
         ZipFile: |
-          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-          # SPDX-License-Identifier: MIT-0
-
           import base64
           import hmac
           import json
@@ -3279,9 +3227,6 @@ Resources:
     Properties:
       Code:
         ZipFile: |
-          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-          # SPDX-License-Identifier: MIT-0
-
           """
           Thread Dump Lambda - Placeholder for CDK deployment.
           This is a minimal placeholder that will be replaced by the full implementation
@@ -3423,8 +3368,8 @@ Resources:
               - bedrock:InvokeModelWithResponseStream
             Effect: Allow
             Resource:
-              - arn:aws:bedrock:*:*:foundation-model/anthropic.claude-sonnet-4-6
-              - arn:aws:bedrock:*:*:inference-profile/global.anthropic.claude-sonnet-4-6
+              - arn:aws:bedrock:*:*:foundation-model/anthropic.claude-sonnet-4-20250514-v1:0
+              - arn:aws:bedrock:*:*:inference-profile/global.anthropic.claude-sonnet-4-20250514-v1:0
           - Action: secretsmanager:GetSecretValue
             Effect: Allow
             Resource: arn:aws:secretsmanager:*:*:secret:workshop-ide-password*
@@ -3564,9 +3509,6 @@ Resources:
     Properties:
       Code:
         ZipFile: |-
-          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-          # SPDX-License-Identifier: MIT-0
-
           import traceback
           import cfnresponse
           import boto3
@@ -4448,7 +4390,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261023191811"
+            - "-20260930184639"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -4532,7 +4474,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261023191811"
+            - "-20260930184639"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

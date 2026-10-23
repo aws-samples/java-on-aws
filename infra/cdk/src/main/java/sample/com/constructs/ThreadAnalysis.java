@@ -95,8 +95,8 @@ public class ThreadAnalysis extends Construct {
                 "bedrock:InvokeModelWithResponseStream"
             ))
             .resources(List.of(
-                "arn:aws:bedrock:*:*:inference-profile/global.anthropic.claude-sonnet-4-6",
-                "arn:aws:bedrock:*:*:foundation-model/anthropic.claude-sonnet-4-6"
+                "arn:aws:bedrock:*:*:inference-profile/global.anthropic.claude-sonnet-4-20250514-v1:0",
+                "arn:aws:bedrock:*:*:foundation-model/anthropic.claude-sonnet-4-20250514-v1:0"
             ))
             .build());
 
