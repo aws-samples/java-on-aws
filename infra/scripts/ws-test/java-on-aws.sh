@@ -2691,7 +2691,7 @@ spec:
         - name: AWS_S3_BUCKET
           value: "${S3_BUCKET}"
         - name: SPRING_AI_BEDROCK_CONVERSE_CHAT_OPTIONS_MODEL
-          value: "global.anthropic.claude-sonnet-4-6"
+          value: "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
         - name: SPRING_AI_BEDROCK_CONVERSE_CHAT_OPTIONS_MAX_TOKENS
           value: "10000"
         - name: GITHUB_REPO_URL
