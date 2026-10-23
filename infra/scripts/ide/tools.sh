@@ -229,7 +229,7 @@ install_claude_code() {
     fi
 
     # Default config for ALL workshops (not workshop-specific): route Claude Code to
-    # Amazon Bedrock, pin the model aliases, and default to Sonnet 5 (better rate limits
+    # Amazon Bedrock, pin the model aliases, and default to Sonnet 5.5 (better rate limits
     # than Opus). Participants can still switch models with /model. Mouse stays enabled
     # (DISABLE_MOUSE=0) so the transcript scrolls with the wheel in the browser terminal.
     log_info "Configuring Claude Code defaults (Bedrock, default model sonnet)..."
@@ -242,9 +242,9 @@ install_claude_code() {
     "CLAUDE_CODE_USE_BEDROCK": "1",
     "CLAUDE_CODE_DISABLE_MOUSE": "0",
     "AWS_REGION": "${AWS_REGION}",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-5",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "us.anthropic.claude-opus-5",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "global.anthropic.claude-sonnet-5-5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "global.anthropic.claude-opus-5-5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "global.anthropic.claude-haiku-4-5-20251001-v1:0"
   }
 }
 EOF
