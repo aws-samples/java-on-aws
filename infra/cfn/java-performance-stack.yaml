@@ -490,7 +490,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1791446288549"
+      ContentHash: "1792775904157"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2269,12 +2269,10 @@ Resources:
               ForAllValues:StringEquals:
                 aws-marketplace:ProductId:
                   - prod-xdkflymybwmvi
-                  - prod-mxcfnwvpd6kb4
-                  - prod-jhuafngbly644
-                  - prod-5ukwuglpt66kg
                   - prod-ffvjxvh4ltq64
-                  - prod-if5d653ow7ehg
-                  - prod-4ezhkeia6k2cs
+                  - prod-5ukwuglpt66kg
+                  - prod-pjfguoisodbd6
+                  - prod-e5xo6z26ie45g
               "Null":
                 aws-marketplace:ProductId: "false"
             Effect: Allow
@@ -2287,12 +2285,10 @@ Resources:
               ForAllValues:StringEquals:
                 aws-marketplace:ProductId:
                   - prod-xdkflymybwmvi
-                  - prod-mxcfnwvpd6kb4
-                  - prod-jhuafngbly644
-                  - prod-5ukwuglpt66kg
                   - prod-ffvjxvh4ltq64
-                  - prod-if5d653ow7ehg
-                  - prod-4ezhkeia6k2cs
+                  - prod-5ukwuglpt66kg
+                  - prod-pjfguoisodbd6
+                  - prod-e5xo6z26ie45g
             Effect: Allow
             Resource: "*"
             Sid: MarketplaceManageAnthropic
@@ -3488,7 +3484,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261008095808"
+            - "-20261023191824"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3572,7 +3568,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261008095808"
+            - "-20261023191824"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
