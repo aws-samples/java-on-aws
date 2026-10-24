@@ -39,6 +39,7 @@ WS_EXECUTABLE_TOTAL=0
 WS_DEFAULT_TIMEOUT=0
 WS_WATCHDOG_PID=""
 WS_VERBOSE=0
+WS_CONSOLE_FD=2
 
 ws_json_escape() {
   WS_ESCAPED=${1//\\/\\\\}
@@ -217,33 +218,40 @@ ws_print_failure() {
   else
     duration=0
   fi
-  echo >&2
-  printf '\033[1mFAILED (%ss) - %s:%s - %s/%s - %s - %s - %s\033[0m\n' \
-    "$duration" "$WS_CURRENT_WEIGHT" "$WS_CURRENT_BLOCK_NUMBER" \
-    "$WS_CURRENT_EXECUTABLE_NUMBER" "$WS_EXECUTABLE_TOTAL" \
-    "$WS_CURRENT_PAGE" "$WS_CURRENT_SECTION" "$WS_CURRENT_STEP" >&2
-  echo "Chapter: ${WS_CURRENT_WEIGHT} ${WS_CURRENT_PAGE}" >&2
-  echo "Section: ${WS_CURRENT_SECTION}" >&2
-  echo "Step: ${WS_CURRENT_STEP}" >&2
-  echo "Block: ${WS_CURRENT_BLOCK}" >&2
-  echo "Source: ${WS_CURRENT_SOURCE}:${WS_CURRENT_LINES}" >&2
-  echo "Exit code: ${exit_code}" >&2
-  echo >&2
-  echo "Failed code block:" >&2
-  echo '----------------------------------------' >&2
-  if [[ -f "$WS_CURRENT_CODE_FILE" ]]; then
-    cat "$WS_CURRENT_CODE_FILE" >&2
-  else
-    echo '(code block unavailable)' >&2
-  fi
-  echo '----------------------------------------' >&2
-  echo "Error:" >&2
-  echo "$message" >&2
-  echo >&2
-  echo "Recent output (last 40 lines of ${WS_OUTPUT_LOG}):" >&2
-  tail -n 40 "$WS_OUTPUT_LOG" 2>/dev/null >&2 || true
-  echo >&2
-  echo "Reports: ${WS_RUN_DIR}" >&2
+  # Read the tail before printing: the printed failure is tee'd into the same log.
+  local recent_output
+  recent_output=$(tail -n 40 "$WS_OUTPUT_LOG" 2>/dev/null || true)
+  # Write to the saved console descriptor: this runs from the ERR trap while the
+  # block's `>> output.log 2>&1` redirect is still active, so >&2 would reach only the log.
+  {
+    echo
+    printf '\033[1mFAILED (%ss) - %s:%s - %s/%s - %s - %s - %s\033[0m\n' \
+      "$duration" "$WS_CURRENT_WEIGHT" "$WS_CURRENT_BLOCK_NUMBER" \
+      "$WS_CURRENT_EXECUTABLE_NUMBER" "$WS_EXECUTABLE_TOTAL" \
+      "$WS_CURRENT_PAGE" "$WS_CURRENT_SECTION" "$WS_CURRENT_STEP"
+    echo "Chapter: ${WS_CURRENT_WEIGHT} ${WS_CURRENT_PAGE}"
+    echo "Section: ${WS_CURRENT_SECTION}"
+    echo "Step: ${WS_CURRENT_STEP}"
+    echo "Block: ${WS_CURRENT_BLOCK}"
+    echo "Source: ${WS_CURRENT_SOURCE}:${WS_CURRENT_LINES}"
+    echo "Exit code: ${exit_code}"
+    echo
+    echo "Failed code block:"
+    echo '----------------------------------------'
+    if [[ -f "$WS_CURRENT_CODE_FILE" ]]; then
+      cat "$WS_CURRENT_CODE_FILE"
+    else
+      echo '(code block unavailable)'
+    fi
+    echo '----------------------------------------'
+    echo "Error:"
+    echo "$message"
+    echo
+    echo "Recent output (last 40 lines of ${WS_OUTPUT_LOG}):"
+    printf '%s\n' "$recent_output"
+    echo
+    echo "Reports: ${WS_RUN_DIR}"
+  } >&"$WS_CONSOLE_FD" 2>&1
 }
 
 ws_handle_error() {
@@ -570,6 +578,8 @@ EOF
   WS_RUN_ACTIVE=1
   exec > >(tee -a "$WS_OUTPUT_LOG") 2>&1
   WS_TEE_PID=$!
+  # Console (tee) descriptor for failure output; block sources redirect fd 1/2 to the log.
+  exec {WS_CONSOLE_FD}>&1
   ws_restore_runtime_guards
   echo "Workshop: ${WS_WORKSHOP_TITLE}"
   echo "Run directory: ${WS_RUN_DIR}"
