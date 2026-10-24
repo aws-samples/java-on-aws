@@ -69,6 +69,20 @@
       ]
     },
     {
+      "Sid": "RunCommandOnWorkshopInstances",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:SendCommand",
+        "ssm:StartSession"
+      ],
+      "Resource": "arn:aws:ec2:*:{{.AccountId}}:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "ssm:resourceTag/Workshop": "true"
+        }
+      }
+    },
+    {
       "Sid": "DenyLargeInstances",
       "Effect": "Deny",
       "Action": "ec2:RunInstances",

@@ -490,7 +490,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1792775897872"
+      ContentHash: "1792832525276"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -653,12 +653,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: java-on-amazon-eks
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: main
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-on-amazon-eks
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -2351,6 +2351,20 @@ Resources:
                     - Ref: AWS::AccountId
                     - :session/*
             Sid: CommonWorkshopServices
+          - Action:
+              - ssm:SendCommand
+              - ssm:StartSession
+            Condition:
+              StringEquals:
+                ssm:resourceTag/Workshop: "true"
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:ec2:*:"
+                  - Ref: AWS::AccountId
+                  - :instance/*
+            Sid: RunCommandOnWorkshopInstances
           - Action: ec2:RunInstances
             Condition:
               StringLike:
@@ -3484,7 +3498,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261023191817"
+            - "-20261024110205"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3568,7 +3582,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261023191817"
+            - "-20261024110205"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

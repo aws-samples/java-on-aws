@@ -542,7 +542,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1792775891616"
+      ContentHash: "1792832519401"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2466,6 +2466,20 @@ Resources:
                     - Ref: AWS::AccountId
                     - :session/*
             Sid: CommonWorkshopServices
+          - Action:
+              - ssm:SendCommand
+              - ssm:StartSession
+            Condition:
+              StringEquals:
+                ssm:resourceTag/Workshop: "true"
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:ec2:*:"
+                  - Ref: AWS::AccountId
+                  - :instance/*
+            Sid: RunCommandOnWorkshopInstances
           - Action: ec2:RunInstances
             Condition:
               StringLike:
@@ -4448,7 +4462,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261023191811"
+            - "-20261024110159"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -4532,7 +4546,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261023191811"
+            - "-20261024110159"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
