@@ -57,6 +57,9 @@ if (what === 'open') {
   process.exit(2);
 }
 
+// Progress notifications (the Java extension's "Opening Java Projects") survive Clear All:
+// IDE_SETTLE_MS waits for them to finish first.
+await page.waitForTimeout(Number(process.env.IDE_SETTLE_MS ?? 0));
 await clearToasts(page);
 await page.waitForTimeout(1000);
 await mask(page);
