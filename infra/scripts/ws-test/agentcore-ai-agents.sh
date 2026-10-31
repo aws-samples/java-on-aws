@@ -1729,20 +1729,24 @@ aws bedrock-agent-runtime retrieve --knowledge-base-id "${KNOWLEDGE_BASE_ID}" --
   --query 'retrievalResults[].{score: score, source: location.s3Location.uri, text: content.text}'
 WS_TEST_BLOCK_500_9
 
-ws_run_block 10 'Querying the Knowledge Base' '2. Let the Knowledge Base write the answer:' 274 283 'bash' '' 300 <<'WS_TEST_BLOCK_500_10'
+ws_run_block 10 'Querying the Knowledge Base' '2. Let the Knowledge Base write the answer:' 274 287 'bash' '' 300 <<'WS_TEST_BLOCK_500_10'
 aws bedrock-agent-runtime retrieve-and-generate --no-cli-pager \
   --input '{"text": "What is the hotel limit per night in Tokyo?"}' \
   --retrieve-and-generate-configuration '{
     "type": "KNOWLEDGE_BASE",
     "knowledgeBaseConfiguration": {
       "knowledgeBaseId": "'${KNOWLEDGE_BASE_ID}'",
-      "modelArn": "arn:aws:bedrock:'${AWS_REGION}':'${ACCOUNT_ID}':inference-profile/global.anthropic.claude-sonnet-5-5"
+      "modelArn": "arn:aws:bedrock:'${AWS_REGION}':'${ACCOUNT_ID}':inference-profile/global.anthropic.claude-sonnet-5-5",
+      "generationConfiguration": {"promptTemplate": {"textPromptTemplate":
+        "Answer the question with the search results only. Search results: $search_results$ $output_format_instructions$ Question: $query$"}},
+      "orchestrationConfiguration": {"promptTemplate": {"textPromptTemplate":
+        "Rewrite the question as a search query. Conversation: $conversation_history$ Question: $query$ $output_format_instructions$"}}
     }
   }' \
   --query '{answer: output.text, sources: citations[].retrievedReferences[].location.s3Location.uri}'
 WS_TEST_BLOCK_500_10
 
-ws_run_block 11 'Connecting the AI agent to the Knowledge Base' 'Replace the content of pom.xml to add the Bedrock Knowledge Base vector store and the advisor:' 301 427 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_500_11'
+ws_run_block 11 'Connecting the AI agent to the Knowledge Base' 'Replace the content of pom.xml to add the Bedrock Knowledge Base vector store and the advisor:' 307 433 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_500_11'
 cat <<'EOF' > ~/environment/aiagent/pom.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -1872,12 +1876,12 @@ cat <<'EOF' > ~/environment/aiagent/pom.xml
 EOF
 WS_TEST_BLOCK_500_11
 
-ws_run_block 12 'Connecting the AI agent to the Knowledge Base' '- 61-73: Bedrock Knowledge Base vector store and the QuestionAnswerAdvisor; Bean Validation for the Knowledge Base properties' 443 444 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_500_12'
+ws_run_block 12 'Connecting the AI agent to the Knowledge Base' '- 61-73: Bedrock Knowledge Base vector store and the QuestionAnswerAdvisor; Bean Validation for the Knowledge Base properties' 449 450 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_500_12'
 cd ~/environment/aiagent
 npm install @aws-sdk/client-bedrock-agent-runtime
 WS_TEST_BLOCK_500_12
 
-ws_run_block 13 'Connecting the AI agent to the Knowledge Base' '1. Create knowledge.py with the Knowledge Base tool:' 456 485 'python' 'python-strands' <<'WS_TEST_BLOCK_500_13'
+ws_run_block 13 'Connecting the AI agent to the Knowledge Base' '1. Create knowledge.py with the Knowledge Base tool:' 462 491 'python' 'python-strands' <<'WS_TEST_BLOCK_500_13'
 cat <<'EOF' > ~/environment/aiagent/knowledge.py
 import os
 
@@ -1910,7 +1914,7 @@ def search_knowledge_base(query: str) -> str:
 EOF
 WS_TEST_BLOCK_500_13
 
-ws_run_block 14 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of main.py:' 496 592 'python' 'python-strands' <<'WS_TEST_BLOCK_500_14'
+ws_run_block 14 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of main.py:' 502 598 'python' 'python-strands' <<'WS_TEST_BLOCK_500_14'
 cat <<'EOF' > ~/environment/aiagent/main.py
 import os
 
@@ -2010,7 +2014,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_500_14
 
-ws_run_block 15 'Connecting the AI agent to the Knowledge Base' '1. Replace the content of application.properties:' 607 625 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_500_15'
+ws_run_block 15 'Connecting the AI agent to the Knowledge Base' '1. Replace the content of application.properties:' 613 631 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_500_15'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -2032,7 +2036,7 @@ spring.ai.vectorstore.bedrock-knowledge-base.knowledge-base-id=${KNOWLEDGE_BASE_
 EOF
 WS_TEST_BLOCK_500_15
 
-ws_run_block 16 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of ChatService.java:' 633 719 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_500_16'
+ws_run_block 16 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of ChatService.java:' 639 725 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_500_16'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -2122,7 +2126,7 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_500_16
 
-ws_run_block 17 'Connecting the AI agent to the Knowledge Base' '1. Create knowledge.py with the Knowledge Base tool:' 733 762 'python' 'python-langgraph' <<'WS_TEST_BLOCK_500_17'
+ws_run_block 17 'Connecting the AI agent to the Knowledge Base' '1. Create knowledge.py with the Knowledge Base tool:' 739 768 'python' 'python-langgraph' <<'WS_TEST_BLOCK_500_17'
 cat <<'EOF' > ~/environment/aiagent/knowledge.py
 import os
 
@@ -2155,7 +2159,7 @@ def search_knowledge_base(query: str) -> str:
 EOF
 WS_TEST_BLOCK_500_17
 
-ws_run_block 18 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of main.py:' 773 839 'python' 'python-langgraph' <<'WS_TEST_BLOCK_500_18'
+ws_run_block 18 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of main.py:' 779 845 'python' 'python-langgraph' <<'WS_TEST_BLOCK_500_18'
 cat <<'EOF' > ~/environment/aiagent/main.py
 import os
 
@@ -2225,7 +2229,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_500_18
 
-ws_run_block 19 'Connecting the AI agent to the Knowledge Base' '1. Create knowledge.ts with the Knowledge Base tool:' 853 879 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_500_19'
+ws_run_block 19 'Connecting the AI agent to the Knowledge Base' '1. Create knowledge.ts with the Knowledge Base tool:' 859 885 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_500_19'
 cat <<'EOF' > ~/environment/aiagent/knowledge.ts
 import { BedrockAgentRuntimeClient, RetrieveCommand } from '@aws-sdk/client-bedrock-agent-runtime';
 import { tool } from 'ai';
@@ -2255,7 +2259,7 @@ export const searchKnowledgeBase = tool({
 EOF
 WS_TEST_BLOCK_500_19
 
-ws_run_block 20 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of main.ts:' 890 955 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_500_20'
+ws_run_block 20 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of main.ts:' 896 961 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_500_20'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -2324,22 +2328,22 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_500_20
 
-ws_run_block 21 'Testing the knowledge' 'Start the application in the background, send the prompt, and stop the application:' 973 976 'bash' '' <<'WS_TEST_BLOCK_500_21'
+ws_run_block 21 'Testing the knowledge' 'Start the application in the background, send the prompt, and stop the application:' 979 982 'bash' '' <<'WS_TEST_BLOCK_500_21'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 ~/workshop/scripts/local-app.sh ask "What's our travel policy for hotel expenses?"
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_500_21
 
-ws_skip_block 22 'Testing the knowledge' '1. Start the application:' 987 988 'bash' 'python-strands' 'foreground app for the Web UI'
+ws_skip_block 22 'Testing the knowledge' '1. Start the application:' 993 994 'bash' 'python-strands' 'foreground app for the Web UI'
 
-ws_skip_block 23 'Testing the knowledge' 'Testing the knowledge' 995 996 'bash' 'java-spring-ai' 'foreground app for the Web UI'
+ws_skip_block 23 'Testing the knowledge' 'Testing the knowledge' 1001 1002 'bash' 'java-spring-ai' 'foreground app for the Web UI'
 
-ws_skip_block 24 'Testing the knowledge' 'Testing the knowledge' 1003 1004 'bash' 'python-langgraph' 'foreground app for the Web UI'
+ws_skip_block 24 'Testing the knowledge' 'Testing the knowledge' 1009 1010 'bash' 'python-langgraph' 'foreground app for the Web UI'
 
-ws_skip_block 25 'Testing the knowledge' 'Testing the knowledge' 1011 1012 'bash' 'ts-vercel' 'foreground app for the Web UI'
+ws_skip_block 25 'Testing the knowledge' 'Testing the knowledge' 1017 1018 'bash' 'ts-vercel' 'foreground app for the Web UI'
 
-ws_run_block 26 'Committing changes' 'Committing changes' 1033 1035 'bash' '' <<'WS_TEST_BLOCK_500_26'
+ws_run_block 26 'Committing changes' 'Committing changes' 1039 1041 'bash' '' <<'WS_TEST_BLOCK_500_26'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add knowledge base"
