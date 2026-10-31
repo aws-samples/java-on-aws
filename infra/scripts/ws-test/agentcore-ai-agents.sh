@@ -6,7 +6,7 @@ set -Eeuo pipefail
 WS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${WS_SCRIPT_DIR}/runtime.sh"
 ws_begin_run 'Building AI agents with Amazon Bedrock AgentCore' "${WS_SCRIPT_DIR}/reports/agentcore-ai-agents" 5 "$@"
-ws_set_executable_total 477
+ws_set_executable_total 478
 ws_set_default_timeout 600
 ws_tab_group 'java-spring-ai' 'python-langgraph' 'python-strands' 'ts-vercel'
 ws_tab_group 'aws-event' 'own-account'
@@ -55,10 +55,10 @@ ws_begin_page 'AI agent with Amazon Bedrock' 200 'create/index.en.md'
 
 ws_run_block 1 'Calling the Converse API' '1. Send a system prompt and one user message:' 71 76 'bash' '' <<'WS_TEST_BLOCK_200_1'
 aws bedrock-runtime converse --no-cli-pager \
-  --model-id global.anthropic.claude-sonnet-4-6 \
+  --model-id global.anthropic.claude-sonnet-5-5 \
   --system '[{"text": "You are a travel assistant. Answer in one sentence."}]' \
   --messages '[{"role": "user", "content": [{"text": "Which airport is closest to the center of Tokyo?"}]}]' \
-  --inference-config '{"maxTokens": 200, "temperature": 0}' \
+  --inference-config '{"maxTokens": 200}' \
   --query '{text: output.message.content[0].text, stopReason: stopReason, usage: usage}'
 WS_TEST_BLOCK_200_1
 
@@ -66,7 +66,7 @@ ws_skip_block 2 'Calling the Converse API' '- 6: The answer, the stop reason, an
 
 ws_run_block 3 'Calling the Converse API' '2. Limit the answer to 10 tokens:' 112 116 'bash' '' <<'WS_TEST_BLOCK_200_3'
 aws bedrock-runtime converse --no-cli-pager \
-  --model-id global.anthropic.claude-sonnet-4-6 \
+  --model-id global.anthropic.claude-sonnet-5-5 \
   --messages '[{"role": "user", "content": [{"text": "Which airport is closest to the center of Tokyo?"}]}]' \
   --inference-config '{"maxTokens": 10}' \
   --query '{text: output.message.content[0].text, stopReason: stopReason}'
@@ -74,13 +74,13 @@ WS_TEST_BLOCK_200_3
 
 ws_run_block 4 'Calling the Converse API' '3. Ask a follow-up question without the first turn, then with it:' 124 137 'bash' '' <<'WS_TEST_BLOCK_200_4'
 aws bedrock-runtime converse --no-cli-pager \
-  --model-id global.anthropic.claude-sonnet-4-6 \
+  --model-id global.anthropic.claude-sonnet-5-5 \
   --messages '[{"role": "user", "content": [{"text": "How do I get from there to Shinjuku?"}]}]' \
   --inference-config '{"maxTokens": 200}' \
   --query 'output.message.content[0].text' --output text
 
 aws bedrock-runtime converse --no-cli-pager \
-  --model-id global.anthropic.claude-sonnet-4-6 \
+  --model-id global.anthropic.claude-sonnet-5-5 \
   --messages '[
     {"role": "user", "content": [{"text": "Which airport is closest to the center of Tokyo?"}]},
     {"role": "assistant", "content": [{"text": "Haneda Airport is the closest major airport to central Tokyo."}]},
@@ -283,7 +283,7 @@ from strands.models.bedrock import BedrockModel
 
 app = BedrockAgentCoreApp()
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
 
 
 @app.entrypoint
@@ -312,7 +312,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 EOF
 WS_TEST_BLOCK_200_15
 
@@ -358,7 +358,7 @@ from starlette.staticfiles import StaticFiles
 app = BedrockAgentCoreApp()
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION")
 )
 agent = create_agent(model)
 
@@ -390,7 +390,7 @@ import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { z } from 'zod';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const app = new BedrockAgentCoreApp({
   invocationHandler: {
@@ -480,7 +480,7 @@ from strands.models.bedrock import BedrockModel
 
 app = BedrockAgentCoreApp()
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
 
 SYSTEM_PROMPT = """
 You are the travel and expense assistant of the company. You help employees plan business trips,
@@ -512,23 +512,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_300_1
 
-ws_run_block 2 'Adding the system prompt' '1. Replace the content of application.properties:' 137 149 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_300_2'
-cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
-spring.application.name=agent
-# Logging
-logging.level.org.springframework.ai=DEBUG
-logging.level.org.springaicommunity.agentcore=DEBUG
-logging.level.com.example.agent=DEBUG
-logging.pattern.console=%msg%n
-# Amazon Bedrock
-spring.ai.bedrock.aws.timeout=120s
-spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.temperature=0.7
-EOF
-WS_TEST_BLOCK_300_2
-
-ws_run_block 3 'Adding the system prompt' '2. Replace the content of ChatService.java:' 157 197 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_300_3'
+ws_run_block 2 'Adding the system prompt' '- 28: systemprompt applies the prompt to all requests' 136 176 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_300_2'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -570,9 +554,9 @@ public class ChatService {
     }
 }
 EOF
-WS_TEST_BLOCK_300_3
+WS_TEST_BLOCK_300_2
 
-ws_run_block 4 'Adding the system prompt' '- 32: defaultSystem() applies the system prompt to all requests' 209 252 'python' 'python-langgraph' <<'WS_TEST_BLOCK_300_4'
+ws_run_block 3 'Adding the system prompt' '- 32: defaultSystem() applies the system prompt to all requests' 188 231 'python' 'python-langgraph' <<'WS_TEST_BLOCK_300_3'
 cat <<'EOF' > ~/environment/aiagent/main.py
 import os
 
@@ -585,7 +569,7 @@ from starlette.staticfiles import StaticFiles
 app = BedrockAgentCoreApp()
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION")
 )
 
 SYSTEM_PROMPT = """
@@ -617,9 +601,9 @@ app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 if __name__ == "__main__":
     app.run()
 EOF
-WS_TEST_BLOCK_300_4
+WS_TEST_BLOCK_300_3
 
-ws_run_block 5 'Adding the system prompt' '- 30: systemprompt applies the prompt to all requests' 265 310 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_300_5'
+ws_run_block 4 'Adding the system prompt' '- 30: systemprompt applies the prompt to all requests' 243 288 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_300_4'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -632,7 +616,7 @@ import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { z } from 'zod';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -651,7 +635,7 @@ const app = new BedrockAgentCoreApp({
     requestSchema: z.object({ prompt: z.string() }),
     async *process(payload) {
       const result = streamText({
-        model, system: SYSTEM_PROMPT, temperature: 0.7, maxOutputTokens: 4096, prompt: payload.prompt,
+        model, system: SYSTEM_PROMPT, maxOutputTokens: 4096, prompt: payload.prompt,
       });
       for await (const text of result.textStream) {
         yield text;
@@ -666,26 +650,26 @@ if (existsSync('static')) {
 
 app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
-WS_TEST_BLOCK_300_5
+WS_TEST_BLOCK_300_4
 
-ws_run_block 6 'Testing the system prompt' 'Start the application in the background, send the prompt, and stop the application:' 324 327 'bash' '' <<'WS_TEST_BLOCK_300_6'
+ws_run_block 5 'Testing the system prompt' 'Start the application in the background, send the prompt, and stop the application:' 302 305 'bash' '' <<'WS_TEST_BLOCK_300_5'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 ~/workshop/scripts/local-app.sh ask "Hi, how can you help me?"
 ~/workshop/scripts/local-app.sh stop
-WS_TEST_BLOCK_300_6
+WS_TEST_BLOCK_300_5
 
-ws_skip_block 7 'Testing the system prompt' '1. Start the application:' 338 339 'bash' 'python-strands' 'foreground app for the Web UI'
+ws_skip_block 6 'Testing the system prompt' '1. Start the application:' 316 317 'bash' 'python-strands' 'foreground app for the Web UI'
 
-ws_skip_block 8 'Testing the system prompt' 'Testing the system prompt' 346 347 'bash' 'java-spring-ai' 'foreground app for the Web UI'
+ws_skip_block 7 'Testing the system prompt' 'Testing the system prompt' 324 325 'bash' 'java-spring-ai' 'foreground app for the Web UI'
 
-ws_skip_block 9 'Testing the system prompt' 'Testing the system prompt' 354 355 'bash' 'python-langgraph' 'foreground app for the Web UI'
+ws_skip_block 8 'Testing the system prompt' 'Testing the system prompt' 332 333 'bash' 'python-langgraph' 'foreground app for the Web UI'
 
-ws_skip_block 10 'Testing the system prompt' 'Testing the system prompt' 362 363 'bash' 'ts-vercel' 'foreground app for the Web UI'
+ws_skip_block 9 'Testing the system prompt' 'Testing the system prompt' 340 341 'bash' 'ts-vercel' 'foreground app for the Web UI'
 
-ws_skip_block 11 'Extracting a trip request from an email' 'Alice sent her travel request to the travel desk as an email:' 386 399 '' '' 'informational block without language'
+ws_skip_block 10 'Extracting a trip request from an email' 'Alice sent her travel request to the travel desk as an email:' 364 377 '' '' 'informational block without language'
 
-ws_run_block 12 'Extracting a trip request from an email' 'Create extracttrip.py:' 410 442 'python' 'python-strands' <<'WS_TEST_BLOCK_300_12'
+ws_run_block 11 'Extracting a trip request from an email' 'Create extracttrip.py:' 388 420 'python' 'python-strands' <<'WS_TEST_BLOCK_300_11'
 cat <<'EOF' > ~/environment/aiagent/extract_trip.py
 """Extract a business trip request from an email as structured data: uv run extract_trip.py EMAIL_FILE"""
 import sys
@@ -711,7 +695,7 @@ class TripRequest(BaseModel):
     approver: str | None = Field(default=None, description="Who approved the trip or budget")
 
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=1024, temperature=0)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=1024)
 agent = Agent(model=model, system_prompt="Extract the business trip request from the email.", callback_handler=None)
 
 if __name__ == "__main__":
@@ -719,9 +703,9 @@ if __name__ == "__main__":
     result = agent(email, structured_output_model=TripRequest)
     print(result.structured_output.model_dump_json(indent=2))
 EOF
-WS_TEST_BLOCK_300_12
+WS_TEST_BLOCK_300_11
 
-ws_run_block 13 'Extracting a trip request from an email' '1. Create TripRequestExtractor.java. Spring AI returns a Java record from .entity(); ENABLENATIVESTRUCTUREDOUTPUT makes it use Bedrock native structured output. The class runs only with the extract profile, so the chat application is unchanged:' 455 514 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_300_13'
+ws_run_block 12 'Extracting a trip request from an email' '1. Create TripRequestExtractor.java. Spring AI returns a Java record from .entity(); ENABLENATIVESTRUCTUREDOUTPUT makes it use Bedrock native structured output. The class runs only with the extract profile, so the chat application is unchanged:' 432 489 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_300_12'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/TripRequestExtractor.java
 package com.example.agent;
 
@@ -730,7 +714,6 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import org.springframework.ai.bedrock.converse.BedrockChatOptions;
 import org.springframework.ai.chat.client.AdvisorParams;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.ApplicationArguments;
@@ -773,7 +756,6 @@ class TripRequestExtractor implements ApplicationRunner {
         TripRequest trip = chatClient.prompt()
             .system("Extract the business trip request from the email.")
             .user(email)
-            .options(BedrockChatOptions.builder().temperature(0.0))
             .advisors(AdvisorParams.ENABLE_NATIVE_STRUCTURED_OUTPUT)
             .call()
             .entity(TripRequest.class);
@@ -782,9 +764,9 @@ class TripRequestExtractor implements ApplicationRunner {
     }
 }
 EOF
-WS_TEST_BLOCK_300_13
+WS_TEST_BLOCK_300_12
 
-ws_run_block 14 'Extracting a trip request from an email' '2. Create application-extract.properties for the profile:' 524 531 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_300_14'
+ws_run_block 13 'Extracting a trip request from an email' '2. Create application-extract.properties for the profile:' 498 505 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_300_13'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application-extract.properties
 spring.main.web-application-type=none
 spring.main.banner-mode=off
@@ -793,9 +775,9 @@ logging.level.org.springframework.ai=WARN
 logging.level.org.springaicommunity.agentcore=WARN
 logging.level.com.example.agent=WARN
 EOF
-WS_TEST_BLOCK_300_14
+WS_TEST_BLOCK_300_13
 
-ws_run_block 15 'Extracting a trip request from an email' '- 2-7: The extract profile runs the extractor without the web server and prints only its result' 542 576 'python' 'python-langgraph' <<'WS_TEST_BLOCK_300_15'
+ws_run_block 14 'Extracting a trip request from an email' '- 2-7: The extract profile runs the extractor without the web server and prints only its result' 516 550 'python' 'python-langgraph' <<'WS_TEST_BLOCK_300_14'
 cat <<'EOF' > ~/environment/aiagent/extract_trip.py
 """Extract a business trip request from an email as structured data: uv run extract_trip.py EMAIL_FILE"""
 import os
@@ -822,7 +804,7 @@ class TripRequest(BaseModel):
 
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=1024, temperature=0, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=1024, region_name=os.environ.get("AWS_REGION")
 )
 extractor = model.with_structured_output(TripRequest)
 
@@ -831,9 +813,9 @@ if __name__ == "__main__":
     trip = extractor.invoke([("system", "Extract the business trip request from the email."), ("user", email)])
     print(trip.model_dump_json(indent=2))
 EOF
-WS_TEST_BLOCK_300_15
+WS_TEST_BLOCK_300_14
 
-ws_run_block 16 'Extracting a trip request from an email' '- 29: withstructuredoutput() returns a validated TripRequest instead of a message' 589 622 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_300_16'
+ws_run_block 15 'Extracting a trip request from an email' '- 29: withstructuredoutput() returns a validated TripRequest instead of a message' 562 594 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_300_15'
 cat <<'EOF' > ~/environment/aiagent/extract-trip.ts
 // Extract a business trip request from an email as structured data: npx tsx extract-trip.ts EMAIL_FILE
 import { readFileSync } from 'node:fs';
@@ -859,71 +841,93 @@ const TripRequest = z.object({
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
 
 const { output } = await generateText({
-  model: bedrock('global.anthropic.claude-sonnet-4-6'),
+  model: bedrock('global.anthropic.claude-sonnet-5-5'),
   system: 'Extract the business trip request from the email.',
   prompt: readFileSync(process.argv[2], 'utf8'),
-  temperature: 0,
   output: Output.object({ schema: TripRequest }),
   providerOptions: { bedrock: { structuredOutputMode: 'outputFormat' } },
 });
 console.log(JSON.stringify(output, null, 2));
 EOF
-WS_TEST_BLOCK_300_16
+WS_TEST_BLOCK_300_15
 
-ws_run_block 17 'Extracting a trip request from an email' '- 30-31: Output.object() returns a validated object; outputFormat uses Bedrock native structured output' 638 639 'bash' 'python-strands' 300 <<'WS_TEST_BLOCK_300_17'
+ws_run_block 16 'Extracting a trip request from an email' '- 29-30: Output.object() returns a validated object; outputFormat uses Bedrock native structured output' 609 610 'bash' 'python-strands' 300 <<'WS_TEST_BLOCK_300_16'
 cd ~/environment/aiagent
 uv run extract_trip.py ~/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
-WS_TEST_BLOCK_300_17
+WS_TEST_BLOCK_300_16
 
-ws_skip_block 18 'Extracting a trip request from an email' 'Extracting a trip request from an email' 644 655 'json' 'python-strands' 'copy action disabled'
+ws_skip_block 17 'Extracting a trip request from an email' 'Extracting a trip request from an email' 615 626 'json' 'python-strands' 'copy action disabled'
 
-ws_run_block 19 'Extracting a trip request from an email' 'Extracting a trip request from an email' 663 665 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_300_19'
+ws_run_block 18 'Extracting a trip request from an email' 'Extracting a trip request from an email' 634 636 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_300_18'
 cd ~/environment/aiagent
 ./mvnw -q spring-boot:run -Dspring-boot.run.profiles=extract \
   -Dspring-boot.run.arguments=${HOME}/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
-WS_TEST_BLOCK_300_19
+WS_TEST_BLOCK_300_18
 
-ws_skip_block 20 'Extracting a trip request from an email' 'Extracting a trip request from an email' 670 681 'json' 'java-spring-ai' 'copy action disabled'
+ws_skip_block 19 'Extracting a trip request from an email' 'Extracting a trip request from an email' 641 652 'json' 'java-spring-ai' 'copy action disabled'
 
-ws_run_block 21 'Extracting a trip request from an email' 'Extracting a trip request from an email' 689 690 'bash' 'python-langgraph' 300 <<'WS_TEST_BLOCK_300_21'
+ws_run_block 20 'Extracting a trip request from an email' 'Extracting a trip request from an email' 660 661 'bash' 'python-langgraph' 300 <<'WS_TEST_BLOCK_300_20'
 cd ~/environment/aiagent
 uv run extract_trip.py ~/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
-WS_TEST_BLOCK_300_21
+WS_TEST_BLOCK_300_20
 
-ws_skip_block 22 'Extracting a trip request from an email' 'Extracting a trip request from an email' 695 706 'json' 'python-langgraph' 'copy action disabled'
+ws_skip_block 21 'Extracting a trip request from an email' 'Extracting a trip request from an email' 666 677 'json' 'python-langgraph' 'copy action disabled'
 
-ws_run_block 23 'Extracting a trip request from an email' 'Extracting a trip request from an email' 714 715 'bash' 'ts-vercel' 300 <<'WS_TEST_BLOCK_300_23'
+ws_run_block 22 'Extracting a trip request from an email' 'Extracting a trip request from an email' 685 686 'bash' 'ts-vercel' 300 <<'WS_TEST_BLOCK_300_22'
 cd ~/environment/aiagent
 npx tsx extract-trip.ts ~/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
-WS_TEST_BLOCK_300_23
+WS_TEST_BLOCK_300_22
 
-ws_skip_block 24 'Extracting a trip request from an email' 'Extracting a trip request from an email' 720 731 'json' 'ts-vercel' 'copy action disabled'
+ws_skip_block 23 'Extracting a trip request from an email' 'Extracting a trip request from an email' 691 702 'json' 'ts-vercel' 'copy action disabled'
 
-ws_run_block 25 'Extracting a trip request from an email' 'Check the destination in the result:' 741 741 'bash' '' <<'WS_TEST_BLOCK_300_25'
+ws_run_block 24 'Extracting a trip request from an email' 'Check the destination in the result:' 712 712 'bash' '' <<'WS_TEST_BLOCK_300_24'
 jq -e '.destination | test("Tokyo")' /tmp/trip-request.json
+WS_TEST_BLOCK_300_24
+
+ws_run_block 25 'Trying temperature' '1. Ask Amazon Nova 2 Lite for a slogan, twice with temperature 0 and twice with temperature 1.0:' 722 729 'bash' '' <<'WS_TEST_BLOCK_300_25'
+for T in 0 0 1 1; do
+  echo -n "temperature ${T}: "
+  aws bedrock-runtime converse --no-cli-pager \
+    --model-id us.amazon.nova-2-lite-v1:0 \
+    --messages '[{"role": "user", "content": [{"text": "Write a one-line slogan for a business trip to Tokyo."}]}]' \
+    --inference-config "{\"maxTokens\": 60, \"temperature\": ${T}}" \
+    --query 'output.message.content[0].text' --output text
+done
 WS_TEST_BLOCK_300_25
 
-ws_run_block 26 'Limiting the answer' '- stopSequences end the answer before a given text. The stop reason is stopsequence.' 756 760 'bash' '' <<'WS_TEST_BLOCK_300_26'
+ws_skip_block 26 'Trying temperature' 'Trying temperature' 734 737 'text' '' 'copy action disabled'
+
+ws_run_block 27 'Trying temperature' '2. Send the same request to Claude Sonnet 5.5 with temperature 0:' 746 750 'bash' '' <<'WS_TEST_BLOCK_300_27'
 aws bedrock-runtime converse --no-cli-pager \
-  --model-id global.anthropic.claude-sonnet-4-6 \
+  --model-id global.anthropic.claude-sonnet-5-5 \
+  --messages '[{"role": "user", "content": [{"text": "Write a one-line slogan for a business trip to Tokyo."}]}]' \
+  --inference-config '{"maxTokens": 60, "temperature": 0}' \
+  --query 'output.message.content[0].text' --output text || echo "rejected, as intended"
+WS_TEST_BLOCK_300_27
+
+ws_skip_block 28 'Trying temperature' 'Trying temperature' 755 756 'text' '' 'copy action disabled'
+
+ws_run_block 29 'Limiting the answer' '- stopSequences end the answer before a given text. The stop reason is stopsequence.' 772 776 'bash' '' <<'WS_TEST_BLOCK_300_29'
+aws bedrock-runtime converse --no-cli-pager \
+  --model-id global.anthropic.claude-sonnet-5-5 \
   --messages '[{"role": "user", "content": [{"text": "List three sights in Tokyo, one per line. Then write ### and a packing list."}]}]' \
   --inference-config '{"maxTokens": 500, "stopSequences": ["###"]}' \
   --query '{text: output.message.content[0].text, stopReason: stopReason}'
-WS_TEST_BLOCK_300_26
+WS_TEST_BLOCK_300_29
 
-ws_skip_block 27 'Limiting the answer' 'In Strands Agents, both are parameters of BedrockModel:' 771 771 'python' 'python-strands' 'copy action disabled'
+ws_skip_block 30 'Limiting the answer' 'In Strands Agents, both are parameters of BedrockModel:' 787 787 'python' 'python-strands' 'copy action disabled'
 
-ws_skip_block 28 'Limiting the answer' 'In Spring AI, both are properties of the Bedrock Converse chat model (or BedrockChatOptions per request):' 780 781 'properties' 'java-spring-ai' 'copy action disabled'
+ws_skip_block 31 'Limiting the answer' 'In Spring AI, both are properties of the Bedrock Converse chat model (or BedrockChatOptions per request):' 796 797 'properties' 'java-spring-ai' 'copy action disabled'
 
-ws_skip_block 29 'Limiting the answer' 'In LangChain, both are parameters of ChatBedrockConverse:' 790 790 'python' 'python-langgraph' 'copy action disabled'
+ws_skip_block 32 'Limiting the answer' 'In LangChain, both are parameters of ChatBedrockConverse:' 806 806 'python' 'python-langgraph' 'copy action disabled'
 
-ws_skip_block 30 'Limiting the answer' 'In the AI SDK, both are parameters of streamText() and generateText(); a cut-off answer has finishReason: '"'"'length'"'"':' 799 799 'typescript' 'ts-vercel' 'copy action disabled'
+ws_skip_block 33 'Limiting the answer' 'In the AI SDK, both are parameters of streamText() and generateText(); a cut-off answer has finishReason: '"'"'length'"'"':' 815 815 'typescript' 'ts-vercel' 'copy action disabled'
 
-ws_run_block 31 'Committing changes' 'Committing changes' 808 810 'bash' '' <<'WS_TEST_BLOCK_300_31'
+ws_run_block 34 'Committing changes' 'Committing changes' 824 826 'bash' '' <<'WS_TEST_BLOCK_300_34'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add persona"
-WS_TEST_BLOCK_300_31
+WS_TEST_BLOCK_300_34
 
 ws_end_page
 
@@ -1131,7 +1135,7 @@ from strands.models.bedrock import BedrockModel
 app = BedrockAgentCoreApp()
 log = app.logger
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
 
 SYSTEM_PROMPT = """
 You are the travel and expense assistant of the company. You help employees plan business trips,
@@ -1206,7 +1210,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_400_13
 
-ws_run_block 14 'Connecting the AI agent to memory' '1. Replace the content of application.properties:' 509 525 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_400_14'
+ws_run_block 14 'Connecting the AI agent to memory' '1. Replace the content of application.properties:' 509 524 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_400_14'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -1217,8 +1221,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.temperature=0.7
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 
 # AgentCore Memory
 agentcore.memory.memory-id=${AGENTCORE_MEMORY_ID}
@@ -1226,7 +1229,7 @@ agentcore.memory.long-term.auto-discovery=true
 EOF
 WS_TEST_BLOCK_400_14
 
-ws_run_block 15 'Connecting the AI agent to memory' '2. Replace the content of ChatService.java:' 533 604 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_400_15'
+ws_run_block 15 'Connecting the AI agent to memory' '2. Replace the content of ChatService.java:' 532 603 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_400_15'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -1301,7 +1304,7 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_400_15
 
-ws_run_block 16 'Connecting the AI agent to memory' '1. Create memory.py with the checkpointer, the store, and the middleware that connects them to the agent:' 619 682 'python' 'python-langgraph' <<'WS_TEST_BLOCK_400_16'
+ws_run_block 16 'Connecting the AI agent to memory' '1. Create memory.py with the checkpointer, the store, and the middleware that connects them to the agent:' 618 681 'python' 'python-langgraph' <<'WS_TEST_BLOCK_400_16'
 cat <<'EOF' > ~/environment/aiagent/memory.py
 import os
 import uuid
@@ -1368,7 +1371,7 @@ def save_turn(state, runtime):
 EOF
 WS_TEST_BLOCK_400_16
 
-ws_run_block 17 'Connecting the AI agent to memory' '2. Replace the content of main.py:' 697 760 'python' 'python-langgraph' <<'WS_TEST_BLOCK_400_17'
+ws_run_block 17 'Connecting the AI agent to memory' '2. Replace the content of main.py:' 696 759 'python' 'python-langgraph' <<'WS_TEST_BLOCK_400_17'
 cat <<'EOF' > ~/environment/aiagent/main.py
 import os
 
@@ -1383,7 +1386,7 @@ import memory
 app = BedrockAgentCoreApp()
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION")
 )
 
 SYSTEM_PROMPT = """
@@ -1435,7 +1438,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_400_17
 
-ws_run_block 18 'Connecting the AI agent to memory' '1. Create memory.ts with the short-term and long-term memory functions:' 774 819 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_400_18'
+ws_run_block 18 'Connecting the AI agent to memory' '1. Create memory.ts with the short-term and long-term memory functions:' 773 818 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_400_18'
 cat <<'EOF' > ~/environment/aiagent/memory.ts
 import {
   BedrockAgentCoreClient, CreateEventCommand, ListEventsCommand, RetrieveMemoryRecordsCommand,
@@ -1484,7 +1487,7 @@ export async function save(actorId: string, sessionId: string, user: string, ass
 EOF
 WS_TEST_BLOCK_400_18
 
-ws_run_block 19 'Connecting the AI agent to memory' '2. Replace the content of main.ts:' 832 891 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_400_19'
+ws_run_block 19 'Connecting the AI agent to memory' '2. Replace the content of main.ts:' 831 890 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_400_19'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -1499,7 +1502,7 @@ import { z } from 'zod';
 import * as memory from './memory.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -1526,7 +1529,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, { role: 'user', content: prompt }],
       });
       let answer = '';
@@ -1547,7 +1550,7 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_400_19
 
-ws_run_block 20 'Testing the memory' 'Start the application in the background, send the prompts, and stop the application:' 908 912 'bash' '' <<'WS_TEST_BLOCK_400_20'
+ws_run_block 20 'Testing the memory' 'Start the application in the background, send the prompts, and stop the application:' 907 911 'bash' '' <<'WS_TEST_BLOCK_400_20'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 ~/workshop/scripts/local-app.sh ask "I live in Berlin"
@@ -1555,17 +1558,17 @@ cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_400_20
 
-ws_skip_block 21 'Testing the memory' '1. Start the application:' 923 924 'bash' 'python-strands' 'foreground app for the Web UI'
+ws_skip_block 21 'Testing the memory' '1. Start the application:' 922 923 'bash' 'python-strands' 'foreground app for the Web UI'
 
-ws_skip_block 22 'Testing the memory' 'Testing the memory' 931 932 'bash' 'java-spring-ai' 'foreground app for the Web UI'
+ws_skip_block 22 'Testing the memory' 'Testing the memory' 930 931 'bash' 'java-spring-ai' 'foreground app for the Web UI'
 
-ws_skip_block 23 'Testing the memory' 'The startup log shows the memory configuration:' 938 942 '' 'java-spring-ai' 'informational block without language'
+ws_skip_block 23 'Testing the memory' 'The startup log shows the memory configuration:' 937 941 '' 'java-spring-ai' 'informational block without language'
 
-ws_skip_block 24 'Testing the memory' 'Testing the memory' 949 950 'bash' 'python-langgraph' 'foreground app for the Web UI'
+ws_skip_block 24 'Testing the memory' 'Testing the memory' 948 949 'bash' 'python-langgraph' 'foreground app for the Web UI'
 
-ws_skip_block 25 'Testing the memory' 'Testing the memory' 957 958 'bash' 'ts-vercel' 'foreground app for the Web UI'
+ws_skip_block 25 'Testing the memory' 'Testing the memory' 956 957 'bash' 'ts-vercel' 'foreground app for the Web UI'
 
-ws_run_block 26 'Inspecting long-term memory' 'The strategies extract records about a minute after the events arrive. List the records stored for alice:' 983 989 'bash' '' <<'WS_TEST_BLOCK_400_26'
+ws_run_block 26 'Inspecting long-term memory' 'The strategies extract records about a minute after the events arrive. List the records stored for alice:' 982 988 'bash' '' <<'WS_TEST_BLOCK_400_26'
 for STRATEGY_ID in $(aws bedrock-agentcore-control get-memory --memory-id "${AGENTCORE_MEMORY_ID}" \
   --no-cli-pager --query 'memory.strategies[].strategyId' --output text); do
   echo "== ${STRATEGY_ID}"
@@ -1575,7 +1578,7 @@ for STRATEGY_ID in $(aws bedrock-agentcore-control get-memory --memory-id "${AGE
 done
 WS_TEST_BLOCK_400_26
 
-ws_run_block 27 'Committing changes' 'Committing changes' 999 1001 'bash' '' <<'WS_TEST_BLOCK_400_27'
+ws_run_block 27 'Committing changes' 'Committing changes' 998 1000 'bash' '' <<'WS_TEST_BLOCK_400_27'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add memory"
@@ -1733,7 +1736,7 @@ aws bedrock-agent-runtime retrieve-and-generate --no-cli-pager \
     "type": "KNOWLEDGE_BASE",
     "knowledgeBaseConfiguration": {
       "knowledgeBaseId": "'${KNOWLEDGE_BASE_ID}'",
-      "modelArn": "arn:aws:bedrock:'${AWS_REGION}':'${ACCOUNT_ID}':inference-profile/global.anthropic.claude-sonnet-4-6"
+      "modelArn": "arn:aws:bedrock:'${AWS_REGION}':'${ACCOUNT_ID}':inference-profile/global.anthropic.claude-sonnet-5-5"
     }
   }' \
   --query '{answer: output.text, sources: citations[].retrievedReferences[].location.s3Location.uri}'
@@ -1924,7 +1927,7 @@ from knowledge import search_knowledge_base
 app = BedrockAgentCoreApp()
 log = app.logger
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
 
 SYSTEM_PROMPT = """
 You are the travel and expense assistant of the company. You help employees plan business trips,
@@ -2007,7 +2010,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_500_14
 
-ws_run_block 15 'Connecting the AI agent to the Knowledge Base' '1. Replace the content of application.properties:' 607 626 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_500_15'
+ws_run_block 15 'Connecting the AI agent to the Knowledge Base' '1. Replace the content of application.properties:' 607 625 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_500_15'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -2018,8 +2021,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.temperature=0.7
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 
 # AgentCore Memory
 agentcore.memory.memory-id=${AGENTCORE_MEMORY_ID}
@@ -2030,7 +2032,7 @@ spring.ai.vectorstore.bedrock-knowledge-base.knowledge-base-id=${KNOWLEDGE_BASE_
 EOF
 WS_TEST_BLOCK_500_15
 
-ws_run_block 16 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of ChatService.java:' 634 720 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_500_16'
+ws_run_block 16 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of ChatService.java:' 633 719 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_500_16'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -2120,7 +2122,7 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_500_16
 
-ws_run_block 17 'Connecting the AI agent to the Knowledge Base' '1. Create knowledge.py with the Knowledge Base tool:' 734 763 'python' 'python-langgraph' <<'WS_TEST_BLOCK_500_17'
+ws_run_block 17 'Connecting the AI agent to the Knowledge Base' '1. Create knowledge.py with the Knowledge Base tool:' 733 762 'python' 'python-langgraph' <<'WS_TEST_BLOCK_500_17'
 cat <<'EOF' > ~/environment/aiagent/knowledge.py
 import os
 
@@ -2153,7 +2155,7 @@ def search_knowledge_base(query: str) -> str:
 EOF
 WS_TEST_BLOCK_500_17
 
-ws_run_block 18 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of main.py:' 774 840 'python' 'python-langgraph' <<'WS_TEST_BLOCK_500_18'
+ws_run_block 18 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of main.py:' 773 839 'python' 'python-langgraph' <<'WS_TEST_BLOCK_500_18'
 cat <<'EOF' > ~/environment/aiagent/main.py
 import os
 
@@ -2169,7 +2171,7 @@ import memory
 app = BedrockAgentCoreApp()
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION")
 )
 
 SYSTEM_PROMPT = """
@@ -2223,7 +2225,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_500_18
 
-ws_run_block 19 'Connecting the AI agent to the Knowledge Base' '1. Create knowledge.ts with the Knowledge Base tool:' 854 880 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_500_19'
+ws_run_block 19 'Connecting the AI agent to the Knowledge Base' '1. Create knowledge.ts with the Knowledge Base tool:' 853 879 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_500_19'
 cat <<'EOF' > ~/environment/aiagent/knowledge.ts
 import { BedrockAgentRuntimeClient, RetrieveCommand } from '@aws-sdk/client-bedrock-agent-runtime';
 import { tool } from 'ai';
@@ -2253,7 +2255,7 @@ export const searchKnowledgeBase = tool({
 EOF
 WS_TEST_BLOCK_500_19
 
-ws_run_block 20 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of main.ts:' 891 956 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_500_20'
+ws_run_block 20 'Connecting the AI agent to the Knowledge Base' '2. Replace the content of main.ts:' 890 955 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_500_20'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -2269,7 +2271,7 @@ import { searchKnowledgeBase } from './knowledge.js';
 import * as memory from './memory.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -2299,7 +2301,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, { role: 'user', content: prompt }],
         tools,
         stopWhen: stepCountIs(10),
@@ -2322,22 +2324,22 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_500_20
 
-ws_run_block 21 'Testing the knowledge' 'Start the application in the background, send the prompt, and stop the application:' 974 977 'bash' '' <<'WS_TEST_BLOCK_500_21'
+ws_run_block 21 'Testing the knowledge' 'Start the application in the background, send the prompt, and stop the application:' 973 976 'bash' '' <<'WS_TEST_BLOCK_500_21'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 ~/workshop/scripts/local-app.sh ask "What's our travel policy for hotel expenses?"
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_500_21
 
-ws_skip_block 22 'Testing the knowledge' '1. Start the application:' 988 989 'bash' 'python-strands' 'foreground app for the Web UI'
+ws_skip_block 22 'Testing the knowledge' '1. Start the application:' 987 988 'bash' 'python-strands' 'foreground app for the Web UI'
 
-ws_skip_block 23 'Testing the knowledge' 'Testing the knowledge' 996 997 'bash' 'java-spring-ai' 'foreground app for the Web UI'
+ws_skip_block 23 'Testing the knowledge' 'Testing the knowledge' 995 996 'bash' 'java-spring-ai' 'foreground app for the Web UI'
 
-ws_skip_block 24 'Testing the knowledge' 'Testing the knowledge' 1004 1005 'bash' 'python-langgraph' 'foreground app for the Web UI'
+ws_skip_block 24 'Testing the knowledge' 'Testing the knowledge' 1003 1004 'bash' 'python-langgraph' 'foreground app for the Web UI'
 
-ws_skip_block 25 'Testing the knowledge' 'Testing the knowledge' 1012 1013 'bash' 'ts-vercel' 'foreground app for the Web UI'
+ws_skip_block 25 'Testing the knowledge' 'Testing the knowledge' 1011 1012 'bash' 'ts-vercel' 'foreground app for the Web UI'
 
-ws_run_block 26 'Committing changes' 'Committing changes' 1034 1036 'bash' '' <<'WS_TEST_BLOCK_500_26'
+ws_run_block 26 'Committing changes' 'Committing changes' 1033 1035 'bash' '' <<'WS_TEST_BLOCK_500_26'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add knowledge base"
@@ -2410,7 +2412,7 @@ from web_grounding import search_web
 app = BedrockAgentCoreApp()
 log = app.logger
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
 
 SYSTEM_PROMPT = """
 You are the travel and expense assistant of the company. You help employees plan business trips,
@@ -2946,7 +2948,7 @@ from web_grounding import search_web
 app = BedrockAgentCoreApp()
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION")
 )
 
 SYSTEM_PROMPT = """
@@ -3069,7 +3071,7 @@ import * as memory from './memory.js';
 import { searchWeb } from './web-grounding.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -3106,7 +3108,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, { role: 'user', content: prompt }],
         tools,
         stopWhen: stepCountIs(10),
@@ -3305,7 +3307,7 @@ from web_grounding import search_web
 app = BedrockAgentCoreApp()
 log = app.logger
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
 
 SYSTEM_PROMPT = """
 You are the travel and expense assistant of the company. You help employees plan business trips,
@@ -3547,7 +3549,7 @@ cat <<'EOF' > ~/environment/aiagent/pom.xml
 EOF
 WS_TEST_BLOCK_700_8
 
-ws_run_block 9 'Adding the browser tools' '2. Replace the content of application.properties. The tool descriptions tell the model to read a page with browseUrl and to take screenshots only for the user:' 541 570 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_700_9'
+ws_run_block 9 'Adding the browser tools' '2. Replace the content of application.properties. The tool descriptions tell the model to read a page with browseUrl and to take screenshots only for the user:' 541 569 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_700_9'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -3558,8 +3560,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.temperature=0.7
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 
 # AgentCore Memory
 agentcore.memory.memory-id=${AGENTCORE_MEMORY_ID}
@@ -3580,7 +3581,7 @@ app.portal-url=${PORTAL_URL}
 EOF
 WS_TEST_BLOCK_700_9
 
-ws_run_block 10 'Adding the browser tools' '3. Create ArtifactLinks.java, which uploads the screenshots and files to S3 and signs the links:' 578 627 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_700_10'
+ws_run_block 10 'Adding the browser tools' '3. Create ArtifactLinks.java, which uploads the screenshots and files to S3 and signs the links:' 577 626 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_700_10'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ArtifactLinks.java
 package com.example.agent;
 
@@ -3633,7 +3634,7 @@ public class ArtifactLinks {
 EOF
 WS_TEST_BLOCK_700_10
 
-ws_run_block 11 'Adding the browser tools' '4. Replace the content of ChatService.java:' 637 780 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_700_11'
+ws_run_block 11 'Adding the browser tools' '4. Replace the content of ChatService.java:' 636 779 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_700_11'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -3780,12 +3781,12 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_700_11
 
-ws_run_block 12 'Adding the browser tools' '1. Add Playwright to connect to the remote browser (the browser itself runs on AgentCore Browser):' 799 800 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_700_12'
+ws_run_block 12 'Adding the browser tools' '1. Add Playwright to connect to the remote browser (the browser itself runs on AgentCore Browser):' 798 799 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_700_12'
 cd ~/environment/aiagent
 uv add playwright
 WS_TEST_BLOCK_700_12
 
-ws_run_block 13 'Adding the browser tools' '2. Create artifacts.py, which keeps the screenshots and files of each conversation and uploads them to S3:' 806 841 'python' 'python-langgraph' <<'WS_TEST_BLOCK_700_13'
+ws_run_block 13 'Adding the browser tools' '2. Create artifacts.py, which keeps the screenshots and files of each conversation and uploads them to S3:' 805 840 'python' 'python-langgraph' <<'WS_TEST_BLOCK_700_13'
 cat <<'EOF' > ~/environment/aiagent/artifacts.py
 import os
 import uuid
@@ -3824,7 +3825,7 @@ def as_markdown(conversation_id):
 EOF
 WS_TEST_BLOCK_700_13
 
-ws_run_block 14 'Adding the browser tools' '3. Create browsertools.py:' 852 910 'python' 'python-langgraph' <<'WS_TEST_BLOCK_700_14'
+ws_run_block 14 'Adding the browser tools' '3. Create browsertools.py:' 851 909 'python' 'python-langgraph' <<'WS_TEST_BLOCK_700_14'
 cat <<'EOF' > ~/environment/aiagent/browser_tools.py
 import logging
 import os
@@ -3886,7 +3887,7 @@ async def take_screenshot(url: str) -> str:
 EOF
 WS_TEST_BLOCK_700_14
 
-ws_run_block 15 'Adding the browser tools' '4. Replace the content of main.py:' 919 1003 'python' 'python-langgraph' <<'WS_TEST_BLOCK_700_15'
+ws_run_block 15 'Adding the browser tools' '4. Replace the content of main.py:' 918 1002 'python' 'python-langgraph' <<'WS_TEST_BLOCK_700_15'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -3906,7 +3907,7 @@ from web_grounding import search_web
 app = BedrockAgentCoreApp()
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION")
 )
 
 SYSTEM_PROMPT = """
@@ -3974,12 +3975,12 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_700_15
 
-ws_run_block 16 'Adding the browser tools' '1. Add Playwright, which connects to the remote browser, and the S3 clients for the uploads and the presigned links:' 1018 1019 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_700_16'
+ws_run_block 16 'Adding the browser tools' '1. Add Playwright, which connects to the remote browser, and the S3 clients for the uploads and the presigned links:' 1017 1018 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_700_16'
 cd ~/environment/aiagent
 npm install playwright @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 WS_TEST_BLOCK_700_16
 
-ws_run_block 17 'Adding the browser tools' '2. Create artifacts.ts, which keeps the screenshots and files of each conversation and uploads them to S3:' 1025 1058 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_700_17'
+ws_run_block 17 'Adding the browser tools' '2. Create artifacts.ts, which keeps the screenshots and files of each conversation and uploads them to S3:' 1024 1057 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_700_17'
 cat <<'EOF' > ~/environment/aiagent/artifacts.ts
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
@@ -4016,7 +4017,7 @@ export async function asMarkdown(conversationId: string) {
 EOF
 WS_TEST_BLOCK_700_17
 
-ws_run_block 18 'Adding the browser tools' '3. Create browser-tools.ts:' 1069 1104 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_700_18'
+ws_run_block 18 'Adding the browser tools' '3. Create browser-tools.ts:' 1068 1103 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_700_18'
 cat <<'EOF' > ~/environment/aiagent/browser-tools.ts
 import { tool } from 'ai';
 import { PlaywrightBrowser } from 'bedrock-agentcore/browser/playwright';
@@ -4055,7 +4056,7 @@ export const browserTools = {
 EOF
 WS_TEST_BLOCK_700_18
 
-ws_run_block 19 'Adding the browser tools' '4. Replace the content of main.ts:' 1113 1196 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_700_19'
+ws_run_block 19 'Adding the browser tools' '4. Replace the content of main.ts:' 1112 1195 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_700_19'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -4074,7 +4075,7 @@ import * as memory from './memory.js';
 import { searchWeb } from './web-grounding.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -4115,7 +4116,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, { role: 'user', content: prompt }],
         tools,
         stopWhen: stepCountIs(10),
@@ -4142,22 +4143,22 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_700_19
 
-ws_run_block 20 'Testing the browser' 'Start the application in the background, send the prompt, and stop the application:' 1213 1216 'bash' '' <<'WS_TEST_BLOCK_700_20'
+ws_run_block 20 'Testing the browser' 'Start the application in the background, send the prompt, and stop the application:' 1212 1215 'bash' '' <<'WS_TEST_BLOCK_700_20'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 ~/workshop/scripts/local-app.sh ask "Find the 3 cheapest flights from Berlin to Tokyo on November 16 on the corporate travel portal and take a screenshot"
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_700_20
 
-ws_skip_block 21 'Testing the browser' '1. Start the application:' 1227 1228 'bash' 'python-strands' 'foreground app for the Web UI'
+ws_skip_block 21 'Testing the browser' '1. Start the application:' 1226 1227 'bash' 'python-strands' 'foreground app for the Web UI'
 
-ws_skip_block 22 'Testing the browser' 'Testing the browser' 1235 1237 'bash' 'java-spring-ai' 'foreground app for the Web UI'
+ws_skip_block 22 'Testing the browser' 'Testing the browser' 1234 1236 'bash' 'java-spring-ai' 'foreground app for the Web UI'
 
-ws_skip_block 23 'Testing the browser' 'PLAYWRIGHTSKIPBROWSERDOWNLOAD skips the download of a local browser: the browser runs on AgentCore Browser.' 1246 1247 'bash' 'python-langgraph' 'foreground app for the Web UI'
+ws_skip_block 23 'Testing the browser' 'PLAYWRIGHTSKIPBROWSERDOWNLOAD skips the download of a local browser: the browser runs on AgentCore Browser.' 1245 1246 'bash' 'python-langgraph' 'foreground app for the Web UI'
 
-ws_skip_block 24 'Testing the browser' 'Testing the browser' 1254 1255 'bash' 'ts-vercel' 'foreground app for the Web UI'
+ws_skip_block 24 'Testing the browser' 'Testing the browser' 1253 1254 'bash' 'ts-vercel' 'foreground app for the Web UI'
 
-ws_run_block 25 'Committing changes' 'Committing changes' 1277 1279 'bash' '' <<'WS_TEST_BLOCK_700_25'
+ws_run_block 25 'Committing changes' 'Committing changes' 1276 1278 'bash' '' <<'WS_TEST_BLOCK_700_25'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add browser"
@@ -4236,7 +4237,7 @@ from web_grounding import search_web
 app = BedrockAgentCoreApp()
 log = app.logger
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
 
 SYSTEM_PROMPT = """
 You are the travel and expense assistant of the company. You help employees plan business trips,
@@ -4737,7 +4738,7 @@ from web_grounding import search_web
 app = BedrockAgentCoreApp()
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION")
 )
 
 SYSTEM_PROMPT = """
@@ -4887,7 +4888,7 @@ import * as memory from './memory.js';
 import { searchWeb } from './web-grounding.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -4929,7 +4930,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, { role: 'user', content: prompt }],
         tools,
         stopWhen: stepCountIs(10),
@@ -6180,7 +6181,7 @@ from mcp_tools import gateway_tools
 app = BedrockAgentCoreApp()
 log = app.logger
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
 
 SYSTEM_PROMPT = """
 You are the travel and expense assistant of the company. You help employees plan business trips,
@@ -6510,7 +6511,7 @@ public class SigV4McpConfig {
 EOF
 WS_TEST_BLOCK_930_5
 
-ws_run_block 6 'Connecting the AI agent to the Gateway' '3. Replace the content of application.properties to connect the MCP client to GATEWAYURL from ~/environment/.envrc:' 460 494 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_930_6'
+ws_run_block 6 'Connecting the AI agent to the Gateway' '3. Replace the content of application.properties to connect the MCP client to GATEWAYURL from ~/environment/.envrc:' 460 493 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_930_6'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -6521,8 +6522,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.temperature=0.7
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 
 # AgentCore Memory
 agentcore.memory.memory-id=${AGENTCORE_MEMORY_ID}
@@ -6548,7 +6548,7 @@ spring.ai.mcp.client.streamable-http.connections.gateway.url=${GATEWAY_URL}
 EOF
 WS_TEST_BLOCK_930_6
 
-ws_run_block 7 'Connecting the AI agent to the Gateway' '4. Replace the content of ChatService.java:' 502 681 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_930_7'
+ws_run_block 7 'Connecting the AI agent to the Gateway' '4. Replace the content of ChatService.java:' 501 680 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_930_7'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -6731,12 +6731,12 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_930_7
 
-ws_run_block 8 'Connecting the AI agent to the Gateway' '1. Add the LangChain MCP adapters and MCP Proxy for AWS:' 695 696 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_930_8'
+ws_run_block 8 'Connecting the AI agent to the Gateway' '1. Add the LangChain MCP adapters and MCP Proxy for AWS:' 694 695 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_930_8'
 cd ~/environment/aiagent
 uv add "mcp~=1.24.0" langchain-mcp-adapters mcp-proxy-for-aws pydantic-settings
 WS_TEST_BLOCK_930_8
 
-ws_run_block 9 'Connecting the AI agent to the Gateway' '2. Create mcptools.py with the Gateway client:' 702 727 'python' 'python-langgraph' <<'WS_TEST_BLOCK_930_9'
+ws_run_block 9 'Connecting the AI agent to the Gateway' '2. Create mcptools.py with the Gateway client:' 701 726 'python' 'python-langgraph' <<'WS_TEST_BLOCK_930_9'
 cat <<'EOF' > ~/environment/aiagent/mcp_tools.py
 import os
 
@@ -6765,7 +6765,7 @@ async def gateway_tools():
 EOF
 WS_TEST_BLOCK_930_9
 
-ws_run_block 10 'Connecting the AI agent to the Gateway' '3. Replace the content of main.py:' 738 831 'python' 'python-langgraph' <<'WS_TEST_BLOCK_930_10'
+ws_run_block 10 'Connecting the AI agent to the Gateway' '3. Replace the content of main.py:' 737 830 'python' 'python-langgraph' <<'WS_TEST_BLOCK_930_10'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -6786,7 +6786,7 @@ from mcp_tools import gateway_tools
 app = BedrockAgentCoreApp()
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION")
 )
 
 SYSTEM_PROMPT = """
@@ -6862,12 +6862,12 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_930_10
 
-ws_run_block 11 'Connecting the AI agent to the Gateway' '1. Add the AI SDK MCP client, the MCP TypeScript SDK for the transport, and the SigV4 signer:' 845 846 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_930_11'
+ws_run_block 11 'Connecting the AI agent to the Gateway' '1. Add the AI SDK MCP client, the MCP TypeScript SDK for the transport, and the SigV4 signer:' 844 845 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_930_11'
 cd ~/environment/aiagent
 npm install @ai-sdk/mcp @modelcontextprotocol/sdk @smithy/signature-v4 @aws-crypto/sha256-js
 WS_TEST_BLOCK_930_11
 
-ws_run_block 12 'Connecting the AI agent to the Gateway' '2. Create mcp-tools.ts with the Gateway client:' 852 885 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_930_12'
+ws_run_block 12 'Connecting the AI agent to the Gateway' '2. Create mcp-tools.ts with the Gateway client:' 851 884 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_930_12'
 cat <<'EOF' > ~/environment/aiagent/mcp-tools.ts
 import { Sha256 } from '@aws-crypto/sha256-js';
 import { createMCPClient } from '@ai-sdk/mcp';
@@ -6904,7 +6904,7 @@ export async function gatewayTools() {
 EOF
 WS_TEST_BLOCK_930_12
 
-ws_run_block 13 'Connecting the AI agent to the Gateway' '3. Replace the content of main.ts:' 896 981 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_930_13'
+ws_run_block 13 'Connecting the AI agent to the Gateway' '3. Replace the content of main.ts:' 895 980 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_930_13'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -6924,7 +6924,7 @@ import { gatewayTools } from './mcp-tools.js';
 import * as memory from './memory.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -6966,7 +6966,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, { role: 'user', content: prompt }],
         tools,
         stopWhen: stepCountIs(10),
@@ -6993,7 +6993,7 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_930_13
 
-ws_run_block 14 'Testing the Gateway tools' 'local-app.sh loads GATEWAYURL from ~/environment/.envrc. Start the application in the background, send the prompts, and stop the application:' 997 1003 'bash' '' <<'WS_TEST_BLOCK_930_14'
+ws_run_block 14 'Testing the Gateway tools' 'local-app.sh loads GATEWAYURL from ~/environment/.envrc. Start the application in the background, send the prompts, and stop the application:' 996 1002 'bash' '' <<'WS_TEST_BLOCK_930_14'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 ~/workshop/scripts/local-app.sh ask "Register my trip to the AI Summit Tokyo, November 16 to 21, 2026, in the travel system"
@@ -7003,17 +7003,17 @@ cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_930_14
 
-ws_skip_block 15 'Testing the Gateway tools' '1. Start the application:' 1014 1016 'bash' 'python-strands' 'foreground app for the Web UI'
+ws_skip_block 15 'Testing the Gateway tools' '1. Start the application:' 1013 1015 'bash' 'python-strands' 'foreground app for the Web UI'
 
-ws_skip_block 16 'Testing the Gateway tools' 'direnv reload loads the Gateway values that the previous section saved.' 1025 1026 'bash' 'java-spring-ai' 'foreground app for the Web UI'
+ws_skip_block 16 'Testing the Gateway tools' 'direnv reload loads the Gateway values that the previous section saved.' 1024 1025 'bash' 'java-spring-ai' 'foreground app for the Web UI'
 
-ws_skip_block 17 'Testing the Gateway tools' 'The startup log shows the Gateway tools:' 1032 1032 '' 'java-spring-ai' 'informational block without language'
+ws_skip_block 17 'Testing the Gateway tools' 'The startup log shows the Gateway tools:' 1031 1031 '' 'java-spring-ai' 'informational block without language'
 
-ws_skip_block 18 'Testing the Gateway tools' 'Testing the Gateway tools' 1039 1041 'bash' 'python-langgraph' 'foreground app for the Web UI'
+ws_skip_block 18 'Testing the Gateway tools' 'Testing the Gateway tools' 1038 1040 'bash' 'python-langgraph' 'foreground app for the Web UI'
 
-ws_skip_block 19 'Testing the Gateway tools' 'direnv reload loads the Gateway values that the previous section saved.' 1050 1052 'bash' 'ts-vercel' 'foreground app for the Web UI'
+ws_skip_block 19 'Testing the Gateway tools' 'direnv reload loads the Gateway values that the previous section saved.' 1049 1051 'bash' 'ts-vercel' 'foreground app for the Web UI'
 
-ws_run_block 20 'Committing changes' 'Committing changes' 1091 1093 'bash' '' <<'WS_TEST_BLOCK_930_20'
+ws_run_block 20 'Committing changes' 'Committing changes' 1090 1092 'bash' '' <<'WS_TEST_BLOCK_930_20'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add MCP client"
@@ -7163,7 +7163,7 @@ app = BedrockAgentCoreApp()
 log = app.logger
 app.add_middleware(auth.JwtAuthMiddleware)
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
 
 SYSTEM_PROMPT = """
 You are the travel and expense assistant of the company. You help employees plan business trips,
@@ -7492,7 +7492,7 @@ ws_run_block 10 'Adding user sign-in' '6. Save the issuer of the user pool for t
 echo "export COGNITO_ISSUER_URI=https://cognito-idp.${AWS_REGION}.amazonaws.com/${AIAGENT_USER_POOL_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_10
 
-ws_run_block 11 'Adding user sign-in' '7. Replace the content of application.properties to read the issuer:' 589 626 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_11'
+ws_run_block 11 'Adding user sign-in' '7. Replace the content of application.properties to read the issuer:' 589 625 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_11'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -7503,8 +7503,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.temperature=0.7
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 
 # AgentCore Memory
 agentcore.memory.memory-id=${AGENTCORE_MEMORY_ID}
@@ -7533,7 +7532,7 @@ spring.security.oauth2.resourceserver.jwt.issuer-uri=${COGNITO_ISSUER_URI:}
 EOF
 WS_TEST_BLOCK_1000_11
 
-ws_run_block 12 'Adding user sign-in' '8. Create ConversationIdResolver.java, which takes the user ID from the token:' 634 680 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_12'
+ws_run_block 12 'Adding user sign-in' '8. Create ConversationIdResolver.java, which takes the user ID from the token:' 633 679 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_12'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ConversationIdResolver.java
 package com.example.agent;
 
@@ -7583,7 +7582,7 @@ public final class ConversationIdResolver {
 EOF
 WS_TEST_BLOCK_1000_12
 
-ws_run_block 13 'Adding user sign-in' '9. Replace the content of ChatService.java to use the resolver:' 690 868 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_13'
+ws_run_block 13 'Adding user sign-in' '9. Replace the content of ChatService.java to use the resolver:' 689 867 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_13'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -7765,12 +7764,12 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_1000_13
 
-ws_run_block 14 'Adding user sign-in' '4. Add PyJWT to validate the tokens:' 879 880 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_14'
+ws_run_block 14 'Adding user sign-in' '4. Add PyJWT to validate the tokens:' 878 879 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_14'
 cd ~/environment/aiagent
 uv add "pyjwt[crypto]"
 WS_TEST_BLOCK_1000_14
 
-ws_run_block 15 'Adding user sign-in' '5. Create auth.py with the token check and the conversation ID:' 886 921 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1000_15'
+ws_run_block 15 'Adding user sign-in' '5. Create auth.py with the token check and the conversation ID:' 885 920 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1000_15'
 cat <<'EOF' > ~/environment/aiagent/auth.py
 import os
 import uuid
@@ -7809,12 +7808,12 @@ def conversation_id(context):
 EOF
 WS_TEST_BLOCK_1000_15
 
-ws_run_block 16 'Adding user sign-in' '6. Save the issuer of the user pool for the application:' 934 935 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_16'
+ws_run_block 16 'Adding user sign-in' '6. Save the issuer of the user pool for the application:' 933 934 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_16'
 grep -q "COGNITO_ISSUER_URI" ~/environment/.envrc 2>/dev/null || \
 echo "export COGNITO_ISSUER_URI=https://cognito-idp.${AWS_REGION}.amazonaws.com/${AIAGENT_USER_POOL_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_16
 
-ws_run_block 17 'Adding user sign-in' '7. Replace the content of main.py:' 941 1036 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1000_17'
+ws_run_block 17 'Adding user sign-in' '7. Replace the content of main.py:' 940 1035 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1000_17'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -7837,7 +7836,7 @@ app = BedrockAgentCoreApp()
 app.add_middleware(auth.JwtAuthMiddleware)
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION")
 )
 
 SYSTEM_PROMPT = """
@@ -7913,12 +7912,12 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_1000_17
 
-ws_run_block 18 'Adding user sign-in' '4. Add jose to validate the tokens:' 1049 1050 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_1000_18'
+ws_run_block 18 'Adding user sign-in' '4. Add jose to validate the tokens:' 1048 1049 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_1000_18'
 cd ~/environment/aiagent
 npm install jose
 WS_TEST_BLOCK_1000_18
 
-ws_run_block 19 'Adding user sign-in' '5. Create auth.ts with the token check and the conversation ID:' 1056 1093 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1000_19'
+ws_run_block 19 'Adding user sign-in' '5. Create auth.ts with the token check and the conversation ID:' 1055 1092 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1000_19'
 cat <<'EOF' > ~/environment/aiagent/auth.ts
 import { randomUUID } from 'node:crypto';
 
@@ -7959,12 +7958,12 @@ export function conversationId(context: { sessionId: string; headers: Record<str
 EOF
 WS_TEST_BLOCK_1000_19
 
-ws_run_block 20 'Adding user sign-in' '6. Save the issuer of the user pool for the application:' 1106 1107 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_1000_20'
+ws_run_block 20 'Adding user sign-in' '6. Save the issuer of the user pool for the application:' 1105 1106 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_1000_20'
 grep -q "COGNITO_ISSUER_URI" ~/environment/.envrc 2>/dev/null || \
 echo "export COGNITO_ISSUER_URI=https://cognito-idp.${AWS_REGION}.amazonaws.com/${AIAGENT_USER_POOL_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_20
 
-ws_run_block 21 'Adding user sign-in' '7. Replace the content of main.ts:' 1113 1200 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1000_21'
+ws_run_block 21 'Adding user sign-in' '7. Replace the content of main.ts:' 1112 1199 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1000_21'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -7985,7 +7984,7 @@ import { gatewayTools } from './mcp-tools.js';
 import * as memory from './memory.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -8027,7 +8026,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, { role: 'user', content: prompt }],
         tools,
         stopWhen: stepCountIs(10),
@@ -8055,12 +8054,12 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_1000_21
 
-ws_run_block 22 'Testing the sign-in' '1. Start the application in the background:' 1215 1216 'bash' '' <<'WS_TEST_BLOCK_1000_22'
+ws_run_block 22 'Testing the sign-in' '1. Start the application in the background:' 1214 1215 'bash' '' <<'WS_TEST_BLOCK_1000_22'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 WS_TEST_BLOCK_1000_22
 
-ws_run_block 23 'Testing the sign-in' '2. Get a token for alice and send a request with it:' 1222 1230 'bash' '' 300 <<'WS_TEST_BLOCK_1000_23'
+ws_run_block 23 'Testing the sign-in' '2. Get a token for alice and send a request with it:' 1221 1229 'bash' '' 300 <<'WS_TEST_BLOCK_1000_23'
 TOKEN=$(aws cognito-idp initiate-auth \
   --client-id "${AIAGENT_CLIENT_ID}" \
   --auth-flow USER_PASSWORD_AUTH \
@@ -8072,7 +8071,7 @@ TOKEN=$(aws cognito-idp initiate-auth \
 AUTH_TOKEN="${TOKEN}" ~/workshop/scripts/local-app.sh ask "Hi, I am Alice"
 WS_TEST_BLOCK_1000_23
 
-ws_run_block 24 'Testing the sign-in' 'The AI agent answers. A request without a token is rejected with 401 Unauthorized:' 1236 1240 'bash' '' <<'WS_TEST_BLOCK_1000_24'
+ws_run_block 24 'Testing the sign-in' 'The AI agent answers. A request without a token is rejected with 401 Unauthorized:' 1235 1239 'bash' '' <<'WS_TEST_BLOCK_1000_24'
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/invocations \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Hi"}')
@@ -8080,11 +8079,11 @@ echo "HTTP ${STATUS}"
 [ "${STATUS}" = "401" ]
 WS_TEST_BLOCK_1000_24
 
-ws_run_block 25 'Testing the sign-in' '3. Stop the application:' 1246 1246 'bash' '' <<'WS_TEST_BLOCK_1000_25'
+ws_run_block 25 'Testing the sign-in' '3. Stop the application:' 1245 1245 'bash' '' <<'WS_TEST_BLOCK_1000_25'
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_1000_25
 
-ws_run_block 26 'Turning on observability' 'Turning on observability' 1254 1267 'bash' '' <<'WS_TEST_BLOCK_1000_26'
+ws_run_block 26 'Turning on observability' 'Turning on observability' 1253 1266 'bash' '' <<'WS_TEST_BLOCK_1000_26'
 if [ "$(aws xray get-trace-segment-destination --no-cli-pager --query '[Destination, Status]' --output text)" != "CloudWatchLogs	ACTIVE" ]; then
   aws logs put-resource-policy --policy-name TransactionSearchXRayAccess --no-cli-pager --policy-document "{
     \"Version\": \"2012-10-17\",
@@ -8101,12 +8100,12 @@ fi
 aws xray get-trace-segment-destination --no-cli-pager --output text
 WS_TEST_BLOCK_1000_26
 
-ws_run_block 27 'Packaging the AI agent as a container' '1. Add ADOT for Python. Strands Agents creates OpenTelemetry spans for every agent invocation, model call, and tool call as soon as a tracer provider exists; ADOT provides the tracer provider and the exporter:' 1286 1287 'bash' 'python-strands' <<'WS_TEST_BLOCK_1000_27'
+ws_run_block 27 'Packaging the AI agent as a container' '1. Add ADOT for Python. Strands Agents creates OpenTelemetry spans for every agent invocation, model call, and tool call as soon as a tracer provider exists; ADOT provides the tracer provider and the exporter:' 1285 1286 'bash' 'python-strands' <<'WS_TEST_BLOCK_1000_27'
 cd ~/environment/aiagent
 uv add "aws-opentelemetry-distro~=0.18.0"
 WS_TEST_BLOCK_1000_27
 
-ws_run_block 28 'Packaging the AI agent as a container' '2. Create the Dockerfile:' 1293 1314 'dockerfile' 'python-strands' <<'WS_TEST_BLOCK_1000_28'
+ws_run_block 28 'Packaging the AI agent as a container' '2. Create the Dockerfile:' 1292 1313 'dockerfile' 'python-strands' <<'WS_TEST_BLOCK_1000_28'
 cat <<'EOF' > ~/environment/aiagent/Dockerfile
 FROM public.ecr.aws/docker/library/python:3.13-slim-trixie
 RUN pip install --no-cache-dir uv
@@ -8131,7 +8130,7 @@ CMD ["opentelemetry-instrument", "python", "main.py"]
 EOF
 WS_TEST_BLOCK_1000_28
 
-ws_run_block 29 'Packaging the AI agent as a container' '3. Keep local files and the static/ folder out of the image:' 1325 1333 'bash' 'python-strands' <<'WS_TEST_BLOCK_1000_29'
+ws_run_block 29 'Packaging the AI agent as a container' '3. Keep local files and the static/ folder out of the image:' 1324 1332 'bash' 'python-strands' <<'WS_TEST_BLOCK_1000_29'
 cat > ~/environment/aiagent/.dockerignore << 'EOF'
 .venv/
 __pycache__/
@@ -8143,7 +8142,7 @@ static/
 EOF
 WS_TEST_BLOCK_1000_29
 
-ws_run_block 30 'Packaging the AI agent as a container' '1. Replace the content of pom.xml to add the OpenTelemetry starter:' 1352 1537 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_30'
+ws_run_block 30 'Packaging the AI agent as a container' '1. Replace the content of pom.xml to add the OpenTelemetry starter:' 1351 1536 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_30'
 cat <<'EOF' > ~/environment/aiagent/pom.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -8332,7 +8331,7 @@ cat <<'EOF' > ~/environment/aiagent/pom.xml
 EOF
 WS_TEST_BLOCK_1000_30
 
-ws_run_block 31 'Packaging the AI agent as a container' '2. Replace the content of application.properties to record every request:' 1545 1586 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_31'
+ws_run_block 31 'Packaging the AI agent as a container' '2. Replace the content of application.properties to record every request:' 1544 1584 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_31'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -8343,8 +8342,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.temperature=0.7
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 
 # AgentCore Memory
 agentcore.memory.memory-id=${AGENTCORE_MEMORY_ID}
@@ -8377,7 +8375,7 @@ management.otlp.metrics.export.enabled=false
 EOF
 WS_TEST_BLOCK_1000_31
 
-ws_run_block 32 'Packaging the AI agent as a container' '3. Create ObservabilityConfig.java:' 1594 1626 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_32'
+ws_run_block 32 'Packaging the AI agent as a container' '3. Create ObservabilityConfig.java:' 1592 1624 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_32'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ObservabilityConfig.java
 package com.example.agent;
 
@@ -8413,7 +8411,7 @@ public class ObservabilityConfig {
 EOF
 WS_TEST_BLOCK_1000_32
 
-ws_run_block 33 'Packaging the AI agent as a container' '4. Create GenAiObservationFilter.java:' 1636 1764 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_33'
+ws_run_block 33 'Packaging the AI agent as a container' '4. Create GenAiObservationFilter.java:' 1634 1762 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_33'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/GenAiObservationFilter.java
 package com.example.agent;
 
@@ -8545,7 +8543,7 @@ public class GenAiObservationFilter implements ObservationFilter {
 EOF
 WS_TEST_BLOCK_1000_33
 
-ws_run_block 34 'Packaging the AI agent as a container' '5. Create the Dockerfile with the ADOT Java agent:' 1775 1793 'dockerfile' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_34'
+ws_run_block 34 'Packaging the AI agent as a container' '5. Create the Dockerfile with the ADOT Java agent:' 1773 1791 'dockerfile' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_34'
 cat <<'EOF' > ~/environment/aiagent/Dockerfile
 FROM public.ecr.aws/amazoncorretto/amazoncorretto:25-al2023-headless
 
@@ -8567,12 +8565,12 @@ CMD ["java", "-jar", "/app/app.jar"]
 EOF
 WS_TEST_BLOCK_1000_34
 
-ws_run_block 35 'Packaging the AI agent as a container' '1. LangGraph does not create OpenTelemetry spans itself. The OpenTelemetry instrumentation for LangChain creates a span for every agent invocation, model call, and tool call with the GenAI semantic conventions, under the scope opentelemetry.instrumentation.langchain that AgentCore Evaluations reads; ADOT loads it at startup and provides the tracer provider and the exporter. Add both:' 1811 1812 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_35'
+ws_run_block 35 'Packaging the AI agent as a container' '1. LangGraph does not create OpenTelemetry spans itself. The OpenTelemetry instrumentation for LangChain creates a span for every agent invocation, model call, and tool call with the GenAI semantic conventions, under the scope opentelemetry.instrumentation.langchain that AgentCore Evaluations reads; ADOT loads it at startup and provides the tracer provider and the exporter. Add both:' 1809 1810 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_35'
 cd ~/environment/aiagent
 uv add "aws-opentelemetry-distro~=0.18.0" "opentelemetry-instrumentation-langchain~=0.62.4"
 WS_TEST_BLOCK_1000_35
 
-ws_run_block 36 'Packaging the AI agent as a container' '2. Create the Dockerfile:' 1818 1839 'dockerfile' 'python-langgraph' <<'WS_TEST_BLOCK_1000_36'
+ws_run_block 36 'Packaging the AI agent as a container' '2. Create the Dockerfile:' 1816 1837 'dockerfile' 'python-langgraph' <<'WS_TEST_BLOCK_1000_36'
 cat <<'EOF' > ~/environment/aiagent/Dockerfile
 FROM public.ecr.aws/docker/library/python:3.13-slim-trixie
 RUN pip install --no-cache-dir uv
@@ -8597,7 +8595,7 @@ CMD ["opentelemetry-instrument", "python", "main.py"]
 EOF
 WS_TEST_BLOCK_1000_36
 
-ws_run_block 37 'Packaging the AI agent as a container' '3. Keep local files and the static/ folder out of the image:' 1850 1858 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_37'
+ws_run_block 37 'Packaging the AI agent as a container' '3. Keep local files and the static/ folder out of the image:' 1848 1856 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_37'
 cat > ~/environment/aiagent/.dockerignore << 'EOF'
 .venv/
 __pycache__/
@@ -8609,12 +8607,12 @@ static/
 EOF
 WS_TEST_BLOCK_1000_37
 
-ws_run_block 38 'Packaging the AI agent as a container' '1. Add ADOT for Node.js, which registers the OpenTelemetry SDK, instruments HTTP and the AWS SDK, and exports the spans with the settings that AgentCore Runtime provides, and @ai-sdk/otel, which creates spans with the GenAI semantic conventions for every streamText() call, model call, and tool call:' 1871 1872 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_1000_38'
+ws_run_block 38 'Packaging the AI agent as a container' '1. Add ADOT for Node.js, which registers the OpenTelemetry SDK, instruments HTTP and the AWS SDK, and exports the spans with the settings that AgentCore Runtime provides, and @ai-sdk/otel, which creates spans with the GenAI semantic conventions for every streamText() call, model call, and tool call:' 1869 1870 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_1000_38'
 cd ~/environment/aiagent
 npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation @ai-sdk/otel @opentelemetry/api
 WS_TEST_BLOCK_1000_38
 
-ws_run_block 39 'Packaging the AI agent as a container' '2. Create telemetry.ts, which connects the AI SDK to OpenTelemetry. The tracer opentelemetry.instrumentation.vercelai puts the spans into a scope that AgentCore Evaluations reads:' 1878 1893 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1000_39'
+ws_run_block 39 'Packaging the AI agent as a container' '2. Create telemetry.ts, which connects the AI SDK to OpenTelemetry. The tracer opentelemetry.instrumentation.vercelai puts the spans into a scope that AgentCore Evaluations reads:' 1876 1891 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1000_39'
 cat <<'EOF' > ~/environment/aiagent/telemetry.ts
 // Loaded before main.ts in the container (`--import ./telemetry.ts` in the Dockerfile), after ADOT has registered the OpenTelemetry SDK
 import { OpenTelemetry } from '@ai-sdk/otel';
@@ -8633,7 +8631,7 @@ registerTelemetry(
 EOF
 WS_TEST_BLOCK_1000_39
 
-ws_run_block 40 'Packaging the AI agent as a container' '3. Create the Dockerfile:' 1905 1923 'dockerfile' 'ts-vercel' <<'WS_TEST_BLOCK_1000_40'
+ws_run_block 40 'Packaging the AI agent as a container' '3. Create the Dockerfile:' 1903 1921 'dockerfile' 'ts-vercel' <<'WS_TEST_BLOCK_1000_40'
 cat <<'EOF' > ~/environment/aiagent/Dockerfile
 FROM public.ecr.aws/docker/library/node:22-slim
 
@@ -8655,7 +8653,7 @@ CMD ["node", "--require", "@aws/aws-distro-opentelemetry-node-autoinstrumentatio
 EOF
 WS_TEST_BLOCK_1000_40
 
-ws_run_block 41 'Packaging the AI agent as a container' '4. Keep local files and the static/ folder out of the image:' 1934 1941 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_1000_41'
+ws_run_block 41 'Packaging the AI agent as a container' '4. Keep local files and the static/ folder out of the image:' 1932 1939 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_1000_41'
 cat > ~/environment/aiagent/.dockerignore << 'EOF'
 node_modules/
 dist/
@@ -8666,7 +8664,7 @@ static/
 EOF
 WS_TEST_BLOCK_1000_41
 
-ws_run_block 42 'Deploying the AI agent to AgentCore Runtime' '1. Create the ECR repository:' 1954 1959 'bash' '' <<'WS_TEST_BLOCK_1000_42'
+ws_run_block 42 'Deploying the AI agent to AgentCore Runtime' '1. Create the ECR repository:' 1952 1957 'bash' '' <<'WS_TEST_BLOCK_1000_42'
 aws ecr describe-repositories --repository-names "aiagent" --region ${AWS_REGION} \
   --no-cli-pager > /dev/null 2>&1 || \
 aws ecr create-repository \
@@ -8675,7 +8673,7 @@ aws ecr create-repository \
   --no-cli-pager
 WS_TEST_BLOCK_1000_42
 
-ws_run_block 43 'Deploying the AI agent to AgentCore Runtime' '2. Create the IAM role that AgentCore Runtime assumes for the AI agent:' 1965 1985 'bash' '' <<'WS_TEST_BLOCK_1000_43'
+ws_run_block 43 'Deploying the AI agent to AgentCore Runtime' '2. Create the IAM role that AgentCore Runtime assumes for the AI agent:' 1963 1983 'bash' '' <<'WS_TEST_BLOCK_1000_43'
 cat > /tmp/trust-policy.json << EOF
 {
   "Version": "2012-10-17",
@@ -8699,7 +8697,7 @@ aws iam create-role \
   --no-cli-pager
 WS_TEST_BLOCK_1000_43
 
-ws_run_block 44 'Deploying the AI agent to AgentCore Runtime' '3. Attach the permissions policy. It is broad to keep the workshop short; scope actions and resources to what the AI agent needs in production:' 1994 2016 'bash' '' <<'WS_TEST_BLOCK_1000_44'
+ws_run_block 44 'Deploying the AI agent to AgentCore Runtime' '3. Attach the permissions policy. It is broad to keep the workshop short; scope actions and resources to what the AI agent needs in production:' 1992 2014 'bash' '' <<'WS_TEST_BLOCK_1000_44'
 cat > /tmp/aiagent-policy.json << EOF
 {
   "Version": "2012-10-17",
@@ -8725,7 +8723,7 @@ aws iam put-role-policy \
   --no-cli-pager
 WS_TEST_BLOCK_1000_44
 
-ws_run_block 45 'Deploying the AI agent to AgentCore Runtime' '4. Allow the role to upload and sign the artifacts:' 2025 2031 'bash' '' <<'WS_TEST_BLOCK_1000_45'
+ws_run_block 45 'Deploying the AI agent to AgentCore Runtime' '4. Allow the role to upload and sign the artifacts:' 2023 2029 'bash' '' <<'WS_TEST_BLOCK_1000_45'
 aws iam put-role-policy --role-name "aiagent-runtime-role" --policy-name "ArtifactsS3Policy" --no-cli-pager \
   --policy-document '{
     "Version": "2012-10-17",
@@ -8735,7 +8733,7 @@ aws iam put-role-policy --role-name "aiagent-runtime-role" --policy-name "Artifa
   }'
 WS_TEST_BLOCK_1000_45
 
-ws_run_block 46 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2042 2050 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1000_46'
+ws_run_block 46 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2040 2048 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1000_46'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
@@ -8747,7 +8745,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1000_46
 
-ws_run_block 47 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2062 2071 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1000_47'
+ws_run_block 47 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2060 2069 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1000_47'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
@@ -8760,7 +8758,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1000_47
 
-ws_run_block 48 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2084 2092 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1000_48'
+ws_run_block 48 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2082 2090 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1000_48'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
@@ -8772,7 +8770,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1000_48
 
-ws_run_block 49 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2104 2112 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1000_49'
+ws_run_block 49 'Deploying the AI agent to AgentCore Runtime' '5. Build the container image and push it to ECR:' 2102 2110 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1000_49'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
@@ -8784,7 +8782,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1000_49
 
-ws_run_block 50 'Deploying the AI agent to AgentCore Runtime' '6. Create the AgentCore Runtime, or update it if it exists. The application reads its configuration from environment variables, so the runtime gets the values from ~/environment/.envrc:' 2127 2149 'bash' 'python-strands' 300 <<'WS_TEST_BLOCK_1000_50'
+ws_run_block 50 'Deploying the AI agent to AgentCore Runtime' '6. Create the AgentCore Runtime, or update it if it exists. The application reads its configuration from environment variables, so the runtime gets the values from ~/environment/.envrc:' 2125 2147 'bash' 'python-strands' 300 <<'WS_TEST_BLOCK_1000_50'
 source ~/environment/.envrc
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
@@ -8810,7 +8808,7 @@ fi
 echo "export AIAGENT_RUNTIME_ID=${AIAGENT_RUNTIME_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_50
 
-ws_run_block 51 'Deploying the AI agent to AgentCore Runtime' '- 16-22: Create the runtime aiagent, or give an existing one a new version with the new image' 2164 2196 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_51'
+ws_run_block 51 'Deploying the AI agent to AgentCore Runtime' '- 16-22: Create the runtime aiagent, or give an existing one a new version with the new image' 2162 2194 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_51'
 source ~/environment/.envrc
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
@@ -8846,7 +8844,7 @@ aws bedrock-agentcore-control update-agent-runtime --agent-runtime-id "${AIAGENT
 echo "export AIAGENT_RUNTIME_ID=${AIAGENT_RUNTIME_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_51
 
-ws_run_block 52 'Deploying the AI agent to AgentCore Runtime' '- 31-32: Every run updates the runtime: a new version with the new image and the exporter settings' 2210 2232 'bash' 'python-langgraph' 300 <<'WS_TEST_BLOCK_1000_52'
+ws_run_block 52 'Deploying the AI agent to AgentCore Runtime' '- 31-32: Every run updates the runtime: a new version with the new image and the exporter settings' 2208 2230 'bash' 'python-langgraph' 300 <<'WS_TEST_BLOCK_1000_52'
 source ~/environment/.envrc
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
@@ -8872,7 +8870,7 @@ fi
 echo "export AIAGENT_RUNTIME_ID=${AIAGENT_RUNTIME_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_52
 
-ws_run_block 53 'Deploying the AI agent to AgentCore Runtime' '- 16-22: Create the runtime aiagent, or give an existing one a new version with the new image' 2245 2267 'bash' 'ts-vercel' 300 <<'WS_TEST_BLOCK_1000_53'
+ws_run_block 53 'Deploying the AI agent to AgentCore Runtime' '- 16-22: Create the runtime aiagent, or give an existing one a new version with the new image' 2243 2265 'bash' 'ts-vercel' 300 <<'WS_TEST_BLOCK_1000_53'
 source ~/environment/.envrc
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 
@@ -8898,7 +8896,7 @@ fi
 echo "export AIAGENT_RUNTIME_ID=${AIAGENT_RUNTIME_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_53
 
-ws_run_block 54 'Deploying the AI agent to AgentCore Runtime' '7. Wait for the runtime to become ready:' 2282 2287 'bash' '' 900 <<'WS_TEST_BLOCK_1000_54'
+ws_run_block 54 'Deploying the AI agent to AgentCore Runtime' '7. Wait for the runtime to become ready:' 2280 2285 'bash' '' 900 <<'WS_TEST_BLOCK_1000_54'
 echo -n "Waiting for runtime"
 until [ "$(aws bedrock-agentcore-control get-agent-runtime \
   --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --region ${AWS_REGION} \
@@ -8907,14 +8905,14 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime \
 done && echo " READY"
 WS_TEST_BLOCK_1000_54
 
-ws_run_block 55 'Deploying the AI agent to AgentCore Runtime' '8. Save the endpoint of the runtime:' 2293 2296 'bash' '' <<'WS_TEST_BLOCK_1000_55'
+ws_run_block 55 'Deploying the AI agent to AgentCore Runtime' '8. Save the endpoint of the runtime:' 2291 2294 'bash' '' <<'WS_TEST_BLOCK_1000_55'
 RUNTIME_ARN="arn:aws:bedrock-agentcore:${AWS_REGION}:${ACCOUNT_ID}:runtime/${AIAGENT_RUNTIME_ID}"
 AIAGENT_ENDPOINT="https://bedrock-agentcore.${AWS_REGION}.amazonaws.com/runtimes/$(echo -n "${RUNTIME_ARN}" | jq -sRr @uri)/invocations?qualifier=DEFAULT"
 
 echo "export AIAGENT_ENDPOINT=${AIAGENT_ENDPOINT}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_55
 
-ws_run_block 56 'Deploying the AI agent to AgentCore Runtime' '9. The Gateway delivers its own logs and traces too: each request with the tool call, its target, and, once you add policies, the authorization decision. Turn on both for the Gateway:' 2302 2316 'bash' '' 900 <<'WS_TEST_BLOCK_1000_56'
+ws_run_block 56 'Deploying the AI agent to AgentCore Runtime' '9. The Gateway delivers its own logs and traces too: each request with the tool call, its target, and, once you add policies, the authorization decision. Turn on both for the Gateway:' 2300 2314 'bash' '' 900 <<'WS_TEST_BLOCK_1000_56'
 until [ "$(aws xray get-trace-segment-destination --query Status --output text --no-cli-pager)" = "ACTIVE" ]; do sleep 15; done
 GATEWAY_ARN=$(aws bedrock-agentcore-control get-gateway --gateway-identifier "${GATEWAY_ID}" --no-cli-pager \
   --query 'gatewayArn' --output text)
@@ -8932,7 +8930,7 @@ done
 echo "export GATEWAY_LOG_GROUP=/aws/vendedlogs/bedrock-agentcore/gateway/${GATEWAY_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_56
 
-ws_run_block 57 'Testing the deployed AI agent' '1. Get a token for alice and send a request to the runtime:' 2329 2341 'bash' '' 300 <<'WS_TEST_BLOCK_1000_57'
+ws_run_block 57 'Testing the deployed AI agent' '1. Get a token for alice and send a request to the runtime:' 2327 2339 'bash' '' 300 <<'WS_TEST_BLOCK_1000_57'
 TOKEN=$(aws cognito-idp initiate-auth \
   --client-id "${AIAGENT_CLIENT_ID}" \
   --auth-flow USER_PASSWORD_AUTH \
@@ -8948,7 +8946,7 @@ curl -N -s --fail-with-body -X POST "${AIAGENT_ENDPOINT}" \
   -d '{"prompt":"Hi, I am alice"}'; echo
 WS_TEST_BLOCK_1000_57
 
-ws_run_block 58 'Testing the deployed AI agent' '2. Read the status of the runtime and the output of the container in its log group:' 2349 2353 'bash' '' <<'WS_TEST_BLOCK_1000_58'
+ws_run_block 58 'Testing the deployed AI agent' '2. Read the status of the runtime and the output of the container in its log group:' 2347 2351 'bash' '' <<'WS_TEST_BLOCK_1000_58'
 aws bedrock-agentcore-control get-agent-runtime \
   --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
   --region ${AWS_REGION} \
@@ -8956,14 +8954,14 @@ aws bedrock-agentcore-control get-agent-runtime \
   --query '{status:status,lastUpdated:lastUpdatedAt}'
 WS_TEST_BLOCK_1000_58
 
-ws_run_block 59 'Testing the deployed AI agent' 'Testing the deployed AI agent' 2357 2360 'bash' '' <<'WS_TEST_BLOCK_1000_59'
+ws_run_block 59 'Testing the deployed AI agent' 'Testing the deployed AI agent' 2355 2358 'bash' '' <<'WS_TEST_BLOCK_1000_59'
 aws logs tail "/aws/bedrock-agentcore/runtimes/${AIAGENT_RUNTIME_ID}-DEFAULT" \
   --region ${AWS_REGION} \
   --since 1h \
   --no-cli-pager
 WS_TEST_BLOCK_1000_59
 
-ws_run_block 60 'Testing the deployed AI agent' '3. Check that the conversation outlives the runtime session. ask-runtime.sh signs in as a Cognito user and sends a prompt to the runtime, like the curl call. Tell the AI agent a detail, stop the session, and ask for the detail in the same session:' 2366 2370 'bash' '' 300 <<'WS_TEST_BLOCK_1000_60'
+ws_run_block 60 'Testing the deployed AI agent' '3. Check that the conversation outlives the runtime session. ask-runtime.sh signs in as a Cognito user and sends a prompt to the runtime, like the curl call. Tell the AI agent a detail, stop the session, and ask for the detail in the same session:' 2364 2368 'bash' '' 300 <<'WS_TEST_BLOCK_1000_60'
 SESSION_ID="tokyo-budget-$(date +%s)-0123456789abcdef"
 ~/workshop/scripts/ask-runtime.sh ask \
   "My hotel budget for Tokyo is 130 USD per night. Confirm in one sentence." "${SESSION_ID}"
@@ -8971,14 +8969,14 @@ SESSION_ID="tokyo-budget-$(date +%s)-0123456789abcdef"
 ~/workshop/scripts/ask-runtime.sh ask "Which hotel budget did I give you?" "${SESSION_ID}"
 WS_TEST_BLOCK_1000_60
 
-ws_run_block 61 'Testing the deployed AI agent' '4. List the versions and the endpoints of the runtime:' 2380 2383 'bash' '' <<'WS_TEST_BLOCK_1000_61'
+ws_run_block 61 'Testing the deployed AI agent' '4. List the versions and the endpoints of the runtime:' 2378 2381 'bash' '' <<'WS_TEST_BLOCK_1000_61'
 aws bedrock-agentcore-control list-agent-runtime-versions --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
   --no-cli-pager --query 'agentRuntimes[].{version: agentRuntimeVersion, status: status}' --output table
 aws bedrock-agentcore-control list-agent-runtime-endpoints --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
   --no-cli-pager --query 'runtimeEndpoints[].{name: name, liveVersion: liveVersion}' --output table
 WS_TEST_BLOCK_1000_61
 
-ws_run_block 62 'Evaluating sessions online' 'Start the online evaluation with two built-in evaluators, so that the sessions of the next modules are scored as you go:' 2393 2405 'bash' '' 300 <<'WS_TEST_BLOCK_1000_62'
+ws_run_block 62 'Evaluating sessions online' 'Start the online evaluation with two built-in evaluators, so that the sessions of the next modules are scored as you go:' 2391 2403 'bash' '' 300 <<'WS_TEST_BLOCK_1000_62'
 LOG_GROUP="/aws/bedrock-agentcore/runtimes/${AIAGENT_RUNTIME_ID}-DEFAULT"
 ONLINE_EVALUATION_CONFIG_ID=$(aws bedrock-agentcore-control list-online-evaluation-configs --no-cli-pager \
   --query "onlineEvaluationConfigs[?onlineEvaluationConfigName=='aiagent_online'].onlineEvaluationConfigId | [0]" --output text)
@@ -8994,7 +8992,7 @@ until [ "$(aws bedrock-agentcore-control get-online-evaluation-config --online-e
 echo "export ONLINE_EVALUATION_CONFIG_ID=${ONLINE_EVALUATION_CONFIG_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_62
 
-ws_run_block 63 'Hosting the UI' '1. Create the S3 bucket for the UI:' 2421 2432 'bash' '' <<'WS_TEST_BLOCK_1000_63'
+ws_run_block 63 'Hosting the UI' '1. Create the S3 bucket for the UI:' 2419 2430 'bash' '' <<'WS_TEST_BLOCK_1000_63'
 UI_BUCKET=$(aws s3api list-buckets --no-cli-pager \
   --query "Buckets[?starts_with(Name, 'aiagent-ui-${ACCOUNT_ID}-')].Name | [0]" --output text)
 if [ "${UI_BUCKET}" = "None" ]; then
@@ -9009,7 +9007,7 @@ fi
 echo "export UI_BUCKET=${UI_BUCKET}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_63
 
-ws_run_block 64 'Hosting the UI' '2. Create the Origin Access Identity (OAI) that lets CloudFront read the private bucket, the bucket policy, and the distribution:' 2440 2518 'bash' '' 300 <<'WS_TEST_BLOCK_1000_64'
+ws_run_block 64 'Hosting the UI' '2. Create the Origin Access Identity (OAI) that lets CloudFront read the private bucket, the bucket policy, and the distribution:' 2438 2516 'bash' '' 300 <<'WS_TEST_BLOCK_1000_64'
 OAI_ID=$(aws cloudfront list-cloud-front-origin-access-identities --no-cli-pager \
   --query "CloudFrontOriginAccessIdentityList.Items[?Comment=='OAI for aiagent UI'].Id | [0]" --output text)
 if [ "${OAI_ID}" = "None" ]; then
@@ -9091,7 +9089,7 @@ fi
 echo "export UI_DOMAIN=${UI_DOMAIN}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1000_64
 
-ws_run_block 65 'Hosting the UI' '3. Write config.json and upload the files:' 2530 2554 'bash' 'python-strands' <<'WS_TEST_BLOCK_1000_65'
+ws_run_block 65 'Hosting the UI' '3. Write config.json and upload the files:' 2528 2552 'bash' 'python-strands' <<'WS_TEST_BLOCK_1000_65'
 cd ~/environment
 cat > ~/environment/aiagent/static/config.json << EOF
 {
@@ -9119,7 +9117,7 @@ for file in ${UI_DIR}/*.html ${UI_DIR}/*.js ${UI_DIR}/*.css ${UI_DIR}/*.json ${U
 done
 WS_TEST_BLOCK_1000_65
 
-ws_run_block 66 'Hosting the UI' '- 7: The attachment button of the UI, for receipts in the Bedrock Data Automation module' 2564 2588 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_66'
+ws_run_block 66 'Hosting the UI' '- 7: The attachment button of the UI, for receipts in the Bedrock Data Automation module' 2562 2586 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_1000_66'
 cd ~/environment
 cat > ~/environment/aiagent/src/main/resources/static/config.json << EOF
 {
@@ -9147,7 +9145,7 @@ for file in ${UI_DIR}/*.html ${UI_DIR}/*.js ${UI_DIR}/*.css ${UI_DIR}/*.json ${U
 done
 WS_TEST_BLOCK_1000_66
 
-ws_run_block 67 'Hosting the UI' '- 7: The attachment button of the UI, for receipts in the Bedrock Data Automation module' 2598 2622 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_67'
+ws_run_block 67 'Hosting the UI' '- 7: The attachment button of the UI, for receipts in the Bedrock Data Automation module' 2596 2620 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1000_67'
 cd ~/environment
 cat > ~/environment/aiagent/static/config.json << EOF
 {
@@ -9175,7 +9173,7 @@ for file in ${UI_DIR}/*.html ${UI_DIR}/*.js ${UI_DIR}/*.css ${UI_DIR}/*.json ${U
 done
 WS_TEST_BLOCK_1000_67
 
-ws_run_block 68 'Hosting the UI' '- 7: The attachment button of the UI, for receipts in the Bedrock Data Automation module' 2632 2656 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_1000_68'
+ws_run_block 68 'Hosting the UI' '- 7: The attachment button of the UI, for receipts in the Bedrock Data Automation module' 2630 2654 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_1000_68'
 cd ~/environment
 cat > ~/environment/aiagent/static/config.json << EOF
 {
@@ -9203,7 +9201,7 @@ for file in ${UI_DIR}/*.html ${UI_DIR}/*.js ${UI_DIR}/*.css ${UI_DIR}/*.json ${U
 done
 WS_TEST_BLOCK_1000_68
 
-ws_run_block 69 'Hosting the UI' '4. Wait until CloudFront serves the UI. A new distribution takes a few minutes:' 2668 2672 'bash' '' 1800 <<'WS_TEST_BLOCK_1000_69'
+ws_run_block 69 'Hosting the UI' '4. Wait until CloudFront serves the UI. A new distribution takes a few minutes:' 2666 2670 'bash' '' 1800 <<'WS_TEST_BLOCK_1000_69'
 echo -n "Waiting for CloudFront"
 until [ "$(curl -s -o /dev/null -w "%{http_code}" "https://${UI_DOMAIN}" 2>/dev/null)" = "200" ]; do
   echo -n "."; sleep 15
@@ -9211,17 +9209,17 @@ done && echo " READY"
 echo "UI URL: https://${UI_DOMAIN}"
 WS_TEST_BLOCK_1000_69
 
-ws_run_block 70 'Testing the UI' '1. Open the UI and sign in as alice with the password of Code Editor:' 2680 2682 'bash' '' <<'WS_TEST_BLOCK_1000_70'
+ws_run_block 70 'Testing the UI' '1. Open the UI and sign in as alice with the password of Code Editor:' 2678 2680 'bash' '' <<'WS_TEST_BLOCK_1000_70'
 echo "UI URL: https://${UI_DOMAIN}"
 echo "username: alice"
 echo "password: ${IDE_PASSWORD}"
 WS_TEST_BLOCK_1000_70
 
-ws_run_block 71 'Testing the UI' '3. Check that every resource of the workshop so far is in place. The script only reads, and ends with End state complete:' 2698 2698 'bash' '' 300 <<'WS_TEST_BLOCK_1000_71'
+ws_run_block 71 'Testing the UI' '3. Check that every resource of the workshop so far is in place. The script only reads, and ends with End state complete:' 2696 2696 'bash' '' 300 <<'WS_TEST_BLOCK_1000_71'
 ~/workshop/scripts/check-state.sh
 WS_TEST_BLOCK_1000_71
 
-ws_run_block 72 'Committing changes' 'Committing changes' 2704 2706 'bash' '' <<'WS_TEST_BLOCK_1000_72'
+ws_run_block 72 'Committing changes' 'Committing changes' 2702 2704 'bash' '' <<'WS_TEST_BLOCK_1000_72'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Deploy the AI agent"
@@ -9236,7 +9234,7 @@ cat > /tmp/travel-agent.json << EOF
 {
   "harnessName": "travel_agent",
   "executionRoleArn": "arn:aws:iam::${ACCOUNT_ID}:role/aiagent-runtime-role",
-  "model": {"bedrockModelConfig": {"modelId": "global.anthropic.claude-sonnet-4-6", "temperature": 0.3}},
+  "model": {"bedrockModelConfig": {"modelId": "global.anthropic.claude-sonnet-5-5"}},
   "systemPrompt": [{"text": "You are a travel agent for business travelers of the company. Help with destinations, flights, hotels, and local tips. Be concise and use tables to compare options."}],
   "allowedTools": [],
   "maxIterations": 20
@@ -9299,7 +9297,7 @@ ws_end_page
 
 ws_begin_page 'Agent as tool' 1200 'agent-as-tool/index.en.md'
 
-ws_run_block 1 'Sharing the policies through the Gateway' '1. Create a managed Knowledge Base on the same policy documents:' 46 73 'bash' '' 900 <<'WS_TEST_BLOCK_1200_1'
+ws_run_block 1 'Sharing the policies through the Gateway' '1. Create a managed Knowledge Base on the same policy documents:' 45 72 'bash' '' 900 <<'WS_TEST_BLOCK_1200_1'
 DATA_BUCKET="aiagent-kb-data-${ACCOUNT_ID}"
 MANAGED_KB_ID=$(aws bedrock-agent list-knowledge-bases --no-cli-pager \
   --query "knowledgeBaseSummaries[?name=='aiagent-policies-managed'].knowledgeBaseId | [0]" --output text)
@@ -9330,7 +9328,7 @@ until [ "$(aws bedrock-agent get-ingestion-job --knowledge-base-id "${MANAGED_KB
 echo "export MANAGED_KB_ID=${MANAGED_KB_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1200_1
 
-ws_run_block 2 'Sharing the policies through the Gateway' '2. Allow the Gateway role to search the Knowledge Base. The Gateway checks the permission when it creates the target, so the block waits for the IAM change to apply:' 82 89 'bash' '' <<'WS_TEST_BLOCK_1200_2'
+ws_run_block 2 'Sharing the policies through the Gateway' '2. Allow the Gateway role to search the Knowledge Base. The Gateway checks the permission when it creates the target, so the block waits for the IAM change to apply:' 81 88 'bash' '' <<'WS_TEST_BLOCK_1200_2'
 aws iam put-role-policy --role-name "mcp-gateway-role" --policy-name "GatewayKnowledgeBase" --no-cli-pager \
   --policy-document '{
     "Version": "2012-10-17",
@@ -9341,7 +9339,7 @@ aws iam put-role-policy --role-name "mcp-gateway-role" --policy-name "GatewayKno
 sleep 15
 WS_TEST_BLOCK_1200_2
 
-ws_run_block 3 'Sharing the policies through the Gateway' '3. Add the Knowledge Base as the Gateway target policies:' 95 115 'bash' '' <<'WS_TEST_BLOCK_1200_3'
+ws_run_block 3 'Sharing the policies through the Gateway' '3. Add the Knowledge Base as the Gateway target policies:' 94 114 'bash' '' <<'WS_TEST_BLOCK_1200_3'
 POLICIES_TARGET=(--name policies --description "Company travel and expense policies"
   --target-configuration '{"mcp": {"connector": {"source": {"connectorId": "bedrock-knowledge-bases"},
     "configurations": [{"name": "Retrieve", "description": "Search the company travel and expense policies.",
@@ -9365,7 +9363,7 @@ for i in $(seq 1 60); do
   --target-id "${POLICIES_TARGET_ID}" --no-cli-pager --query 'statusReasons'
 WS_TEST_BLOCK_1200_3
 
-ws_run_block 4 'Sharing the policies through the Gateway' '4. Search the policies through the Gateway:' 127 135 'bash' '' <<'WS_TEST_BLOCK_1200_4'
+ws_run_block 4 'Sharing the policies through the Gateway' '4. Search the policies through the Gateway:' 126 134 'bash' '' <<'WS_TEST_BLOCK_1200_4'
 eval "$(aws configure export-credentials --format env-no-export --no-cli-pager)"
 curl -s -X POST "${GATEWAY_URL}" \
   --aws-sigv4 aws:amz:${AWS_REGION}:bedrock-agentcore \
@@ -9377,7 +9375,7 @@ curl -s -X POST "${GATEWAY_URL}" \
   | jq -r '.result.content[0].text' | head -c 800; echo
 WS_TEST_BLOCK_1200_4
 
-ws_run_block 5 'Creating the compliance auditor' '1. Write the auditor'"'"'s system prompt:' 145 155 'bash' '' <<'WS_TEST_BLOCK_1200_5'
+ws_run_block 5 'Creating the compliance auditor' '1. Write the auditor'"'"'s system prompt:' 144 154 'bash' '' <<'WS_TEST_BLOCK_1200_5'
 cat > /tmp/auditor-prompt.txt << 'EOF'
 You are the compliance auditor of the company. You check a trip or an expense against the company's travel and expense policies.
 
@@ -9391,13 +9389,13 @@ Steps:
 EOF
 WS_TEST_BLOCK_1200_5
 
-ws_run_block 6 'Creating the compliance auditor' '2. Create the harness:' 164 185 'bash' '' <<'WS_TEST_BLOCK_1200_6'
+ws_run_block 6 'Creating the compliance auditor' '2. Create the harness:' 163 184 'bash' '' <<'WS_TEST_BLOCK_1200_6'
 GATEWAY_ARN=$(aws bedrock-agentcore-control get-gateway --gateway-identifier "${GATEWAY_ID}" \
   --no-cli-pager --query 'gatewayArn' --output text)
 jq -n --arg role "arn:aws:iam::${ACCOUNT_ID}:role/aiagent-runtime-role" --arg gateway "${GATEWAY_ARN}" \
   --arg bucket "${ARTIFACTS_BUCKET}" --rawfile prompt /tmp/auditor-prompt.txt '{
   harnessName: "compliance_auditor", executionRoleArn: $role, systemPrompt: [{text: $prompt}],
-  model: {bedrockModelConfig: {modelId: "global.anthropic.claude-sonnet-4-6", temperature: 0}},
+  model: {bedrockModelConfig: {modelId: "global.anthropic.claude-sonnet-5-5"}},
   tools: [
     {type: "agentcore_gateway", name: "corp", config: {agentCoreGateway: {gatewayArn: $gateway, outboundAuth: {awsIam: {}}}}},
     {type: "agentcore_code_interpreter", name: "code_interpreter"}],
@@ -9416,12 +9414,12 @@ AUDITOR_HARNESS_ARN=$(aws bedrock-agentcore-control get-harness --harness-id "${
 echo "export AUDITOR_HARNESS_ARN=${AUDITOR_HARNESS_ARN}" >> ~/environment/.envrc
 WS_TEST_BLOCK_1200_6
 
-ws_run_block 7 'Creating the compliance auditor' '3. Ask the auditor directly:' 195 196 'bash' '' <<'WS_TEST_BLOCK_1200_7'
+ws_run_block 7 'Creating the compliance auditor' '3. Ask the auditor directly:' 194 195 'bash' '' <<'WS_TEST_BLOCK_1200_7'
 ~/workshop/scripts/invoke-harness.sh "${AUDITOR_HARNESS_ARN}" "audit-$(date +%s)" \
   "Check a business class flight Berlin-Tokyo for 4200 EUR and a hotel in Tokyo for 5 nights at 145 USD per night against our policy. Give me a downloadable audit report."
 WS_TEST_BLOCK_1200_7
 
-ws_run_block 8 'Adding the auditor tool' '1. Create compliancetools.py:' 262 317 'python' 'python-strands' <<'WS_TEST_BLOCK_1200_8'
+ws_run_block 8 'Adding the auditor tool' '1. Create compliancetools.py:' 261 316 'python' 'python-strands' <<'WS_TEST_BLOCK_1200_8'
 cat <<'EOF' > ~/environment/aiagent/compliance_tools.py
 import os
 import re
@@ -9480,7 +9478,7 @@ def check_compliance(request: str) -> str:
 EOF
 WS_TEST_BLOCK_1200_8
 
-ws_run_block 9 'Adding the auditor tool' '2. Replace the content of artifacts.py, which keeps links to files that another agent uploaded:' 327 366 'python' 'python-strands' <<'WS_TEST_BLOCK_1200_9'
+ws_run_block 9 'Adding the auditor tool' '2. Replace the content of artifacts.py, which keeps links to files that another agent uploaded:' 326 365 'python' 'python-strands' <<'WS_TEST_BLOCK_1200_9'
 cat <<'EOF' > ~/environment/aiagent/artifacts.py
 import os
 import uuid
@@ -9523,7 +9521,7 @@ def as_markdown(conversation_id):
 EOF
 WS_TEST_BLOCK_1200_9
 
-ws_run_block 10 'Adding the auditor tool' '3. Replace the content of main.py:' 375 497 'python' 'python-strands' <<'WS_TEST_BLOCK_1200_10'
+ws_run_block 10 'Adding the auditor tool' '3. Replace the content of main.py:' 374 496 'python' 'python-strands' <<'WS_TEST_BLOCK_1200_10'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -9548,7 +9546,7 @@ app = BedrockAgentCoreApp()
 log = app.logger
 app.add_middleware(auth.JwtAuthMiddleware)
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
 
 SYSTEM_PROMPT = """
 You are the travel and expense assistant of the company. You help employees plan business trips,
@@ -9649,7 +9647,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_1200_10
 
-ws_run_block 11 'Adding the auditor tool' '1. Create ComplianceTools.java:' 509 618 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1200_11'
+ws_run_block 11 'Adding the auditor tool' '1. Create ComplianceTools.java:' 508 617 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1200_11'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ComplianceTools.java
 package com.example.agent;
 
@@ -9762,7 +9760,7 @@ public class ComplianceTools {
 EOF
 WS_TEST_BLOCK_1200_11
 
-ws_run_block 12 'Adding the auditor tool' '2. Replace the content of application.properties to read the auditor'"'"'s ARN:' 632 676 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1200_12'
+ws_run_block 12 'Adding the auditor tool' '2. Replace the content of application.properties to read the auditor'"'"'s ARN:' 631 674 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1200_12'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -9773,8 +9771,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.temperature=0.7
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 
 # AgentCore Memory
 agentcore.memory.memory-id=${AGENTCORE_MEMORY_ID}
@@ -9810,7 +9807,7 @@ app.auditor.harness-arn=${AUDITOR_HARNESS_ARN:}
 EOF
 WS_TEST_BLOCK_1200_12
 
-ws_run_block 13 'Adding the auditor tool' '3. Replace the content of ChatService.java:' 684 881 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1200_13'
+ws_run_block 13 'Adding the auditor tool' '3. Replace the content of ChatService.java:' 682 879 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1200_13'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -10011,7 +10008,7 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_1200_13
 
-ws_run_block 14 'Adding the auditor tool' '1. Create compliancetools.py:' 896 951 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1200_14'
+ws_run_block 14 'Adding the auditor tool' '1. Create compliancetools.py:' 894 949 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1200_14'
 cat <<'EOF' > ~/environment/aiagent/compliance_tools.py
 import os
 import re
@@ -10070,7 +10067,7 @@ def check_compliance(request: str) -> str:
 EOF
 WS_TEST_BLOCK_1200_14
 
-ws_run_block 15 'Adding the auditor tool' '2. Replace the content of artifacts.py, which keeps links to files that another agent uploaded:' 961 1000 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1200_15'
+ws_run_block 15 'Adding the auditor tool' '2. Replace the content of artifacts.py, which keeps links to files that another agent uploaded:' 959 998 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1200_15'
 cat <<'EOF' > ~/environment/aiagent/artifacts.py
 import os
 import uuid
@@ -10113,7 +10110,7 @@ def as_markdown(conversation_id):
 EOF
 WS_TEST_BLOCK_1200_15
 
-ws_run_block 16 'Adding the auditor tool' '3. Replace the content of main.py:' 1009 1107 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1200_16'
+ws_run_block 16 'Adding the auditor tool' '3. Replace the content of main.py:' 1007 1105 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1200_16'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -10137,7 +10134,7 @@ app = BedrockAgentCoreApp()
 app.add_middleware(auth.JwtAuthMiddleware)
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION")
 )
 
 SYSTEM_PROMPT = """
@@ -10215,7 +10212,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_1200_16
 
-ws_run_block 17 'Adding the auditor tool' '1. Create compliance-tools.ts:' 1119 1177 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1200_17'
+ws_run_block 17 'Adding the auditor tool' '1. Create compliance-tools.ts:' 1117 1175 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1200_17'
 cat <<'EOF' > ~/environment/aiagent/compliance-tools.ts
 import { randomUUID } from 'node:crypto';
 
@@ -10277,7 +10274,7 @@ export const complianceTools: ToolSet = AUDITOR_HARNESS_ARN ? {
 EOF
 WS_TEST_BLOCK_1200_17
 
-ws_run_block 18 'Adding the auditor tool' '2. Replace the content of artifacts.ts, which keeps links to files that another agent uploaded:' 1188 1226 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1200_18'
+ws_run_block 18 'Adding the auditor tool' '2. Replace the content of artifacts.ts, which keeps links to files that another agent uploaded:' 1186 1224 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1200_18'
 cat <<'EOF' > ~/environment/aiagent/artifacts.ts
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
@@ -10319,7 +10316,7 @@ export async function asMarkdown(conversationId: string) {
 EOF
 WS_TEST_BLOCK_1200_18
 
-ws_run_block 19 'Adding the auditor tool' '3. Replace the content of main.ts:' 1235 1324 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1200_19'
+ws_run_block 19 'Adding the auditor tool' '3. Replace the content of main.ts:' 1233 1322 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1200_19'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -10341,7 +10338,7 @@ import { gatewayTools } from './mcp-tools.js';
 import * as memory from './memory.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -10384,7 +10381,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, { role: 'user', content: prompt }],
         tools,
         stopWhen: stepCountIs(10),
@@ -10412,7 +10409,7 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_1200_19
 
-ws_run_block 20 'Testing the auditor tool' 'Start the application in the background, send a prompt, and stop the application:' 1338 1343 'bash' '' <<'WS_TEST_BLOCK_1200_20'
+ws_run_block 20 'Testing the auditor tool' 'Start the application in the background, send a prompt, and stop the application:' 1336 1341 'bash' '' <<'WS_TEST_BLOCK_1200_20'
 source ~/environment/.envrc
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
@@ -10421,7 +10418,7 @@ export AUTH_TOKEN=$(~/workshop/scripts/ask-runtime.sh token)
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_1200_20
 
-ws_run_block 21 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 1356 1361 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1200_21'
+ws_run_block 21 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 1354 1359 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1200_21'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -10430,7 +10427,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1200_21
 
-ws_run_block 22 'Redeploying the AI agent' 'Redeploying the AI agent' 1368 1374 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1200_22'
+ws_run_block 22 'Redeploying the AI agent' 'Redeploying the AI agent' 1366 1372 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1200_22'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -10440,7 +10437,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1200_22
 
-ws_run_block 23 'Redeploying the AI agent' 'Redeploying the AI agent' 1381 1386 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1200_23'
+ws_run_block 23 'Redeploying the AI agent' 'Redeploying the AI agent' 1379 1384 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1200_23'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -10449,7 +10446,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1200_23
 
-ws_run_block 24 'Redeploying the AI agent' 'Redeploying the AI agent' 1393 1398 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1200_24'
+ws_run_block 24 'Redeploying the AI agent' 'Redeploying the AI agent' 1391 1396 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1200_24'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -10458,7 +10455,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1200_24
 
-ws_run_block 25 'Redeploying the AI agent' '2. Update the runtime with the new image and the auditor'"'"'s ARN, keeping the rest of its configuration:' 1407 1417 'bash' '' <<'WS_TEST_BLOCK_1200_25'
+ws_run_block 25 'Redeploying the AI agent' '2. Update the runtime with the new image and the auditor'"'"'s ARN, keeping the rest of its configuration:' 1405 1415 'bash' '' <<'WS_TEST_BLOCK_1200_25'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --no-cli-pager --output json \
   | jq --arg uri "${ECR_URI}:latest" --arg auditor "${AUDITOR_HARNESS_ARN}" '{agentRuntimeId,
@@ -10472,12 +10469,12 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
 WS_TEST_BLOCK_1200_25
 
-ws_run_block 26 'Testing the deployed AI agent' '1. Ask the deployed AI agent from the terminal:' 1430 1431 'bash' '' <<'WS_TEST_BLOCK_1200_26'
+ws_run_block 26 'Testing the deployed AI agent' '1. Ask the deployed AI agent from the terminal:' 1428 1429 'bash' '' <<'WS_TEST_BLOCK_1200_26'
 ~/workshop/scripts/ask-runtime.sh ask \
   "Check a business class flight Berlin-Tokyo for 4200 EUR against our policy and give me a downloadable audit report."
 WS_TEST_BLOCK_1200_26
 
-ws_run_block 27 'Committing changes' 'Committing changes' 1451 1453 'bash' '' <<'WS_TEST_BLOCK_1200_27'
+ws_run_block 27 'Committing changes' 'Committing changes' 1449 1451 'bash' '' <<'WS_TEST_BLOCK_1200_27'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add the compliance auditor tool"
@@ -10695,7 +10692,7 @@ app = BedrockAgentCoreApp()
 log = app.logger
 app.add_middleware(auth.JwtAuthMiddleware)
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7,
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096,
                      **guardrail.model_config())
 
 SYSTEM_PROMPT = """
@@ -11028,7 +11025,7 @@ public class Guardrail {
 EOF
 WS_TEST_BLOCK_1300_10
 
-ws_run_block 11 'Applying the guardrail in the AI agent' '3. Replace the content of application.properties to read the guardrail configuration:' 730 778 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1300_11'
+ws_run_block 11 'Applying the guardrail in the AI agent' '3. Replace the content of application.properties to read the guardrail configuration:' 730 777 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1300_11'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -11039,8 +11036,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.temperature=0.7
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 
 # AgentCore Memory
 agentcore.memory.memory-id=${AGENTCORE_MEMORY_ID}
@@ -11080,7 +11076,7 @@ app.guardrail.version=${GUARDRAIL_VERSION:DRAFT}
 EOF
 WS_TEST_BLOCK_1300_11
 
-ws_run_block 12 'Applying the guardrail in the AI agent' '4. Replace the content of ChatService.java:' 786 986 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1300_12'
+ws_run_block 12 'Applying the guardrail in the AI agent' '4. Replace the content of ChatService.java:' 785 985 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1300_12'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -11284,7 +11280,7 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_1300_12
 
-ws_run_block 13 'Applying the guardrail in the AI agent' '1. Create guardrail.py. modelconfig() returns the ChatBedrockConverse settings, checkcontent() checks tool output, and maskpii() masks the prompt:' 1000 1055 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1300_13'
+ws_run_block 13 'Applying the guardrail in the AI agent' '1. Create guardrail.py. modelconfig() returns the ChatBedrockConverse settings, checkcontent() checks tool output, and maskpii() masks the prompt:' 999 1054 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1300_13'
 cat <<'EOF' > ~/environment/aiagent/guardrail.py
 import logging
 import os
@@ -11343,7 +11339,7 @@ def mask_pii(prompt):
 EOF
 WS_TEST_BLOCK_1300_13
 
-ws_run_block 14 'Applying the guardrail in the AI agent' '2. Replace the content of browsertools.py:' 1069 1128 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1300_14'
+ws_run_block 14 'Applying the guardrail in the AI agent' '2. Replace the content of browsertools.py:' 1068 1127 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1300_14'
 cat <<'EOF' > ~/environment/aiagent/browser_tools.py
 import logging
 import os
@@ -11406,7 +11402,7 @@ async def take_screenshot(url: str) -> str:
 EOF
 WS_TEST_BLOCK_1300_14
 
-ws_run_block 15 'Applying the guardrail in the AI agent' '3. Replace the content of main.py:' 1137 1238 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1300_15'
+ws_run_block 15 'Applying the guardrail in the AI agent' '3. Replace the content of main.py:' 1136 1237 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1300_15'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -11431,7 +11427,7 @@ app = BedrockAgentCoreApp()
 app.add_middleware(auth.JwtAuthMiddleware)
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION"),
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION"),
     **guardrail.model_config(),
 )
 
@@ -11511,7 +11507,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_1300_15
 
-ws_run_block 16 'Applying the guardrail in the AI agent' '1. Create guardrail.ts with the guardrail options for the model call, the check for tool output, and the masking of the prompt:' 1251 1306 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1300_16'
+ws_run_block 16 'Applying the guardrail in the AI agent' '1. Create guardrail.ts with the guardrail options for the model call, the check for tool output, and the masking of the prompt:' 1250 1305 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1300_16'
 cat <<'EOF' > ~/environment/aiagent/guardrail.ts
 import { ApplyGuardrailCommand, BedrockRuntimeClient, type ApplyGuardrailCommandOutput } from '@aws-sdk/client-bedrock-runtime';
 import type { TextPart, UserModelMessage } from 'ai';
@@ -11570,7 +11566,7 @@ export async function maskPii(prompt: string) {
 EOF
 WS_TEST_BLOCK_1300_16
 
-ws_run_block 17 'Applying the guardrail in the AI agent' '2. Replace the content of browser-tools.ts; browseUrl returns the page text through checkContent():' 1318 1354 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1300_17'
+ws_run_block 17 'Applying the guardrail in the AI agent' '2. Replace the content of browser-tools.ts; browseUrl returns the page text through checkContent():' 1317 1353 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1300_17'
 cat <<'EOF' > ~/environment/aiagent/browser-tools.ts
 import { tool } from 'ai';
 import { PlaywrightBrowser } from 'bedrock-agentcore/browser/playwright';
@@ -11610,7 +11606,7 @@ export const browserTools = {
 EOF
 WS_TEST_BLOCK_1300_17
 
-ws_run_block 18 'Applying the guardrail in the AI agent' '3. Replace the content of main.ts:' 1363 1455 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1300_18'
+ws_run_block 18 'Applying the guardrail in the AI agent' '3. Replace the content of main.ts:' 1362 1454 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1300_18'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -11633,7 +11629,7 @@ import { gatewayTools } from './mcp-tools.js';
 import * as memory from './memory.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -11677,7 +11673,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, guardrail.userMessage(prompt)],
         tools,
         stopWhen: stepCountIs(10),
@@ -11706,7 +11702,7 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_1300_18
 
-ws_run_block 19 'Testing the guardrail' '1. Start the application in the background, sign in as alice, check the denied topic, the masked card number, and the injected page, and stop the application:' 1471 1480 'bash' '' 900 <<'WS_TEST_BLOCK_1300_19'
+ws_run_block 19 'Testing the guardrail' '1. Start the application in the background, sign in as alice, check the denied topic, the masked card number, and the injected page, and stop the application:' 1470 1479 'bash' '' 900 <<'WS_TEST_BLOCK_1300_19'
 source ~/environment/.envrc
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
@@ -11719,27 +11715,27 @@ echo "${ANSWER}"; grep -q "Sorry, I can't help with that" <<< "${ANSWER}"
 grep -q "Guardrail blocked tool content" /tmp/aiagent.log && echo "page blocked by the guardrail"
 WS_TEST_BLOCK_1300_19
 
-ws_run_block 20 'Testing the guardrail' '2. The travel portal has a deals page with instructions for AI agents hidden in white 1-pixel text. Print its URL:' 1490 1490 'bash' '' <<'WS_TEST_BLOCK_1300_20'
+ws_run_block 20 'Testing the guardrail' '2. The travel portal has a deals page with instructions for AI agents hidden in white 1-pixel text. Print its URL:' 1489 1489 'bash' '' <<'WS_TEST_BLOCK_1300_20'
 echo "${PORTAL_URL}/deals/tokyo-hotels.html"
 WS_TEST_BLOCK_1300_20
 
-ws_skip_block 21 'Testing the guardrail' '3. Start the application for the Web UI:' 1503 1504 'bash' 'python-strands' 'foreground app for the Web UI'
+ws_skip_block 21 'Testing the guardrail' '3. Start the application for the Web UI:' 1502 1503 'bash' 'python-strands' 'foreground app for the Web UI'
 
-ws_skip_block 22 'Testing the guardrail' 'Testing the guardrail' 1511 1512 'bash' 'java-spring-ai' 'foreground app for the Web UI'
+ws_skip_block 22 'Testing the guardrail' 'Testing the guardrail' 1510 1511 'bash' 'java-spring-ai' 'foreground app for the Web UI'
 
-ws_skip_block 23 'Testing the guardrail' 'Testing the guardrail' 1519 1520 'bash' 'python-langgraph' 'foreground app for the Web UI'
+ws_skip_block 23 'Testing the guardrail' 'Testing the guardrail' 1518 1519 'bash' 'python-langgraph' 'foreground app for the Web UI'
 
-ws_skip_block 24 'Testing the guardrail' 'Testing the guardrail' 1527 1528 'bash' 'ts-vercel' 'foreground app for the Web UI'
+ws_skip_block 24 'Testing the guardrail' 'Testing the guardrail' 1526 1527 'bash' 'ts-vercel' 'foreground app for the Web UI'
 
-ws_skip_block 25 'Testing the guardrail' '6. Open the deals page. Replace DEALSURL with the URL from step 2:' 1564 1564 '' 'python-strands' 'informational block without language'
+ws_skip_block 25 'Testing the guardrail' '6. Open the deals page. Replace DEALSURL with the URL from step 2:' 1563 1563 '' 'python-strands' 'informational block without language'
 
-ws_skip_block 26 'Testing the guardrail' 'The application log shows the blocked page:' 1573 1574 '' 'java-spring-ai' 'informational block without language'
+ws_skip_block 26 'Testing the guardrail' 'The application log shows the blocked page:' 1572 1573 '' 'java-spring-ai' 'informational block without language'
 
-ws_skip_block 27 'Testing the guardrail' 'The application log shows the blocked page:' 1583 1583 '' 'python-langgraph' 'informational block without language'
+ws_skip_block 27 'Testing the guardrail' 'The application log shows the blocked page:' 1582 1582 '' 'python-langgraph' 'informational block without language'
 
-ws_skip_block 28 'Testing the guardrail' 'The application log shows the blocked page:' 1592 1592 '' 'ts-vercel' 'informational block without language'
+ws_skip_block 28 'Testing the guardrail' 'The application log shows the blocked page:' 1591 1591 '' 'ts-vercel' 'informational block without language'
 
-ws_run_block 29 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 1610 1615 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1300_29'
+ws_run_block 29 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 1609 1614 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1300_29'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -11748,7 +11744,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1300_29
 
-ws_run_block 30 'Redeploying the AI agent' 'Redeploying the AI agent' 1622 1628 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1300_30'
+ws_run_block 30 'Redeploying the AI agent' 'Redeploying the AI agent' 1621 1627 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1300_30'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -11758,7 +11754,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1300_30
 
-ws_run_block 31 'Redeploying the AI agent' 'Redeploying the AI agent' 1635 1640 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1300_31'
+ws_run_block 31 'Redeploying the AI agent' 'Redeploying the AI agent' 1634 1639 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1300_31'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -11767,7 +11763,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1300_31
 
-ws_run_block 32 'Redeploying the AI agent' 'Redeploying the AI agent' 1647 1652 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1300_32'
+ws_run_block 32 'Redeploying the AI agent' 'Redeploying the AI agent' 1646 1651 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1300_32'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -11776,7 +11772,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1300_32
 
-ws_run_block 33 'Redeploying the AI agent' '2. Update the runtime with the new image and the guardrail:' 1661 1671 'bash' '' <<'WS_TEST_BLOCK_1300_33'
+ws_run_block 33 'Redeploying the AI agent' '2. Update the runtime with the new image and the guardrail:' 1660 1670 'bash' '' <<'WS_TEST_BLOCK_1300_33'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --no-cli-pager --output json \
   | jq --arg uri "${ECR_URI}:latest" --arg id "${GUARDRAIL_ID}" --arg version "${GUARDRAIL_VERSION}" '{agentRuntimeId,
@@ -11790,12 +11786,12 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
 WS_TEST_BLOCK_1300_33
 
-ws_run_block 34 'Redeploying the AI agent' '3. Check the deployed AI agent:' 1679 1680 'bash' '' 300 <<'WS_TEST_BLOCK_1300_34'
+ws_run_block 34 'Redeploying the AI agent' '3. Check the deployed AI agent:' 1678 1679 'bash' '' 300 <<'WS_TEST_BLOCK_1300_34'
 ANSWER=$(~/workshop/scripts/ask-runtime.sh ask "Which stocks should I buy with my per diem savings?")
 echo "${ANSWER}"; grep -q "Sorry, I can't help with that" <<< "${ANSWER}"
 WS_TEST_BLOCK_1300_34
 
-ws_run_block 35 'Committing changes' 'Committing changes' 1686 1688 'bash' '' <<'WS_TEST_BLOCK_1300_35'
+ws_run_block 35 'Committing changes' 'Committing changes' 1685 1687 'bash' '' <<'WS_TEST_BLOCK_1300_35'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add guardrails"
@@ -11934,7 +11930,7 @@ app = BedrockAgentCoreApp()
 log = app.logger
 app.add_middleware(auth.JwtAuthMiddleware)
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7,
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096,
                      **guardrail.model_config())
 
 SYSTEM_PROMPT = """
@@ -12158,7 +12154,7 @@ public class CalendarTools {
 EOF
 WS_TEST_BLOCK_1400_9
 
-ws_run_block 10 'Adding the calendar tool' '2. Replace the content of application.properties to read the calendar URL and the return URL:' 475 527 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1400_10'
+ws_run_block 10 'Adding the calendar tool' '2. Replace the content of application.properties to read the calendar URL and the return URL:' 475 526 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1400_10'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -12169,8 +12165,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.temperature=0.7
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 
 # AgentCore Memory
 agentcore.memory.memory-id=${AGENTCORE_MEMORY_ID}
@@ -12214,7 +12209,7 @@ app.calendar.return-url=${OAUTH_RETURN_URL:http://localhost:8080/callback.html}
 EOF
 WS_TEST_BLOCK_1400_10
 
-ws_run_block 11 'Adding the calendar tool' '3. Replace the content of ChatService.java:' 535 749 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1400_11'
+ws_run_block 11 'Adding the calendar tool' '3. Replace the content of ChatService.java:' 534 748 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1400_11'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -12432,11 +12427,11 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_1400_11
 
-ws_run_block 12 'Adding the calendar tool' '4. Copy the callback page to the application:' 761 761 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_1400_12'
+ws_run_block 12 'Adding the calendar tool' '4. Copy the callback page to the application:' 760 760 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_1400_12'
 cp ~/workshop/ui/callback.html ~/environment/aiagent/src/main/resources/static/
 WS_TEST_BLOCK_1400_12
 
-ws_run_block 13 'Adding the calendar tool' '1. Create calendartools.py:' 783 837 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1400_13'
+ws_run_block 13 'Adding the calendar tool' '1. Create calendartools.py:' 782 836 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1400_13'
 cat <<'EOF' > ~/environment/aiagent/calendar_tools.py
 import json
 import os
@@ -12494,7 +12489,7 @@ def get_calendar_events() -> str:
 EOF
 WS_TEST_BLOCK_1400_13
 
-ws_run_block 14 'Adding the calendar tool' '2. Replace the content of main.py:' 850 961 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1400_14'
+ws_run_block 14 'Adding the calendar tool' '2. Replace the content of main.py:' 849 960 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1400_14'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -12520,7 +12515,7 @@ app = BedrockAgentCoreApp()
 app.add_middleware(auth.JwtAuthMiddleware)
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION"),
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION"),
     **guardrail.model_config(),
 )
 
@@ -12609,11 +12604,11 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_1400_14
 
-ws_run_block 15 'Adding the calendar tool' '3. Copy the callback page to the application:' 971 971 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1400_15'
+ws_run_block 15 'Adding the calendar tool' '3. Copy the callback page to the application:' 970 970 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1400_15'
 cp ~/workshop/ui/callback.html ~/environment/aiagent/static/
 WS_TEST_BLOCK_1400_15
 
-ws_run_block 16 'Adding the calendar tool' '1. Create calendar-tools.ts:' 993 1053 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1400_16'
+ws_run_block 16 'Adding the calendar tool' '1. Create calendar-tools.ts:' 992 1052 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1400_16'
 cat <<'EOF' > ~/environment/aiagent/calendar-tools.ts
 import { AsyncLocalStorage } from 'node:async_hooks';
 
@@ -12677,7 +12672,7 @@ export const calendarTools: ToolSet = CALENDAR_URL ? {
 EOF
 WS_TEST_BLOCK_1400_16
 
-ws_run_block 17 'Adding the calendar tool' '2. Replace the content of main.ts:' 1067 1172 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1400_17'
+ws_run_block 17 'Adding the calendar tool' '2. Replace the content of main.ts:' 1066 1171 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1400_17'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -12701,7 +12696,7 @@ import { gatewayTools } from './mcp-tools.js';
 import * as memory from './memory.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -12757,7 +12752,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, guardrail.userMessage(prompt)],
         tools,
         stopWhen: stepCountIs(10),
@@ -12786,11 +12781,11 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_1400_17
 
-ws_run_block 18 'Adding the calendar tool' '3. Copy the callback page to the application:' 1183 1183 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_1400_18'
+ws_run_block 18 'Adding the calendar tool' '3. Copy the callback page to the application:' 1182 1182 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_1400_18'
 cp ~/workshop/ui/callback.html ~/environment/aiagent/static/
 WS_TEST_BLOCK_1400_18
 
-ws_run_block 19 'Testing the calendar' 'The test plays the user'"'"'s part: oauth-sign-in.sh signs in on the calendar'"'"'s sign-in page, like a click on the link, and local-app.sh oauth hands the session to the AI agent, like callback.html:' 1196 1208 'bash' '' 900 <<'WS_TEST_BLOCK_1400_19'
+ws_run_block 19 'Testing the calendar' 'The test plays the user'"'"'s part: oauth-sign-in.sh signs in on the calendar'"'"'s sign-in page, like a click on the link, and local-app.sh oauth hands the session to the AI agent, like callback.html:' 1195 1207 'bash' '' 900 <<'WS_TEST_BLOCK_1400_19'
 source ~/environment/.envrc
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
@@ -12806,7 +12801,7 @@ fi
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_1400_19
 
-ws_run_block 20 'Redeploying the AI agent' '1. Allow the UI'"'"'s callback page as the return URL of the runtime'"'"'s workload identity:' 1224 1228 'bash' '' <<'WS_TEST_BLOCK_1400_20'
+ws_run_block 20 'Redeploying the AI agent' '1. Allow the UI'"'"'s callback page as the return URL of the runtime'"'"'s workload identity:' 1223 1227 'bash' '' <<'WS_TEST_BLOCK_1400_20'
 RUNTIME_WORKLOAD=$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
   --no-cli-pager --query 'workloadIdentityDetails.workloadIdentityArn' --output text | awk -F/ '{print $NF}')
 aws bedrock-agentcore-control update-workload-identity --name "${RUNTIME_WORKLOAD}" --no-cli-pager \
@@ -12814,7 +12809,7 @@ aws bedrock-agentcore-control update-workload-identity --name "${RUNTIME_WORKLOA
 echo "${RUNTIME_WORKLOAD}"
 WS_TEST_BLOCK_1400_20
 
-ws_run_block 21 'Redeploying the AI agent' '2. Allow the runtime role to read the client secret that AgentCore Identity keeps for the provider:' 1234 1238 'bash' '' <<'WS_TEST_BLOCK_1400_21'
+ws_run_block 21 'Redeploying the AI agent' '2. Allow the runtime role to read the client secret that AgentCore Identity keeps for the provider:' 1233 1237 'bash' '' <<'WS_TEST_BLOCK_1400_21'
 aws iam put-role-policy --role-name aiagent-runtime-role --policy-name IdentitySecrets --no-cli-pager --policy-document '{
   "Version": "2012-10-17",
   "Statement": [{"Effect": "Allow", "Action": "secretsmanager:GetSecretValue",
@@ -12822,11 +12817,11 @@ aws iam put-role-policy --role-name aiagent-runtime-role --policy-name IdentityS
 }'
 WS_TEST_BLOCK_1400_21
 
-ws_run_block 22 'Redeploying the AI agent' '3. Upload the callback page to the UI bucket:' 1244 1244 'bash' '' <<'WS_TEST_BLOCK_1400_22'
+ws_run_block 22 'Redeploying the AI agent' '3. Upload the callback page to the UI bucket:' 1243 1243 'bash' '' <<'WS_TEST_BLOCK_1400_22'
 aws s3 cp ~/workshop/ui/callback.html "s3://${UI_BUCKET}/callback.html" --no-cli-pager
 WS_TEST_BLOCK_1400_22
 
-ws_run_block 23 'Redeploying the AI agent' '4. Build the container image and push it to ECR:' 1253 1258 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1400_23'
+ws_run_block 23 'Redeploying the AI agent' '4. Build the container image and push it to ECR:' 1252 1257 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1400_23'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -12835,7 +12830,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1400_23
 
-ws_run_block 24 'Redeploying the AI agent' 'Redeploying the AI agent' 1265 1271 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1400_24'
+ws_run_block 24 'Redeploying the AI agent' 'Redeploying the AI agent' 1264 1270 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1400_24'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -12845,7 +12840,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1400_24
 
-ws_run_block 25 'Redeploying the AI agent' 'Redeploying the AI agent' 1278 1283 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1400_25'
+ws_run_block 25 'Redeploying the AI agent' 'Redeploying the AI agent' 1277 1282 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1400_25'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -12854,7 +12849,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1400_25
 
-ws_run_block 26 'Redeploying the AI agent' 'Redeploying the AI agent' 1290 1295 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1400_26'
+ws_run_block 26 'Redeploying the AI agent' 'Redeploying the AI agent' 1289 1294 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1400_26'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -12863,7 +12858,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1400_26
 
-ws_run_block 27 'Redeploying the AI agent' '5. Update the runtime with the new image, the calendar URL, and the return URL:' 1304 1314 'bash' '' <<'WS_TEST_BLOCK_1400_27'
+ws_run_block 27 'Redeploying the AI agent' '5. Update the runtime with the new image, the calendar URL, and the return URL:' 1303 1313 'bash' '' <<'WS_TEST_BLOCK_1400_27'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --no-cli-pager --output json \
   | jq --arg uri "${ECR_URI}:latest" --arg calendar "${CALENDAR_URL}" --arg ret "https://${UI_DOMAIN}/callback.html" '{agentRuntimeId,
@@ -12877,7 +12872,7 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
 WS_TEST_BLOCK_1400_27
 
-ws_run_block 28 'Redeploying the AI agent' '6. Test the deployed AI agent as alice, the same way as locally:' 1322 1329 'bash' '' 900 <<'WS_TEST_BLOCK_1400_28'
+ws_run_block 28 'Redeploying the AI agent' '6. Test the deployed AI agent as alice, the same way as locally:' 1321 1328 'bash' '' 900 <<'WS_TEST_BLOCK_1400_28'
 ANSWER=$(~/workshop/scripts/ask-runtime.sh ask "Check my calendar: am I free for the Tokyo trip from November 16 to 21?")
 echo "${ANSWER}"
 CONSENT_URL=$(grep -oE 'https://[^ )>"]*authorize[^ )>"]*' <<< "${ANSWER}" | head -1 || true)
@@ -12888,7 +12883,7 @@ if [ -n "${CONSENT_URL}" ]; then
 fi
 WS_TEST_BLOCK_1400_28
 
-ws_run_block 29 'Committing changes' 'Committing changes' 1347 1349 'bash' '' <<'WS_TEST_BLOCK_1400_29'
+ws_run_block 29 'Committing changes' 'Committing changes' 1346 1348 'bash' '' <<'WS_TEST_BLOCK_1400_29'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add the corporate calendar with 3LO"
@@ -14032,7 +14027,7 @@ app = BedrockAgentCoreApp()
 log = app.logger
 app.add_middleware(auth.JwtAuthMiddleware)
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7,
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096,
                      **guardrail.model_config())
 
 SYSTEM_PROMPT = """
@@ -14553,7 +14548,7 @@ app = BedrockAgentCoreApp()
 app.add_middleware(auth.JwtAuthMiddleware)
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION"),
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION"),
     **guardrail.model_config(),
 )
 
@@ -14701,7 +14696,7 @@ import { gatewayTools } from './mcp-tools.js';
 import * as memory from './memory.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -14760,7 +14755,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, await attachments.userMessage(prompt, payload)],
         tools,
         stopWhen: stepCountIs(10),
@@ -15156,7 +15151,7 @@ app = BedrockAgentCoreApp()
 log = app.logger
 app.add_middleware(auth.JwtAuthMiddleware)
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7,
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096,
                      **guardrail.model_config())
 
 SYSTEM_PROMPT = """
@@ -15378,7 +15373,7 @@ public class GatewayTools {
 EOF
 WS_TEST_BLOCK_1600_20
 
-ws_run_block 21 'Calling the backoffice as the user' '2. Replace the content of application.properties to read the JWT Gateway URL:' 702 757 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1600_21'
+ws_run_block 21 'Calling the backoffice as the user' '2. Replace the content of application.properties to read the JWT Gateway URL:' 702 756 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1600_21'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -15389,8 +15384,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.temperature=0.7
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 
 # AgentCore Memory
 agentcore.memory.memory-id=${AGENTCORE_MEMORY_ID}
@@ -15437,7 +15431,7 @@ app.jwt-gateway.url=${JWT_GATEWAY_URL:}
 EOF
 WS_TEST_BLOCK_1600_21
 
-ws_run_block 22 'Calling the backoffice as the user' '3. Replace the content of ChatService.java:' 765 989 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1600_22'
+ws_run_block 22 'Calling the backoffice as the user' '3. Replace the content of ChatService.java:' 764 988 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1600_22'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -15665,7 +15659,7 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_1600_22
 
-ws_run_block 23 'Calling the backoffice as the user' '1. Replace the content of mcptools.py:' 1013 1054 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1600_23'
+ws_run_block 23 'Calling the backoffice as the user' '1. Replace the content of mcptools.py:' 1012 1053 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1600_23'
 cat <<'EOF' > ~/environment/aiagent/mcp_tools.py
 import os
 
@@ -15710,7 +15704,7 @@ async def user_gateway_tools(authorization):
 EOF
 WS_TEST_BLOCK_1600_23
 
-ws_run_block 24 'Calling the backoffice as the user' '2. Replace the content of main.py:' 1063 1180 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1600_24'
+ws_run_block 24 'Calling the backoffice as the user' '2. Replace the content of main.py:' 1062 1179 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1600_24'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -15738,7 +15732,7 @@ app = BedrockAgentCoreApp()
 app.add_middleware(auth.JwtAuthMiddleware)
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION"),
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION"),
     **guardrail.model_config(),
 )
 
@@ -15831,7 +15825,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_1600_24
 
-ws_run_block 25 'Calling the backoffice as the user' '1. Replace the content of mcp-tools.ts:' 1203 1270 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1600_25'
+ws_run_block 25 'Calling the backoffice as the user' '1. Replace the content of mcp-tools.ts:' 1202 1269 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1600_25'
 cat <<'EOF' > ~/environment/aiagent/mcp-tools.ts
 import { Sha256 } from '@aws-crypto/sha256-js';
 import { createMCPClient } from '@ai-sdk/mcp';
@@ -15902,7 +15896,7 @@ export async function userGatewayTools(authorization: string) {
 EOF
 WS_TEST_BLOCK_1600_25
 
-ws_run_block 26 'Calling the backoffice as the user' '2. Replace the content of main.ts:' 1279 1388 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1600_26'
+ws_run_block 26 'Calling the backoffice as the user' '2. Replace the content of main.ts:' 1278 1387 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1600_26'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -15927,7 +15921,7 @@ import { gatewayTools, userGatewayTools } from './mcp-tools.js';
 import * as memory from './memory.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -15986,7 +15980,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, await attachments.userMessage(prompt, payload)],
         tools: { ...tools, ...(await userGatewayTools(authorization)) },
         stopWhen: stepCountIs(10),
@@ -16015,7 +16009,7 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_1600_26
 
-ws_run_block 27 'Testing the policies' 'Start the application in the background, ask as alice and as bob, and stop the application:' 1402 1409 'bash' '' 900 <<'WS_TEST_BLOCK_1600_27'
+ws_run_block 27 'Testing the policies' 'Start the application in the background, ask as alice and as bob, and stop the application:' 1401 1408 'bash' '' 900 <<'WS_TEST_BLOCK_1600_27'
 source ~/environment/.envrc
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
@@ -16026,7 +16020,7 @@ AUTH_TOKEN=$(USER_NAME=bob ~/workshop/scripts/ask-runtime.sh token) \
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_1600_27
 
-ws_run_block 28 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 1423 1428 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1600_28'
+ws_run_block 28 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 1422 1427 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1600_28'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -16035,7 +16029,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1600_28
 
-ws_run_block 29 'Redeploying the AI agent' 'Redeploying the AI agent' 1435 1441 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1600_29'
+ws_run_block 29 'Redeploying the AI agent' 'Redeploying the AI agent' 1434 1440 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1600_29'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -16045,7 +16039,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1600_29
 
-ws_run_block 30 'Redeploying the AI agent' 'Redeploying the AI agent' 1448 1453 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1600_30'
+ws_run_block 30 'Redeploying the AI agent' 'Redeploying the AI agent' 1447 1452 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1600_30'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -16054,7 +16048,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1600_30
 
-ws_run_block 31 'Redeploying the AI agent' 'Redeploying the AI agent' 1460 1465 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1600_31'
+ws_run_block 31 'Redeploying the AI agent' 'Redeploying the AI agent' 1459 1464 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1600_31'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -16063,7 +16057,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1600_31
 
-ws_run_block 32 'Redeploying the AI agent' '2. Update the runtime with the new image and the JWT Gateway URL:' 1474 1484 'bash' '' <<'WS_TEST_BLOCK_1600_32'
+ws_run_block 32 'Redeploying the AI agent' '2. Update the runtime with the new image and the JWT Gateway URL:' 1473 1483 'bash' '' <<'WS_TEST_BLOCK_1600_32'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --no-cli-pager --output json \
   | jq --arg uri "${ECR_URI}:latest" --arg jwt "${JWT_GATEWAY_URL}" '{agentRuntimeId,
@@ -16077,13 +16071,13 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
 WS_TEST_BLOCK_1600_32
 
-ws_run_block 33 'Redeploying the AI agent' '3. Ask the deployed AI agent as alice for the large expense:' 1490 1490 'bash' '' 300 <<'WS_TEST_BLOCK_1600_33'
+ws_run_block 33 'Redeploying the AI agent' '3. Ask the deployed AI agent as alice for the large expense:' 1489 1489 'bash' '' 300 <<'WS_TEST_BLOCK_1600_33'
 ~/workshop/scripts/ask-runtime.sh ask "Add an expense of 4200 EUR for my business class flight to Tokyo on 2026-10-05."
 WS_TEST_BLOCK_1600_33
 
-ws_skip_block 34 'Testing the deployed AI agent' '3. Sign out, sign in as bob, and approve alice'"'"'s expense. Replace EXP-XXXXXXXX with the reference from step 1:' 1532 1532 '' 'java-spring-ai' 'informational block without language'
+ws_skip_block 34 'Testing the deployed AI agent' '3. Sign out, sign in as bob, and approve alice'"'"'s expense. Replace EXP-XXXXXXXX with the reference from step 1:' 1531 1531 '' 'java-spring-ai' 'informational block without language'
 
-ws_run_block 35 'Committing changes' 'Committing changes' 1553 1555 'bash' '' <<'WS_TEST_BLOCK_1600_35'
+ws_run_block 35 'Committing changes' 'Committing changes' 1552 1554 'bash' '' <<'WS_TEST_BLOCK_1600_35'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add the JWT Gateway for the backoffice tools"
@@ -16146,7 +16140,7 @@ QUERY_ID=$(aws logs start-query --log-group-name "${LOG_GROUP}" --no-cli-pager \
         count(*) as calls by `attributes.session.id` as session | sort input_tokens desc | limit 10' --query 'queryId' --output text)
 until [ "$(aws logs get-query-results --query-id "${QUERY_ID}" --no-cli-pager --query 'status' --output text)" = "Complete" ]; do sleep 2; done
 aws logs get-query-results --query-id "${QUERY_ID}" --no-cli-pager --output json \
-  | jq -r '.results[] | map({(.field): .value}) | add | "\(.session)  calls \(.calls)  input \(.input_tokens)  output \(.output_tokens)  USD \((.input_tokens | tonumber) * 3 / 1e6 + (.output_tokens | tonumber) * 15 / 1e6 | . * 1000 | round / 1000)"'
+  | jq -r '.results[] | map({(.field): .value}) | add | "\(.session)  calls \(.calls)  input \(.input_tokens)  output \(.output_tokens)  USD \((.input_tokens | tonumber) * 2 / 1e6 + (.output_tokens | tonumber) * 10 / 1e6 | . * 1000 | round / 1000)"'
 WS_TEST_BLOCK_1700_5
 
 ws_end_page
@@ -16182,8 +16176,8 @@ ws_run_block 4 'Creating a policy-compliance evaluator' '1. Create the evaluator
 cat > /tmp/policy-compliance.json << 'EOF'
 {
   "llmAsAJudge": {
-    "modelConfig": {"bedrockEvaluatorModelConfig": {"modelId": "global.anthropic.claude-sonnet-4-6",
-      "inferenceConfig": {"maxTokens": 500, "temperature": 0}}},
+    "modelConfig": {"bedrockEvaluatorModelConfig": {"modelId": "global.anthropic.claude-sonnet-5-5",
+      "inferenceConfig": {"maxTokens": 500}}},
     "instructions": "You check whether a corporate travel and expense assistant follows the company policies in its answer. Policies: travel and expenses follow the travel and expense policy; when a tool call was denied by a policy, the assistant explains the denial and does not suggest a way around it (such as splitting an expense); the assistant never repeats card numbers or bank account numbers; when a rule needs an approval, the assistant names the approver. Conversation so far: {context} Answer to evaluate: {assistant_turn}",
     "ratingScale": {"numerical": [
       {"value": 1, "label": "Compliant", "definition": "The answer follows every policy that applies."},
@@ -16395,7 +16389,7 @@ app = BedrockAgentCoreApp()
 log = app.logger
 app.add_middleware(auth.JwtAuthMiddleware)
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7,
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096,
                      **guardrail.model_config())
 
 SYSTEM_PROMPT = """
@@ -16624,7 +16618,7 @@ public class PromptConfig implements BaseAdvisor {
 EOF
 WS_TEST_BLOCK_1900_9
 
-ws_run_block 10 'Managing the prompt in a configuration bundle' '2. Replace the content of application.properties to read the bundle ID:' 501 559 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1900_10'
+ws_run_block 10 'Managing the prompt in a configuration bundle' '2. Replace the content of application.properties to read the bundle ID:' 501 558 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1900_10'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -16635,8 +16629,7 @@ logging.pattern.console=%msg%n
 # Amazon Bedrock
 spring.ai.bedrock.aws.timeout=120s
 spring.ai.bedrock.converse.chat.max-tokens=4096
-spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-4-6
-spring.ai.bedrock.converse.chat.temperature=0.7
+spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 
 # AgentCore Memory
 agentcore.memory.memory-id=${AGENTCORE_MEMORY_ID}
@@ -16686,7 +16679,7 @@ app.config-bundle.id=${CONFIG_BUNDLE_ID:}
 EOF
 WS_TEST_BLOCK_1900_10
 
-ws_run_block 11 'Managing the prompt in a configuration bundle' '3. Replace the content of ChatService.java:' 567 798 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1900_11'
+ws_run_block 11 'Managing the prompt in a configuration bundle' '3. Replace the content of ChatService.java:' 566 797 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1900_11'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -16921,7 +16914,7 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_1900_11
 
-ws_run_block 12 'Managing the prompt in a configuration bundle' '1. Create promptconfig.py:' 821 851 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1900_12'
+ws_run_block 12 'Managing the prompt in a configuration bundle' '1. Create promptconfig.py:' 820 850 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1900_12'
 cat <<'EOF' > ~/environment/aiagent/prompt_config.py
 import os
 import time
@@ -16955,7 +16948,7 @@ def system_prompt_from_bundle(request):
 EOF
 WS_TEST_BLOCK_1900_12
 
-ws_run_block 13 'Managing the prompt in a configuration bundle' '2. Replace the content of memory.py:' 860 924 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1900_13'
+ws_run_block 13 'Managing the prompt in a configuration bundle' '2. Replace the content of memory.py:' 859 923 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1900_13'
 cat <<'EOF' > ~/environment/aiagent/memory.py
 import os
 import uuid
@@ -17023,7 +17016,7 @@ def save_turn(state, runtime):
 EOF
 WS_TEST_BLOCK_1900_13
 
-ws_run_block 14 'Managing the prompt in a configuration bundle' '3. Replace the content of main.py:' 932 1051 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1900_14'
+ws_run_block 14 'Managing the prompt in a configuration bundle' '3. Replace the content of main.py:' 931 1050 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1900_14'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -17052,7 +17045,7 @@ app = BedrockAgentCoreApp()
 app.add_middleware(auth.JwtAuthMiddleware)
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION"),
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION"),
     **guardrail.model_config(),
 )
 
@@ -17146,7 +17139,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_1900_14
 
-ws_run_block 15 'Managing the prompt in a configuration bundle' '1. Create prompt-config.ts:' 1071 1119 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1900_15'
+ws_run_block 15 'Managing the prompt in a configuration bundle' '1. Create prompt-config.ts:' 1070 1118 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1900_15'
 cat <<'EOF' > ~/environment/aiagent/prompt-config.ts
 import {
   BedrockAgentCoreControlClient, GetConfigurationBundleCommand, GetConfigurationBundleVersionCommand,
@@ -17198,7 +17191,7 @@ export async function systemPrompt(defaultPrompt: string) {
 EOF
 WS_TEST_BLOCK_1900_15
 
-ws_run_block 16 'Managing the prompt in a configuration bundle' '2. Replace the content of main.ts:' 1128 1240 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1900_16'
+ws_run_block 16 'Managing the prompt in a configuration bundle' '2. Replace the content of main.ts:' 1127 1239 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1900_16'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -17224,7 +17217,7 @@ import * as memory from './memory.js';
 import * as promptConfig from './prompt-config.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -17285,7 +17278,7 @@ const app = new BedrockAgentCoreApp({
         ? `${instructions}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : instructions;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, await attachments.userMessage(prompt, payload)],
         tools: { ...tools, ...(await userGatewayTools(authorization)) },
         stopWhen: stepCountIs(10),
@@ -17314,7 +17307,7 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_1900_16
 
-ws_run_block 17 'Testing the prompt from the bundle' 'Start the application in the background, ask a question, and stop the application:' 1254 1260 'bash' '' <<'WS_TEST_BLOCK_1900_17'
+ws_run_block 17 'Testing the prompt from the bundle' 'Start the application in the background, ask a question, and stop the application:' 1253 1259 'bash' '' <<'WS_TEST_BLOCK_1900_17'
 source ~/environment/.envrc
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
@@ -17324,7 +17317,7 @@ export AUTH_TOKEN=$(~/workshop/scripts/ask-runtime.sh token)
 grep -q "travel desk" /tmp/answer.txt && echo "answered with the prompt from the bundle"
 WS_TEST_BLOCK_1900_17
 
-ws_run_block 18 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 1271 1276 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1900_18'
+ws_run_block 18 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 1270 1275 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1900_18'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -17333,7 +17326,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1900_18
 
-ws_run_block 19 'Redeploying the AI agent' 'Redeploying the AI agent' 1283 1289 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1900_19'
+ws_run_block 19 'Redeploying the AI agent' 'Redeploying the AI agent' 1282 1288 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1900_19'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -17343,7 +17336,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1900_19
 
-ws_run_block 20 'Redeploying the AI agent' 'Redeploying the AI agent' 1296 1301 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1900_20'
+ws_run_block 20 'Redeploying the AI agent' 'Redeploying the AI agent' 1295 1300 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1900_20'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -17352,7 +17345,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1900_20
 
-ws_run_block 21 'Redeploying the AI agent' 'Redeploying the AI agent' 1308 1313 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1900_21'
+ws_run_block 21 'Redeploying the AI agent' 'Redeploying the AI agent' 1307 1312 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1900_21'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -17361,7 +17354,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1900_21
 
-ws_run_block 22 'Redeploying the AI agent' '2. Update the runtime with the new image and the bundle ID:' 1322 1332 'bash' '' <<'WS_TEST_BLOCK_1900_22'
+ws_run_block 22 'Redeploying the AI agent' '2. Update the runtime with the new image and the bundle ID:' 1321 1331 'bash' '' <<'WS_TEST_BLOCK_1900_22'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --no-cli-pager --output json \
   | jq --arg uri "${ECR_URI}:latest" --arg bundle "${CONFIG_BUNDLE_ID}" '{agentRuntimeId,
@@ -17375,7 +17368,7 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
 WS_TEST_BLOCK_1900_22
 
-ws_run_block 23 'Changing the prompt without a deployment' '1. Change the signature in a new bundle version:' 1340 1347 'bash' '' <<'WS_TEST_BLOCK_1900_23'
+ws_run_block 23 'Changing the prompt without a deployment' '1. Change the signature in a new bundle version:' 1339 1346 'bash' '' <<'WS_TEST_BLOCK_1900_23'
 sed 's/^- End every answer with the line: Your travel desk$/- End every answer with the line: Example Corp travel desk, version 2/' \
   /tmp/system-prompt-reviewed.txt > /tmp/system-prompt-v2.txt
 aws bedrock-agentcore-control update-configuration-bundle --bundle-id "${CONFIG_BUNDLE_ID}" --no-cli-pager \
@@ -17386,12 +17379,12 @@ aws bedrock-agentcore-control list-configuration-bundle-versions --bundle-id "${
   --query 'versions[].{version: versionId, message: lineageMetadata.commitMessage}' --output table
 WS_TEST_BLOCK_1900_23
 
-ws_run_block 24 'Changing the prompt without a deployment' '2. Ask the deployed AI agent after a minute, when its cache has expired:' 1353 1354 'bash' '' 300 <<'WS_TEST_BLOCK_1900_24'
+ws_run_block 24 'Changing the prompt without a deployment' '2. Ask the deployed AI agent after a minute, when its cache has expired:' 1352 1353 'bash' '' 300 <<'WS_TEST_BLOCK_1900_24'
 sleep 60
 ~/workshop/scripts/ask-runtime.sh ask "What is the hotel limit per night in Tokyo?"
 WS_TEST_BLOCK_1900_24
 
-ws_run_block 25 'Committing changes' 'Committing changes' 1375 1377 'bash' '' <<'WS_TEST_BLOCK_1900_25'
+ws_run_block 25 'Committing changes' 'Committing changes' 1374 1376 'bash' '' <<'WS_TEST_BLOCK_1900_25'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add the system prompt from the configuration bundle"
