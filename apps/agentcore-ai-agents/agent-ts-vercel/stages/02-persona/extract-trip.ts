@@ -24,12 +24,9 @@ const TripRequest = z.object({
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
 
 const { output } = await generateText({
-  model: bedrock('global.anthropic.claude-sonnet-4-6'),
+  model: bedrock('global.anthropic.claude-sonnet-5-5'),
   system: 'Extract the business trip request from the email.',
   prompt: readFileSync(process.argv[2], 'utf8'),
-  // >> `temperature: 0` keeps the extraction stable between runs
-  temperature: 0,
-  // <<
   // >> `Output.object()` returns a validated object; `outputFormat` uses Bedrock native structured output
   output: Output.object({ schema: TripRequest }),
   providerOptions: { bedrock: { structuredOutputMode: 'outputFormat' } },

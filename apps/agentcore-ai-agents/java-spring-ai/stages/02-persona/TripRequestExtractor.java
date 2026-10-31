@@ -5,7 +5,6 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import org.springframework.ai.bedrock.converse.BedrockChatOptions;
 import org.springframework.ai.chat.client.AdvisorParams;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.ApplicationArguments;
@@ -50,9 +49,6 @@ class TripRequestExtractor implements ApplicationRunner {
         TripRequest trip = chatClient.prompt()
             .system("Extract the business trip request from the email.")
             .user(email)
-            // >> `temperature(0.0)` keeps the extraction stable between runs
-            .options(BedrockChatOptions.builder().temperature(0.0))
-            // <<
             // >> Bedrock native structured output; `entity()` returns a validated `TripRequest`
             .advisors(AdvisorParams.ENABLE_NATIVE_STRUCTURED_OUTPUT)
             .call()

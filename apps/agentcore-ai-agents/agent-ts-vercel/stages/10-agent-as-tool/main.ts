@@ -20,7 +20,7 @@ import { gatewayTools } from './mcp-tools.js';
 import * as memory from './memory.js';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -65,7 +65,7 @@ const app = new BedrockAgentCoreApp({
         ? `${SYSTEM_PROMPT}\nWhat you know about the user:\n${facts.map((f) => `- ${f}`).join('\n')}`
         : SYSTEM_PROMPT;
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, { role: 'user', content: prompt }],
         tools,
         stopWhen: stepCountIs(10),

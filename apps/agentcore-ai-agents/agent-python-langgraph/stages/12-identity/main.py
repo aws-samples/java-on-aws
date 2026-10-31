@@ -24,7 +24,7 @@ app = BedrockAgentCoreApp()
 app.add_middleware(auth.JwtAuthMiddleware)
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION"),
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION"),
     **guardrail.model_config(),
 )
 

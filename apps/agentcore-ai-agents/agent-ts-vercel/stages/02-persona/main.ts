@@ -9,7 +9,7 @@ import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { z } from 'zod';
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 // >> The system prompt defines the persona of the AI agent
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
@@ -30,8 +30,8 @@ const app = new BedrockAgentCoreApp({
     requestSchema: z.object({ prompt: z.string() }),
     async *process(payload) {
       const result = streamText({
-        // >> `system` applies the prompt to all requests, `temperature` controls response randomness
-        model, system: SYSTEM_PROMPT, temperature: 0.7, maxOutputTokens: 4096, prompt: payload.prompt,
+        // >> `system` applies the prompt to all requests
+        model, system: SYSTEM_PROMPT, maxOutputTokens: 4096, prompt: payload.prompt,
         // <<
       });
       for await (const text of result.textStream) {

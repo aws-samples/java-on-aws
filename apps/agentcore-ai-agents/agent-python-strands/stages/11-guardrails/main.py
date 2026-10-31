@@ -25,7 +25,7 @@ log = app.logger
 app.add_middleware(auth.JwtAuthMiddleware)
 
 # >> Apply the guardrail to every model call when `GUARDRAIL_ID` is set
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7,
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096,
                      **guardrail.model_config())
 # <<
 

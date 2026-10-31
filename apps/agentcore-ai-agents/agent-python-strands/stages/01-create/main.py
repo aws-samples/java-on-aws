@@ -8,7 +8,7 @@ app = BedrockAgentCoreApp()
 # <<
 
 # >> `BedrockModel` connects the agent to Amazon Bedrock
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
 # <<
 
 

@@ -24,7 +24,7 @@ import * as promptConfig from './prompt-config.js';
 // <<
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -87,7 +87,7 @@ const app = new BedrockAgentCoreApp({
         : instructions;
 // <<
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
         messages: [...history, await attachments.userMessage(prompt, payload)],
         tools: { ...tools, ...(await userGatewayTools(authorization)) },
         stopWhen: stepCountIs(10),

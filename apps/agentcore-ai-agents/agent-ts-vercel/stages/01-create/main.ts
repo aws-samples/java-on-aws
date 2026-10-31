@@ -10,7 +10,7 @@ import { z } from 'zod';
 
 // >> The Amazon Bedrock provider of the AI SDK, with credentials from the default AWS credential chain
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 // <<
 
 // >> `BedrockAgentCoreApp` is an HTTP service with the `/invocations` and `/ping` endpoints; `requestSchema` validates the request body

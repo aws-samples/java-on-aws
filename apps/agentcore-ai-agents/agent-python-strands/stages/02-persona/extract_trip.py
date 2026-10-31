@@ -24,9 +24,7 @@ class TripRequest(BaseModel):
 # <<
 
 
-# >> `temperature=0` keeps the extraction stable between runs
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=1024, temperature=0)
-# <<
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=1024)
 agent = Agent(model=model, system_prompt="Extract the business trip request from the email.", callback_handler=None)
 
 if __name__ == "__main__":

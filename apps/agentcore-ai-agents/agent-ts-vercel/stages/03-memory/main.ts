@@ -13,7 +13,7 @@ import * as memory from './memory.js';
 // <<
 
 const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credentialProvider: fromNodeProviderChain() });
-const model = bedrock('global.anthropic.claude-sonnet-4-6');
+const model = bedrock('global.anthropic.claude-sonnet-5-5');
 
 const SYSTEM_PROMPT = `You are the travel and expense assistant of the company. You help employees plan business trips,
 follow the travel and expense policies, and keep track of their trips and expenses.
@@ -44,7 +44,7 @@ const app = new BedrockAgentCoreApp({
         : SYSTEM_PROMPT;
 // <<
       const result = streamText({
-        model, system, temperature: 0.7, maxOutputTokens: 4096,
+        model, system, maxOutputTokens: 4096,
 // >> Send the history and the new message
         messages: [...history, { role: 'user', content: prompt }],
 // <<

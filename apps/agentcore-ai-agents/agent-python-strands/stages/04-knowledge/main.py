@@ -15,7 +15,7 @@ from knowledge import search_knowledge_base
 app = BedrockAgentCoreApp()
 log = app.logger
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
 
 SYSTEM_PROMPT = """
 You are the travel and expense assistant of the company. You help employees plan business trips,

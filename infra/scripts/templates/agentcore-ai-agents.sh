@@ -3,8 +3,8 @@
 # agentcore-ai-agents workshop post-deploy script
 # Base development tools (Docker, jq, direnv, uv, nvm) are already installed by ide/tools.sh during bootstrap;
 # the workshop code is in ~/java-on-aws/apps/agentcore-ai-agents, and the files the content uses are copied to ~/workshop.
-# Model note: the workshop uses Claude Sonnet 4.6; Claude Sonnet 5 / 5.5 need an AWS Marketplace
-# subscription per account, which the participant role cannot make (aws-marketplace:Subscribe).
+# Model note: the workshop uses Claude Sonnet 5.5 (global cross-Region inference); iam/common.json allows the
+# AWS Marketplace subscription for it on the IDE and participant roles.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"

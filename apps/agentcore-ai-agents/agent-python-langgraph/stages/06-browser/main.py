@@ -18,7 +18,7 @@ from web_grounding import search_web
 app = BedrockAgentCoreApp()
 
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=4096, temperature=0.7, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=4096, region_name=os.environ.get("AWS_REGION")
 )
 
 SYSTEM_PROMPT = """

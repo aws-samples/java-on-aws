@@ -24,11 +24,9 @@ class TripRequest(BaseModel):
 # <<
 
 
-# >> `temperature=0` keeps the extraction stable between runs
 model = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6", max_tokens=1024, temperature=0, region_name=os.environ.get("AWS_REGION")
+    model="global.anthropic.claude-sonnet-5-5", max_tokens=1024, region_name=os.environ.get("AWS_REGION")
 )
-# <<
 # >> `with_structured_output()` returns a validated `TripRequest` instead of a message
 extractor = model.with_structured_output(TripRequest)
 # <<
