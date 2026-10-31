@@ -66,7 +66,7 @@ samples/refresh.py java-performance "$REPORT" ../../../../java-performance/conte
   keeps only the first 24 KB of output and marks a command Failed when its last command
   exits non-zero.
 - `refresh.py` uses the per-workshop mapping `samples/<workshop>.py`, masks the account ID
-  as `123456789012` and wraps Claude's answers at 110 columns. A block re-run by hand
+  as `123456789012` and puts Claude's answers in as markdown. A block re-run by hand
   replaces its expand with that real output; the next refresh overwrites it. Review with
   `git diff`.
 

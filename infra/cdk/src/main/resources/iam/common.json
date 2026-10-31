@@ -13,12 +13,10 @@
         "ForAllValues:StringEquals": {
           "aws-marketplace:ProductId": [
             "prod-xdkflymybwmvi",
-            "prod-mxcfnwvpd6kb4",
-            "prod-jhuafngbly644",
-            "prod-5ukwuglpt66kg",
             "prod-ffvjxvh4ltq64",
-            "prod-if5d653ow7ehg",
-            "prod-4ezhkeia6k2cs"
+            "prod-5ukwuglpt66kg",
+            "prod-pjfguoisodbd6",
+            "prod-e5xo6z26ie45g"
           ]
         }
       }
@@ -35,12 +33,10 @@
         "ForAllValues:StringEquals": {
           "aws-marketplace:ProductId": [
             "prod-xdkflymybwmvi",
-            "prod-mxcfnwvpd6kb4",
-            "prod-jhuafngbly644",
-            "prod-5ukwuglpt66kg",
             "prod-ffvjxvh4ltq64",
-            "prod-if5d653ow7ehg",
-            "prod-4ezhkeia6k2cs"
+            "prod-5ukwuglpt66kg",
+            "prod-pjfguoisodbd6",
+            "prod-e5xo6z26ie45g"
           ]
         }
       }
@@ -71,6 +67,20 @@
         "arn:aws:ssm:*:{{.AccountId}}:session/*",
         "arn:aws:ssm:*:{{.AccountId}}:managed-instance/*"
       ]
+    },
+    {
+      "Sid": "RunCommandOnWorkshopInstances",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:SendCommand",
+        "ssm:StartSession"
+      ],
+      "Resource": "arn:aws:ec2:*:{{.AccountId}}:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "ssm:resourceTag/Workshop": "true"
+        }
+      }
     },
     {
       "Sid": "DenyLargeInstances",

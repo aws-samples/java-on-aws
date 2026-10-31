@@ -509,7 +509,7 @@ aws ecs wait services-stable \
 echo " STABLE"
 WS_TEST_BLOCK_140_5
 
-ws_run_block 6 'Verifying the deployment' 'Wait for the service to become active and get the URL:' 174 222 'bash' '' 660 <<'WS_TEST_BLOCK_140_6'
+ws_run_block 6 'Verifying the deployment' 'Wait for the service to become active and get the URL:' 174 223 'bash' '' 660 <<'WS_TEST_BLOCK_140_6'
 echo -n "Waiting for service"
 readiness_deadline=$((SECONDS + 600))
 service_status=""
@@ -533,9 +533,10 @@ if [[ "${service_status}" != "ACTIVE" ]]; then
   return 1
 fi
 
-SVC_URL=https://$(aws ecs describe-express-gateway-service \
+SVC_HOST=$(aws ecs describe-express-gateway-service \
   --service-arn arn:aws:ecs:${AWS_REGION}:${ACCOUNT_ID}:service/unicorn-store-spring/unicorn-store-spring \
   --query 'service.activeConfigurations[0].ingressPaths[0].endpoint' --output text --no-cli-pager)
+SVC_URL=https://${SVC_HOST#https://}
 
 echo -n "Waiting for endpoint"
 http_status=""
@@ -561,13 +562,13 @@ fi
 echo "${SVC_URL}" > ~/environment/.workshop-svc-url-ecs
 WS_TEST_BLOCK_140_6
 
-ws_run_block 7 'Testing the application' '1. Load the service URL:' 449 451 'bash' '' <<'WS_TEST_BLOCK_140_7'
+ws_run_block 7 'Testing the application' '1. Load the service URL:' 450 452 'bash' '' <<'WS_TEST_BLOCK_140_7'
 SVC_URL=$(cat ~/environment/.workshop-svc-url-ecs)
 echo ${SVC_URL}
 curl -s ${SVC_URL} && echo
 WS_TEST_BLOCK_140_7
 
-ws_run_block 8 'Testing the application' '2. Test the application:' 457 464 'bash' '' <<'WS_TEST_BLOCK_140_8'
+ws_run_block 8 'Testing the application' '2. Test the application:' 458 465 'bash' '' <<'WS_TEST_BLOCK_140_8'
 curl -s --request POST ${SVC_URL}/unicorns \
   --header 'Content-Type: application/json' \
   --data-raw '{
@@ -578,9 +579,9 @@ curl -s --request POST ${SVC_URL}/unicorns \
 }' | jq
 WS_TEST_BLOCK_140_8
 
-ws_skip_block 9 'Testing the application' 'You should see a response like:' 470 476 'json' '' 'copy action disabled'
+ws_skip_block 9 'Testing the application' 'You should see a response like:' 471 477 'json' '' 'copy action disabled'
 
-ws_run_block 10 'Accessing application logs' 'Get the logs from the running task:' 488 496 'bash' '' <<'WS_TEST_BLOCK_140_10'
+ws_run_block 10 'Accessing application logs' 'Get the logs from the running task:' 489 497 'bash' '' <<'WS_TEST_BLOCK_140_10'
 TASK_ARN=$(aws ecs list-tasks --cluster unicorn-store-spring --service-name unicorn-store-spring \
   --query 'taskArns[0]' --output text --no-cli-pager)
 TASK_ID=$(echo ${TASK_ARN} | cut -d'/' -f3)
@@ -592,7 +593,7 @@ aws logs get-log-events \
   | jq -r '.events[].message'
 WS_TEST_BLOCK_140_10
 
-ws_skip_block 11 'Using e1s' 'Open a new terminal window and run e1s to view the state of the Amazon ECS cluster:' 516 516 'bash' '' 'interactive terminal UI'
+ws_skip_block 11 'Using e1s' 'Open a new terminal window and run e1s to view the state of the Amazon ECS cluster:' 517 517 'bash' '' 'interactive terminal UI'
 
 ws_end_page
 
@@ -1074,7 +1075,7 @@ SPRING_DATASOURCE_PASSWORD=$(aws secretsmanager get-secret-value --secret-id wor
   | jq --raw-output '.SecretString' | jq -r .password)
 
 pack build ${ECR_URI}:05-cds \
-  --builder paketobuildpacks/builder-noble-java-tiny \
+  --builder paketobuildpacks/builder-noble-java-tiny:0.0.200 \
   --tag ${ECR_URI}:latest \
   --env BP_JVM_VERSION=25 \
   --env BP_JVM_CDS_ENABLED=true \
@@ -2691,7 +2692,7 @@ spec:
         - name: AWS_S3_BUCKET
           value: "${S3_BUCKET}"
         - name: SPRING_AI_BEDROCK_CONVERSE_CHAT_OPTIONS_MODEL
-          value: "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+          value: "global.anthropic.claude-sonnet-4-6"
         - name: SPRING_AI_BEDROCK_CONVERSE_CHAT_OPTIONS_MAX_TOKENS
           value: "10000"
         - name: GITHUB_REPO_URL

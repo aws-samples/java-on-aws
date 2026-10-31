@@ -365,7 +365,7 @@ log_success "Thread analysis alert rule created"
 # Test Bedrock model access
 log_info "Testing Bedrock model access..."
 if aws bedrock-runtime invoke-model \
-  --model-id "global.anthropic.claude-sonnet-4-20250514-v1:0" \
+  --model-id "global.anthropic.claude-sonnet-4-6" \
   --body "$(echo '{"anthropic_version": "bedrock-2023-05-31", "max_tokens": 10, "messages": [{"role": "user", "content": "Test"}]}' | base64)" \
   --region "$AWS_REGION" \
   /tmp/bedrock-test.json 2>/dev/null; then
