@@ -3,6 +3,8 @@ package com.example.agent;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import org.springframework.ai.chat.client.AdvisorParams;
@@ -30,11 +32,11 @@ class TripRequestExtractor implements ApplicationRunner {
         @JsonPropertyDescription("Destination city") String destination,
         @JsonPropertyDescription("Outbound travel date") LocalDate departureDate,
         @JsonPropertyDescription("Return travel date") LocalDate returnDate,
-        @JsonPropertyDescription("Purpose of the trip, e.g. the event name") String purpose,
+        @JsonPropertyDescription("Purpose of the trip, such as the event") String purpose,
         TravelClass travelClass,
         @JsonPropertyDescription("Hotel location or category wishes") String hotelPreference,
         @JsonPropertyDescription("Total trip budget in EUR") Double budgetEur,
-        @JsonPropertyDescription("Who approved the trip or budget") String approver) {}
+        @JsonPropertyDescription("Who approves the trip, such as the manager the email goes to") String approver) {}
     // <<
 
     private final ChatClient chatClient;
@@ -46,8 +48,11 @@ class TripRequestExtractor implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) throws Exception {
         String email = Files.readString(Path.of(args.getNonOptionArgs().getFirst()));
+        // >> Today's date with the weekday, so the model can turn "the Monday two months from now" into a date
+        String today = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, yyyy-MM-dd", Locale.ENGLISH));
         TripRequest trip = chatClient.prompt()
-            .system("Extract the business trip request from the email.")
+            .system("Extract the business trip request from the email. Today is " + today + ".")
+        // <<
             .user(email)
             // >> Bedrock native structured output; `entity()` returns a validated `TripRequest`
             .advisors(AdvisorParams.ENABLE_NATIVE_STRUCTURED_OUTPUT)

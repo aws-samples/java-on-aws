@@ -16,11 +16,11 @@ class TripRequest(BaseModel):
     destination: str = Field(description="Destination city")
     departure_date: date = Field(description="Outbound travel date")
     return_date: date = Field(description="Return travel date")
-    purpose: str = Field(description="Purpose of the trip, e.g. the event name")
+    purpose: str = Field(description="Purpose of the trip, such as the event")
     travel_class: Literal["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"]
     hotel_preference: str | None = Field(default=None, description="Hotel location or category wishes")
     budget_eur: float | None = Field(default=None, description="Total trip budget in EUR")
-    approver: str | None = Field(default=None, description="Who approved the trip or budget")
+    approver: str | None = Field(default=None, description="Who approves the trip, such as the manager the email goes to")
 # <<
 
 
@@ -33,5 +33,8 @@ extractor = model.with_structured_output(TripRequest)
 
 if __name__ == "__main__":
     email = open(sys.argv[1]).read()
-    trip = extractor.invoke([("system", "Extract the business trip request from the email."), ("user", email)])
+    # >> Today's date with the weekday, so the model can turn "the Monday two months from now" into a date
+    today = date.today().strftime("%A, %Y-%m-%d")
+    trip = extractor.invoke([("system", f"Extract the business trip request from the email. Today is {today}."), ("user", email)])
+    # <<
     print(trip.model_dump_json(indent=2))

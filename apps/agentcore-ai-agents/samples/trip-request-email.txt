@@ -1,14 +1,13 @@
-From: Alice Schmidt <alice@example.com>
-To: Travel Desk
-Subject: Trip to AI Summit Tokyo
+From: Alice <alice@example.com>
+To: Bob <bob@example.com>
+Subject: AI conference in San Francisco
 
-Hi team,
+Hi Bob,
 
-I'd like to attend the AI Summit in Tokyo. The conference runs from November 18 to 20, 2026.
-I'll fly out of Berlin on the 16th so I can adjust to the time difference, and come back on the 21st.
-Economy is fine, but please try for a window seat. For the hotel, something close to the venue
-in Shinjuku, four stars at most - I don't need anything fancy. My manager Bob approved a budget
-of about 3500 EUR for the whole trip.
+as we discussed, I'd like to go to the AI conference in San Francisco. It runs from Tuesday to
+Thursday in the week two months from now. I'd fly out of Berlin on the Monday and come back on
+Saturday. Economy is fine, a window seat would be great. For the hotel, something close to the
+venue, four stars at most. I expect about 3500 EUR for the whole trip.
 
 Thanks,
 Alice
