@@ -51,8 +51,8 @@ agent = build_agent(TOOLS)
 
 @app.entrypoint
 async def invoke(payload, context):
-    conversation_id = context.session_id
 # >> `context.session_id` is the `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id` header. In local mode, the Web UI sends the login username as the session ID
+    conversation_id = context.session_id
     ctx, config = memory.memory_config(conversation_id)
 # <<
     prompt = payload["prompt"]

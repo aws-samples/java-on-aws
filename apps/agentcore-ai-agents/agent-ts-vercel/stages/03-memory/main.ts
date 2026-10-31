@@ -32,8 +32,8 @@ const app = new BedrockAgentCoreApp({
   invocationHandler: {
     requestSchema: z.object({ prompt: z.string() }),
     async *process(payload, context) {
-      const conversationId = context.sessionId;
 // >> `context.sessionId` is the `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id` header. In local mode, the Web UI sends the login username as the session ID
+      const conversationId = context.sessionId;
       const { actorId, sessionId } = memory.parse(conversationId);
 // <<
       const prompt = payload.prompt;

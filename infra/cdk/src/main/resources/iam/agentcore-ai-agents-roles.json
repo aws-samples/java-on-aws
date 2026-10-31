@@ -1,0 +1,124 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CreateWorkloadRoles",
+      "Effect": "Allow",
+      "Action": "iam:CreateRole",
+      "Resource": [
+        "arn:aws:iam::{{.AccountId}}:role/aiagent*",
+        "arn:aws:iam::{{.AccountId}}:role/backoffice*",
+        "arn:aws:iam::{{.AccountId}}:role/mcp*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::{{.AccountId}}:policy/workshop-boundary"
+        }
+      }
+    },
+    {
+      "Sid": "InlinePoliciesOnBoundedRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:DeleteRolePolicy",
+        "iam:PutRolePolicy"
+      ],
+      "Resource": [
+        "arn:aws:iam::{{.AccountId}}:role/aiagent-kb-role",
+        "arn:aws:iam::{{.AccountId}}:role/aiagent-runtime-role",
+        "arn:aws:iam::{{.AccountId}}:role/backoffice-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-currency-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-gateway-role"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::{{.AccountId}}:policy/workshop-boundary"
+        }
+      }
+    },
+    {
+      "Sid": "LambdaBasicExecutionOnBoundedRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy"
+      ],
+      "Resource": [
+        "arn:aws:iam::{{.AccountId}}:role/aiagent-kb-role",
+        "arn:aws:iam::{{.AccountId}}:role/aiagent-runtime-role",
+        "arn:aws:iam::{{.AccountId}}:role/backoffice-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-currency-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-gateway-role"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::{{.AccountId}}:policy/workshop-boundary"
+        },
+        "ArnEquals": {
+          "iam:PolicyARN": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        }
+      }
+    },
+    {
+      "Sid": "DeleteWorkloadRoles",
+      "Effect": "Allow",
+      "Action": "iam:DeleteRole",
+      "Resource": [
+        "arn:aws:iam::{{.AccountId}}:role/aiagent-kb-role",
+        "arn:aws:iam::{{.AccountId}}:role/aiagent-runtime-role",
+        "arn:aws:iam::{{.AccountId}}:role/backoffice-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-currency-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-gateway-role"
+      ]
+    },
+    {
+      "Sid": "PassWorkloadRoles",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::{{.AccountId}}:role/aiagent-kb-role",
+        "arn:aws:iam::{{.AccountId}}:role/aiagent-runtime-role",
+        "arn:aws:iam::{{.AccountId}}:role/backoffice-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-currency-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-gateway-role"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": [
+            "bedrock.amazonaws.com",
+            "bedrock-agentcore.amazonaws.com",
+            "lambda.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "CreateServiceLinkedRoles",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::*:role/aws-service-role/*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": [
+            "application-signals.cloudwatch.amazonaws.com",
+            "cloudtrail.amazonaws.com",
+            "network.bedrock-agentcore.amazonaws.com",
+            "runtime-identity.bedrock-agentcore.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ReadRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListRolePolicies",
+        "iam:ListRoles"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
