@@ -238,8 +238,7 @@ public class Ide extends Construct {
 
             if ("java-spring-ai-agents".equals(props.getTemplateType())
                 || "java-ai-agents".equals(props.getTemplateType())
-                || "java-ai-agents-advanced".equals(props.getTemplateType())
-                || "agentcore-ai-agents".equals(props.getTemplateType())) {
+                || "java-ai-agents-advanced".equals(props.getTemplateType())) {
                 String agentCoreManagedToolsPolicyJson = loadFile("/agentcore-managed-tools-policy.json");
                 var agentCoreManagedToolsPolicyDocument = PolicyDocument.fromJson(
                     new JSONObject(agentCoreManagedToolsPolicyJson).toMap());
@@ -250,8 +249,7 @@ public class Ide extends Construct {
             }
 
             if ("java-ai-agents".equals(props.getTemplateType())
-                || "java-ai-agents-advanced".equals(props.getTemplateType())
-                || "agentcore-ai-agents".equals(props.getTemplateType())) {
+                || "java-ai-agents-advanced".equals(props.getTemplateType())) {
                 String agentCoreIdentityPolicyJson = loadFile("/agentcore-identity-policy.json")
                     .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
                 var agentCoreIdentityPolicyDocument = PolicyDocument.fromJson(
@@ -260,16 +258,6 @@ public class Ide extends Construct {
                     .document(agentCoreIdentityPolicyDocument)
                     .build();
                 this.ideRole.addManagedPolicy(agentCoreIdentityPolicy);
-            }
-
-            // agentcore-ai-agents: Transaction Search setup, Gateway log delivery
-            if ("agentcore-ai-agents".equals(props.getTemplateType())) {
-                String agentCoreAiAgentsPolicyJson = loadFile("/agentcore-ai-agents-policy.json")
-                    .replace("{{.AccountId}}", Aws.ACCOUNT_ID);
-                var agentCoreAiAgentsPolicy = ManagedPolicy.Builder.create(this, "AgentCoreAiAgentsPolicy")
-                    .document(PolicyDocument.fromJson(new JSONObject(agentCoreAiAgentsPolicyJson).toMap()))
-                    .build();
-                this.ideRole.addManagedPolicy(agentCoreAiAgentsPolicy);
             }
         }
 

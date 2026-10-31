@@ -131,13 +131,18 @@
         "ecr:SetRepositoryPolicy",
         "ecr:PutRegistryPolicy",
         "ecr:PutReplicationConfiguration",
-        "s3:PutBucketPolicy",
         "s3:PutBucketAcl",
         "s3:PutObjectAcl",
         "s3:PutBucketOwnershipControls",
         "s3:PutBucketPublicAccessBlock"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "DenyBucketPoliciesExceptAiAgentUi",
+      "Effect": "Deny",
+      "Action": "s3:PutBucketPolicy",
+      "NotResource": "arn:aws:s3:::aiagent-ui-*"
     }
   ]
 }

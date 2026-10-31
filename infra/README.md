@@ -101,7 +101,7 @@ infra/
 | `java-on-aws` | VPC, IDE, CodeBuild, Database, EKS, WorkshopBucket, EcrRegistry, Unicorn, ECR (unicorn-store-spring), ThreadAnalysis, AiJvmAnalyzer |
 | `java-on-amazon-eks` | Same as java-on-aws |
 | `java-spring-ai-agents` | VPC, IDE, CodeBuild, Database, EKS, WorkshopBucket, EcrRegistry, Unicorn, 2x EcsExpressService (unicorn-spring-ai-agent, unicorn-store-spring) |
-| `agentcore-ai-agents` | Same as java-ai-agents (VPC, IDE arm64, WorkshopBucket, EcrRegistry aiagent/backoffice), plus TravelPortal (S3 + CloudFront, SSM `workshop-portal-url`) and CalendarApi (Cognito pool `workshop-calendar-pool`, Lambda `workshop-calendar-api` with a function URL, SSM `workshop-calendar-url`, `-pool-id`, `-client-id`) |
+| `agentcore-ai-agents` | Same as java-ai-agents (VPC, IDE arm64, WorkshopBucket, EcrRegistry aiagent/backoffice), plus TravelPortal (S3 + CloudFront, SSM `workshop-portal-url`) and CalendarApi (Cognito pool `workshop-calendar-pool`, Lambda `workshop-calendar-api` behind an API Gateway HTTP API with a JWT authorizer, SSM `workshop-calendar-url`, `-pool-id`, `-client-id`); IAM `iam/common.json` + `iam/agentcore-ai-agents.json` |
 
 ---
 

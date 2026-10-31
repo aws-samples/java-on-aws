@@ -1,0 +1,213 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AgentCoreAiAgentsServices",
+      "Effect": "Allow",
+      "Action": [
+        "application-signals:*",
+        "bedrock-agentcore:*",
+        "cloudfront:*",
+        "cognito-idp:*",
+        "dynamodb:*",
+        "ecr:*",
+        "lambda:*",
+        "s3:*",
+        "s3vectors:*",
+        "secretsmanager:*"
+      ],
+      "Resource": [
+        "arn:aws:application-signals:*:{{.AccountId}}:*",
+        "arn:aws:bedrock-agentcore:*:{{.AccountId}}:*",
+        "arn:aws:cloudfront::{{.AccountId}}:distribution/*",
+        "arn:aws:cloudfront::{{.AccountId}}:origin-access-identity/*",
+        "arn:aws:cognito-idp:*:{{.AccountId}}:userpool/*",
+        "arn:aws:dynamodb:*:{{.AccountId}}:table/backoffice-*",
+        "arn:aws:ecr:*:{{.AccountId}}:repository/aiagent*",
+        "arn:aws:ecr:*:{{.AccountId}}:repository/backoffice*",
+        "arn:aws:ecr:*:{{.AccountId}}:repository/mcp*",
+        "arn:aws:lambda:*:{{.AccountId}}:function:*",
+        "arn:aws:s3:::aiagent-*",
+        "arn:aws:s3vectors:*:{{.AccountId}}:bucket/*",
+        "arn:aws:secretsmanager:*:{{.AccountId}}:secret:aiagent-*",
+        "arn:aws:secretsmanager:*:{{.AccountId}}:secret:mcp-*",
+        "arn:aws:secretsmanager:*:{{.AccountId}}:secret:bedrock-agentcore-identity!*"
+      ]
+    },
+    {
+      "Sid": "AgentCoreManagedBrowserStreams",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:ConnectBrowserAutomationStream",
+        "bedrock-agentcore:ConnectBrowserLiveViewStream"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AgentCoreManagedTools",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:GetBrowserSession",
+        "bedrock-agentcore:StartBrowserSession",
+        "bedrock-agentcore:StopBrowserSession",
+        "bedrock-agentcore:UpdateBrowserStream",
+        "bedrock-agentcore:GetCodeInterpreterSession",
+        "bedrock-agentcore:InvokeCodeInterpreter",
+        "bedrock-agentcore:StartCodeInterpreterSession",
+        "bedrock-agentcore:StopCodeInterpreterSession"
+      ],
+      "Resource": [
+        "arn:aws:bedrock-agentcore:*:aws:browser/aws.browser.v1",
+        "arn:aws:bedrock-agentcore:*:aws:code-interpreter/aws.codeinterpreter.v1"
+      ]
+    },
+    {
+      "Sid": "CloudFrontCreate",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateCloudFrontOriginAccessIdentity",
+        "cloudfront:CreateDistribution"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:PrincipalAccount": "{{.AccountId}}"
+        }
+      }
+    },
+    {
+      "Sid": "AgentCoreAiAgentsAccountLevel",
+      "Effect": "Allow",
+      "Action": [
+        "application-signals:StartDiscovery",
+        "bedrock:List*",
+        "bedrock-agentcore:List*",
+        "cloudfront:Get*",
+        "cloudfront:List*",
+        "cognito-idp:CreateUserPool",
+        "cognito-idp:ListUserPools",
+        "ecr:GetAuthorizationToken",
+        "lambda:List*",
+        "logs:DescribeResourcePolicies",
+        "logs:PutResourcePolicy",
+        "s3:ListAllMyBuckets",
+        "s3vectors:CreateVectorBucket",
+        "s3vectors:ListVectorBuckets",
+        "secretsmanager:ListSecrets",
+        "sts:GetCallerIdentity",
+        "tag:GetResources",
+        "xray:GetIndexingRules",
+        "xray:GetTraceSegmentDestination",
+        "xray:ListResourcePolicies",
+        "xray:PutResourcePolicy",
+        "xray:UpdateIndexingRule",
+        "xray:UpdateTraceSegmentDestination"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ApplicationSignalsCloudTrailChannel",
+      "Effect": "Allow",
+      "Action": "cloudtrail:CreateServiceLinkedChannel",
+      "Resource": "arn:aws:cloudtrail:*:{{.AccountId}}:channel/aws-service-channel/application-signals/*"
+    },
+    {
+      "Sid": "LogDelivery",
+      "Effect": "Allow",
+      "Action": [
+        "logs:PutDeliverySource",
+        "logs:PutDeliveryDestination",
+        "logs:CreateDelivery",
+        "logs:GetDelivery*",
+        "logs:DeleteDelivery*"
+      ],
+      "Resource": [
+        "arn:aws:logs:*:{{.AccountId}}:delivery-source:*",
+        "arn:aws:logs:*:{{.AccountId}}:delivery-destination:*",
+        "arn:aws:logs:*:{{.AccountId}}:delivery:*"
+      ]
+    },
+    {
+      "Sid": "CreateWorkloadRoles",
+      "Effect": "Allow",
+      "Action": "iam:CreateRole",
+      "Resource": [
+        "arn:aws:iam::{{.AccountId}}:role/aiagent*",
+        "arn:aws:iam::{{.AccountId}}:role/backoffice*",
+        "arn:aws:iam::{{.AccountId}}:role/mcp*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::{{.AccountId}}:policy/workshop-boundary"
+        }
+      }
+    },
+    {
+      "Sid": "ManageWorkloadRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:AttachRolePolicy",
+        "iam:DeleteRole",
+        "iam:DeleteRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:UpdateAssumeRolePolicy"
+      ],
+      "Resource": [
+        "arn:aws:iam::{{.AccountId}}:role/aiagent-kb-role",
+        "arn:aws:iam::{{.AccountId}}:role/aiagent-runtime-role",
+        "arn:aws:iam::{{.AccountId}}:role/backoffice-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-currency-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-gateway-role"
+      ]
+    },
+    {
+      "Sid": "PassWorkloadRoles",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::{{.AccountId}}:role/aiagent*",
+        "arn:aws:iam::{{.AccountId}}:role/backoffice*",
+        "arn:aws:iam::{{.AccountId}}:role/mcp*",
+        "arn:aws:iam::{{.AccountId}}:role/workshop*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": [
+            "bedrock.amazonaws.com",
+            "bedrock-agentcore.amazonaws.com",
+            "lambda.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "CreateServiceLinkedRoles",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::*:role/aws-service-role/*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": [
+            "application-signals.cloudwatch.amazonaws.com",
+            "cloudtrail.amazonaws.com",
+            "network.bedrock-agentcore.amazonaws.com",
+            "runtime-identity.bedrock-agentcore.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ReadRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListRolePolicies",
+        "iam:ListRoles"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

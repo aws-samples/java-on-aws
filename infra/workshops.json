@@ -49,6 +49,7 @@
     {
       "template": "agentcore-ai-agents",
       "repository": "agentcore-ai-agents",
+      "policies": ["common", "agentcore-ai-agents"],
       "test": {
         "enabled": true,
         "title": "Building AI agents with Amazon Bedrock AgentCore",

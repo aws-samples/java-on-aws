@@ -490,7 +490,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1792832525276"
+      ContentHash: "1793433914875"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2405,12 +2405,15 @@ Resources:
               - rds:ModifyDBSnapshotAttribute
               - s3:PutBucketAcl
               - s3:PutBucketOwnershipControls
-              - s3:PutBucketPolicy
               - s3:PutBucketPublicAccessBlock
               - s3:PutObjectAcl
             Effect: Deny
             Resource: "*"
             Sid: DenySharingAndExposure
+          - Action: s3:PutBucketPolicy
+            Effect: Deny
+            NotResource: arn:aws:s3:::aiagent-ui-*
+            Sid: DenyBucketPoliciesExceptAiAgentUi
         Version: "2012-10-17"
     Type: AWS::IAM::ManagedPolicy
   IdePolicyjavaonamazoneksE6856F66:
@@ -3498,7 +3501,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261024110205"
+            - "-20261031090514"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3582,7 +3585,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261024110205"
+            - "-20261031090514"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
