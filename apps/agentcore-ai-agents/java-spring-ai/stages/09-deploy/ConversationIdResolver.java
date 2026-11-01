@@ -36,9 +36,9 @@ public final class ConversationIdResolver {
             try {
                 String jwt = authHeader.substring(7);
                 String payload = new String(Base64.getUrlDecoder().decode(jwt.split("\\.")[1]));
-                // >> Extract the `sub` claim (Cognito user ID) and combine with session ID for per-user isolation
+                // >> Extract the `username` claim (the Cognito user name, the same user ID as in the local chat UI) and combine with session ID for per-user isolation
                 JsonNode claims = jsonMapper.readTree(payload);
-                String userId = claims.get("sub").asString();
+                String userId = claims.get("username").asString();
                 // <<
                 return userId + ":" + sessionId;
             } catch (Exception e) {

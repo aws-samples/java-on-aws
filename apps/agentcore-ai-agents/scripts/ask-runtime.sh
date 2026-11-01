@@ -8,14 +8,14 @@
 #
 # USER_NAME selects the Cognito user (default alice; admin, alice, bob exist), the password is IDE_PASSWORD.
 # SESSION is the X-Amzn-Bedrock-AgentCore-Runtime-Session-Id (at least 33 characters). The default,
-# workshop-terminal-session-<user>-v<runtime version>, keeps one conversation per runtime version: a session's microVM
+# workshop-terminal-session-<user>-runtime-v<runtime version> (33 characters or more for every user), keeps one conversation per runtime version: a session's microVM
 # runs the version it started with, so after an update the next request starts a new microVM. Reads ~/environment/.envrc.
 # ATTACH_FILE=PATH sends the file with the prompt (fileName, fileBase64), like the attachment button of the UI.
 set -euo pipefail
 [ -f ~/environment/.envrc ] && source ~/environment/.envrc
 USER_NAME="${USER_NAME:-alice}"
 default_session() {
-  echo "workshop-terminal-session-${USER_NAME}-v$(aws bedrock-agentcore-control get-agent-runtime \
+  echo "workshop-terminal-session-${USER_NAME}-runtime-v$(aws bedrock-agentcore-control get-agent-runtime \
     --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --region "${AWS_REGION}" --no-cli-pager \
     --query agentRuntimeVersion --output text)"
 }

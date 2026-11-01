@@ -1,5 +1,4 @@
 """Corporate calendar API (behind an API Gateway HTTP API with a JWT authorizer): GET /events with a bearer token of the calendar user pool."""
-import calendar
 import json
 import os
 import urllib.error
@@ -7,15 +6,6 @@ import urllib.request
 from datetime import date, timedelta
 
 USERINFO_URL = os.environ["USERINFO_URL"]
-
-
-def trip_start(today):
-    """The Monday of the week that contains today plus two calendar months (the workshop's trip rule)."""
-    month = today.month + 2
-    year, month = today.year + (month - 1) // 12, (month - 1) % 12 + 1
-    day = min(today.day, calendar.monthrange(year, month)[1])
-    start = date(year, month, day)
-    return start - timedelta(days=start.weekday())
 
 
 def working_days_after(day, count):
@@ -26,25 +16,23 @@ def working_days_after(day, count):
     return day
 
 
+def weekly(today, weekday, time, title):
+    """The next 12 occurrences from today, so every week of the next three months has one, whatever the trip dates."""
+    first = today + timedelta(days=(weekday - today.weekday()) % 7)
+    return [{"date": (first + timedelta(weeks=w)).isoformat(), "time": time, "title": title, "location": "Berlin"}
+            for w in range(12)]
+
+
 def events(username, today):
-    """Events relative to the day of the request, so the calendar is always about two months ahead."""
-    trip = trip_start(today)
+    """Events relative to the day of the request; weekly meetings, so any trip in the next weeks overlaps two of them."""
     planning = working_days_after(today, 2)
-    first_tuesday = today + timedelta(days=(1 - today.weekday()) % 7)
-    team = [{"date": (first_tuesday + timedelta(weeks=w)).isoformat(), "time": "10:00-11:00",
-             "title": "Team meeting", "location": "Berlin"} for w in range(12)]
+    team = weekly(today, 1, "10:00-11:00", "Team meeting")
     if username == "alice":
-        own = [
-            {"date": planning.isoformat(), "time": "14:00-15:00", "title": "Travel planning with Bob", "location": "Berlin"},
-            *({"date": (trip + timedelta(days=d)).isoformat(), "time": "09:00-17:00",
-               "title": f"AI conference, day {d}", "location": "San Francisco"} for d in (1, 2, 3)),
-            {"date": (trip + timedelta(days=8)).isoformat(), "time": "14:00-15:00", "title": "1:1 with Bob", "location": "Berlin"},
-        ]
+        own = [{"date": planning.isoformat(), "time": "14:00-15:00", "title": "Travel planning with Bob", "location": "Berlin"},
+               *weekly(today, 3, "14:00-15:00", "1:1 with Bob")]
     elif username == "bob":
-        own = [
-            {"date": planning.isoformat(), "time": "14:00-15:00", "title": "Travel planning with Alice", "location": "Berlin"},
-            {"date": (trip + timedelta(days=8)).isoformat(), "time": "14:00-15:00", "title": "1:1 with Alice", "location": "Berlin"},
-        ]
+        own = [{"date": planning.isoformat(), "time": "14:00-15:00", "title": "Travel planning with Alice", "location": "Berlin"},
+               *weekly(today, 3, "14:00-15:00", "1:1 with Alice")]
     else:
         return []
     return sorted(own + team, key=lambda e: (e["date"], e["time"]))

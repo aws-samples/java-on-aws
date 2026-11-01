@@ -90,13 +90,13 @@ if stage >= "14":
 if stage >= "09":
     import jwt
     import auth
-    token = jwt.encode({"sub": "user-123"}, "secret", algorithm="HS256")
+    token = jwt.encode({"sub": "user-123", "username": "alice"}, "secret", algorithm="HS256")
 
     class Ctx:
         session_id = "sess-1"
         request_headers = {"Authorization": f"Bearer {token}"}
 
-    assert auth.conversation_id(Ctx) == "user-123:sess-1", "conversation id"
+    assert auth.conversation_id(Ctx) == "alice:sess-1", "conversation id"
     auth.ISSUER = "https://cognito-idp.us-east-1.amazonaws.com/pool"
     auth.jwks = jwt.PyJWKClient(f"{auth.ISSUER}/.well-known/jwks.json")
     assert client.post("/invocations", json={"prompt": "hi"}).status_code == 401, "jwt required"

@@ -17,6 +17,7 @@ import software.amazon.awscdk.services.apigatewayv2.HttpStageOptions;
 import software.amazon.awscdk.services.apigatewayv2.IAccessLogDestination;
 import software.amazon.awscdk.services.apigatewayv2.IAccessLogSettings;
 import software.amazon.awscdk.services.apigatewayv2.LogGroupLogDestination;
+import software.amazon.awscdk.services.apigatewayv2.ThrottleSettings;
 import software.amazon.awscdk.services.cognito.CfnUserPoolClient;
 import software.amazon.awscdk.services.cognito.CognitoDomainOptions;
 import software.amazon.awscdk.services.cognito.ManagedLoginVersion;
@@ -58,7 +59,7 @@ import java.util.Map;
  * - Lambda {prefix}-calendar-api (apps/agentcore-ai-agents/calendar-api/handler.py, inline code)
  *   behind the HTTP API {prefix}-calendar-api: GET /events with a JWT authorizer (issuer: the pool,
  *   audience: the agentcore client, scope calendar/read), access logs in /aws/apigateway/{prefix}-calendar-api;
- *   the handler also checks the bearer token with the pool's userInfo endpoint and reads the username there
+ *   stage throttling 20 requests/s (burst 50); the handler also checks the bearer token with the pool's userInfo endpoint and reads the username there
  * - SSM parameters {prefix}-calendar-url, {prefix}-calendar-pool-id, {prefix}-calendar-client-id
  */
 public class CalendarApi extends Construct {
@@ -200,6 +201,8 @@ public class CalendarApi extends Construct {
         api.addStage("DefaultStage", HttpStageOptions.builder()
             .stageName("$default")
             .autoDeploy(true)
+            // The workshop sends a few requests per minute; a flood gets 429 before the authorizer, the function, and the logs
+            .throttle(ThrottleSettings.builder().rateLimit(20).burstLimit(50).build())
             .accessLogSettings(new IAccessLogSettings() {
                 @Override
                 public IAccessLogDestination getDestination() {

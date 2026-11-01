@@ -33,9 +33,9 @@ def conversation_id(context):
     auth_header = (context.request_headers or {}).get("Authorization", "")
     if auth_header.startswith("Bearer "):
         try:
-            # >> Extract the `sub` claim (Cognito user ID) and combine it with the session ID for per-user isolation
+            # >> Extract the `username` claim (the Cognito user name, the same user ID as in the local chat UI) and combine it with the session ID for per-user isolation
             claims = jwt.decode(auth_header[7:], options={"verify_signature": False})
-            return f"{claims['sub']}:{session_id}"
+            return f"{claims['username']}:{session_id}"
             # <<
         except (jwt.PyJWTError, KeyError):
             pass

@@ -299,7 +299,7 @@ spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 EOF
 WS_TEST_BLOCK_200_14
 
-ws_run_block 15 'Creating the AI agent' '- 3-11: Logging and the Amazon Bedrock model: Claude Sonnet 5.5 through global cross-region inference' 440 465 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_200_15'
+ws_run_block 15 'Creating the AI agent' '- 3-11: Logging and the Amazon Bedrock model: Claude Sonnet 5.5 through global cross-region inference' 440 470 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_200_15'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -315,6 +315,11 @@ public class ChatService {
 
     private final ChatClient chatClient;
 
+        Format:
+        - Be friendly and concise.
+        - Use tables to compare options.
+        """;
+
     public ChatService(ChatClient.Builder chatClientBuilder) {
         this.chatClient = chatClientBuilder
             .build();
@@ -328,7 +333,7 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_200_15
 
-ws_run_block 16 'Creating the AI agent' '- stream().content() returns the answer as a Flux of text chunks, which the starter sends as Server-Sent Events' 479 507 'python' 'python-langgraph' <<'WS_TEST_BLOCK_200_16'
+ws_run_block 16 'Creating the AI agent' '- stream().content() returns the answer as a Flux of text chunks, which the starter sends as Server-Sent Events' 484 512 'python' 'python-langgraph' <<'WS_TEST_BLOCK_200_16'
 cat <<'EOF' > ~/environment/aiagent/main.py
 import os
 
@@ -360,7 +365,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_200_16
 
-ws_run_block 17 'Creating the AI agent' '- 25: Serve the Web UI from the static folder' 523 554 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_200_17'
+ws_run_block 17 'Creating the AI agent' '- 25: Serve the Web UI from the static folder' 528 559 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_200_17'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -395,32 +400,32 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_200_17
 
-ws_run_block 18 'Creating the AI agent' '4. Copy the chat UI into the project. The chat UI is static HTML, CSS, and JavaScript that the application serves on port 8080:' 571 572 'bash' 'python-strands' <<'WS_TEST_BLOCK_200_18'
+ws_run_block 18 'Creating the AI agent' '4. Copy the chat UI into the project. The chat UI is static HTML, CSS, and JavaScript that the application serves on port 8080:' 576 577 'bash' 'python-strands' <<'WS_TEST_BLOCK_200_18'
 mkdir -p ~/environment/aiagent/static
 cp ~/workshop/ui/* ~/environment/aiagent/static/
 WS_TEST_BLOCK_200_18
 
-ws_run_block 19 'Creating the AI agent' 'Creating the AI agent' 579 580 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_200_19'
+ws_run_block 19 'Creating the AI agent' 'Creating the AI agent' 584 585 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_200_19'
 mkdir -p ~/environment/aiagent/src/main/resources/static
 cp ~/workshop/ui/* ~/environment/aiagent/src/main/resources/static/
 WS_TEST_BLOCK_200_19
 
-ws_run_block 20 'Creating the AI agent' 'Creating the AI agent' 587 588 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_200_20'
+ws_run_block 20 'Creating the AI agent' 'Creating the AI agent' 592 593 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_200_20'
 mkdir -p ~/environment/aiagent/static
 cp ~/workshop/ui/* ~/environment/aiagent/static/
 WS_TEST_BLOCK_200_20
 
-ws_run_block 21 'Creating the AI agent' 'Creating the AI agent' 595 596 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_200_21'
+ws_run_block 21 'Creating the AI agent' 'Creating the AI agent' 600 601 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_200_21'
 mkdir -p ~/environment/aiagent/static
 cp ~/workshop/ui/* ~/environment/aiagent/static/
 WS_TEST_BLOCK_200_21
 
-ws_run_block 22 'Testing the AI agent' '1. Start the application in the background:' 607 608 'bash' '' <<'WS_TEST_BLOCK_200_22'
+ws_run_block 22 'Testing the AI agent' '1. Start the application in the background:' 612 613 'bash' '' <<'WS_TEST_BLOCK_200_22'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 WS_TEST_BLOCK_200_22
 
-ws_run_block 23 'Testing the AI agent' '2. Send a request to /invocations:' 616 620 'bash' '' 300 <<'WS_TEST_BLOCK_200_23'
+ws_run_block 23 'Testing the AI agent' '2. Send a request to /invocations:' 621 625 'bash' '' 300 <<'WS_TEST_BLOCK_200_23'
 curl -sN -X POST localhost:8080/invocations \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
@@ -428,20 +433,20 @@ curl -sN -X POST localhost:8080/invocations \
   -d '{"prompt": "What should I know before my first business trip to San Francisco?"}'; echo
 WS_TEST_BLOCK_200_23
 
-ws_run_block 24 'Testing the AI agent' '3. Send the same request as plain text, and stop the application:' 630 631 'bash' '' 300 <<'WS_TEST_BLOCK_200_24'
+ws_run_block 24 'Testing the AI agent' '3. Send the same request as plain text, and stop the application:' 635 636 'bash' '' 300 <<'WS_TEST_BLOCK_200_24'
 ~/workshop/scripts/local-app.sh ask "What should I know before my first business trip to San Francisco?"
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_200_24
 
-ws_skip_block 25 'Testing the AI agent' '4. Start the application for the chat UI:' 642 643 'bash' 'python-strands' 'foreground app for the chat UI'
+ws_skip_block 25 'Testing the AI agent' '4. Start the application for the chat UI:' 647 648 'bash' 'python-strands' 'foreground app for the chat UI'
 
-ws_skip_block 26 'Testing the AI agent' 'Testing the AI agent' 650 651 'bash' 'java-spring-ai' 'foreground app for the chat UI'
+ws_skip_block 26 'Testing the AI agent' 'Testing the AI agent' 655 656 'bash' 'java-spring-ai' 'foreground app for the chat UI'
 
-ws_skip_block 27 'Testing the AI agent' 'Testing the AI agent' 658 659 'bash' 'python-langgraph' 'foreground app for the chat UI'
+ws_skip_block 27 'Testing the AI agent' 'Testing the AI agent' 663 664 'bash' 'python-langgraph' 'foreground app for the chat UI'
 
-ws_skip_block 28 'Testing the AI agent' 'Testing the AI agent' 666 667 'bash' 'ts-vercel' 'foreground app for the chat UI'
+ws_skip_block 28 'Testing the AI agent' 'Testing the AI agent' 671 672 'bash' 'ts-vercel' 'foreground app for the chat UI'
 
-ws_run_block 29 'Committing changes' 'Initialize a Git repository and commit the code:' 692 697 'bash' '' <<'WS_TEST_BLOCK_200_29'
+ws_run_block 29 'Committing changes' 'Initialize a Git repository and commit the code:' 697 702 'bash' '' <<'WS_TEST_BLOCK_200_29'
 cd ~/environment/aiagent
 git config --global user.email "workshop-user@example.com"
 git config --global user.name "workshop-user"
@@ -7148,7 +7153,7 @@ def conversation_id(context):
     if auth_header.startswith("Bearer "):
         try:
             claims = jwt.decode(auth_header[7:], options={"verify_signature": False})
-            return f"{claims['sub']}:{session_id}"
+            return f"{claims['username']}:{session_id}"
         except (jwt.PyJWTError, KeyError):
             pass
     return session_id
@@ -7590,7 +7595,7 @@ public final class ConversationIdResolver {
                 String jwt = authHeader.substring(7);
                 String payload = new String(Base64.getUrlDecoder().decode(jwt.split("\\.")[1]));
                 JsonNode claims = jsonMapper.readTree(payload);
-                String userId = claims.get("sub").asString();
+                String userId = claims.get("username").asString();
                 return userId + ":" + sessionId;
             } catch (Exception e) {
                 logger.debug("JWT parsing failed, using sessionId only", e);
@@ -7824,7 +7829,7 @@ def conversation_id(context):
     if auth_header.startswith("Bearer "):
         try:
             claims = jwt.decode(auth_header[7:], options={"verify_signature": False})
-            return f"{claims['sub']}:{session_id}"
+            return f"{claims['username']}:{session_id}"
         except (jwt.PyJWTError, KeyError):
             pass
     return session_id
@@ -7970,8 +7975,8 @@ export function conversationId(context: { sessionId: string; headers: Record<str
   const authHeader = context.headers.authorization ?? context.headers.Authorization ?? '';
   if (authHeader.startsWith('Bearer ')) {
     try {
-      const { sub } = decodeJwt(authHeader.slice(7));
-      if (sub) return `${sub}:${sessionId}`;
+      const { username } = decodeJwt(authHeader.slice(7));
+      if (typeof username === 'string') return `${username}:${sessionId}`;
     } catch {
       // not a JWT: use the session ID only
     }
@@ -8136,7 +8141,7 @@ WS_TEST_BLOCK_1020_1
 
 ws_run_block 2 'Packaging the AI agent as a container' '1. Add ADOT for Python. Strands Agents creates OpenTelemetry spans for every agent invocation, model call, and tool call as soon as a tracer provider exists. ADOT provides the tracer provider and the exporter:' 61 62 'bash' 'python-strands' <<'WS_TEST_BLOCK_1020_2'
 cd ~/environment/aiagent
-uv add "aws-opentelemetry-distro~=0.18.0"
+uv add "aws-opentelemetry-distro~=0.22.0"
 WS_TEST_BLOCK_1020_2
 
 ws_run_block 3 'Packaging the AI agent as a container' '2. Create the Dockerfile:' 68 89 'dockerfile' 'python-strands' <<'WS_TEST_BLOCK_1020_3'
@@ -8601,7 +8606,7 @@ WS_TEST_BLOCK_1020_9
 
 ws_run_block 10 'Packaging the AI agent as a container' '1. LangGraph does not create OpenTelemetry spans itself. The OpenTelemetry instrumentation for LangChain creates a span for every agent invocation, model call, and tool call with the GenAI semantic conventions. Its scope opentelemetry.instrumentation.langchain is one that AgentCore Evaluations reads. ADOT loads it at startup and provides the tracer provider and the exporter. Add both:' 585 586 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_1020_10'
 cd ~/environment/aiagent
-uv add "aws-opentelemetry-distro~=0.18.0" "opentelemetry-instrumentation-langchain~=0.62.4"
+uv add "aws-opentelemetry-distro~=0.22.0" "opentelemetry-instrumentation-langchain~=0.62.4"
 WS_TEST_BLOCK_1020_10
 
 ws_run_block 11 'Packaging the AI agent as a container' '2. Create the Dockerfile:' 592 613 'dockerfile' 'python-langgraph' <<'WS_TEST_BLOCK_1020_11'
@@ -12806,13 +12811,13 @@ source ~/environment/.envrc
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 export AUTH_TOKEN=$(~/workshop/scripts/ask-runtime.sh token)
-ANSWER=$(~/workshop/scripts/local-app.sh ask "Am I free for my San Francisco trip? I fly on the Monday two months from now and come back on Saturday.")
+ANSWER=$(~/workshop/scripts/local-app.sh ask "Am I free during my San Francisco trip?")
 echo "${ANSWER}"
 CONSENT_URL=$(grep -oE 'https://[^ )>"]*authorize[^ )>"]*' <<< "${ANSWER}" | head -1 || true)
 if [ -n "${CONSENT_URL}" ]; then
   SESSION_URI=$(~/workshop/scripts/oauth-sign-in.sh "${CONSENT_URL}" alice "${IDE_PASSWORD}")
   ~/workshop/scripts/local-app.sh oauth "${SESSION_URI}" | grep "calendar is connected"
-  ~/workshop/scripts/local-app.sh ask "Am I free for my San Francisco trip? I fly on the Monday two months from now and come back on Saturday."
+  ~/workshop/scripts/local-app.sh ask "Am I free during my San Francisco trip?"
 fi
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_1400_19
@@ -12889,13 +12894,13 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
 WS_TEST_BLOCK_1400_27
 
 ws_run_block 28 'Testing the deployed AI agent' '1. Test the deployed AI agent as alice, the same way as locally:' 1331 1338 'bash' '' 900 <<'WS_TEST_BLOCK_1400_28'
-ANSWER=$(~/workshop/scripts/ask-runtime.sh ask "Am I free for my San Francisco trip? I fly on the Monday two months from now and come back on Saturday.")
+ANSWER=$(~/workshop/scripts/ask-runtime.sh ask "Am I free during my San Francisco trip?")
 echo "${ANSWER}"
 CONSENT_URL=$(grep -oE 'https://[^ )>"]*authorize[^ )>"]*' <<< "${ANSWER}" | head -1 || true)
 if [ -n "${CONSENT_URL}" ]; then
   SESSION_URI=$(~/workshop/scripts/oauth-sign-in.sh "${CONSENT_URL}" alice "${IDE_PASSWORD}")
   ~/workshop/scripts/ask-runtime.sh oauth "${SESSION_URI}" | grep "calendar is connected"
-  ~/workshop/scripts/ask-runtime.sh ask "Am I free for my San Francisco trip? I fly on the Monday two months from now and come back on Saturday."
+  ~/workshop/scripts/ask-runtime.sh ask "Am I free during my San Francisco trip?"
 fi
 WS_TEST_BLOCK_1400_28
 
@@ -14805,7 +14810,7 @@ source ~/environment/.envrc
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 export AUTH_TOKEN=$(~/workshop/scripts/ask-runtime.sh token)
-ATTACH_FILE=~/environment/samples/hotel-new-york.png ~/workshop/scripts/local-app.sh ask "Here is my hotel receipt from New York. Please register the trip and add the receipt to its expenses."
+ATTACH_FILE=~/environment/samples/hotel-new-york.png ~/workshop/scripts/local-app.sh ask "Here is my hotel receipt from my customer visit in New York. I flew there from Berlin. Please register the trip and add the receipt to its expenses."
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_1500_35
 
@@ -15148,7 +15153,7 @@ def user_gateway_tools(authorization):
 EOF
 WS_TEST_BLOCK_1620_8
 
-ws_run_block 9 'Calling the backoffice as the user' '2. Replace the content of main.py:' 202 340 'python' 'python-strands' <<'WS_TEST_BLOCK_1620_9'
+ws_run_block 9 'Calling the backoffice as the user' '2. Replace the content of main.py:' 202 341 'python' 'python-strands' <<'WS_TEST_BLOCK_1620_9'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -15188,6 +15193,7 @@ Rules:
 - Focus on business travel and expenses.
 - Ask for missing details such as dates, origin, or destination instead of guessing them.
 - Do not invent policy rules; say so when you are not sure.
+- Managers review and approve the expenses that employees submit. When a user asks about a colleague's expenses, look them up: the gateway's policies decide what each user may do.
 
 Format:
 - Be friendly and concise.
@@ -15290,7 +15296,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_1620_9
 
-ws_run_block 10 'Calling the backoffice as the user' '1. Create GatewayTools.java:' 364 469 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1620_10'
+ws_run_block 10 'Calling the backoffice as the user' '1. Create GatewayTools.java:' 366 471 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1620_10'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/GatewayTools.java
 package com.example.agent;
 
@@ -15399,7 +15405,7 @@ public class GatewayTools {
 EOF
 WS_TEST_BLOCK_1620_10
 
-ws_run_block 11 'Calling the backoffice as the user' '2. Replace the content of application.properties to read the JWT gateway URL:' 480 534 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1620_11'
+ws_run_block 11 'Calling the backoffice as the user' '2. Replace the content of application.properties to read the JWT gateway URL:' 482 536 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1620_11'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -15457,7 +15463,7 @@ app.jwt-gateway.url=${JWT_GATEWAY_URL:}
 EOF
 WS_TEST_BLOCK_1620_11
 
-ws_run_block 12 'Calling the backoffice as the user' '3. Replace the content of ChatService.java:' 542 768 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1620_12'
+ws_run_block 12 'Calling the backoffice as the user' '3. Replace the content of ChatService.java:' 544 771 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1620_12'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -15512,6 +15518,7 @@ public class ChatService {
         - Focus on business travel and expenses.
         - Ask for missing details such as dates, origin, or destination instead of guessing them.
         - Do not invent policy rules; say so when you are not sure.
+        - Managers review and approve the expenses that employees submit. When a user asks about a colleague's expenses, look them up: the gateway's policies decide what each user may do.
 
         Format:
         - Be friendly and concise.
@@ -15687,7 +15694,7 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_1620_12
 
-ws_run_block 13 'Calling the backoffice as the user' '1. Replace the content of mcptools.py:' 792 833 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1620_13'
+ws_run_block 13 'Calling the backoffice as the user' '1. Replace the content of mcptools.py:' 796 837 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1620_13'
 cat <<'EOF' > ~/environment/aiagent/mcp_tools.py
 import os
 
@@ -15732,7 +15739,7 @@ async def user_gateway_tools(authorization):
 EOF
 WS_TEST_BLOCK_1620_13
 
-ws_run_block 14 'Calling the backoffice as the user' '2. Replace the content of main.py:' 842 959 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1620_14'
+ws_run_block 14 'Calling the backoffice as the user' '2. Replace the content of main.py:' 846 964 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1620_14'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -15772,6 +15779,7 @@ Rules:
 - Focus on business travel and expenses.
 - Ask for missing details such as dates, origin, or destination instead of guessing them.
 - Do not invent policy rules; say so when you are not sure.
+- Managers review and approve the expenses that employees submit. When a user asks about a colleague's expenses, look them up: the gateway's policies decide what each user may do.
 
 Format:
 - Be friendly and concise.
@@ -15853,7 +15861,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_1620_14
 
-ws_run_block 15 'Calling the backoffice as the user' '1. Replace the content of mcp-tools.ts:' 982 1049 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1620_15'
+ws_run_block 15 'Calling the backoffice as the user' '1. Replace the content of mcp-tools.ts:' 988 1055 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1620_15'
 cat <<'EOF' > ~/environment/aiagent/mcp-tools.ts
 import { Sha256 } from '@aws-crypto/sha256-js';
 import { createMCPClient } from '@ai-sdk/mcp';
@@ -15924,7 +15932,7 @@ export async function userGatewayTools(authorization: string) {
 EOF
 WS_TEST_BLOCK_1620_15
 
-ws_run_block 16 'Calling the backoffice as the user' '2. Replace the content of main.ts:' 1058 1168 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1620_16'
+ws_run_block 16 'Calling the backoffice as the user' '2. Replace the content of main.ts:' 1064 1175 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1620_16'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -15958,6 +15966,7 @@ Rules:
 - Focus on business travel and expenses.
 - Ask for missing details such as dates, origin, or destination instead of guessing them.
 - Do not invent policy rules; say so when you are not sure.
+- Managers review and approve the expenses that employees submit. When a user asks about a colleague's expenses, look them up: the gateway's policies decide what each user may do.
 
 Format:
 - Be friendly and concise.
@@ -16038,9 +16047,9 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_1620_16
 
-ws_skip_block 17 'Calling the backoffice as the user' '- 87: Add the backoffice tools of the JWT Gateway for this user' 1188 1188 '' 'java-spring-ai' 'informational block without language'
+ws_skip_block 17 'Calling the backoffice as the user' '- 88: Add the backoffice tools of the JWT Gateway for this user' 1196 1196 '' 'java-spring-ai' 'informational block without language'
 
-ws_run_block 18 'Testing the manager approvals' 'Start the application in the background, ask as Alice and as Bob, and stop the application:' 1209 1216 'bash' '' 900 <<'WS_TEST_BLOCK_1620_18'
+ws_run_block 18 'Testing the manager approvals' 'Start the application in the background, ask as Alice and as Bob, and stop the application:' 1217 1224 'bash' '' 900 <<'WS_TEST_BLOCK_1620_18'
 source ~/environment/.envrc
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
@@ -16051,7 +16060,7 @@ AUTH_TOKEN=$(USER_NAME=bob ~/workshop/scripts/ask-runtime.sh token) \
 ~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_1620_18
 
-ws_run_block 19 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 1230 1235 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1620_19'
+ws_run_block 19 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 1238 1243 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1620_19'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -16060,7 +16069,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1620_19
 
-ws_run_block 20 'Redeploying the AI agent' 'Redeploying the AI agent' 1242 1248 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1620_20'
+ws_run_block 20 'Redeploying the AI agent' 'Redeploying the AI agent' 1250 1256 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1620_20'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -16070,7 +16079,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1620_20
 
-ws_run_block 21 'Redeploying the AI agent' 'Redeploying the AI agent' 1255 1260 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1620_21'
+ws_run_block 21 'Redeploying the AI agent' 'Redeploying the AI agent' 1263 1268 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1620_21'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -16079,7 +16088,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1620_21
 
-ws_run_block 22 'Redeploying the AI agent' 'Redeploying the AI agent' 1267 1272 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1620_22'
+ws_run_block 22 'Redeploying the AI agent' 'Redeploying the AI agent' 1275 1280 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1620_22'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -16088,7 +16097,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1620_22
 
-ws_run_block 23 'Redeploying the AI agent' '2. Update the runtime with the new image and the JWT gateway URL:' 1281 1291 'bash' '' <<'WS_TEST_BLOCK_1620_23'
+ws_run_block 23 'Redeploying the AI agent' '2. Update the runtime with the new image and the JWT gateway URL:' 1289 1299 'bash' '' <<'WS_TEST_BLOCK_1620_23'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --no-cli-pager --output json \
   | jq --arg uri "${ECR_URI}:latest" --arg jwt "${JWT_GATEWAY_URL}" '{agentRuntimeId,
@@ -16102,11 +16111,11 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
 WS_TEST_BLOCK_1620_23
 
-ws_run_block 24 'Testing the deployed AI agent' '1. Ask the deployed AI agent as Bob:' 1299 1299 'bash' '' <<'WS_TEST_BLOCK_1620_24'
+ws_run_block 24 'Testing the deployed AI agent' '1. Ask the deployed AI agent as Bob:' 1307 1307 'bash' '' <<'WS_TEST_BLOCK_1620_24'
 USER_NAME=bob ~/workshop/scripts/ask-runtime.sh ask "Which expenses has Alice submitted?"
 WS_TEST_BLOCK_1620_24
 
-ws_run_block 25 'Committing changes' 'Committing changes' 1319 1321 'bash' '' <<'WS_TEST_BLOCK_1620_25'
+ws_run_block 25 'Committing changes' 'Committing changes' 1327 1329 'bash' '' <<'WS_TEST_BLOCK_1620_25'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add policies"
@@ -16396,7 +16405,7 @@ def apply_system_prompt(event: BeforeModelCallEvent):
 EOF
 WS_TEST_BLOCK_1900_7
 
-ws_run_block 8 'Managing the prompt in a configuration bundle' '2. Replace the content of main.py:' 218 360 'python' 'python-strands' <<'WS_TEST_BLOCK_1900_8'
+ws_run_block 8 'Managing the prompt in a configuration bundle' '2. Replace the content of main.py:' 218 361 'python' 'python-strands' <<'WS_TEST_BLOCK_1900_8'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -16438,6 +16447,7 @@ Rules:
 - Focus on business travel and expenses.
 - Ask for missing details such as dates, origin, or destination instead of guessing them.
 - Do not invent policy rules; say so when you are not sure.
+- Managers review and approve the expenses that employees submit. When a user asks about a colleague's expenses, look them up: the gateway's policies decide what each user may do.
 
 Format:
 - Be friendly and concise.
@@ -16542,7 +16552,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_1900_8
 
-ws_run_block 9 'Managing the prompt in a configuration bundle' '1. Create PromptConfig.java:' 379 489 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1900_9'
+ws_run_block 9 'Managing the prompt in a configuration bundle' '1. Create PromptConfig.java:' 380 490 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1900_9'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/PromptConfig.java
 package com.example.agent;
 
@@ -16656,7 +16666,7 @@ public class PromptConfig implements BaseAdvisor {
 EOF
 WS_TEST_BLOCK_1900_9
 
-ws_run_block 10 'Managing the prompt in a configuration bundle' '2. Replace the content of application.properties to read the bundle ID:' 501 558 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1900_10'
+ws_run_block 10 'Managing the prompt in a configuration bundle' '2. Replace the content of application.properties to read the bundle ID:' 502 559 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_1900_10'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -16717,7 +16727,7 @@ app.config-bundle.id=${CONFIG_BUNDLE_ID:}
 EOF
 WS_TEST_BLOCK_1900_10
 
-ws_run_block 11 'Managing the prompt in a configuration bundle' '3. Replace the content of ChatService.java:' 566 799 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1900_11'
+ws_run_block 11 'Managing the prompt in a configuration bundle' '3. Replace the content of ChatService.java:' 567 801 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_1900_11'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -16772,6 +16782,7 @@ public class ChatService {
         - Focus on business travel and expenses.
         - Ask for missing details such as dates, origin, or destination instead of guessing them.
         - Do not invent policy rules; say so when you are not sure.
+        - Managers review and approve the expenses that employees submit. When a user asks about a colleague's expenses, look them up: the gateway's policies decide what each user may do.
 
         Format:
         - Be friendly and concise.
@@ -16954,7 +16965,7 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_1900_11
 
-ws_run_block 12 'Managing the prompt in a configuration bundle' '1. Create promptconfig.py:' 822 852 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1900_12'
+ws_run_block 12 'Managing the prompt in a configuration bundle' '1. Create promptconfig.py:' 824 854 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1900_12'
 cat <<'EOF' > ~/environment/aiagent/prompt_config.py
 import os
 import time
@@ -16988,7 +16999,7 @@ def system_prompt_from_bundle(request):
 EOF
 WS_TEST_BLOCK_1900_12
 
-ws_run_block 13 'Managing the prompt in a configuration bundle' '2. Replace the content of memory.py:' 861 925 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1900_13'
+ws_run_block 13 'Managing the prompt in a configuration bundle' '2. Replace the content of memory.py:' 863 927 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1900_13'
 cat <<'EOF' > ~/environment/aiagent/memory.py
 import os
 import uuid
@@ -17056,7 +17067,7 @@ def save_turn(state, runtime):
 EOF
 WS_TEST_BLOCK_1900_13
 
-ws_run_block 14 'Managing the prompt in a configuration bundle' '3. Replace the content of main.py:' 933 1052 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1900_14'
+ws_run_block 14 'Managing the prompt in a configuration bundle' '3. Replace the content of main.py:' 935 1055 'python' 'python-langgraph' <<'WS_TEST_BLOCK_1900_14'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -17097,6 +17108,7 @@ Rules:
 - Focus on business travel and expenses.
 - Ask for missing details such as dates, origin, or destination instead of guessing them.
 - Do not invent policy rules; say so when you are not sure.
+- Managers review and approve the expenses that employees submit. When a user asks about a colleague's expenses, look them up: the gateway's policies decide what each user may do.
 
 Format:
 - Be friendly and concise.
@@ -17179,7 +17191,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_1900_14
 
-ws_run_block 15 'Managing the prompt in a configuration bundle' '1. Create prompt-config.ts:' 1072 1120 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1900_15'
+ws_run_block 15 'Managing the prompt in a configuration bundle' '1. Create prompt-config.ts:' 1075 1123 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1900_15'
 cat <<'EOF' > ~/environment/aiagent/prompt-config.ts
 import {
   BedrockAgentCoreControlClient, GetConfigurationBundleCommand, GetConfigurationBundleVersionCommand,
@@ -17231,7 +17243,7 @@ export async function systemPrompt(defaultPrompt: string) {
 EOF
 WS_TEST_BLOCK_1900_15
 
-ws_run_block 16 'Managing the prompt in a configuration bundle' '2. Replace the content of main.ts:' 1129 1242 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1900_16'
+ws_run_block 16 'Managing the prompt in a configuration bundle' '2. Replace the content of main.ts:' 1132 1246 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_1900_16'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -17266,6 +17278,7 @@ Rules:
 - Focus on business travel and expenses.
 - Ask for missing details such as dates, origin, or destination instead of guessing them.
 - Do not invent policy rules; say so when you are not sure.
+- Managers review and approve the expenses that employees submit. When a user asks about a colleague's expenses, look them up: the gateway's policies decide what each user may do.
 
 Format:
 - Be friendly and concise.
@@ -17348,7 +17361,7 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_1900_16
 
-ws_run_block 17 'Testing the prompt from the bundle' 'Start the application in the background, ask a question, and stop the application:' 1256 1262 'bash' '' <<'WS_TEST_BLOCK_1900_17'
+ws_run_block 17 'Testing the prompt from the bundle' 'Start the application in the background, ask a question, and stop the application:' 1260 1266 'bash' '' <<'WS_TEST_BLOCK_1900_17'
 source ~/environment/.envrc
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
@@ -17358,7 +17371,7 @@ export AUTH_TOKEN=$(~/workshop/scripts/ask-runtime.sh token)
 grep -q "prompt v1" /tmp/answer.txt && echo "answered with the prompt from the bundle"
 WS_TEST_BLOCK_1900_17
 
-ws_run_block 18 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 1273 1278 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1900_18'
+ws_run_block 18 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 1277 1282 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1900_18'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -17367,7 +17380,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1900_18
 
-ws_run_block 19 'Redeploying the AI agent' 'Redeploying the AI agent' 1285 1291 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1900_19'
+ws_run_block 19 'Redeploying the AI agent' 'Redeploying the AI agent' 1289 1295 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1900_19'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -17377,7 +17390,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1900_19
 
-ws_run_block 20 'Redeploying the AI agent' 'Redeploying the AI agent' 1298 1303 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1900_20'
+ws_run_block 20 'Redeploying the AI agent' 'Redeploying the AI agent' 1302 1307 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1900_20'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -17386,7 +17399,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1900_20
 
-ws_run_block 21 'Redeploying the AI agent' 'Redeploying the AI agent' 1310 1315 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1900_21'
+ws_run_block 21 'Redeploying the AI agent' 'Redeploying the AI agent' 1314 1319 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1900_21'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -17395,7 +17408,7 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1900_21
 
-ws_run_block 22 'Redeploying the AI agent' '2. Update the runtime with the new image and the bundle ID:' 1324 1334 'bash' '' <<'WS_TEST_BLOCK_1900_22'
+ws_run_block 22 'Redeploying the AI agent' '2. Update the runtime with the new image and the bundle ID:' 1328 1338 'bash' '' <<'WS_TEST_BLOCK_1900_22'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --no-cli-pager --output json \
   | jq --arg uri "${ECR_URI}:latest" --arg bundle "${CONFIG_BUNDLE_ID}" '{agentRuntimeId,
@@ -17409,7 +17422,7 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
 WS_TEST_BLOCK_1900_22
 
-ws_run_block 23 'Testing a prompt change without a deployment' '1. Change the signature in a new bundle version:' 1342 1349 'bash' '' <<'WS_TEST_BLOCK_1900_23'
+ws_run_block 23 'Testing a prompt change without a deployment' '1. Change the signature in a new bundle version:' 1346 1353 'bash' '' <<'WS_TEST_BLOCK_1900_23'
 sed 's/^- End every answer with the line: (prompt v1)$/- End every answer with the line: (prompt v2)/' \
   /tmp/system-prompt-reviewed.txt > /tmp/system-prompt-v2.txt
 aws bedrock-agentcore-control update-configuration-bundle --bundle-id "${CONFIG_BUNDLE_ID}" --no-cli-pager \
@@ -17420,12 +17433,12 @@ aws bedrock-agentcore-control list-configuration-bundle-versions --bundle-id "${
   --query 'versions[].{version: versionId, message: lineageMetadata.commitMessage}' --output table
 WS_TEST_BLOCK_1900_23
 
-ws_run_block 24 'Testing a prompt change without a deployment' '2. Ask the deployed AI agent after a minute, when its cache has expired:' 1355 1356 'bash' '' 300 <<'WS_TEST_BLOCK_1900_24'
+ws_run_block 24 'Testing a prompt change without a deployment' '2. Ask the deployed AI agent after a minute, when its cache has expired:' 1359 1360 'bash' '' 300 <<'WS_TEST_BLOCK_1900_24'
 sleep 60
 ~/workshop/scripts/ask-runtime.sh ask "How much can I spend on a hotel per night in San Francisco?"
 WS_TEST_BLOCK_1900_24
 
-ws_run_block 25 'Committing changes' 'Committing changes' 1381 1383 'bash' '' <<'WS_TEST_BLOCK_1900_25'
+ws_run_block 25 'Committing changes' 'Committing changes' 1385 1387 'bash' '' <<'WS_TEST_BLOCK_1900_25'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add the system prompt from the configuration bundle"

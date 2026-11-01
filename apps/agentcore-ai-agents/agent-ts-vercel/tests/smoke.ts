@@ -77,8 +77,8 @@ if (stage >= '08') {
 
 if (stage >= '09') {
   const auth = await import(`${process.cwd()}/auth.ts`);
-  const token = `${Buffer.from('{"alg":"none"}').toString('base64url')}.${Buffer.from('{"sub":"user-123"}').toString('base64url')}.`;
-  assert.equal(auth.conversationId({ sessionId: 'sess-1', headers: { authorization: `Bearer ${token}` } }), 'user-123:sess-1', 'conversation id');
+  const token = `${Buffer.from('{"alg":"none"}').toString('base64url')}.${Buffer.from('{"sub":"user-123","username":"alice"}').toString('base64url')}.`;
+  assert.equal(auth.conversationId({ sessionId: 'sess-1', headers: { authorization: `Bearer ${token}` } }), 'alice:sess-1', 'conversation id');
   assert.equal(auth.conversationId({ sessionId: 'alice', headers: { authorization: 'alice' } }), 'alice', 'local mode');
   const res = await fetch(`${base}/invocations`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': 's' }, body: '{"prompt":"hi"}' });
   assert.equal(res.status, 401, 'jwt required');

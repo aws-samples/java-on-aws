@@ -32,9 +32,9 @@ export function conversationId(context: { sessionId: string; headers: Record<str
   const authHeader = context.headers.authorization ?? context.headers.Authorization ?? '';
   if (authHeader.startsWith('Bearer ')) {
     try {
-      // >> Extract the `sub` claim (Cognito user ID) and combine it with the session ID for per-user isolation
-      const { sub } = decodeJwt(authHeader.slice(7));
-      if (sub) return `${sub}:${sessionId}`;
+      // >> Extract the `username` claim (the Cognito user name, the same user ID as in the local chat UI) and combine it with the session ID for per-user isolation
+      const { username } = decodeJwt(authHeader.slice(7));
+      if (typeof username === 'string') return `${username}:${sessionId}`;
       // <<
     } catch {
       // not a JWT: use the session ID only
