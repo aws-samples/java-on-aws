@@ -1008,7 +1008,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1793534422131"
+      ContentHash: "1793549090066"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -2522,7 +2522,9 @@ Resources:
               - xray:UpdateTraceSegmentDestination
             Condition:
               StringEquals:
-                aws:RequestedRegion: us-east-1
+                aws:RequestedRegion:
+                  - us-east-1
+                  - us-west-2
             Effect: Allow
             Resource: "*"
             Sid: AgentCoreAiAgentsAccountLevelWrite
