@@ -13,7 +13,12 @@ from strands.models.bedrock import BedrockModel
 app = BedrockAgentCoreApp()
 log = app.logger
 
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
+# >> Reasoning blocks in the history are bound to the tools they were created with. `drop_block` drops them after a tool change
+THINKING = {"anthropic_beta": ["thinking-binding-controls-2026-08-01"],
+            "thinking": {"type": "adaptive", "block_binding": {"prefix_mismatch_behavior": "drop_block"}}}
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096,
+                     additional_request_fields=THINKING)
+# <<
 
 SYSTEM_PROMPT = """
 You are the travel and expense assistant of the company. You help employees plan business trips,

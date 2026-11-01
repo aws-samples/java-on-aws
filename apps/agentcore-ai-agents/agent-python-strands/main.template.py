@@ -57,12 +57,15 @@ log = app.logger
 app.add_middleware(auth.JwtAuthMiddleware)
 #-
 
+THINKING = {"anthropic_beta": ["thinking-binding-controls-2026-08-01"],
+            "thinking": {"type": "adaptive", "block_binding": {"prefix_mismatch_behavior": "drop_block"}}}
 #!guardrails
-model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096)
+model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096,
+                     additional_request_fields=THINKING)
 #-
 #+guardrails Apply the guardrail to every model call when `GUARDRAIL_ID` is set
 model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4096,
-                     **guardrail.model_config())
+                     additional_request_fields=THINKING, **guardrail.model_config())
 #-
 
 SYSTEM_PROMPT = """

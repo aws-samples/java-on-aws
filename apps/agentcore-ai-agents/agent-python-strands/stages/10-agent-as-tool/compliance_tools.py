@@ -45,7 +45,7 @@ def forward_links(text):
     # <<
     if not links:
         return text
-    return REPORT_LINK.sub("", text) + "\n\n(The download link for the report is appended after your answer.)"
+    return REPORT_LINK.sub("", text) + "\n\nReport: the auditor created audit-report.md. The user sees its download link below your answer. Say that the report is attached below, and do not write a link."
 
 
 @tool

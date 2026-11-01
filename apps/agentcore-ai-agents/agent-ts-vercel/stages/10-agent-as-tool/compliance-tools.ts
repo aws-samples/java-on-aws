@@ -47,7 +47,7 @@ export function forwardLinks(text: string) {
   if (!links.length) {
     return text;
   }
-  return `${text.replace(REPORT_LINK, '')}\n\n(The download link for the report is appended after your answer.)`;
+  return `${text.replace(REPORT_LINK, '')}\n\nReport: the auditor created audit-report.md. The user sees its download link below your answer. Say that the report is attached below, and do not write a link.`;
 }
 
 // >> The auditor as a tool; registered only when `AUDITOR_HARNESS_ARN` is set

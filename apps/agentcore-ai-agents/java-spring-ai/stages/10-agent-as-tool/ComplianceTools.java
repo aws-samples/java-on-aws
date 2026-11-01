@@ -112,7 +112,7 @@ public class ComplianceTools {
             return answer;
         }
         reportLinks.computeIfAbsent(sessionId, k -> new ArrayList<>()).addAll(links);
-        return matcher.replaceAll("") + "\n\n(The download link for the report is appended after your answer.)";
+        return matcher.replaceAll("") + "\n\nReport: the auditor created audit-report.md. The user sees its download link below your answer. Say that the report is attached below, and do not write a link.";
     }
     // <<
 }
