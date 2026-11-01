@@ -6,22 +6,41 @@ const AIRPORTS = {
   NRT: "Tokyo Narita", HND: "Tokyo Haneda", TYO: "Tokyo", JFK: "New York", SFO: "San Francisco",
   TPA: "Tampa", SIN: "Singapore", DXB: "Dubai", IST: "Istanbul", HEL: "Helsinki", ZRH: "Zurich",
 };
-const CITY_AIRPORTS = { tokyo: "TYO", berlin: "BER", london: "LHR", paris: "CDG", munich: "MUC", "new york": "JFK" };
+const CITY_AIRPORTS = {
+  tokyo: "TYO", berlin: "BER", london: "LHR", paris: "CDG", munich: "MUC", "new york": "JFK", "san francisco": "SFO",
+};
 const AIRLINES = [
   ["LH", "Lufthansa", "FRA"], ["NH", "ANA", "MUC"], ["JL", "Japan Airlines", "HEL"], ["AY", "Finnair", "HEL"],
   ["TK", "Turkish Airlines", "IST"], ["EK", "Emirates", "DXB"], ["LX", "SWISS", "ZRH"], ["KL", "KLM", "AMS"],
 ];
 const HOTELS = {
-  Tokyo: [
-    ["Shinjuku Business Hotel", "Shinjuku", 3, 98], ["Hotel Gracery Shinjuku", "Shinjuku", 4, 135],
-    ["Keio Plaza Hotel", "Shinjuku", 4, 168], ["Park Hyatt Tokyo", "Shinjuku", 5, 520],
-    ["Tokyu Stay Shibuya", "Shibuya", 3, 112], ["Hotel Niwa Tokyo", "Chiyoda", 4, 145],
+  "San Francisco": [
+    ["SoMa Business Hotel", "SoMa", 3, 129], ["Market Street Hotel", "Market Street", 4, 149],
+    ["Yerba Buena Suites", "Yerba Buena", 4, 185], ["Mission Bay Hotel", "Mission Bay", 4, 165],
+    ["Union Square Inn", "Union Square", 3, 119], ["Embarcadero Grand", "Embarcadero", 5, 420],
   ],
   default: [
     ["City Center Hotel", "Center", 3, 105], ["Business Inn", "Center", 3, 92],
     ["Grand Hotel", "Old Town", 4, 160], ["Palace Hotel", "Center", 5, 410],
   ],
 };
+
+// Default trip dates relative to today: the Monday of the week that contains today plus two months, back on Saturday
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function tripDates() {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth() + 2, today.getDate());
+  if (start.getDate() !== today.getDate()) start.setDate(0); // Dec 31 + 2 months: the last day of February
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 5);
+  return { start: isoDate(start), end: isoDate(end) };
+}
+const TRIP = tripDates();
+function cityName(value) {
+  return value.trim().toLowerCase().split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
 
 function seed(text) {
   let h = 2166136261;
@@ -66,8 +85,8 @@ function flights(from, to, date, cabin) {
 }
 
 function renderFlights() {
-  const from = code(param("from", "BER")), to = code(param("to", "TYO"));
-  const date = param("date", "2026-11-16"), cabin = param("cabin", "ECONOMY").toUpperCase();
+  const from = code(param("from", "BER")), to = code(param("to", "SFO"));
+  const date = param("date", TRIP.start), cabin = param("cabin", "ECONOMY").toUpperCase();
   document.title = `Flights ${from} to ${to} on ${date} - Corporate Travel Portal`;
   const rows = flights(from, to, date, cabin).map((f) =>
     `<tr><td>${f.flight}</td><td>${f.airline}</td><td>${f.departure}</td><td>${f.duration}</td>` +
@@ -82,9 +101,8 @@ function renderFlights() {
 }
 
 function renderHotels() {
-  const city = param("city", "Tokyo");
-  const nights = Math.max(1, Math.round((new Date(param("checkout", "2026-11-21")) - new Date(param("checkin", "2026-11-16"))) / 864e5)) || 5;
-  const name = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
+  const name = cityName(param("city", "San Francisco"));
+  const nights = Math.max(1, Math.round((new Date(param("checkout", TRIP.end)) - new Date(param("checkin", TRIP.start))) / 864e5)) || 5;
   document.title = `Hotels in ${name} - Corporate Travel Portal`;
   const rows = (HOTELS[name] || HOTELS.default).map(([hotel, district, stars, rate]) =>
     `<tr><td>${hotel}</td><td>${district}</td><td>${"★".repeat(stars)}</td><td class="num">${rate} USD</td>` +
@@ -111,8 +129,16 @@ function renderBooking() {
   });
 }
 
+function renderHome() {
+  document.querySelector("[name=date]").value = TRIP.start;
+  document.getElementById("flights-link").textContent = `flights.html?from=BER&to=SFO&date=${TRIP.start}`;
+  document.getElementById("hotels-link").textContent =
+    `hotels.html?city=San Francisco&checkin=${TRIP.start}&checkout=${TRIP.end}`;
+}
+
 // Loaded at the end of <body>: render right away, before DOMContentLoaded
 const page = document.body.dataset.page;
+if (page === "home") renderHome();
 if (page === "flights") renderFlights();
 if (page === "hotels") renderHotels();
 if (page === "booking") renderBooking();

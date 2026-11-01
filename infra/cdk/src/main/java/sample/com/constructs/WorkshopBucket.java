@@ -1,6 +1,7 @@
 package sample.com.constructs;
 
 import software.amazon.awscdk.Aws;
+import software.amazon.awscdk.Fn;
 import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.services.s3.BlockPublicAccess;
 import software.amazon.awscdk.services.s3.Bucket;
@@ -9,8 +10,6 @@ import software.amazon.awscdk.services.s3.CfnBucket;
 import software.amazon.awscdk.services.ssm.StringParameter;
 import software.constructs.Construct;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -47,10 +46,12 @@ public class WorkshopBucket extends Construct {
         super(scope, id);
 
         String prefix = props.getPrefix();
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        // Unique per stack and stable across stack updates: the first block of the GUID in the stack ID
+        // (a generation time in the name replaced both buckets on every update from a regenerated template)
+        String suffix = Fn.select(0, Fn.split("-", Fn.select(2, Fn.split("/", Aws.STACK_ID))));
 
         this.accessLogBucket = Bucket.Builder.create(this, "AccessLogs")
-            .bucketName(String.format("%s-access-logs-%s-%s-%s", prefix, Aws.ACCOUNT_ID, Aws.REGION, timestamp))
+            .bucketName(String.format("%s-access-logs-%s-%s-%s", prefix, Aws.ACCOUNT_ID, Aws.REGION, suffix))
             .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
             .encryption(BucketEncryption.S3_MANAGED)
             .enforceSsl(true)
@@ -66,7 +67,7 @@ public class WorkshopBucket extends Construct {
         // Create S3 bucket for workshop data (thread dumps, profiling data)
         // Note: autoDeleteObjects removed - CfnPreDeleteCleanup Lambda handles bucket emptying
         this.bucket = Bucket.Builder.create(this, "Bucket")
-            .bucketName(String.format("%s-bucket-%s-%s-%s", prefix, Aws.ACCOUNT_ID, Aws.REGION, timestamp))
+            .bucketName(String.format("%s-bucket-%s-%s-%s", prefix, Aws.ACCOUNT_ID, Aws.REGION, suffix))
             .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
             .enforceSsl(true)
             .serverAccessLogsBucket(accessLogBucket)

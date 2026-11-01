@@ -44,7 +44,8 @@ const tools = {
 };
 
 function withContext(prompt: string, conversationId: string) {
-  const timestamp = new Date().toISOString().slice(0, 19);
+  const now = new Date();
+  const timestamp = `${now.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })}, ${now.toISOString().slice(0, 16).replace('T', ' ')}`;
   const userId = conversationId.split(':')[0];
   return `[Current date and time: ${timestamp}] [UserId: ${userId}]\n${prompt}`;
 }

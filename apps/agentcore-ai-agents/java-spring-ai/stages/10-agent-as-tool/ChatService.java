@@ -21,6 +21,7 @@ import org.springframework.ai.tool.ToolCallbackProvider;
 // >>
 import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 // <<
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -85,6 +86,7 @@ public class ChatService {
                 The following documents may be relevant as reference material:
                 {question_answer_context}
                 """).build())
+            .searchRequest(SearchRequest.builder().topK(5).build())
             .build());
         logger.info("KB RAG enabled");
 

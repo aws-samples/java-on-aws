@@ -14,6 +14,7 @@ import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -63,6 +64,7 @@ public class ChatService {
                 The following documents may be relevant as reference material:
                 {question_answer_context}
                 """).build())
+            .searchRequest(SearchRequest.builder().topK(5).build())
             .build());
         logger.info("KB RAG enabled");
 

@@ -1,0 +1,547 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Community - API V4",
+    "description": "The Nager.Date Community API is a public service that provides reliable information about public holidays for countries around the world. It allows developers to query national holiday dates, check whether a specific day is a public holiday and list upcoming holidays.\r\n\r\n\r\n\r\nBy using the API, you agree to the <a href=\"https://date.nager.at/Legal/TermsOfService\">Terms of Service.</a>",
+    "termsOfService": "https://date.nager.at/Legal/TermsOfService",
+    "contact": {
+      "name": "Nager Software Solutions",
+      "email": "hello@nager.software"
+    },
+    "version": "v4"
+  },
+  "paths": {
+    "/api/v4/Countries/{countryCode}": {
+      "get": {
+        "tags": [
+          "Countries"
+        ],
+        "summary": "Retrieves detailed information about a specific country",
+        "description": "Provide a valid `ISO 3166-1 alpha-2` country code to retrieve country metadata.\nThe response includes commonly used and official country names, the assigned region, and if available neighboring countries based on geographical borders.",
+        "parameters": [
+          {
+            "name": "countryCode",
+            "in": "path",
+            "description": "The 2-letter ISO 3166-1 country code (e.g., \"US\", \"GB\").",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "us"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the requested country information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountryInfoWithBordersDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The provided country code is invalid or not recognized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "Countries_GET_Retrieves_detailed_information"
+      }
+    },
+    "/api/v4/Countries/Available": {
+      "get": {
+        "tags": [
+          "Countries"
+        ],
+        "summary": "Retrieve the complete list of all supported countries",
+        "description": "This endpoint returns all countries for which public-holiday data is available.\nEach entry includes the country's name and ISO code.",
+        "responses": {
+          "200": {
+            "description": "Successfully returns the list of supported countries.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CountryV4Dto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "Countries_GET_Retrieve_the_complete_list_of_"
+      }
+    },
+    "/api/v4/Holidays/{countryCode}/{year}": {
+      "get": {
+        "tags": [
+          "Holidays"
+        ],
+        "summary": "Retrieve the list of all public holidays for the specified year and country",
+        "description": "This endpoint returns all officially recognized public holidays for the given country\nand year. Each holiday entry includes the local and English holiday names, information\nabout whether the holiday applies nationally or only in specific subdivisions, and the\nassociated holiday type classifications.",
+        "parameters": [
+          {
+            "name": "countryCode",
+            "in": "path",
+            "description": "A valid `ISO 3166-1 alpha-2` country code.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "us"
+            }
+          },
+          {
+            "name": "year",
+            "in": "path",
+            "description": "The target year for which public holidays should be retrieved.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 2026
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved the list of public holidays.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicHolidayV4Dto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was invalid. See the validation details for more information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The provided country code is invalid or not recognized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "Holidays_GET_Retrieve_the_list_of_all_publi"
+      }
+    },
+    "/api/v4/Holidays/{countryCode}/Next": {
+      "get": {
+        "tags": [
+          "Holidays"
+        ],
+        "summary": "Retrieve all upcoming public holidays occurring within the next 365 days for a given country",
+        "description": "The list includes only future holidays relative to the current date and is useful for forecasting, event planning, and applications that provide forward-looking holiday insights.",
+        "parameters": [
+          {
+            "name": "countryCode",
+            "in": "path",
+            "description": "A valid `ISO 3166-1 alpha-2` country code.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "us"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of upcoming public holidays for the next 365 days.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicHolidayV4Dto"
+                  }
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No upcoming holidays were found for the specified country.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "The provided country code is invalid or not recognized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "Holidays_GET_Retrieve_all_upcoming_public_h"
+      }
+    },
+    "/api/v4/IotHolidays/{isoCode}/IsToday/{offset}": {
+      "get": {
+        "tags": [
+          "IotHolidays"
+        ],
+        "summary": "Determines whether today is a public holiday in the specified country or subdivision, optionally adjusted by a UTC offset.",
+        "description": "By default, the calculation is based on the current UTC date.\nYou may optionally provide a timezone offset to evaluate the holiday status relative to a different local timezone.\n\nThis endpoint is optimized for simple command-line or automation workflows where only the HTTP status code is required\n\n```\nSTATUSCODE=$(curl --silent --output /dev/stderr --write-out \"%{http_code}\" https://date.nager.at/Api/v4/IotHolidays/AT-1/IsToday/2)\nif [ $STATUSCODE -eq 200 ]; then\n    # Today is a public holiday\nfi\n```",
+        "parameters": [
+          {
+            "name": "isoCode",
+            "in": "path",
+            "description": "A valid ISO 3166-1 alpha-2 country code (e.g., \"AT\") or an ISO 3166-2 subdivision code (e.g., \"AT-1\").",
+            "required": true,
+            "schema": {
+              "minLength": 2,
+              "type": "string",
+              "default": "us"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "path",
+            "description": "UTC timezone offset in hours (range: -12 to +12). Default is 0.",
+            "required": true,
+            "schema": {
+              "maximum": 12,
+              "minimum": -12,
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Today is a public holiday",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "204": {
+            "description": "Today is not a public holiday",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "400": {
+            "description": "The request was invalid. See the validation details for more information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "IotHolidays_GET_Determines_whether_today_is_a_"
+      }
+    },
+    "/api/v4/Versions": {
+      "get": {
+        "tags": [
+          "Versions"
+        ],
+        "summary": "Retrieve the current version information of the Nager.Date library",
+        "description": "This endpoint returns detailed version information about the Nager.Date implementation running on the server, including the exact NuGet package version used by the API.",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved version information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionInfoDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected server error occurred.",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "operationId": "Versions_GET_Retrieve_the_current_version_i"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CountryInfoDto": {
+        "required": [
+          "commonName",
+          "nativeName",
+          "officialName",
+          "countryCode",
+          "region"
+        ],
+        "type": "object",
+        "properties": {
+          "commonName": {
+            "type": "string",
+            "description": "The commonly used name of the country."
+          },
+          "nativeName": {
+            "type": "string",
+            "description": "The name of the country in its native language."
+          },
+          "officialName": {
+            "type": "string",
+            "description": "The official name of the country."
+          },
+          "countryCode": {
+            "type": "string",
+            "description": "ISO 3166-1 alpha-2 country code."
+          },
+          "region": {
+            "type": "string",
+            "description": "Geopolitical or continental region of the country."
+          }
+        },
+        "description": "Detailed information about a country."
+      },
+      "CountryInfoWithBordersDto": {
+        "required": [
+          "commonName",
+          "nativeName",
+          "officialName",
+          "countryCode",
+          "region"
+        ],
+        "type": "object",
+        "properties": {
+          "commonName": {
+            "type": "string",
+            "description": "The commonly used name of the country."
+          },
+          "nativeName": {
+            "type": "string",
+            "description": "The name of the country in its native language."
+          },
+          "officialName": {
+            "type": "string",
+            "description": "The official name of the country."
+          },
+          "countryCode": {
+            "type": "string",
+            "description": "ISO 3166-1 alpha-2 country code."
+          },
+          "region": {
+            "type": "string",
+            "description": "Geopolitical or continental region of the country."
+          },
+          "borders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountryInfoDto"
+            },
+            "description": "Neighboring countries based on geographical borders.",
+            "nullable": true
+          }
+        },
+        "description": "Detailed information about a country, including neighboring countries."
+      },
+      "CountryV4Dto": {
+        "required": [
+          "countryCode",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "countryCode": {
+            "type": "string",
+            "description": "The ISO 3166-1 alpha-2 country code (e.g., \"US\", \"DE\")."
+          },
+          "name": {
+            "type": "string",
+            "description": "The common name of the country."
+          }
+        },
+        "description": "Represents a country supported by the Nager.Date API."
+      },
+      "HolidayTypes": {
+        "enum": [
+          "Public",
+          "Bank",
+          "School",
+          "Authorities",
+          "Optional",
+          "Observance"
+        ],
+        "type": "string",
+        "format": "string"
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "PublicHolidayV4Dto": {
+        "required": [
+          "date",
+          "name",
+          "countryCode",
+          "holidayTypes"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "The date of the holiday.",
+            "format": "date"
+          },
+          "name": {
+            "type": "string",
+            "description": "English name of the holiday."
+          },
+          "countryCode": {
+            "type": "string",
+            "description": "ISO 3166-1 alpha-2 country code."
+          },
+          "nationalHoliday": {
+            "type": "boolean",
+            "description": "Indicates if this holiday applies to the entire country."
+          },
+          "subdivisionCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "ISO-3166-2 codes of the subdivisions where this holiday applies",
+            "nullable": true
+          },
+          "holidayTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HolidayTypes"
+            },
+            "description": "List of holiday types this holiday is classified under."
+          }
+        },
+        "description": "Represents a public holiday."
+      },
+      "ValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "VersionInfoDto": {
+        "required": [
+          "name",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the library."
+          },
+          "version": {
+            "type": "string",
+            "description": "The version of the library."
+          }
+        },
+        "description": "Version information."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Countries",
+      "description": "Provides access to detailed country information and the list of all countries supported by the API. This includes general metadata such as country names, codes, regions, and related details."
+    },
+    {
+      "name": "Holidays",
+      "description": "Includes functionality for retrieving public-holiday data, checking whether a specific day is a public holiday, and listing upcoming holidays."
+    },
+    {
+      "name": "IotHolidays",
+      "description": "Endpoints optimized for IoT devices and automation scripts. Returns only HTTP status codes (e.g., 200 OK or 204 No Content) without a response body to eliminate parsing overhead and reduce bandwidth."
+    },
+    {
+      "name": "Versions",
+      "description": "Returns information about the current version of the Nager.Date API in use."
+    }
+  ],
+  "servers": [
+    {
+      "url": "https://nagerholidays.com"
+    }
+  ]
+}

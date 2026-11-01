@@ -106,7 +106,8 @@ const tools = {
 #+tools Add context to every prompt: the model always knows the date and the user without a tool call
 
 function withContext(prompt: string, conversationId: string) {
-  const timestamp = new Date().toISOString().slice(0, 19);
+  const now = new Date();
+  const timestamp = `${now.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })}, ${now.toISOString().slice(0, 16).replace('T', ' ')}`;
   const userId = conversationId.split(':')[0];
   return `[Current date and time: ${timestamp}] [UserId: ${userId}]\n${prompt}`;
 }
@@ -152,7 +153,7 @@ const app = new BedrockAgentCoreApp({
 #+guardrails Mask payment data before the model, the memory, and the long-term memory search see the prompt
       payload.prompt = await guardrail.maskPii(payload.prompt);
 #-
-#+memory `context.sessionId` is the `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id` header. In local mode, the Web UI sends the login username as the session ID
+#+memory The session header (`context.sessionId`) has the format `actorId:sessionId`. `memory.parse` splits it into the actor and the session
       const { actorId, sessionId } = memory.parse(conversationId);
 #-
 #!tools

@@ -27,7 +27,7 @@
         "arn:aws:iam::{{.AccountId}}:role/aiagent-kb-role",
         "arn:aws:iam::{{.AccountId}}:role/aiagent-runtime-role",
         "arn:aws:iam::{{.AccountId}}:role/backoffice-role",
-        "arn:aws:iam::{{.AccountId}}:role/mcp-currency-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-receipt-role",
         "arn:aws:iam::{{.AccountId}}:role/mcp-gateway-role"
       ],
       "Condition": {
@@ -47,7 +47,7 @@
         "arn:aws:iam::{{.AccountId}}:role/aiagent-kb-role",
         "arn:aws:iam::{{.AccountId}}:role/aiagent-runtime-role",
         "arn:aws:iam::{{.AccountId}}:role/backoffice-role",
-        "arn:aws:iam::{{.AccountId}}:role/mcp-currency-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-receipt-role",
         "arn:aws:iam::{{.AccountId}}:role/mcp-gateway-role"
       ],
       "Condition": {
@@ -67,7 +67,7 @@
         "arn:aws:iam::{{.AccountId}}:role/aiagent-kb-role",
         "arn:aws:iam::{{.AccountId}}:role/aiagent-runtime-role",
         "arn:aws:iam::{{.AccountId}}:role/backoffice-role",
-        "arn:aws:iam::{{.AccountId}}:role/mcp-currency-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-receipt-role",
         "arn:aws:iam::{{.AccountId}}:role/mcp-gateway-role"
       ]
     },
@@ -79,7 +79,7 @@
         "arn:aws:iam::{{.AccountId}}:role/aiagent-kb-role",
         "arn:aws:iam::{{.AccountId}}:role/aiagent-runtime-role",
         "arn:aws:iam::{{.AccountId}}:role/backoffice-role",
-        "arn:aws:iam::{{.AccountId}}:role/mcp-currency-role",
+        "arn:aws:iam::{{.AccountId}}:role/mcp-receipt-role",
         "arn:aws:iam::{{.AccountId}}:role/mcp-gateway-role"
       ],
       "Condition": {

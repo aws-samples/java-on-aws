@@ -117,7 +117,7 @@ if calendar_tools.CALENDAR_URL:
 
 
 def with_context(prompt, conversation_id):
-    timestamp = datetime.now().isoformat(timespec="seconds")
+    timestamp = datetime.now().strftime("%A, %Y-%m-%d %H:%M")
     user_id = conversation_id.split(":")[0]
     return f"[Current date and time: {timestamp}] [UserId: {user_id}]\n{prompt}"
 #-
@@ -195,7 +195,7 @@ async def invoke(payload, context):
 #+policies The user's token selects the backoffice tools that the user may call
     agent = await get_agent(conversation_id, authorization)
 #-
-#+memory `context.session_id` is the `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id` header. In local mode, the Web UI sends the login username as the session ID
+#+memory The session header (`context.session_id`) has the format `actorId:sessionId`. `memory_config` splits it into the actor and the session
     ctx, config = memory.memory_config(conversation_id)
 #-
 #+browser Tools that run during this request store their files under the conversation ID

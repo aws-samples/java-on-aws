@@ -1,9 +1,9 @@
 #!/bin/bash
-# Facilitators only (docs/FACILITATOR.md): bring a fresh Code Editor to the start of a module, unattended.
+# Facilitators only (FACILITATOR_GUIDE.md): bring a fresh Code Editor to the start of a module, unattended.
 #
 #   fast-forward.sh --to WEIGHT [FRAMEWORK] [ws-test arguments...]
 #
-# WEIGHT: the module to stop before (title -> weight table in docs/FACILITATOR.md), for example 1100.
+# WEIGHT: the module to stop before (title -> weight table in FACILITATOR_GUIDE.md), for example 1100.
 # FRAMEWORK: python-strands, python-langgraph, ts-vercel, java-spring-ai; default: FRAMEWORK in ~/environment/.envrc.
 # Runs the workshop's ws-test script (every code block of the pages before WEIGHT, in order) with --onlyTab FRAMEWORK
 # from the start. Resources found by name are reused, project folders are created from scratch: run it on a fresh

@@ -53,7 +53,7 @@ if compliance_tools.AUDITOR_HARNESS_ARN:
 
 
 def with_context(prompt, conversation_id):
-    timestamp = datetime.now().isoformat(timespec="seconds")
+    timestamp = datetime.now().strftime("%A, %Y-%m-%d %H:%M")
     user_id = conversation_id.split(":")[0]
     return f"[Current date and time: {timestamp}] [UserId: {user_id}]\n{prompt}"
 

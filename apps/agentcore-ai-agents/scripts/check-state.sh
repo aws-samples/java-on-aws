@@ -21,7 +21,7 @@ echo "== ~/environment/.envrc"
 for var in ACCOUNT_ID AWS_REGION IDE_PASSWORD FRAMEWORK AGENTCORE_MEMORY_ID KNOWLEDGE_BASE_ID ARTIFACTS_BUCKET PORTAL_URL \
     GATEWAY_POOL_ID GATEWAY_CLIENT_ID GATEWAY_DISCOVERY_URL VPC_ID SUBNET_ID SG_ID MCP_RUNTIME_ID MCP_ENDPOINT \
     M2M_TOKEN_URI GATEWAY_ID GATEWAY_URL AIAGENT_USER_POOL_ID AIAGENT_DISCOVERY_URL AIAGENT_CLIENT_ID \
-    COGNITO_ISSUER_URI AIAGENT_RUNTIME_ID AIAGENT_ENDPOINT ONLINE_EVALUATION_CONFIG_ID GATEWAY_LOG_GROUP UI_BUCKET UI_DOMAIN; do
+    COGNITO_ISSUER_URI AIAGENT_RUNTIME_ID AIAGENT_ENDPOINT UI_BUCKET UI_DOMAIN; do
   check "${var}" test -n "${!var:-}"
 done
 
@@ -54,9 +54,6 @@ for role in aiagent-kb-role backoffice-role mcp-gateway-role aiagent-runtime-rol
 done
 check "Transaction Search (spans to CloudWatch Logs) ACTIVE" equals "CloudWatchLogs ACTIVE" \
   aws xray get-trace-segment-destination --region "${REGION}" --query '[Destination, Status]' --output text
-check "Gateway log delivery ${GATEWAY_ID:-}-logs" aws logs get-delivery-source --region "${REGION}" --name "${GATEWAY_ID:-none}-logs"
-check "online evaluation aiagent_online ACTIVE" equals "ACTIVE" \
-  ${CTL} get-online-evaluation-config --online-evaluation-config-id "${ONLINE_EVALUATION_CONFIG_ID:-none}" --query status --output text
 check "UI https://${UI_DOMAIN:-none}" equals "200" curl -s -o /dev/null -w "%{http_code}" "https://${UI_DOMAIN:-none}"
 
 echo "== Working copies"

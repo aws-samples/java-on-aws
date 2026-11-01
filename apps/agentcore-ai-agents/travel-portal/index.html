@@ -1,19 +1,19 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Corporate Travel Portal</title><link rel="stylesheet" href="style.css"></head>
 <body data-page="home">
-<header><strong>Corporate Travel Portal</strong><a href="index.html">Flights</a><a href="hotels.html">Hotels</a><a href="booking.html">Booking</a><a href="deals/tokyo-hotels.html">Deals</a></header>
+<header><strong>Corporate Travel Portal</strong><a href="index.html">Flights</a><a href="hotels.html">Hotels</a><a href="booking.html">Booking</a><a href="deals/san-francisco-hotels.html">Deals</a></header>
 <main>
 <h1>Book business travel</h1>
 <form class="search" action="flights.html">
 <label>From<input name="from" value="BER"></label>
-<label>To<input name="to" value="TYO"></label>
-<label>Departure<input name="date" type="date" value="2026-11-16"></label>
+<label>To<input name="to" value="SFO"></label>
+<label>Departure<input name="date" type="date"></label>
 <label>Class<select name="cabin"><option>ECONOMY</option><option>PREMIUM_ECONOMY</option><option>BUSINESS</option></select></label>
 <button>Search flights</button>
 </form>
 <p class="notice">Search results link to the booking form. Every booking needs your manager's approval.</p>
-<p>Direct links: <code>flights.html?from=BER&amp;to=TYO&amp;date=2026-11-16</code>, <code>hotels.html?city=Tokyo&amp;checkin=2026-11-16&amp;checkout=2026-11-21</code></p>
+<p>Direct links: <code id="flights-link"></code>, <code id="hotels-link"></code>, hotel deals: <code>deals/san-francisco-hotels.html</code></p>
 </main>
-<footer>Example Corp travel desk - workshop demo site</footer>
+<footer>Corporate Travel Portal - workshop demo site</footer>
 <script src="portal.js"></script>
 </body></html>

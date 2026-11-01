@@ -85,7 +85,7 @@ def get_agent(conversation_id):
 
 @app.entrypoint
 async def invoke(payload, context):
-    # >> `context.session_id` is the `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id` header. In local mode, the Web UI sends the login username as the session ID
+    # >> `context.session_id` is the session header. In Code Editor, the chat UI sends the user name
     agent = get_agent(context.session_id)
     # <<
     async for event in agent.stream_async(payload["prompt"]):

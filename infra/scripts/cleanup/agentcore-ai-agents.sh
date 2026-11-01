@@ -30,7 +30,7 @@ readonly USER_POOLS=(mcp-gateway-pool aiagent-user-pool)
 readonly TABLES=(backoffice-trip backoffice-expense)
 readonly ECR_REPOSITORIES=(aiagent backoffice)
 readonly LAMBDA_FUNCTIONS=(mcp-receipt-reader)
-readonly ROLES=(aiagent-kb-role backoffice-role mcp-gateway-role mcp-currency-role aiagent-runtime-role)
+readonly ROLES=(aiagent-kb-role backoffice-role mcp-gateway-role mcp-receipt-role aiagent-runtime-role)
 readonly DEFAULT_WAIT_SECONDS=900
 readonly POLL_SECONDS=10
 
