@@ -40,7 +40,7 @@ MEMORY_ID = os.environ["AGENTCORE_MEMORY_ID"]
 REGION = os.environ.get("AWS_REGION") or boto3.session.Session().region_name
 
 
-# >> Discover LTM strategy namespaces at startup — no need to save individual strategy IDs
+# >> The namespaces of the strategies, read from the memory at startup
 def discover_namespaces():
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
     memory = control.get_memory(memoryId=MEMORY_ID)["memory"]
@@ -53,7 +53,7 @@ log.info("Discovered %d LTM namespaces", len(NAMESPACES))
 
 
 def memory_session_manager(conversation_id):
-    # >> The session header has the format `actorId` or `actorId:sessionId`. LTM is retrieved from every strategy namespace of this actor
+    # >> The session header has the format `actorId` or `actorId:sessionId`. Long-term memory comes from every namespace of the actor
     actor_id, _, session_id = conversation_id.partition(":")
     retrieval = {
         ns.replace("{memoryStrategyId}", strategy_id).replace("{actorId}", actor_id):
@@ -67,7 +67,7 @@ def memory_session_manager(conversation_id):
         session_id=session_id or "default-session",
         retrieval_config=retrieval,
     )
-    # >> `AgentCoreMemorySessionManager` restores STM history and saves each new message
+    # >> `AgentCoreMemorySessionManager` loads the turns of the session and saves each new message
     return AgentCoreMemorySessionManager(config, REGION)
     # <<
 
@@ -80,7 +80,7 @@ def get_agent(conversation_id):
         agents[conversation_id] = Agent(
             model=model,
             system_prompt=SYSTEM_PROMPT,
-            # >> Attach the session manager to the agent; one agent per conversation
+            # >> One agent per conversation, with its session manager
             session_manager=memory_session_manager(conversation_id),
             # <<
             callback_handler=None,
