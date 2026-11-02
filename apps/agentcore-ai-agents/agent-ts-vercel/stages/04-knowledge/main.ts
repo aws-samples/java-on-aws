@@ -50,7 +50,7 @@ const app = new BedrockAgentCoreApp({
       const result = streamText({
         model, system, maxOutputTokens: 4096,
         messages: [...history, { role: 'user', content: prompt }],
-// >> Register the tools; `stopWhen` lets the model call tools and continue for up to 10 steps
+// >> Register the tools. `stopWhen` lets the model call tools and continue for up to 10 steps
         tools,
         stopWhen: stepCountIs(10),
 // <<

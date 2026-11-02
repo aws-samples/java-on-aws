@@ -190,7 +190,7 @@ const app = new BedrockAgentCoreApp({
 #+document-processing The new message with the attached file; the text part keeps `guardContent`
         messages: [...history, await attachments.userMessage(prompt, payload)],
 #-
-#+knowledge!policies Register the tools; `stopWhen` lets the model call tools and continue for up to 10 steps
+#+knowledge!policies Register the tools. `stopWhen` lets the model call tools and continue for up to 10 steps
         tools,
 #-
 #+policies Add the backoffice tools of the JWT Gateway for this user
@@ -208,13 +208,13 @@ const app = new BedrockAgentCoreApp({
         answer += text;
         yield text;
       }
-#+browser Append screenshots and generated files as S3 links after the answer; they are not saved to memory
+#+browser Append the screenshots and generated files as S3 links after the answer, outside the memory
       const files = await artifacts.asMarkdown(conversationId);
       if (files) {
         yield files;
       }
 #-
-#+memory Save the turn; AgentCore Memory extracts facts and preferences from it
+#+memory Save the turn. AgentCore Memory extracts facts and preferences from it
       await memory.save(actorId, sessionId, payload.prompt, answer);
 #-
     },

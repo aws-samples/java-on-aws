@@ -57,7 +57,7 @@
 			<groupId>org.springaicommunity</groupId>
 			<artifactId>spring-ai-agentcore-memory</artifactId>
 		</dependency>
-		<!-- >> Bedrock Knowledge Base vector store and the `QuestionAnswerAdvisor`; Bean Validation for the Knowledge Base properties -->
+		<!-- >> Bedrock Knowledge Base vector store and the `QuestionAnswerAdvisor`. Bean Validation for the Knowledge Base properties -->
 		<!-- Knowledge Base (RAG) -->
 		<dependency>
 			<groupId>org.springframework.ai</groupId>

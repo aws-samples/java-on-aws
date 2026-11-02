@@ -31,7 +31,7 @@ async def invoke(payload):
     # <<
 
 
-# >> Serve the Web UI from the `static` folder
+# >> Serve the chat UI from the `static` folder
 app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 # <<
 

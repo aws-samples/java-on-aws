@@ -80,7 +80,7 @@ async def invoke(payload, context):
     async for chunk, _ in stream:
         if isinstance(chunk, AIMessageChunk) and chunk.text:
             yield chunk.text
-# >> Append screenshots and generated files after the answer; they are not saved to memory
+# >> Append the screenshots and generated files after the answer, outside the memory
     files = artifacts.as_markdown(conversation_id)
     if files:
         yield files

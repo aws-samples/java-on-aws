@@ -54,7 +54,7 @@ const app = new BedrockAgentCoreApp({
         answer += text;
         yield text;
       }
-// >> Save the turn; AgentCore Memory extracts facts and preferences from it
+// >> Save the turn. AgentCore Memory extracts facts and preferences from it
       await memory.save(actorId, sessionId, payload.prompt, answer);
 // <<
     },

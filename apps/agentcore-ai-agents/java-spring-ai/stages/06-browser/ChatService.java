@@ -40,7 +40,7 @@ public class ChatService {
     private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
 
     private final ChatClient chatClient;
-    // >> The artifact stores keep screenshots and generated files per conversation; `ArtifactLinks` uploads them to S3
+    // >> The artifact stores keep screenshots and generated files per conversation. `ArtifactLinks` uploads them to S3
     private final ArtifactStore<GeneratedFile> browserArtifactStore;
     private final ArtifactLinks artifactLinks;
     // <<
@@ -98,7 +98,7 @@ public class ChatService {
         localTools.add(webGroundingTools);
         logger.info("Web Grounding enabled");
 
-        // >> Keep the artifact store and links for `appendScreenshots()`; the browser tools go into the tool callback providers
+        // >> Keep the artifact store and links for `appendScreenshots()`. The browser tools go into the tool callback providers
         // Browser
         this.browserArtifactStore = browserArtifactStore;
         this.artifactLinks = artifactLinks;
@@ -115,7 +115,7 @@ public class ChatService {
             // <<
             .defaultAdvisors(advisors.toArray(new Advisor[0]))
             .defaultTools(localTools.toArray())
-            // >> `.defaultTools()` also accepts `ToolCallbackProvider` instances; the calls accumulate
+            // >> `.defaultTools()` also accepts `ToolCallbackProvider` instances. The calls accumulate
             .defaultTools(toolCallbackProviders.toArray())
             // <<
             .build();
@@ -129,7 +129,7 @@ public class ChatService {
     private Flux<String> chat(String prompt, String sessionId) {
         return chatClient.prompt().user(prompt)
             .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, sessionId))
-            // >> Append screenshots after the answer; the session ID goes into the Reactor context for the tools
+            // >> Append screenshots after the answer. The session ID goes into the Reactor context for the tools
             .stream().content()
             .concatWith(Flux.defer(() -> appendScreenshots(sessionId)))
             .contextWrite(ctx -> ctx.put(SessionConstants.SESSION_ID_KEY, sessionId));

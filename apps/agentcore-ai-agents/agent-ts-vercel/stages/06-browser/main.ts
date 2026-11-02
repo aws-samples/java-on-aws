@@ -75,7 +75,7 @@ const app = new BedrockAgentCoreApp({
         answer += text;
         yield text;
       }
-// >> Append screenshots and generated files as S3 links after the answer; they are not saved to memory
+// >> Append the screenshots and generated files as S3 links after the answer, outside the memory
       const files = await artifacts.asMarkdown(conversationId);
       if (files) {
         yield files;

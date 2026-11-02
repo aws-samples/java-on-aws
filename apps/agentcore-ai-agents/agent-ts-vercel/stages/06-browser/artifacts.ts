@@ -9,7 +9,7 @@ export const currentSession = new AsyncLocalStorage<string>();
 // <<
 const files = new Map<string, { name: string; data: Uint8Array; mediaType: string }[]>();
 
-// >> Artifacts bucket from `~/environment/.envrc`; objects expire after one day (bucket lifecycle rule)
+// >> The artifacts bucket from `~/environment/.envrc`. A lifecycle rule deletes the objects after one day
 const BUCKET = process.env.ARTIFACTS_BUCKET!;
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 // <<

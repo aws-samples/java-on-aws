@@ -28,7 +28,7 @@ class Context:
     session_id: str
 
 
-# >> Discover LTM strategy namespaces at startup — no need to save individual strategy IDs
+# >> Read the namespaces of the long-term memory strategies at startup, so no strategy IDs need to be saved
 def discover_namespaces():
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
     memory = control.get_memory(memoryId=MEMORY_ID)["memory"]
@@ -66,7 +66,7 @@ def with_long_term_memory(system_prompt):
     return prompt
 
 
-# >> After each turn, save the question and the answer as events; AgentCore Memory extracts facts and preferences from them
+# >> After each turn, save the question and the answer as events. AgentCore Memory extracts facts and preferences from them
 @after_agent
 def save_turn(state, runtime):
     ctx = runtime.context

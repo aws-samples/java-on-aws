@@ -13,12 +13,12 @@ const bedrock = createAmazonBedrock({ region: process.env.AWS_REGION, credential
 const model = bedrock('global.anthropic.claude-sonnet-5-5');
 // <<
 
-// >> `BedrockAgentCoreApp` is an HTTP service with the `/invocations` and `/ping` endpoints; `requestSchema` validates the request body
+// >> `BedrockAgentCoreApp` is an HTTP service with the `/invocations` and `/ping` endpoints. `requestSchema` validates the request body
 const app = new BedrockAgentCoreApp({
   invocationHandler: {
     requestSchema: z.object({ prompt: z.string() }),
 // <<
-    // >> `streamText()` streams the model output; each yielded chunk is sent as a server-sent event
+    // >> `streamText()` streams the model output. Each yielded chunk is sent as a server-sent event
     async *process(payload) {
       const result = streamText({ model, prompt: payload.prompt, maxOutputTokens: 4096 });
       for await (const text of result.textStream) {
@@ -29,7 +29,7 @@ const app = new BedrockAgentCoreApp({
   },
 });
 
-// >> Serve the Web UI from the `static` folder in local mode (the container image has no `static` folder)
+// >> Serve the chat UI from the `static` folder in local mode (the container image has no `static` folder)
 if (existsSync('static')) {
   await app['_app'].register(fastifyStatic, { root: path.resolve('static') });
 }

@@ -10,7 +10,7 @@ const MEMORY_ID = process.env.AGENTCORE_MEMORY_ID!;
 const data = new BedrockAgentCoreClient({ region: process.env.AWS_REGION });
 const control = new BedrockAgentCoreControlClient({ region: process.env.AWS_REGION });
 
-// >> Discover LTM strategy namespaces at startup — no need to save individual strategy IDs
+// >> Read the namespaces of the long-term memory strategies at startup, so no strategy IDs need to be saved
 const memory = await control.send(new GetMemoryCommand({ memoryId: MEMORY_ID }));
 const namespaces = (memory.memory?.strategies ?? []).flatMap((s) =>
   (s.namespaces ?? []).map((ns) => ns.replace('{memoryStrategyId}', s.strategyId!)));
@@ -43,7 +43,7 @@ export async function facts(actorId: string, question: string): Promise<string[]
 }
 // <<
 
-// >> Save the turn as conversational events; the strategies extract long-term memory from them
+// >> Save the turn as conversational events. The strategies extract long-term memory from them
 export async function save(actorId: string, sessionId: string, user: string, assistant: string) {
   await data.send(new CreateEventCommand({
     memoryId: MEMORY_ID, actorId, sessionId, eventTimestamp: new Date(),

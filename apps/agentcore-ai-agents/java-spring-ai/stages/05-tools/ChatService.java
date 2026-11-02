@@ -68,7 +68,7 @@ public class ChatService {
             .build());
         logger.info("KB RAG enabled");
 
-        // >> The context advisor adds date, time, and user to every prompt; the web grounding tool is a local tool
+        // >> The context advisor adds date, time, and user to every prompt. The web grounding tool is a local tool
         // ContextAdvisor
         advisors.add(contextAdvisor);
         logger.info("Context Advisor enabled");

@@ -104,7 +104,7 @@ public class ChatService {
         toolCallbackProviders.add(browserTools);
         logger.info("Browser enabled");
 
-        // >> Keep the artifact store for `appendGeneratedFiles()`; add the code interpreter tool
+        // >> Keep the artifact store for `appendGeneratedFiles()`. Add the code interpreter tool
         // Code Interpreter
         this.codeInterpreterArtifactStore = codeInterpreterArtifactStore;
         toolCallbackProviders.add(codeInterpreterTools);
@@ -159,7 +159,7 @@ public class ChatService {
         return sb.toString();
     }
 
-    // >> Images render inline, other files as download links; the sandbox's npm files are skipped
+    // >> Images render inline, other files as download links. The sandbox's npm files are skipped
     private Flux<String> appendGeneratedFiles(String sessionId) {
         List<GeneratedFile> files = codeInterpreterArtifactStore.retrieve(sessionId);
         if (files == null || files.isEmpty()) {

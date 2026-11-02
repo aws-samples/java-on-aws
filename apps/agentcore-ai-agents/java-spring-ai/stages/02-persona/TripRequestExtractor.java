@@ -54,7 +54,7 @@ class TripRequestExtractor implements ApplicationRunner {
             .system("Extract the business trip request from the email. Today is " + today + ".")
         // <<
             .user(email)
-            // >> Bedrock native structured output; `entity()` returns a validated `TripRequest`
+            // >> Bedrock native structured output. `entity()` returns a validated `TripRequest`
             .advisors(AdvisorParams.ENABLE_NATIVE_STRUCTURED_OUTPUT)
             .call()
             .entity(TripRequest.class);

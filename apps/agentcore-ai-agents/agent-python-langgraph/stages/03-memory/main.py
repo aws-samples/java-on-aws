@@ -56,7 +56,7 @@ async def invoke(payload, context):
     ctx, config = memory.memory_config(conversation_id)
 # <<
     prompt = payload["prompt"]
-# >> Pass actor and session as `config` for the checkpointer and as `context` for the middleware; only the new message is sent, the checkpointer restores the history
+# >> Pass actor and session as `config` for the checkpointer and as `context` for the middleware. Only the new message is sent, and the checkpointer restores the history
     stream = agent.astream({"messages": [prompt]}, config=config, context=ctx, stream_mode="messages")
 # <<
     async for chunk, _ in stream:

@@ -24,7 +24,7 @@ public class ArtifactLinks {
     private final S3Presigner presigner = S3Presigner.create();
     private final String bucket;
 
-    // >> Artifacts bucket from `application.properties`; objects expire after one day (bucket lifecycle rule)
+    // >> The artifacts bucket from `application.properties`. A lifecycle rule deletes the objects after one day
     public ArtifactLinks(@Value("${app.artifacts.bucket}") String bucket) {
     // <<
         this.bucket = bucket;

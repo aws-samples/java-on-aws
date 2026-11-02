@@ -46,7 +46,7 @@ public class ChatService {
         - Use tables to compare options.
         """;
 
-    // >> `AgentCoreMemory` provides the STM and LTM advisors in one bean
+    // >> `AgentCoreMemory` provides the short-term and long-term memory advisors in one bean
     public ChatService(AgentCoreMemory agentCoreMemory,
         ChatClient.Builder chatClientBuilder) {
 

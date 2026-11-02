@@ -17,14 +17,14 @@ model = BedrockModel(model_id="global.anthropic.claude-sonnet-5-5", max_tokens=4
 # <<
 async def invoke(payload):
     agent = Agent(model=model, callback_handler=None)
-    # >> `stream_async()` returns events as the model generates them; text chunks are in `data`
+    # >> `stream_async()` returns events as the model generates them. Text chunks are in `data`
     async for event in agent.stream_async(payload["prompt"]):
         if "data" in event:
             yield event["data"]
     # <<
 
 
-# >> Serve the Web UI from the `static` folder
+# >> Serve the chat UI from the `static` folder
 app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 # <<
 

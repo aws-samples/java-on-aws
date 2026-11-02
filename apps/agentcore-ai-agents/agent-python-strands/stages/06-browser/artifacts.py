@@ -10,7 +10,7 @@ current_session = ContextVar("current_session", default="default")
 # <<
 _files = {}
 
-# >> Artifacts bucket from `~/environment/.envrc`; objects expire after one day (bucket lifecycle rule)
+# >> The artifacts bucket from `~/environment/.envrc`. A lifecycle rule deletes the objects after one day
 BUCKET = os.environ["ARTIFACTS_BUCKET"]
 REGION = os.environ.get("AWS_REGION") or boto3.session.Session().region_name
 s3 = boto3.client("s3", region_name=REGION, config=Config(signature_version="s3v4"))

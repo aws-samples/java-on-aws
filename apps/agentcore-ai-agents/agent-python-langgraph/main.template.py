@@ -216,13 +216,13 @@ async def invoke(payload, context):
 #+document-processing The message with the attached file: the image for the model, the S3 URI in the text for tools
     prompt = attachments.message(prompt, payload)
 #-
-#+memory Pass actor and session as `config` for the checkpointer and as `context` for the middleware; only the new message is sent, the checkpointer restores the history
+#+memory Pass actor and session as `config` for the checkpointer and as `context` for the middleware. Only the new message is sent, and the checkpointer restores the history
     stream = agent.astream({"messages": [prompt]}, config=config, context=ctx, stream_mode="messages")
 #-
     async for chunk, _ in stream:
         if isinstance(chunk, AIMessageChunk) and chunk.text:
             yield chunk.text
-#+browser Append screenshots and generated files after the answer; they are not saved to memory
+#+browser Append the screenshots and generated files after the answer, outside the memory
     files = artifacts.as_markdown(conversation_id)
     if files:
         yield files

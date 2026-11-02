@@ -20,7 +20,7 @@ def execute_code(code: str, output_files: list[str] | None = None) -> str:
         code: Python code to execute
         output_files: Names of the files the code creates that the user should see
     """
-    # >> Start an AgentCore Code Interpreter session; it stops when the block exits
+    # >> Start an AgentCore Code Interpreter session, which stops when the block exits
     with code_session(REGION) as client:
     # <<
         # >> Run the code and collect the text output

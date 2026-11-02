@@ -73,13 +73,13 @@ public class ChatService {
 @@-
 
     private final ChatClient chatClient;
-@@+browser The artifact stores keep screenshots and generated files per conversation; `ArtifactLinks` uploads them to S3
+@@+browser The artifact stores keep screenshots and generated files per conversation. `ArtifactLinks` uploads them to S3
     private final ArtifactStore<GeneratedFile> browserArtifactStore;
 @@-
 @@+code-interpreter
     private final ArtifactStore<GeneratedFile> codeInterpreterArtifactStore;
 @@-
-@@+browser The artifact stores keep screenshots and generated files per conversation; `ArtifactLinks` uploads them to S3
+@@+browser The artifact stores keep screenshots and generated files per conversation. `ArtifactLinks` uploads them to S3
     private final ArtifactLinks artifactLinks;
 @@-
 @@+agent-as-tool The compliance auditor tool keeps the report links per conversation
@@ -123,7 +123,7 @@ public class ChatService {
 @@!memory
     public ChatService(ChatClient.Builder chatClientBuilder) {
 @@-
-@@+memory `AgentCoreMemory` provides the STM and LTM advisors in one bean
+@@+memory `AgentCoreMemory` provides the short-term and long-term memory advisors in one bean
     public ChatService(AgentCoreMemory agentCoreMemory,
 @@-
 @@+knowledge `VectorStore` is auto-configured for the Bedrock Knowledge Base
@@ -181,7 +181,7 @@ public class ChatService {
         }
 
 @@-
-@@+memory `agentCoreMemory.advisors` holds the LTM advisors first, then STM; the starter sets the order
+@@+memory `agentCoreMemory.advisors` holds the long-term memory advisors first, then the short-term memory advisor. The starter sets the order
         // Memory (STM + LTM)
         advisors.addAll(agentCoreMemory.advisors);
         logger.info("Memory enabled: {} advisors", agentCoreMemory.advisors.size());
@@ -200,13 +200,13 @@ public class ChatService {
             .build());
         logger.info("KB RAG enabled");
 @@-
-@@+tools The context advisor adds date, time, and user to every prompt; the web grounding tool is a local tool
+@@+tools The context advisor adds date, time, and user to every prompt. The web grounding tool is a local tool
 
         // ContextAdvisor
         advisors.add(contextAdvisor);
         logger.info("Context Advisor enabled");
 @@-
-@@+tools The context advisor adds date, time, and user to every prompt; the web grounding tool is a local tool
+@@+tools The context advisor adds date, time, and user to every prompt. The web grounding tool is a local tool
 @@!mcp-client
 
         // Tools
@@ -214,7 +214,7 @@ public class ChatService {
         localTools.add(webGroundingTools);
         logger.info("Web Grounding enabled");
 @@-
-@@+browser Keep the artifact store and links for `appendScreenshots()`; the browser tools go into the tool callback providers
+@@+browser Keep the artifact store and links for `appendScreenshots()`. The browser tools go into the tool callback providers
 
         // Browser
         this.browserArtifactStore = browserArtifactStore;
@@ -223,7 +223,7 @@ public class ChatService {
         // Tool Callback Providers
         List<ToolCallbackProvider> toolCallbackProviders = new ArrayList<>();
 @@-
-@@+browser Keep the artifact store and links for `appendScreenshots()`; the browser tools go into the tool callback providers
+@@+browser Keep the artifact store and links for `appendScreenshots()`. The browser tools go into the tool callback providers
 @@!guardrails
         toolCallbackProviders.add(browserTools);
 @@-
@@ -234,7 +234,7 @@ public class ChatService {
 @@+browser
         logger.info("Browser enabled");
 @@-
-@@+code-interpreter Keep the artifact store for `appendGeneratedFiles()`; add the code interpreter tool
+@@+code-interpreter Keep the artifact store for `appendGeneratedFiles()`. Add the code interpreter tool
 
         // Code Interpreter
         this.codeInterpreterArtifactStore = codeInterpreterArtifactStore;
@@ -297,7 +297,7 @@ public class ChatService {
 @@!mcp-client
             .defaultTools(localTools.toArray())
 @@-
-@@+browser `.defaultTools()` also accepts `ToolCallbackProvider` instances; the calls accumulate
+@@+browser `.defaultTools()` also accepts `ToolCallbackProvider` instances. The calls accumulate
             .defaultTools(toolCallbackProviders.toArray())
 @@-
             .build();
@@ -360,19 +360,19 @@ public class ChatService {
 @@!browser
             .stream().content();
 @@-
-@@+browser Append screenshots after the answer; the session ID goes into the Reactor context for the tools
+@@+browser Append screenshots after the answer. The session ID goes into the Reactor context for the tools
             .stream().content()
 @@-
 @@+code-interpreter Append generated files (charts, CSVs) after the answer
             .concatWith(Flux.defer(() -> appendGeneratedFiles(sessionId)))
 @@-
-@@+browser Append screenshots after the answer; the session ID goes into the Reactor context for the tools
+@@+browser Append screenshots after the answer. The session ID goes into the Reactor context for the tools
             .concatWith(Flux.defer(() -> appendScreenshots(sessionId)))
 @@-
 @@+agent-as-tool Append the links to the audit reports after the answer
             .concatWith(Flux.defer(() -> appendAuditReports(sessionId)))
 @@-
-@@+browser Append screenshots after the answer; the session ID goes into the Reactor context for the tools
+@@+browser Append screenshots after the answer. The session ID goes into the Reactor context for the tools
 @@!identity
             .contextWrite(ctx -> ctx.put(SessionConstants.SESSION_ID_KEY, sessionId));
 @@-
@@ -416,7 +416,7 @@ public class ChatService {
         return sb.toString();
     }
 @@-
-@@+code-interpreter Images render inline, other files as download links; the sandbox's npm files are skipped
+@@+code-interpreter Images render inline, other files as download links. The sandbox's npm files are skipped
 
     private Flux<String> appendGeneratedFiles(String sessionId) {
         List<GeneratedFile> files = codeInterpreterArtifactStore.retrieve(sessionId);

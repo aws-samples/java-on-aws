@@ -227,7 +227,7 @@ async def invoke(payload, context):
     async for event in agent.stream_async(prompt):
         if "data" in event:
             yield event["data"]
-#+browser Append screenshots and generated files after the answer; they are not saved to memory
+#+browser Append the screenshots and generated files after the answer, outside the memory
     files = artifacts.as_markdown(conversation_id)
     if files:
         yield files

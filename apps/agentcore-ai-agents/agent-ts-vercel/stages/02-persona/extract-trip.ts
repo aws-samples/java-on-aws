@@ -32,7 +32,7 @@ const { output } = await generateText({
   model: bedrock('global.anthropic.claude-sonnet-5-5'),
   system: `Extract the business trip request from the email. Today is ${today}.`,
   prompt: readFileSync(process.argv[2], 'utf8'),
-  // >> `Output.object()` returns a validated object; `outputFormat` uses Bedrock native structured output
+  // >> `Output.object()` returns a validated object. `outputFormat` uses Bedrock native structured output
   output: Output.object({ schema: TripRequest }),
   providerOptions: { bedrock: { structuredOutputMode: 'outputFormat' } },
   // <<
