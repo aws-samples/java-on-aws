@@ -6,7 +6,7 @@ set -Eeuo pipefail
 WS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${WS_SCRIPT_DIR}/runtime.sh"
 ws_begin_run 'Building AI agents with Amazon Bedrock AgentCore' "${WS_SCRIPT_DIR}/reports/agentcore-ai-agents" 5 "$@"
-ws_set_executable_total 479
+ws_set_executable_total 477
 ws_set_default_timeout 600
 ws_tab_group 'java-spring-ai' 'python-langgraph' 'python-strands' 'ts-vercel'
 ws_tab_group 'chat-ui' 'terminal'
@@ -926,17 +926,16 @@ ws_end_page
 
 ws_begin_page 'AgentCore Memory' 400 'memory/index.en.md'
 
-ws_run_block 1 'AgentCore Memory' '1. Start the application:' 16 17 'bash' '' <<'WS_TEST_BLOCK_400_1'
+ws_run_block 1 'AgentCore Memory' '1. Interact with the AI agent:' 19 22 'bash' 'terminal' <<'WS_TEST_BLOCK_400_1'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
-WS_TEST_BLOCK_400_1
-
-ws_run_block 2 'AgentCore Memory' '2. Send Alice'"'"'s two prompts:' 26 27 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_400_2'
 ~/workshop/scripts/local-app.sh ask "I live in Berlin"
 ~/workshop/scripts/local-app.sh ask "Which airports can I fly from?"
-WS_TEST_BLOCK_400_2
+WS_TEST_BLOCK_400_1
 
-ws_skip_block 3 'AgentCore Memory' 'AgentCore Memory' 32 37 'text' 'terminal' 'copy action disabled'
+ws_skip_block 2 'AgentCore Memory' 'AgentCore Memory' 27 32 'text' 'terminal' 'copy action disabled'
+
+ws_skip_block 3 'AgentCore Memory' 'AgentCore Memory' 40 41 'bash' 'chat-ui' 'the Terminal tab runs it'
 
 ws_run_block 4 'How the conversation history works' '1. Ask a follow-up question with the Converse API, without the first turn and with it:' 66 81 'bash' '' <<'WS_TEST_BLOCK_400_4'
 aws bedrock-runtime converse --no-cli-pager \
@@ -1547,19 +1546,16 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_400_19
 
-ws_run_block 20 'Testing the memory' '1. Restart the application with the memory:' 918 919 'bash' '' <<'WS_TEST_BLOCK_400_20'
+ws_run_block 20 'Testing the memory' '1. Interact with the AI agent:' 921 924 'bash' 'terminal' <<'WS_TEST_BLOCK_400_20'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
-WS_TEST_BLOCK_400_20
-
-ws_run_block 21 'Testing the memory' '2. Send Alice'"'"'s two prompts:' 928 929 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_400_21'
 ~/workshop/scripts/local-app.sh ask "I live in Berlin"
 ~/workshop/scripts/local-app.sh ask "Which airports can I fly from?"
-WS_TEST_BLOCK_400_21
+WS_TEST_BLOCK_400_20
 
-ws_skip_block 22 'Testing the memory' 'Testing the memory' 934 941 'text' 'terminal' 'copy action disabled'
+ws_skip_block 21 'Testing the memory' 'Testing the memory' 929 936 'text' 'terminal' 'copy action disabled'
 
-ws_run_block 23 'Testing the memory' '3. Wait for Alice'"'"'s records and list them:' 952 965 'bash' 'terminal' <<'WS_TEST_BLOCK_400_23'
+ws_run_block 22 'Testing the memory' '2. Wait for Alice'"'"'s records and list them:' 947 960 'bash' 'terminal' <<'WS_TEST_BLOCK_400_22'
 STRATEGY_IDS=$(aws bedrock-agentcore-control get-memory --memory-id "${AGENTCORE_MEMORY_ID}" \
   --no-cli-pager --query 'memory.strategies[].strategyId' --output text)
 
@@ -1574,22 +1570,24 @@ list_records() {
 echo -n "Waiting for records"
 until [ -n "$(list_records)" ]; do echo -n "."; sleep 10; done && echo
 list_records
-WS_TEST_BLOCK_400_23
+WS_TEST_BLOCK_400_22
 
-ws_skip_block 24 'Testing the memory' '- 7: Each strategy stores Alice'"'"'s records in its own namespace under actors/alice' 972 973 'text' 'terminal' 'copy action disabled'
+ws_skip_block 23 'Testing the memory' '- 7: Each strategy stores Alice'"'"'s records in its own namespace under actors/alice' 967 968 'text' 'terminal' 'copy action disabled'
 
-ws_run_block 25 'Testing the memory' '4. Ask where Alice lives in a new session, then as Bob:' 980 981 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_400_25'
+ws_run_block 24 'Testing the memory' '3. Interact with the AI agent in a new session and as Bob:' 975 976 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_400_24'
 ~/workshop/scripts/local-app.sh ask "Where do I live?" alice:second-conversation
 ~/workshop/scripts/local-app.sh ask "Where do I live?" bob
-WS_TEST_BLOCK_400_25
+WS_TEST_BLOCK_400_24
 
-ws_skip_block 26 'Testing the memory' 'Testing the memory' 986 989 'text' 'terminal' 'copy action disabled'
+ws_skip_block 25 'Testing the memory' 'Testing the memory' 981 984 'text' 'terminal' 'copy action disabled'
 
-ws_skip_block 27 'Testing the memory' '3. Wait for Alice'"'"'s records and list them:' 1015 1028 'bash' 'chat-ui' 'the Terminal tab runs it'
+ws_skip_block 26 'Testing the memory' '1. Interact with the AI agent:' 996 997 'bash' 'chat-ui' 'the Terminal tab runs it'
 
-ws_skip_block 28 'Testing the memory' '- 7: Each strategy stores Alice'"'"'s records in its own namespace under actors/alice' 1035 1036 'text' 'chat-ui' 'copy action disabled'
+ws_skip_block 27 'Testing the memory' '2. Wait for Alice'"'"'s records and list them:' 1017 1030 'bash' 'chat-ui' 'the Terminal tab runs it'
 
-ws_run_block 29 'Committing changes' '1. Commit the changes:' 1054 1056 'bash' '' <<'WS_TEST_BLOCK_400_29'
+ws_skip_block 28 'Testing the memory' '- 7: Each strategy stores Alice'"'"'s records in its own namespace under actors/alice' 1037 1038 'text' 'chat-ui' 'copy action disabled'
+
+ws_run_block 29 'Committing changes' '1. Commit the changes:' 1058 1060 'bash' '' <<'WS_TEST_BLOCK_400_29'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add memory"
