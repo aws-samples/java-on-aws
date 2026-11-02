@@ -92,8 +92,13 @@ public class EcrRegistry extends Construct {
                 "ecr:TagResource",
                 "ecr:PutLifecyclePolicy"
             ))
+            // No names: any repository in this account and Region (CREATE_ON_PUSH applies to every repository)
             .resources(props.getRepositoryNames().isEmpty()
-                ? List.of("*")
+                ? List.of(Stack.of(this).formatArn(ArnComponents.builder()
+                    .service("ecr")
+                    .resource("repository")
+                    .resourceName("*")
+                    .build()))
                 : props.getRepositoryNames().stream()
                     .map(repositoryName -> Stack.of(this).formatArn(ArnComponents.builder()
                         .service("ecr")
