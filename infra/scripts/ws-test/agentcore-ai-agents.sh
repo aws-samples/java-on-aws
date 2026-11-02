@@ -6,7 +6,7 @@ set -Eeuo pipefail
 WS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${WS_SCRIPT_DIR}/runtime.sh"
 ws_begin_run 'Building AI agents with Amazon Bedrock AgentCore' "${WS_SCRIPT_DIR}/reports/agentcore-ai-agents" 5 "$@"
-ws_set_executable_total 477
+ws_set_executable_total 480
 ws_set_default_timeout 600
 ws_tab_group 'java-spring-ai' 'python-langgraph' 'python-strands' 'ts-vercel'
 ws_tab_group 'chat-ui' 'terminal'
@@ -20,35 +20,35 @@ ws_skip_block 1 'Deploying Code Editor' '2. Deploy the CloudFormation stack (15-
 
 ws_skip_block 2 'Deploying Code Editor' '3. Get the Code Editor URL:' 48 49 'bash' 'own-account' 'own account only'
 
-ws_run_block 3 'Working in Code Editor' '3. Check the AWS identity, the account and Region, and Docker:' 68 70 'bash' '' <<'WS_TEST_BLOCK_100_3'
+ws_run_block 3 'Working in Code Editor' '3. Check the AWS identity, the account and Region, and Docker:' 70 72 'bash' '' <<'WS_TEST_BLOCK_100_3'
 aws sts get-caller-identity --query Arn --output text --no-cli-pager
 echo "Account: ${ACCOUNT_ID}, Region: ${AWS_REGION}"
 docker --version
 WS_TEST_BLOCK_100_3
 
-ws_run_block 4 'Working in Code Editor' '4. The workshop keeps the values that later steps need, such as resource IDs and URLs, in ~/environment/.envrc. The first value is the framework you build the AI agent with. Choose its tab and save it:' 81 81 'bash' 'python-strands' <<'WS_TEST_BLOCK_100_4'
+ws_run_block 4 'Working in Code Editor' '4. Save your framework to ~/environment/.envrc:' 85 85 'bash' 'python-strands' <<'WS_TEST_BLOCK_100_4'
 mkdir -p ~/environment && echo "export FRAMEWORK=python-strands" >> ~/environment/.envrc
 WS_TEST_BLOCK_100_4
 
-ws_run_block 5 'Working in Code Editor' 'Working in Code Editor' 88 88 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_100_5'
+ws_run_block 5 'Working in Code Editor' 'Working in Code Editor' 92 92 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_100_5'
 mkdir -p ~/environment && echo "export FRAMEWORK=java-spring-ai" >> ~/environment/.envrc
 WS_TEST_BLOCK_100_5
 
-ws_run_block 6 'Working in Code Editor' 'Working in Code Editor' 95 95 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_100_6'
+ws_run_block 6 'Working in Code Editor' 'Working in Code Editor' 99 99 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_100_6'
 mkdir -p ~/environment && echo "export FRAMEWORK=python-langgraph" >> ~/environment/.envrc
 WS_TEST_BLOCK_100_6
 
-ws_run_block 7 'Working in Code Editor' 'Working in Code Editor' 102 102 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_100_7'
+ws_run_block 7 'Working in Code Editor' 'Working in Code Editor' 106 106 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_100_7'
 mkdir -p ~/environment && echo "export FRAMEWORK=ts-vercel" >> ~/environment/.envrc
 WS_TEST_BLOCK_100_7
 
-ws_run_block 8 'Working in Code Editor' '5. Allow direnv to load ~/environment/.envrc in every terminal in ~/environment and its subfolders:' 113 113 'bash' '' <<'WS_TEST_BLOCK_100_8'
+ws_run_block 8 'Working in Code Editor' '5. Allow direnv to load ~/environment/.envrc in every terminal in ~/environment and its subfolders:' 115 115 'bash' '' <<'WS_TEST_BLOCK_100_8'
 direnv allow ~/environment
 WS_TEST_BLOCK_100_8
 
-ws_skip_block 9 'Cleaning up after the workshop' '1. In a terminal of Code Editor, list the resources that the workshop created, then delete them:' 123 124 'bash' '' 'own account only'
+ws_skip_block 9 'Cleaning up after the workshop' '1. In a terminal of Code Editor, list the resources that the workshop created, then delete them:' 133 134 'bash' 'own-account' 'own account only'
 
-ws_skip_block 10 'Cleaning up after the workshop' '2. In CloudShell, delete the stack and the bucket of its template:' 132 134 'bash' '' 'own account only'
+ws_skip_block 10 'Cleaning up after the workshop' '2. In CloudShell, delete the stack and the bucket of its template:' 142 144 'bash' 'own-account' 'own account only'
 
 ws_end_page
 
@@ -73,13 +73,13 @@ aws bedrock-runtime converse --no-cli-pager \
   --query '{text: output.message.content[].text | [0], stopReason: stopReason}'
 WS_TEST_BLOCK_200_3
 
-ws_run_block 4 'Creating the AI agent' '1. Create the project:' 135 137 'bash' 'python-strands' <<'WS_TEST_BLOCK_200_4'
+ws_run_block 4 'Creating the AI agent' '1. Create the project with uv, the Python package and project manager:' 133 135 'bash' 'python-strands' <<'WS_TEST_BLOCK_200_4'
 cd ~/environment/
 uv init --app --no-package --vcs none --python 3.13 aiagent
 printf '.venv/\n__pycache__/\n' > aiagent/.gitignore
 WS_TEST_BLOCK_200_4
 
-ws_run_block 5 'Creating the AI agent' '- 3: The virtual environment stays out of Git' 149 165 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_200_5'
+ws_run_block 5 'Creating the AI agent' '1. Create the project with Spring Initializr:' 147 163 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_200_5'
 cd ~/environment/
 curl https://start.spring.io/starter.zip \
   -d type=maven-project \
@@ -99,25 +99,25 @@ unzip aiagent.zip
 rm aiagent.zip
 WS_TEST_BLOCK_200_5
 
-ws_run_block 6 'Creating the AI agent' '- 13: spring-ai-bedrock-converse for Amazon Bedrock, web for the REST API, webflux for streaming, actuator for health checks' 177 179 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_200_6'
+ws_run_block 6 'Creating the AI agent' '1. Create the project with uv, the Python package and project manager:' 175 177 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_200_6'
 cd ~/environment/
 uv init --app --no-package --vcs none --python 3.13 aiagent
 printf '.venv/\n__pycache__/\n' > aiagent/.gitignore
 WS_TEST_BLOCK_200_6
 
-ws_run_block 7 'Creating the AI agent' '- 3: The virtual environment stays out of Git' 191 194 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_200_7'
+ws_run_block 7 'Creating the AI agent' '1. Create the project with npm, as a Node.js project with ES modules:' 189 192 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_200_7'
 mkdir -p ~/environment/aiagent && cd ~/environment/aiagent
 npm init -y > /dev/null
 npm pkg set type=module scripts.start="tsx main.ts"
 printf 'node_modules/\ndist/\n' > .gitignore
 WS_TEST_BLOCK_200_7
 
-ws_run_block 8 'Creating the AI agent' '2. Add the dependencies:' 211 212 'bash' 'python-strands' <<'WS_TEST_BLOCK_200_8'
+ws_run_block 8 'Creating the AI agent' '2. Add the Strands Agents SDK and the AgentCore SDK:' 207 208 'bash' 'python-strands' <<'WS_TEST_BLOCK_200_8'
 cd ~/environment/aiagent
 uv add strands-agents bedrock-agentcore
 WS_TEST_BLOCK_200_8
 
-ws_run_block 9 'Creating the AI agent' 'Replace the content of pom.xml. It adds the AgentCore runtime starter with its BOM and the AWS SDK BOM:' 221 329 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_200_9'
+ws_run_block 9 'Creating the AI agent' '2. Replace the content of pom.xml:' 219 327 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_200_9'
 cat <<'EOF' > ~/environment/aiagent/pom.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -229,18 +229,18 @@ cat <<'EOF' > ~/environment/aiagent/pom.xml
 EOF
 WS_TEST_BLOCK_200_9
 
-ws_run_block 10 'Creating the AI agent' '- 82-95: The AgentCore BOM and the AWS SDK BOM keep the AgentCore modules and all AWS SDK modules on matching versions' 341 342 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_200_10'
+ws_run_block 10 'Creating the AI agent' '2. Add LangGraph, LangChain with the AWS integration (ChatBedrockConverse), and the AgentCore SDK:' 339 340 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_200_10'
 cd ~/environment/aiagent
 uv add langgraph langchain langchain-aws bedrock-agentcore
 WS_TEST_BLOCK_200_10
 
-ws_run_block 11 'Creating the AI agent' 'The AI SDK with the Amazon Bedrock provider, the AgentCore SDK, and the TypeScript tooling (tsx runs TypeScript without a build step):' 351 353 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_200_11'
+ws_run_block 11 'Creating the AI agent' '2. Add the AI SDK with the Amazon Bedrock provider, the AgentCore SDK, and the TypeScript tooling:' 351 353 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_200_11'
 cd ~/environment/aiagent
 npm install ai @ai-sdk/amazon-bedrock @aws-sdk/credential-providers bedrock-agentcore zod @fastify/static tsx
 npm install -D typescript @types/node
 WS_TEST_BLOCK_200_11
 
-ws_run_block 12 'Creating the AI agent' 'Create tsconfig.json:' 359 373 'json' 'ts-vercel' <<'WS_TEST_BLOCK_200_12'
+ws_run_block 12 'Creating the AI agent' '3. Create tsconfig.json:' 359 373 'json' 'ts-vercel' <<'WS_TEST_BLOCK_200_12'
 cat <<'EOF' > ~/environment/aiagent/tsconfig.json
 {
   "compilerOptions": {
@@ -258,7 +258,7 @@ cat <<'EOF' > ~/environment/aiagent/tsconfig.json
 EOF
 WS_TEST_BLOCK_200_12
 
-ws_run_block 13 'Creating the AI agent' '3. Write the code of the AI agent:' 387 410 'python' 'python-strands' <<'WS_TEST_BLOCK_200_13'
+ws_run_block 13 'Creating the AI agent' '3. Create main.py:' 385 408 'python' 'python-strands' <<'WS_TEST_BLOCK_200_13'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from starlette.staticfiles import StaticFiles
@@ -285,7 +285,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_200_13
 
-ws_run_block 14 'Creating the AI agent' '- 20: Serve the Web UI from the static folder' 425 436 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_200_14'
+ws_run_block 14 'Creating the AI agent' '3. Replace the content of application.properties:' 423 434 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_200_14'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -300,7 +300,7 @@ spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 EOF
 WS_TEST_BLOCK_200_14
 
-ws_run_block 15 'Creating the AI agent' '- 3-11: Logging and the Amazon Bedrock model: Claude Sonnet 5.5 through global cross-region inference' 444 469 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_200_15'
+ws_run_block 15 'Creating the AI agent' '4. Create ChatService.java:' 442 467 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_200_15'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -329,7 +329,7 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_200_15
 
-ws_run_block 16 'Creating the AI agent' '- stream().content() returns the answer as a Flux of text chunks, which the starter sends as Server-Sent Events' 483 511 'python' 'python-langgraph' <<'WS_TEST_BLOCK_200_16'
+ws_run_block 16 'Creating the AI agent' '3. Create main.py:' 481 509 'python' 'python-langgraph' <<'WS_TEST_BLOCK_200_16'
 cat <<'EOF' > ~/environment/aiagent/main.py
 import os
 
@@ -361,7 +361,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_200_16
 
-ws_run_block 17 'Creating the AI agent' '- 25: Serve the Web UI from the static folder' 527 558 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_200_17'
+ws_run_block 17 'Creating the AI agent' '4. Create main.ts:' 525 556 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_200_17'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -396,32 +396,32 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_200_17
 
-ws_run_block 18 'Creating the AI agent' '4. Copy the chat UI into the project. The chat UI is static HTML, CSS, and JavaScript that the application serves on port 8080:' 575 576 'bash' 'python-strands' <<'WS_TEST_BLOCK_200_18'
+ws_run_block 18 'Creating the AI agent' '4. Copy the chat UI into the project:' 575 576 'bash' 'python-strands' <<'WS_TEST_BLOCK_200_18'
 mkdir -p ~/environment/aiagent/static
 cp ~/workshop/ui/* ~/environment/aiagent/static/
 WS_TEST_BLOCK_200_18
 
-ws_run_block 19 'Creating the AI agent' 'Creating the AI agent' 583 584 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_200_19'
+ws_run_block 19 'Creating the AI agent' '5. Copy the chat UI into the project:' 585 586 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_200_19'
 mkdir -p ~/environment/aiagent/src/main/resources/static
 cp ~/workshop/ui/* ~/environment/aiagent/src/main/resources/static/
 WS_TEST_BLOCK_200_19
 
-ws_run_block 20 'Creating the AI agent' 'Creating the AI agent' 591 592 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_200_20'
+ws_run_block 20 'Creating the AI agent' '4. Copy the chat UI into the project:' 595 596 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_200_20'
 mkdir -p ~/environment/aiagent/static
 cp ~/workshop/ui/* ~/environment/aiagent/static/
 WS_TEST_BLOCK_200_20
 
-ws_run_block 21 'Creating the AI agent' 'Creating the AI agent' 599 600 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_200_21'
+ws_run_block 21 'Creating the AI agent' '5. Copy the chat UI into the project:' 605 606 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_200_21'
 mkdir -p ~/environment/aiagent/static
 cp ~/workshop/ui/* ~/environment/aiagent/static/
 WS_TEST_BLOCK_200_21
 
-ws_run_block 22 'Testing the AI agent' '1. Start the application in the background:' 611 612 'bash' '' <<'WS_TEST_BLOCK_200_22'
+ws_run_block 22 'Testing the AI agent' '1. Start the application:' 619 620 'bash' '' <<'WS_TEST_BLOCK_200_22'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 WS_TEST_BLOCK_200_22
 
-ws_run_block 23 'Testing the AI agent' '2. Send a request to /invocations:' 620 624 'bash' '' 300 <<'WS_TEST_BLOCK_200_23'
+ws_run_block 23 'Testing the AI agent' '2. Send a request to /invocations:' 626 630 'bash' '' 300 <<'WS_TEST_BLOCK_200_23'
 curl -sN -X POST localhost:8080/invocations \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
@@ -429,33 +429,36 @@ curl -sN -X POST localhost:8080/invocations \
   -d '{"prompt": "What should I know before my first business trip to San Francisco?"}'; echo
 WS_TEST_BLOCK_200_23
 
-ws_run_block 24 'Testing the AI agent' '3. Send the same request as plain text, and stop the application:' 634 635 'bash' '' 300 <<'WS_TEST_BLOCK_200_24'
+ws_run_block 24 'Testing the AI agent' '3. Interact with the AI agent:' 643 643 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_200_24'
 ~/workshop/scripts/local-app.sh ask "What should I know before my first business trip to San Francisco?"
-~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_200_24
 
-ws_skip_block 25 'Testing the AI agent' '4. Start the application for the chat UI:' 646 647 'bash' 'python-strands' 'foreground app for the chat UI'
+ws_skip_block 25 'Testing the AI agent' 'Testing the AI agent' 648 657 'text' 'terminal' 'copy action disabled'
 
-ws_skip_block 26 'Testing the AI agent' 'Testing the AI agent' 654 655 'bash' 'java-spring-ai' 'foreground app for the chat UI'
-
-ws_skip_block 27 'Testing the AI agent' 'Testing the AI agent' 662 663 'bash' 'python-langgraph' 'foreground app for the chat UI'
-
-ws_skip_block 28 'Testing the AI agent' 'Testing the AI agent' 670 671 'bash' 'ts-vercel' 'foreground app for the chat UI'
-
-ws_run_block 29 'Committing changes' 'Initialize a Git repository and commit the code:' 696 701 'bash' '' <<'WS_TEST_BLOCK_200_29'
+ws_run_block 26 'Committing changes' '1. Initialize a Git repository and commit the code:' 692 697 'bash' '' <<'WS_TEST_BLOCK_200_26'
 cd ~/environment/aiagent
 git config --global user.email "workshop-user@example.com"
 git config --global user.name "workshop-user"
 git init -b main
 git add .
 git commit --allow-empty -m "Create the AI agent"
-WS_TEST_BLOCK_200_29
+WS_TEST_BLOCK_200_26
 
 ws_end_page
 
 ws_begin_page 'Prompt engineering' 300 'persona/index.en.md'
 
-ws_run_block 1 'Adding the system prompt' '2. Give the AI agent its system prompt:' 93 130 'python' 'python-strands' <<'WS_TEST_BLOCK_300_1'
+ws_run_block 1 'Prompt engineering' '1. Interact with the AI agent:' 19 21 'bash' 'terminal' <<'WS_TEST_BLOCK_300_1'
+cd ~/environment/aiagent
+~/workshop/scripts/local-app.sh start
+~/workshop/scripts/local-app.sh ask "Hi, how can you help me?"
+WS_TEST_BLOCK_300_1
+
+ws_skip_block 2 'Prompt engineering' 'Prompt engineering' 26 34 'text' 'terminal' 'copy action disabled'
+
+ws_skip_block 3 'Prompt engineering' '1. Interact with the AI agent:' 44 45 'bash' 'chat-ui' 'the Terminal tab runs it'
+
+ws_run_block 4 'Adding the system prompt' '1. Replace the content of main.py:' 127 164 'python' 'python-strands' <<'WS_TEST_BLOCK_300_4'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from starlette.staticfiles import StaticFiles
@@ -494,9 +497,9 @@ app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 if __name__ == "__main__":
     app.run()
 EOF
-WS_TEST_BLOCK_300_1
+WS_TEST_BLOCK_300_4
 
-ws_run_block 2 'Adding the system prompt' '- 28: systemprompt applies the prompt to all requests' 142 182 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_300_2'
+ws_run_block 5 'Adding the system prompt' '1. Replace the content of ChatService.java:' 176 216 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_300_5'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -538,9 +541,9 @@ public class ChatService {
     }
 }
 EOF
-WS_TEST_BLOCK_300_2
+WS_TEST_BLOCK_300_5
 
-ws_run_block 3 'Adding the system prompt' '- 32: defaultSystem() applies the system prompt to all requests' 194 237 'python' 'python-langgraph' <<'WS_TEST_BLOCK_300_3'
+ws_run_block 6 'Adding the system prompt' '1. Replace the content of main.py:' 228 271 'python' 'python-langgraph' <<'WS_TEST_BLOCK_300_6'
 cat <<'EOF' > ~/environment/aiagent/main.py
 import os
 
@@ -585,9 +588,9 @@ app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 if __name__ == "__main__":
     app.run()
 EOF
-WS_TEST_BLOCK_300_3
+WS_TEST_BLOCK_300_6
 
-ws_run_block 4 'Adding the system prompt' '- 30: systemprompt applies the prompt to all requests' 249 294 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_300_4'
+ws_run_block 7 'Adding the system prompt' '1. Replace the content of main.ts:' 283 328 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_300_7'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -634,26 +637,21 @@ if (existsSync('static')) {
 
 app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
-WS_TEST_BLOCK_300_4
+WS_TEST_BLOCK_300_7
 
-ws_run_block 5 'Testing the system prompt' 'Start the application in the background, send the prompt, and stop the application:' 308 311 'bash' '' <<'WS_TEST_BLOCK_300_5'
+ws_run_block 8 'Testing the system prompt' '1. Interact with the AI agent:' 345 347 'bash' 'terminal' <<'WS_TEST_BLOCK_300_8'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 ~/workshop/scripts/local-app.sh ask "Hi, how can you help me?"
-~/workshop/scripts/local-app.sh stop
-WS_TEST_BLOCK_300_5
+WS_TEST_BLOCK_300_8
 
-ws_skip_block 6 'Testing the system prompt' '1. Start the application:' 322 323 'bash' 'python-strands' 'foreground app for the chat UI'
+ws_skip_block 9 'Testing the system prompt' 'Testing the system prompt' 352 364 'text' 'terminal' 'copy action disabled'
 
-ws_skip_block 7 'Testing the system prompt' 'Testing the system prompt' 330 331 'bash' 'java-spring-ai' 'foreground app for the chat UI'
+ws_skip_block 10 'Testing the system prompt' '1. Interact with the AI agent:' 376 377 'bash' 'chat-ui' 'the Terminal tab runs it'
 
-ws_skip_block 8 'Testing the system prompt' 'Testing the system prompt' 338 339 'bash' 'python-langgraph' 'foreground app for the chat UI'
+ws_skip_block 11 'Extracting a trip request from an email' 'Alice asks Bob by email to approve her trip:' 398 410 'text' '' 'copy action disabled'
 
-ws_skip_block 9 'Testing the system prompt' 'Testing the system prompt' 346 347 'bash' 'ts-vercel' 'foreground app for the chat UI'
-
-ws_skip_block 10 'Extracting a trip request from an email' 'Alice asks Bob by email to approve her trip:' 370 382 'text' '' 'copy action disabled'
-
-ws_run_block 11 'Extracting a trip request from an email' '1. Add the program to the project:' 395 429 'python' 'python-strands' <<'WS_TEST_BLOCK_300_11'
+ws_run_block 12 'Extracting a trip request from an email' '1. Create extracttrip.py:' 421 455 'python' 'python-strands' <<'WS_TEST_BLOCK_300_12'
 cat <<'EOF' > ~/environment/aiagent/extract_trip.py
 """Extract a business trip request from an email as structured data: uv run extract_trip.py EMAIL_FILE"""
 import sys
@@ -689,9 +687,9 @@ if __name__ == "__main__":
     result = agent(email, structured_output_model=TripRequest)
     print(result.structured_output.model_dump_json(indent=2))
 EOF
-WS_TEST_BLOCK_300_11
+WS_TEST_BLOCK_300_12
 
-ws_run_block 12 'Extracting a trip request from an email' '- 33-34: structuredoutputmodel returns a validated TripRequest instead of text' 442 502 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_300_12'
+ws_run_block 13 'Extracting a trip request from an email' '1. Create TripRequestExtractor.java:' 470 530 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_300_13'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/TripRequestExtractor.java
 package com.example.agent;
 
@@ -753,9 +751,9 @@ class TripRequestExtractor implements ApplicationRunner {
     }
 }
 EOF
-WS_TEST_BLOCK_300_12
+WS_TEST_BLOCK_300_13
 
-ws_run_block 13 'Extracting a trip request from an email' '- 54-56: Bedrock native structured output; entity() returns a validated TripRequest' 512 519 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_300_13'
+ws_run_block 14 'Extracting a trip request from an email' '2. Create application-extract.properties for the profile:' 540 547 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_300_14'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application-extract.properties
 spring.main.web-application-type=none
 spring.main.banner-mode=off
@@ -764,9 +762,9 @@ logging.level.org.springframework.ai=WARN
 logging.level.org.springaicommunity.agentcore=WARN
 logging.level.com.example.agent=WARN
 EOF
-WS_TEST_BLOCK_300_13
+WS_TEST_BLOCK_300_14
 
-ws_run_block 14 'Extracting a trip request from an email' '- 2-7: The extract profile runs the extractor without the web server and prints only its result' 530 565 'python' 'python-langgraph' <<'WS_TEST_BLOCK_300_14'
+ws_run_block 15 'Extracting a trip request from an email' '1. Create extracttrip.py:' 558 593 'python' 'python-langgraph' <<'WS_TEST_BLOCK_300_15'
 cat <<'EOF' > ~/environment/aiagent/extract_trip.py
 """Extract a business trip request from an email as structured data: uv run extract_trip.py EMAIL_FILE"""
 import os
@@ -803,9 +801,9 @@ if __name__ == "__main__":
     trip = extractor.invoke([("system", f"Extract the business trip request from the email. Today is {today}."), ("user", email)])
     print(trip.model_dump_json(indent=2))
 EOF
-WS_TEST_BLOCK_300_14
+WS_TEST_BLOCK_300_15
 
-ws_run_block 15 'Extracting a trip request from an email' '- 33-34: Today'"'"'s date with the weekday, so the model can turn "the Monday two months from now" into a date' 578 613 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_300_15'
+ws_run_block 16 'Extracting a trip request from an email' '1. Create extract-trip.ts:' 608 643 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_300_16'
 cat <<'EOF' > ~/environment/aiagent/extract-trip.ts
 // Extract a business trip request from an email as structured data: npx tsx extract-trip.ts EMAIL_FILE
 import { readFileSync } from 'node:fs';
@@ -842,42 +840,42 @@ const { output } = await generateText({
 });
 console.log(JSON.stringify(output, null, 2));
 EOF
-WS_TEST_BLOCK_300_15
-
-ws_run_block 16 'Extracting a trip request from an email' '2. Run it on the email:' 629 630 'bash' 'python-strands' 300 <<'WS_TEST_BLOCK_300_16'
-cd ~/environment/aiagent
-uv run extract_trip.py ~/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
 WS_TEST_BLOCK_300_16
 
-ws_skip_block 17 'Extracting a trip request from an email' 'Extracting a trip request from an email' 635 646 'json' 'python-strands' 'copy action disabled'
+ws_run_block 17 'Extracting a trip request from an email' '2. Run the program on the email:' 659 660 'bash' 'python-strands' 300 <<'WS_TEST_BLOCK_300_17'
+cd ~/environment/aiagent
+uv run extract_trip.py ~/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
+WS_TEST_BLOCK_300_17
 
-ws_run_block 18 'Extracting a trip request from an email' 'Extracting a trip request from an email' 654 656 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_300_18'
+ws_skip_block 18 'Extracting a trip request from an email' 'Extracting a trip request from an email' 665 676 'json' 'python-strands' 'copy action disabled'
+
+ws_run_block 19 'Extracting a trip request from an email' '3. Run the program on the email:' 686 688 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_300_19'
 cd ~/environment/aiagent
 ./mvnw -q spring-boot:run -Dspring-boot.run.profiles=extract \
   -Dspring-boot.run.arguments=${HOME}/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
-WS_TEST_BLOCK_300_18
+WS_TEST_BLOCK_300_19
 
-ws_skip_block 19 'Extracting a trip request from an email' 'Extracting a trip request from an email' 661 672 'json' 'java-spring-ai' 'copy action disabled'
+ws_skip_block 20 'Extracting a trip request from an email' 'Extracting a trip request from an email' 693 704 'json' 'java-spring-ai' 'copy action disabled'
 
-ws_run_block 20 'Extracting a trip request from an email' 'Extracting a trip request from an email' 680 681 'bash' 'python-langgraph' 300 <<'WS_TEST_BLOCK_300_20'
+ws_run_block 21 'Extracting a trip request from an email' '2. Run the program on the email:' 714 715 'bash' 'python-langgraph' 300 <<'WS_TEST_BLOCK_300_21'
 cd ~/environment/aiagent
 uv run extract_trip.py ~/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
-WS_TEST_BLOCK_300_20
+WS_TEST_BLOCK_300_21
 
-ws_skip_block 21 'Extracting a trip request from an email' 'Extracting a trip request from an email' 686 697 'json' 'python-langgraph' 'copy action disabled'
+ws_skip_block 22 'Extracting a trip request from an email' 'Extracting a trip request from an email' 720 731 'json' 'python-langgraph' 'copy action disabled'
 
-ws_run_block 22 'Extracting a trip request from an email' 'Extracting a trip request from an email' 705 706 'bash' 'ts-vercel' 300 <<'WS_TEST_BLOCK_300_22'
+ws_run_block 23 'Extracting a trip request from an email' '2. Run the program on the email:' 741 742 'bash' 'ts-vercel' 300 <<'WS_TEST_BLOCK_300_23'
 cd ~/environment/aiagent
 npx tsx extract-trip.ts ~/workshop/samples/trip-request-email.txt | tee /tmp/trip-request.json
-WS_TEST_BLOCK_300_22
+WS_TEST_BLOCK_300_23
 
-ws_skip_block 23 'Extracting a trip request from an email' 'Extracting a trip request from an email' 711 722 'json' 'ts-vercel' 'copy action disabled'
+ws_skip_block 24 'Extracting a trip request from an email' 'Extracting a trip request from an email' 747 758 'json' 'ts-vercel' 'copy action disabled'
 
-ws_run_block 24 'Extracting a trip request from an email' '3. Check the dates. The departure must come after today and before the return:' 732 732 'bash' '' <<'WS_TEST_BLOCK_300_24'
+ws_run_block 25 'Checking the extracted dates' '1. Check that the departure comes after today and before the return:' 772 772 'bash' '' <<'WS_TEST_BLOCK_300_25'
 jq -e '[.departure_date // .departureDate, .return_date // .returnDate] | .[0] > (now | todate[:10]) and .[0] < .[1]' /tmp/trip-request.json
-WS_TEST_BLOCK_300_24
+WS_TEST_BLOCK_300_25
 
-ws_run_block 25 'Trying inference parameters' '1. Ask Amazon Nova 2 Lite for an out-of-office message, twice with temperature 0 and twice with temperature 1.0:' 742 749 'bash' '' <<'WS_TEST_BLOCK_300_25'
+ws_run_block 26 'Trying inference parameters' '1. Ask Amazon Nova 2 Lite for an out-of-office message, twice with temperature 0 and twice with temperature 1.0:' 782 789 'bash' '' <<'WS_TEST_BLOCK_300_26'
 for T in 0 0 1 1; do
   echo -n "temperature ${T}: "
   aws bedrock-runtime converse --no-cli-pager \
@@ -886,41 +884,41 @@ for T in 0 0 1 1; do
     --inference-config "{\"maxTokens\": 60, \"temperature\": ${T}}" \
     --query 'output.message.content[0].text' --output text
 done
-WS_TEST_BLOCK_300_25
+WS_TEST_BLOCK_300_26
 
-ws_skip_block 26 'Trying inference parameters' 'Trying inference parameters' 754 757 'text' '' 'copy action disabled'
+ws_skip_block 27 'Trying inference parameters' 'Trying inference parameters' 794 813 'text' '' 'copy action disabled'
 
-ws_run_block 27 'Trying inference parameters' '2. Send the same request to Claude Sonnet 5.5 with temperature 0:' 766 770 'bash' '' <<'WS_TEST_BLOCK_300_27'
+ws_run_block 28 'Trying inference parameters' '2. Send the same request to Claude Sonnet 5.5 with temperature 0:' 822 826 'bash' '' <<'WS_TEST_BLOCK_300_28'
 aws bedrock-runtime converse --no-cli-pager \
   --model-id global.anthropic.claude-sonnet-5-5 \
   --messages '[{"role": "user", "content": [{"text": "Write a one-sentence out-of-office message for my business trip to San Francisco."}]}]' \
   --inference-config '{"maxTokens": 60, "temperature": 0}' \
   --query 'output.message.content[].text | [0]' --output text || echo "rejected, as intended"
-WS_TEST_BLOCK_300_27
+WS_TEST_BLOCK_300_28
 
-ws_skip_block 28 'Trying inference parameters' 'Trying inference parameters' 775 776 'text' '' 'copy action disabled'
+ws_skip_block 29 'Trying inference parameters' 'Trying inference parameters' 831 832 'text' '' 'copy action disabled'
 
-ws_run_block 29 'Trying inference parameters' '3. End an answer before a given text with a stop sequence:' 785 789 'bash' '' <<'WS_TEST_BLOCK_300_29'
+ws_run_block 30 'Trying inference parameters' '3. End an answer before a given text with a stop sequence:' 841 845 'bash' '' <<'WS_TEST_BLOCK_300_30'
 aws bedrock-runtime converse --no-cli-pager \
   --model-id global.anthropic.claude-sonnet-5-5 \
   --messages '[{"role": "user", "content": [{"text": "List three sights in San Francisco, one per line. Then write ### and a packing list."}]}]' \
   --inference-config '{"maxTokens": 500, "stopSequences": ["###"]}' \
   --query '{text: output.message.content[].text | [0], stopReason: stopReason}'
-WS_TEST_BLOCK_300_29
+WS_TEST_BLOCK_300_30
 
-ws_skip_block 30 'Trying inference parameters' 'In Strands Agents, both are parameters of BedrockModel:' 800 800 'python' 'python-strands' 'copy action disabled'
+ws_skip_block 31 'Trying inference parameters' 'In Strands Agents, both are parameters of BedrockModel:' 856 856 'python' 'python-strands' 'copy action disabled'
 
-ws_skip_block 31 'Trying inference parameters' 'In Spring AI, both are properties of the Bedrock Converse chat model (or BedrockChatOptions per request):' 809 810 'properties' 'java-spring-ai' 'copy action disabled'
+ws_skip_block 32 'Trying inference parameters' 'In Spring AI, both are properties of the Bedrock Converse chat model (or BedrockChatOptions per request):' 865 866 'properties' 'java-spring-ai' 'copy action disabled'
 
-ws_skip_block 32 'Trying inference parameters' 'In LangChain, both are parameters of ChatBedrockConverse:' 819 819 'python' 'python-langgraph' 'copy action disabled'
+ws_skip_block 33 'Trying inference parameters' 'In LangChain, both are parameters of ChatBedrockConverse:' 875 875 'python' 'python-langgraph' 'copy action disabled'
 
-ws_skip_block 33 'Trying inference parameters' 'In the AI SDK, both are parameters of streamText() and generateText(). A cut-off answer has finishReason: '"'"'length'"'"':' 828 828 'typescript' 'ts-vercel' 'copy action disabled'
+ws_skip_block 34 'Trying inference parameters' 'In the AI SDK, both are parameters of streamText() and generateText(). A cut-off answer has finishReason: '"'"'length'"'"':' 884 884 'typescript' 'ts-vercel' 'copy action disabled'
 
-ws_run_block 34 'Committing changes' 'Committing changes' 837 839 'bash' '' <<'WS_TEST_BLOCK_300_34'
+ws_run_block 35 'Committing changes' '1. Commit the changes:' 895 897 'bash' '' <<'WS_TEST_BLOCK_300_35'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add the system prompt"
-WS_TEST_BLOCK_300_34
+WS_TEST_BLOCK_300_35
 
 ws_end_page
 
@@ -1597,7 +1595,17 @@ ws_end_page
 
 ws_begin_page 'RAG with Bedrock Knowledge Bases' 500 'knowledge/index.en.md'
 
-ws_run_block 1 'Creating the knowledge base' '1. Create the S3 bucket for the documents, the S3 vector bucket, and the vector index:' 89 100 'bash' '' <<'WS_TEST_BLOCK_500_1'
+ws_run_block 1 'RAG with Bedrock Knowledge Bases' '1. Interact with the AI agent:' 19 21 'bash' 'terminal' <<'WS_TEST_BLOCK_500_1'
+cd ~/environment/aiagent
+~/workshop/scripts/local-app.sh start
+~/workshop/scripts/local-app.sh ask "How much can I spend on a hotel per night in San Francisco?"
+WS_TEST_BLOCK_500_1
+
+ws_skip_block 2 'RAG with Bedrock Knowledge Bases' 'RAG with Bedrock Knowledge Bases' 26 30 'text' 'terminal' 'copy action disabled'
+
+ws_skip_block 3 'RAG with Bedrock Knowledge Bases' '1. Interact with the AI agent:' 40 41 'bash' 'chat-ui' 'the Terminal tab runs it'
+
+ws_run_block 4 'Creating the knowledge base' '1. Create the S3 bucket for the documents, the S3 vector bucket, and the vector index:' 123 134 'bash' '' <<'WS_TEST_BLOCK_500_4'
 DATA_BUCKET="aiagent-kb-data-${ACCOUNT_ID}"
 VECTOR_BUCKET="aiagent-kb-vectors-${ACCOUNT_ID}"
 
@@ -1610,9 +1618,9 @@ aws s3vectors get-index --vector-bucket-name "${VECTOR_BUCKET}" --index-name "ai
   aws s3vectors create-index --vector-bucket-name "${VECTOR_BUCKET}" \
     --index-name "aiagent-index" --data-type "float32" \
     --dimension 1024 --distance-metric "cosine" --no-cli-pager
-WS_TEST_BLOCK_500_1
+WS_TEST_BLOCK_500_4
 
-ws_run_block 2 'Creating the knowledge base' '2. Create the IAM role for the knowledge base:' 106 138 'bash' '' <<'WS_TEST_BLOCK_500_2'
+ws_run_block 5 'Creating the knowledge base' '2. Create the IAM role for the knowledge base:' 140 172 'bash' '' <<'WS_TEST_BLOCK_500_5'
 KB_ROLE="aiagent-kb-role"
 
 aws iam get-role --role-name "${KB_ROLE}" --no-cli-pager > /dev/null 2>&1 || \
@@ -1646,9 +1654,9 @@ aws iam put-role-policy --role-name "${KB_ROLE}" --policy-name "aiagent-kb-polic
   }' --no-cli-pager
 
 echo -n "Waiting for role propagation" && sleep 10 && echo " done"
-WS_TEST_BLOCK_500_2
+WS_TEST_BLOCK_500_5
 
-ws_run_block 3 'Creating the knowledge base' '3. Create the knowledge base and wait for it to become active:' 144 169 'bash' '' <<'WS_TEST_BLOCK_500_3'
+ws_run_block 6 'Creating the knowledge base' '3. Create the knowledge base and wait for it to become active:' 178 203 'bash' '' <<'WS_TEST_BLOCK_500_6'
 KNOWLEDGE_BASE_ID=$(aws bedrock-agent list-knowledge-bases --no-cli-pager \
   --query "knowledgeBaseSummaries[?name=='aiagent-kb'].knowledgeBaseId | [0]" --output text)
 if [ "${KNOWLEDGE_BASE_ID}" = "None" ]; then
@@ -1675,25 +1683,13 @@ until [ "$(aws bedrock-agent get-knowledge-base --knowledge-base-id "${KNOWLEDGE
   --no-cli-pager --query 'knowledgeBase.status' --output text)" = "ACTIVE" ]; do
   echo -n "."; sleep 5
 done && echo " ACTIVE"
-WS_TEST_BLOCK_500_3
-
-ws_run_block 4 'Creating the knowledge base' '4. Save the knowledge base ID for the application:' 181 181 'bash' 'python-strands' <<'WS_TEST_BLOCK_500_4'
-echo "export KNOWLEDGE_BASE_ID=${KNOWLEDGE_BASE_ID}" >> ~/environment/.envrc
-WS_TEST_BLOCK_500_4
-
-ws_run_block 5 'Creating the knowledge base' 'Creating the knowledge base' 188 188 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_500_5'
-echo "export KNOWLEDGE_BASE_ID=${KNOWLEDGE_BASE_ID}" >> ~/environment/.envrc
-WS_TEST_BLOCK_500_5
-
-ws_run_block 6 'Creating the knowledge base' 'application.properties reads it as ${KNOWLEDGEBASEID}.' 197 197 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_500_6'
-echo "export KNOWLEDGE_BASE_ID=${KNOWLEDGE_BASE_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_500_6
 
-ws_run_block 7 'Creating the knowledge base' 'Creating the knowledge base' 204 204 'bash' 'ts-vercel' <<'WS_TEST_BLOCK_500_7'
+ws_run_block 7 'Creating the knowledge base' '4. Save the knowledge base ID for the application:' 212 212 'bash' '' <<'WS_TEST_BLOCK_500_7'
 echo "export KNOWLEDGE_BASE_ID=${KNOWLEDGE_BASE_ID}" >> ~/environment/.envrc
 WS_TEST_BLOCK_500_7
 
-ws_run_block 8 'Creating the knowledge base' '5. Create the data source, upload the policy documents, and wait for the ingestion to complete:' 213 247 'bash' '' 900 <<'WS_TEST_BLOCK_500_8'
+ws_run_block 8 'Creating the knowledge base' '5. Create the data source, upload the policy documents, and wait for the ingestion to complete:' 218 252 'bash' '' 900 <<'WS_TEST_BLOCK_500_8'
 DS_ID=$(aws bedrock-agent list-data-sources --knowledge-base-id "${KNOWLEDGE_BASE_ID}" --no-cli-pager \
   --query "dataSourceSummaries[?name=='aiagent-policies'].dataSourceId | [0]" --output text)
 if [ "${DS_ID}" = "None" ]; then
@@ -1731,14 +1727,14 @@ until [ "$(aws bedrock-agent get-ingestion-job --knowledge-base-id "${KNOWLEDGE_
 done && echo " COMPLETE"
 WS_TEST_BLOCK_500_8
 
-ws_run_block 9 'Querying the knowledge base' '1. Retrieve the 3 best chunks for a question:' 265 268 'bash' '' <<'WS_TEST_BLOCK_500_9'
+ws_run_block 9 'Querying the knowledge base' '1. Retrieve the 3 best chunks for a question:' 270 273 'bash' '' <<'WS_TEST_BLOCK_500_9'
 aws bedrock-agent-runtime retrieve --knowledge-base-id "${KNOWLEDGE_BASE_ID}" --no-cli-pager \
   --retrieval-query '{"text": "hotel limit per night in North America"}' \
   --retrieval-configuration '{"vectorSearchConfiguration": {"numberOfResults": 3}}' \
   --query 'retrievalResults[].{score: score, source: location.s3Location.uri, text: content.text}'
 WS_TEST_BLOCK_500_9
 
-ws_run_block 10 'Querying the knowledge base' '2. Let the knowledge base write the answer:' 278 291 'bash' '' 300 <<'WS_TEST_BLOCK_500_10'
+ws_run_block 10 'Querying the knowledge base' '2. Let the knowledge base write the answer:' 283 296 'bash' '' 300 <<'WS_TEST_BLOCK_500_10'
 aws bedrock-agent-runtime retrieve-and-generate --no-cli-pager \
   --input '{"text": "What is the hotel limit per night in San Francisco?"}' \
   --retrieve-and-generate-configuration '{
@@ -1755,7 +1751,7 @@ aws bedrock-agent-runtime retrieve-and-generate --no-cli-pager \
   --query '{answer: output.text, sources: citations[].retrievedReferences[].location.s3Location.uri}'
 WS_TEST_BLOCK_500_10
 
-ws_run_block 11 'Connecting the AI agent to the knowledge base' '2. Add the dependencies:' 317 443 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_500_11'
+ws_run_block 11 'Connecting the AI agent to the knowledge base' '1. Replace the content of pom.xml to add the Bedrock Knowledge Base vector store and the advisor:' 318 444 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_500_11'
 cat <<'EOF' > ~/environment/aiagent/pom.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -1885,12 +1881,12 @@ cat <<'EOF' > ~/environment/aiagent/pom.xml
 EOF
 WS_TEST_BLOCK_500_11
 
-ws_run_block 12 'Connecting the AI agent to the knowledge base' '- 61-73: Bedrock Knowledge Base vector store and the QuestionAnswerAdvisor; Bean Validation for the Knowledge Base properties' 459 460 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_500_12'
+ws_run_block 12 'Connecting the AI agent to the knowledge base' '1. Add the Bedrock Agent Runtime client for the Retrieve API:' 460 461 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_500_12'
 cd ~/environment/aiagent
 npm install @aws-sdk/client-bedrock-agent-runtime
 WS_TEST_BLOCK_500_12
 
-ws_run_block 13 'Connecting the AI agent to the knowledge base' '3. Connect the AI agent to the knowledge base:' 474 503 'python' 'python-strands' <<'WS_TEST_BLOCK_500_13'
+ws_run_block 13 'Connecting the AI agent to the knowledge base' '1. Create knowledge.py with the knowledge base tool:' 473 502 'python' 'python-strands' <<'WS_TEST_BLOCK_500_13'
 cat <<'EOF' > ~/environment/aiagent/knowledge.py
 import os
 
@@ -1923,7 +1919,7 @@ def search_knowledge_base(query: str) -> str:
 EOF
 WS_TEST_BLOCK_500_13
 
-ws_run_block 14 'Connecting the AI agent to the knowledge base' '- 26-29: Return each chunk with its source document, so the model can cite the policy' 514 613 'python' 'python-strands' <<'WS_TEST_BLOCK_500_14'
+ws_run_block 14 'Connecting the AI agent to the knowledge base' '2. Replace the content of main.py:' 513 612 'python' 'python-strands' <<'WS_TEST_BLOCK_500_14'
 cat <<'EOF' > ~/environment/aiagent/main.py
 import os
 
@@ -2026,7 +2022,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_500_14
 
-ws_run_block 15 'Connecting the AI agent to the knowledge base' '- 80: Register the tools with the agent' 628 646 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_500_15'
+ws_run_block 15 'Connecting the AI agent to the knowledge base' '2. Replace the content of application.properties:' 627 645 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_500_15'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -2048,7 +2044,7 @@ spring.ai.vectorstore.bedrock-knowledge-base.knowledge-base-id=${KNOWLEDGE_BASE_
 EOF
 WS_TEST_BLOCK_500_15
 
-ws_run_block 16 'Connecting the AI agent to the knowledge base' '- 17-18: The Knowledge Base ID from ~/environment/.envrc' 654 742 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_500_16'
+ws_run_block 16 'Connecting the AI agent to the knowledge base' '3. Replace the content of ChatService.java:' 653 741 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_500_16'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -2140,7 +2136,7 @@ public class ChatService {
 EOF
 WS_TEST_BLOCK_500_16
 
-ws_run_block 17 'Connecting the AI agent to the knowledge base' '- 56-66: The custom template treats the Knowledge Base as reference material, so the agent still answers questions the policies don'"'"'t cover' 756 785 'python' 'python-langgraph' <<'WS_TEST_BLOCK_500_17'
+ws_run_block 17 'Connecting the AI agent to the knowledge base' '1. Create knowledge.py with the knowledge base tool:' 755 784 'python' 'python-langgraph' <<'WS_TEST_BLOCK_500_17'
 cat <<'EOF' > ~/environment/aiagent/knowledge.py
 import os
 
@@ -2173,7 +2169,7 @@ def search_knowledge_base(query: str) -> str:
 EOF
 WS_TEST_BLOCK_500_17
 
-ws_run_block 18 'Connecting the AI agent to the knowledge base' '- 26-29: Return each chunk with its source document, so the model can cite the policy' 796 862 'python' 'python-langgraph' <<'WS_TEST_BLOCK_500_18'
+ws_run_block 18 'Connecting the AI agent to the knowledge base' '2. Replace the content of main.py:' 795 861 'python' 'python-langgraph' <<'WS_TEST_BLOCK_500_18'
 cat <<'EOF' > ~/environment/aiagent/main.py
 import os
 
@@ -2243,7 +2239,7 @@ if __name__ == "__main__":
 EOF
 WS_TEST_BLOCK_500_18
 
-ws_run_block 19 'Connecting the AI agent to the knowledge base' '- 33-35: Tools available to the agent' 876 902 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_500_19'
+ws_run_block 19 'Connecting the AI agent to the knowledge base' '2. Create knowledge.ts with the knowledge base tool:' 875 901 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_500_19'
 cat <<'EOF' > ~/environment/aiagent/knowledge.ts
 import { BedrockAgentRuntimeClient, RetrieveCommand } from '@aws-sdk/client-bedrock-agent-runtime';
 import { tool } from 'ai';
@@ -2273,7 +2269,7 @@ export const searchKnowledgeBase = tool({
 EOF
 WS_TEST_BLOCK_500_19
 
-ws_run_block 20 'Connecting the AI agent to the knowledge base' '- 22-24: Return each chunk with its source document, so the model can cite the policy' 913 978 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_500_20'
+ws_run_block 20 'Connecting the AI agent to the knowledge base' '3. Replace the content of main.ts:' 912 977 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_500_20'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -2342,32 +2338,37 @@ app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
 WS_TEST_BLOCK_500_20
 
-ws_run_block 21 'Testing the knowledge base' 'Start the application in the background, send the prompt, and stop the application:' 996 999 'bash' '' <<'WS_TEST_BLOCK_500_21'
+ws_run_block 21 'Testing the knowledge base' '1. Interact with the AI agent:' 998 1000 'bash' 'terminal' <<'WS_TEST_BLOCK_500_21'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 ~/workshop/scripts/local-app.sh ask "How much can I spend on a hotel per night in San Francisco?"
-~/workshop/scripts/local-app.sh stop
 WS_TEST_BLOCK_500_21
 
-ws_skip_block 22 'Testing the knowledge base' '1. Start the application:' 1010 1011 'bash' 'python-strands' 'foreground app for the Web UI'
+ws_skip_block 22 'Testing the knowledge base' 'Testing the knowledge base' 1005 1006 'text' 'terminal' 'copy action disabled'
 
-ws_skip_block 23 'Testing the knowledge base' 'Testing the knowledge base' 1018 1019 'bash' 'java-spring-ai' 'foreground app for the Web UI'
+ws_skip_block 23 'Testing the knowledge base' '1. Interact with the AI agent:' 1018 1019 'bash' 'chat-ui' 'the Terminal tab runs it'
 
-ws_skip_block 24 'Testing the knowledge base' 'Testing the knowledge base' 1026 1027 'bash' 'python-langgraph' 'foreground app for the Web UI'
-
-ws_skip_block 25 'Testing the knowledge base' 'Testing the knowledge base' 1034 1035 'bash' 'ts-vercel' 'foreground app for the Web UI'
-
-ws_run_block 26 'Committing changes' 'Committing changes' 1056 1058 'bash' '' <<'WS_TEST_BLOCK_500_26'
+ws_run_block 24 'Committing changes' '1. Commit the changes:' 1040 1042 'bash' '' <<'WS_TEST_BLOCK_500_24'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add knowledge base"
-WS_TEST_BLOCK_500_26
+WS_TEST_BLOCK_500_24
 
 ws_end_page
 
 ws_begin_page 'Tool calling' 600 'tools/index.en.md'
 
-ws_run_block 1 'Adding context and web search' '2. Add the context and the web search tool:' 89 129 'python' 'python-strands' <<'WS_TEST_BLOCK_600_1'
+ws_run_block 1 'Tool calling' '1. Interact with the AI agent:' 18 20 'bash' 'terminal' <<'WS_TEST_BLOCK_600_1'
+cd ~/environment/aiagent
+~/workshop/scripts/local-app.sh start
+~/workshop/scripts/local-app.sh ask "Which AI meetups take place in San Francisco in the week two months from now?"
+WS_TEST_BLOCK_600_1
+
+ws_skip_block 2 'Tool calling' 'Tool calling' 25 26 'text' 'terminal' 'copy action disabled'
+
+ws_skip_block 3 'Tool calling' '1. Interact with the AI agent:' 36 37 'bash' 'chat-ui' 'the Terminal tab runs it'
+
+ws_run_block 4 'Adding context and web search' '1. Create webgrounding.py with the web search tool:' 118 158 'python' 'python-strands' <<'WS_TEST_BLOCK_600_4'
 cat <<'EOF' > ~/environment/aiagent/web_grounding.py
 import logging
 import os
@@ -2409,9 +2410,9 @@ def search_web(query: str) -> str:
     result = "".join(text) or "No results found."
     return result + ("\n\nSources:\n" + "\n".join(sources) if sources else "")
 EOF
-WS_TEST_BLOCK_600_1
+WS_TEST_BLOCK_600_4
 
-ws_run_block 2 'Adding context and web search' '- 35-38: Collect the web citations as sources' 139 247 'python' 'python-strands' <<'WS_TEST_BLOCK_600_2'
+ws_run_block 5 'Adding context and web search' '2. Replace the content of main.py:' 168 276 'python' 'python-strands' <<'WS_TEST_BLOCK_600_5'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -2521,9 +2522,9 @@ app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 if __name__ == "__main__":
     app.run()
 EOF
-WS_TEST_BLOCK_600_2
+WS_TEST_BLOCK_600_5
 
-ws_run_block 3 'Adding context and web search' '- 99: Add the current date and time and the user ID to the prompt' 261 392 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_600_3'
+ws_run_block 6 'Adding context and web search' '1. Replace the content of pom.xml to add the Bedrock Runtime SDK for the Converse API with the novagrounding system tool:' 290 421 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_600_6'
 cat <<'EOF' > ~/environment/aiagent/pom.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -2656,9 +2657,9 @@ cat <<'EOF' > ~/environment/aiagent/pom.xml
 
 </project>
 EOF
-WS_TEST_BLOCK_600_3
+WS_TEST_BLOCK_600_6
 
-ws_run_block 4 'Adding context and web search' '- 74-78: Bedrock Runtime SDK for the web grounding tool (Converse API with SystemTool)' 400 450 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_600_4'
+ws_run_block 7 'Adding context and web search' '2. Create ContextAdvisor.java:' 429 479 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_600_7'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ContextAdvisor.java
 package com.example.agent;
 
@@ -2710,9 +2711,9 @@ class ContextAdvisor implements BaseAdvisor {
     }
 }
 EOF
-WS_TEST_BLOCK_600_4
+WS_TEST_BLOCK_600_7
 
-ws_run_block 5 'Adding context and web search' '- 33-34: Augment the UserMessage in place with timestamp and userId' 460 550 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_600_5'
+ws_run_block 8 'Adding context and web search' '3. Create WebGroundingTools.java with the web search tool:' 489 579 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_600_8'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/WebGroundingTools.java
 package com.example.agent;
 
@@ -2804,9 +2805,9 @@ public class WebGroundingTools {
 
 }
 EOF
-WS_TEST_BLOCK_600_5
+WS_TEST_BLOCK_600_8
 
-ws_run_block 6 'Adding context and web search' '- 41-45: Use novagrounding system tool through the Bedrock Converse API' 559 659 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_600_6'
+ws_run_block 9 'Adding context and web search' '4. Replace the content of ChatService.java:' 588 688 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_600_9'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -2908,9 +2909,9 @@ public class ChatService {
     }
 }
 EOF
-WS_TEST_BLOCK_600_6
+WS_TEST_BLOCK_600_9
 
-ws_run_block 7 'Adding context and web search' '- 82: Register the local tools' 672 712 'python' 'python-langgraph' <<'WS_TEST_BLOCK_600_7'
+ws_run_block 10 'Adding context and web search' '1. Create webgrounding.py with the web search tool:' 703 743 'python' 'python-langgraph' <<'WS_TEST_BLOCK_600_10'
 cat <<'EOF' > ~/environment/aiagent/web_grounding.py
 import logging
 import os
@@ -2952,9 +2953,9 @@ def search_web(query: str) -> str:
     result = "".join(text) or "No results found."
     return result + ("\n\nSources:\n" + "\n".join(sources) if sources else "")
 EOF
-WS_TEST_BLOCK_600_7
+WS_TEST_BLOCK_600_10
 
-ws_run_block 8 'Adding context and web search' '- 35-38: Collect the web citations as sources' 722 797 'python' 'python-langgraph' <<'WS_TEST_BLOCK_600_8'
+ws_run_block 11 'Adding context and web search' '2. Replace the content of main.py:' 753 828 'python' 'python-langgraph' <<'WS_TEST_BLOCK_600_11'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -3031,14 +3032,14 @@ app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 if __name__ == "__main__":
     app.run()
 EOF
-WS_TEST_BLOCK_600_8
+WS_TEST_BLOCK_600_11
 
-ws_run_block 9 'Adding context and web search' '- 65: Add the current date and time and the user ID to the prompt' 811 812 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_600_9'
+ws_run_block 12 'Adding context and web search' '1. Add the Bedrock Runtime client to call the Converse API with the novagrounding system tool:' 842 843 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_600_12'
 cd ~/environment/aiagent
 npm install @aws-sdk/client-bedrock-runtime
-WS_TEST_BLOCK_600_9
+WS_TEST_BLOCK_600_12
 
-ws_run_block 10 'Adding context and web search' 'Create web-grounding.ts with the web search tool:' 818 854 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_600_10'
+ws_run_block 13 'Adding context and web search' '2. Create web-grounding.ts with the web search tool:' 849 885 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_600_13'
 cat <<'EOF' > ~/environment/aiagent/web-grounding.ts
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 import { tool } from 'ai';
@@ -3076,9 +3077,9 @@ export const searchWeb = tool({
   },
 });
 EOF
-WS_TEST_BLOCK_600_10
+WS_TEST_BLOCK_600_13
 
-ws_run_block 11 'Adding context and web search' '- 24-27: Collect the web citations as sources' 864 938 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_600_11'
+ws_run_block 14 'Adding context and web search' '3. Replace the content of main.ts:' 895 969 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_600_14'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -3154,26 +3155,19 @@ if (existsSync('static')) {
 
 app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
-WS_TEST_BLOCK_600_11
+WS_TEST_BLOCK_600_14
 
-ws_run_block 12 'Testing the web search' 'Start the application in the background, send the prompt, and stop the application:' 954 957 'bash' '' <<'WS_TEST_BLOCK_600_12'
+ws_run_block 15 'Testing the web search' '1. Interact with the AI agent:' 988 990 'bash' 'terminal' <<'WS_TEST_BLOCK_600_15'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 ~/workshop/scripts/local-app.sh ask "Which AI meetups take place in San Francisco in the week two months from now?"
-~/workshop/scripts/local-app.sh stop
-WS_TEST_BLOCK_600_12
+WS_TEST_BLOCK_600_15
 
-ws_skip_block 13 'Testing the web search' '1. Start the application:' 968 969 'bash' 'python-strands' 'foreground app for the Web UI'
+ws_skip_block 16 'Testing the web search' 'Testing the web search' 995 1003 'text' 'terminal' 'copy action disabled'
 
-ws_skip_block 14 'Testing the web search' 'Testing the web search' 976 977 'bash' 'java-spring-ai' 'foreground app for the Web UI'
+ws_skip_block 17 'Testing the web search' '1. Interact with the AI agent:' 1015 1016 'bash' 'chat-ui' 'the Terminal tab runs it'
 
-ws_skip_block 15 'Testing the web search' 'The startup log shows the enabled features:' 983 986 '' 'java-spring-ai' 'informational block without language'
-
-ws_skip_block 16 'Testing the web search' 'Testing the web search' 993 994 'bash' 'python-langgraph' 'foreground app for the Web UI'
-
-ws_skip_block 17 'Testing the web search' 'Testing the web search' 1001 1002 'bash' 'ts-vercel' 'foreground app for the Web UI'
-
-ws_run_block 18 'Committing changes' 'Committing changes' 1023 1025 'bash' '' <<'WS_TEST_BLOCK_600_18'
+ws_run_block 18 'Committing changes' '1. Commit the changes:' 1037 1039 'bash' '' <<'WS_TEST_BLOCK_600_18'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add tools"
@@ -3183,35 +3177,45 @@ ws_end_page
 
 ws_begin_page 'AgentCore Browser' 700 'browser/index.en.md'
 
-ws_run_block 1 'Finding the travel portal' 'Save the portal URL for the application and check that the portal answers:' 79 83 'bash' '' <<'WS_TEST_BLOCK_700_1'
+ws_run_block 1 'AgentCore Browser' '1. Interact with the AI agent:' 18 20 'bash' 'terminal' <<'WS_TEST_BLOCK_700_1'
+cd ~/environment/aiagent
+~/workshop/scripts/local-app.sh start
+~/workshop/scripts/local-app.sh ask "Which are the three cheapest flights from Berlin to San Francisco on our travel portal for the Monday two months from now? Show me the page."
+WS_TEST_BLOCK_700_1
+
+ws_skip_block 2 'AgentCore Browser' 'AgentCore Browser' 25 26 'text' 'terminal' 'copy action disabled'
+
+ws_skip_block 3 'AgentCore Browser' '1. Interact with the AI agent:' 36 37 'bash' 'chat-ui' 'the Terminal tab runs it'
+
+ws_run_block 4 'Finding the travel portal' '1. Save the portal URL for the application and check that the portal answers:' 110 114 'bash' '' <<'WS_TEST_BLOCK_700_4'
 echo "export PORTAL_URL=$(aws ssm get-parameter --name workshop-portal-url \
   --query Parameter.Value --output text --no-cli-pager)" >> ~/environment/.envrc
 source ~/environment/.envrc
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${PORTAL_URL}/flights.html")
 echo "${STATUS}" && [ "${STATUS}" = "200" ]
-WS_TEST_BLOCK_700_1
+WS_TEST_BLOCK_700_4
 
-ws_run_block 2 'Storing artifacts in Amazon S3' '1. Save the bucket name for the application:' 95 97 'bash' '' <<'WS_TEST_BLOCK_700_2'
+ws_run_block 5 'Storing artifacts in Amazon S3' '1. Save the bucket name for the application:' 126 128 'bash' '' <<'WS_TEST_BLOCK_700_5'
 echo "export ARTIFACTS_BUCKET=$(aws ssm get-parameter --name workshop-bucket-name \
   --query Parameter.Value --output text --no-cli-pager)" >> ~/environment/.envrc
 source ~/environment/.envrc
-WS_TEST_BLOCK_700_2
+WS_TEST_BLOCK_700_5
 
-ws_run_block 3 'Storing artifacts in Amazon S3' '2. Expire the artifacts after one day:' 126 131 'bash' '' <<'WS_TEST_BLOCK_700_3'
+ws_run_block 6 'Storing artifacts in Amazon S3' '2. Expire the artifacts after one day:' 134 139 'bash' '' <<'WS_TEST_BLOCK_700_6'
 aws s3api put-bucket-lifecycle-configuration --bucket "${ARTIFACTS_BUCKET}" --no-cli-pager \
   --lifecycle-configuration '{
     "Rules": [{"ID": "expire-artifacts", "Status": "Enabled",
       "Filter": {"Prefix": "artifacts/"},
       "Expiration": {"Days": 1}}]
   }'
-WS_TEST_BLOCK_700_3
+WS_TEST_BLOCK_700_6
 
-ws_run_block 4 'Adding the browser tools' '2. Add the browser tools:' 148 149 'bash' 'python-strands' <<'WS_TEST_BLOCK_700_4'
+ws_run_block 7 'Adding the browser tools' '1. Add Playwright:' 154 155 'bash' 'python-strands' <<'WS_TEST_BLOCK_700_7'
 cd ~/environment/aiagent
 uv add playwright
-WS_TEST_BLOCK_700_4
+WS_TEST_BLOCK_700_7
 
-ws_run_block 5 'Adding the browser tools' 'Create artifacts.py, which keeps the screenshots and files of each conversation and uploads them to S3:' 155 190 'python' 'python-strands' <<'WS_TEST_BLOCK_700_5'
+ws_run_block 8 'Adding the browser tools' '2. Create artifacts.py, which keeps the screenshots and files of each conversation and uploads them to S3:' 161 196 'python' 'python-strands' <<'WS_TEST_BLOCK_700_8'
 cat <<'EOF' > ~/environment/aiagent/artifacts.py
 import os
 import uuid
@@ -3248,9 +3252,9 @@ def as_markdown(conversation_id):
             parts.append(f"\n\n[Download {name}]({url})")
     return "".join(parts)
 EOF
-WS_TEST_BLOCK_700_5
+WS_TEST_BLOCK_700_8
 
-ws_run_block 6 'Adding the browser tools' '- 27-35: Return the files of a conversation as markdown links and remove them from the store. Images render inline, other files as download links' 201 259 'python' 'python-strands' <<'WS_TEST_BLOCK_700_6'
+ws_run_block 9 'Adding the browser tools' '3. Create browsertools.py:' 207 265 'python' 'python-strands' <<'WS_TEST_BLOCK_700_9'
 cat <<'EOF' > ~/environment/aiagent/browser_tools.py
 import logging
 import os
@@ -3310,9 +3314,9 @@ async def take_screenshot(url: str) -> str:
 
     return await open_page(url, capture)
 EOF
-WS_TEST_BLOCK_700_6
+WS_TEST_BLOCK_700_9
 
-ws_run_block 7 'Adding the browser tools' '- 54: Keep the screenshot for the user instead of returning it to the model' 268 385 'python' 'python-strands' <<'WS_TEST_BLOCK_700_7'
+ws_run_block 10 'Adding the browser tools' '4. Replace the content of main.py:' 274 391 'python' 'python-strands' <<'WS_TEST_BLOCK_700_10'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -3431,9 +3435,9 @@ app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 if __name__ == "__main__":
     app.run()
 EOF
-WS_TEST_BLOCK_700_7
+WS_TEST_BLOCK_700_10
 
-ws_run_block 8 'Adding the browser tools' '- 109-111: Append screenshots and generated files after the answer; they are not saved to memory' 400 541 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_700_8'
+ws_run_block 11 'Adding the browser tools' '1. Replace the content of pom.xml to add the AgentCore Browser module and the Amazon S3 SDK for the artifact links:' 408 549 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_700_11'
 cat <<'EOF' > ~/environment/aiagent/pom.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -3576,9 +3580,9 @@ cat <<'EOF' > ~/environment/aiagent/pom.xml
 
 </project>
 EOF
-WS_TEST_BLOCK_700_8
+WS_TEST_BLOCK_700_11
 
-ws_run_block 9 'Adding the browser tools' '- 79-88: AgentCore Browser tools and the Amazon S3 SDK for artifact links' 549 577 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_700_9'
+ws_run_block 12 'Adding the browser tools' '2. Replace the content of application.properties:' 559 587 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_700_12'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -3608,9 +3612,9 @@ app.artifacts.bucket=${ARTIFACTS_BUCKET}
 # Corporate travel portal
 app.portal-url=${PORTAL_URL}
 EOF
-WS_TEST_BLOCK_700_9
+WS_TEST_BLOCK_700_12
 
-ws_run_block 10 'Adding the browser tools' '- 20-28: Tool descriptions for the browser tools and the artifacts bucket from ~/environment/.envrc' 585 634 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_700_10'
+ws_run_block 13 'Adding the browser tools' '3. Create ArtifactLinks.java, which uploads the screenshots and files to S3 and signs the links:' 595 644 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_700_13'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ArtifactLinks.java
 package com.example.agent;
 
@@ -3661,9 +3665,9 @@ public class ArtifactLinks {
     }
 }
 EOF
-WS_TEST_BLOCK_700_10
+WS_TEST_BLOCK_700_13
 
-ws_run_block 11 'Adding the browser tools' '- 43-47: Return a presigned GET link that is valid for one hour' 644 789 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_700_11'
+ws_run_block 14 'Adding the browser tools' '4. Replace the content of ChatService.java:' 654 799 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_700_14'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -3810,14 +3814,18 @@ public class ChatService {
     }
 }
 EOF
-WS_TEST_BLOCK_700_11
+WS_TEST_BLOCK_700_14
 
-ws_run_block 12 'Adding the browser tools' '- 126-144: Format screenshots as markdown images with presigned S3 links' 808 809 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_700_12'
+ws_run_block 15 'Adding the browser tools' '5. Skip the browser download:' 817 817 'bash' 'java-spring-ai' <<'WS_TEST_BLOCK_700_15'
+echo "export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1" >> ~/environment/.envrc
+WS_TEST_BLOCK_700_15
+
+ws_run_block 16 'Adding the browser tools' '1. Add Playwright:' 828 829 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_700_16'
 cd ~/environment/aiagent
 uv add playwright
-WS_TEST_BLOCK_700_12
+WS_TEST_BLOCK_700_16
 
-ws_run_block 13 'Adding the browser tools' 'Create artifacts.py, which keeps the screenshots and files of each conversation and uploads them to S3:' 815 850 'python' 'python-langgraph' <<'WS_TEST_BLOCK_700_13'
+ws_run_block 17 'Adding the browser tools' '2. Create artifacts.py, which keeps the screenshots and files of each conversation and uploads them to S3:' 835 870 'python' 'python-langgraph' <<'WS_TEST_BLOCK_700_17'
 cat <<'EOF' > ~/environment/aiagent/artifacts.py
 import os
 import uuid
@@ -3854,9 +3862,9 @@ def as_markdown(conversation_id):
             parts.append(f"\n\n[Download {name}]({url})")
     return "".join(parts)
 EOF
-WS_TEST_BLOCK_700_13
+WS_TEST_BLOCK_700_17
 
-ws_run_block 14 'Adding the browser tools' '- 27-35: Return the files of a conversation as markdown links and remove them from the store. Images render inline, other files as download links' 861 919 'python' 'python-langgraph' <<'WS_TEST_BLOCK_700_14'
+ws_run_block 18 'Adding the browser tools' '3. Create browsertools.py:' 881 939 'python' 'python-langgraph' <<'WS_TEST_BLOCK_700_18'
 cat <<'EOF' > ~/environment/aiagent/browser_tools.py
 import logging
 import os
@@ -3916,9 +3924,9 @@ async def take_screenshot(url: str) -> str:
 
     return await open_page(url, capture)
 EOF
-WS_TEST_BLOCK_700_14
+WS_TEST_BLOCK_700_18
 
-ws_run_block 15 'Adding the browser tools' '- 54: Keep the screenshot for the user instead of returning it to the model' 928 1012 'python' 'python-langgraph' <<'WS_TEST_BLOCK_700_15'
+ws_run_block 19 'Adding the browser tools' '4. Replace the content of main.py:' 948 1032 'python' 'python-langgraph' <<'WS_TEST_BLOCK_700_19'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -4004,14 +4012,14 @@ app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 if __name__ == "__main__":
     app.run()
 EOF
-WS_TEST_BLOCK_700_15
+WS_TEST_BLOCK_700_19
 
-ws_run_block 16 'Adding the browser tools' '- 76-78: Append screenshots and generated files after the answer; they are not saved to memory' 1027 1028 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_700_16'
+ws_run_block 20 'Adding the browser tools' '1. Add Playwright and the S3 clients for the uploads and the presigned links:' 1051 1052 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_700_20'
 cd ~/environment/aiagent
 npm install playwright @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
-WS_TEST_BLOCK_700_16
+WS_TEST_BLOCK_700_20
 
-ws_run_block 17 'Adding the browser tools' 'Create artifacts.ts, which keeps the screenshots and files of each conversation and uploads them to S3:' 1034 1067 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_700_17'
+ws_run_block 21 'Adding the browser tools' '2. Create artifacts.ts, which keeps the screenshots and files of each conversation and uploads them to S3:' 1058 1091 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_700_21'
 cat <<'EOF' > ~/environment/aiagent/artifacts.ts
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
@@ -4046,9 +4054,9 @@ export async function asMarkdown(conversationId: string) {
   return parts.join('');
 }
 EOF
-WS_TEST_BLOCK_700_17
+WS_TEST_BLOCK_700_21
 
-ws_run_block 18 'Adding the browser tools' '- 25-33: Return the files of a conversation as markdown links and remove them from the store. Images render inline, other files as download links' 1078 1113 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_700_18'
+ws_run_block 22 'Adding the browser tools' '3. Create browser-tools.ts:' 1102 1137 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_700_22'
 cat <<'EOF' > ~/environment/aiagent/browser-tools.ts
 import { tool } from 'ai';
 import { PlaywrightBrowser } from 'bedrock-agentcore/browser/playwright';
@@ -4085,9 +4093,9 @@ export const browserTools = {
   }),
 };
 EOF
-WS_TEST_BLOCK_700_18
+WS_TEST_BLOCK_700_22
 
-ws_run_block 19 'Adding the browser tools' '- 31: Keep the screenshot for the user instead of returning it to the model' 1122 1206 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_700_19'
+ws_run_block 23 'Adding the browser tools' '4. Replace the content of main.ts:' 1146 1230 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_700_23'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -4173,34 +4181,39 @@ if (existsSync('static')) {
 
 app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
-WS_TEST_BLOCK_700_19
+WS_TEST_BLOCK_700_23
 
-ws_run_block 20 'Testing the browser' 'Start the application in the background, send the prompt, and stop the application:' 1223 1226 'bash' '' <<'WS_TEST_BLOCK_700_20'
+ws_run_block 24 'Testing the browser' '1. Interact with the AI agent:' 1252 1254 'bash' 'terminal' <<'WS_TEST_BLOCK_700_24'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 ~/workshop/scripts/local-app.sh ask "Which are the three cheapest flights from Berlin to San Francisco on our travel portal for the Monday two months from now? Show me the page."
-~/workshop/scripts/local-app.sh stop
-WS_TEST_BLOCK_700_20
+WS_TEST_BLOCK_700_24
 
-ws_skip_block 21 'Testing the browser' '1. Start the application:' 1237 1238 'bash' 'python-strands' 'foreground app for the Web UI'
+ws_skip_block 25 'Testing the browser' 'Testing the browser' 1259 1267 'text' 'terminal' 'copy action disabled'
 
-ws_skip_block 22 'Testing the browser' 'Testing the browser' 1245 1247 'bash' 'java-spring-ai' 'foreground app for the Web UI'
+ws_skip_block 26 'Testing the browser' '1. Interact with the AI agent:' 1281 1282 'bash' 'chat-ui' 'the Terminal tab runs it'
 
-ws_skip_block 23 'Testing the browser' 'PLAYWRIGHTSKIPBROWSERDOWNLOAD skips the download of a local browser: the browser runs on AgentCore Browser.' 1256 1257 'bash' 'python-langgraph' 'foreground app for the Web UI'
-
-ws_skip_block 24 'Testing the browser' 'Testing the browser' 1264 1265 'bash' 'ts-vercel' 'foreground app for the Web UI'
-
-ws_run_block 25 'Committing changes' 'Committing changes' 1289 1291 'bash' '' <<'WS_TEST_BLOCK_700_25'
+ws_run_block 27 'Committing changes' '1. Commit the changes:' 1306 1308 'bash' '' <<'WS_TEST_BLOCK_700_27'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add browser"
-WS_TEST_BLOCK_700_25
+WS_TEST_BLOCK_700_27
 
 ws_end_page
 
 ws_begin_page 'AgentCore Code Interpreter' 800 'code-interpreter/index.en.md'
 
-ws_run_block 1 'Adding the code execution tool' '2. Add the code execution tool:' 49 92 'python' 'python-strands' <<'WS_TEST_BLOCK_800_1'
+ws_run_block 1 'AgentCore Code Interpreter' '1. Interact with the AI agent:' 18 20 'bash' 'terminal' <<'WS_TEST_BLOCK_800_1'
+cd ~/environment/aiagent
+~/workshop/scripts/local-app.sh start
+~/workshop/scripts/local-app.sh ask "Here is my cost estimate for San Francisco: flight 890 EUR, hotel 5 nights at 149 USD, conference ticket 1100 USD, meals 60 USD a day for 6 days, taxis 120 USD. Convert USD at 0.86 EUR, compare the total with my budget of 3500 EUR, and give me a chart and a CSV."
+WS_TEST_BLOCK_800_1
+
+ws_skip_block 2 'AgentCore Code Interpreter' 'AgentCore Code Interpreter' 25 28 'text' 'terminal' 'copy action disabled'
+
+ws_skip_block 3 'AgentCore Code Interpreter' '1. Interact with the AI agent:' 38 39 'bash' 'chat-ui' 'the Terminal tab runs it'
+
+ws_run_block 4 'Adding the code execution tool' '1. Create codeinterpretertools.py with the executecode tool:' 78 121 'python' 'python-strands' <<'WS_TEST_BLOCK_800_4'
 cat <<'EOF' > ~/environment/aiagent/code_interpreter_tools.py
 import logging
 import mimetypes
@@ -4245,9 +4258,9 @@ def execute_code(code: str, output_files: list[str] | None = None) -> str:
     log.info("Code executed, %d output files", len(output_files or []))
     return "\n".join(output) or "Code executed with no output."
 EOF
-WS_TEST_BLOCK_800_1
+WS_TEST_BLOCK_800_4
 
-ws_run_block 2 'Adding the code execution tool' '- 31-41: Download the generated files and keep them for the user instead of returning them to the model' 104 223 'python' 'python-strands' <<'WS_TEST_BLOCK_800_2'
+ws_run_block 5 'Adding the code execution tool' '2. Replace the content of main.py:' 133 252 'python' 'python-strands' <<'WS_TEST_BLOCK_800_5'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -4368,9 +4381,9 @@ app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 if __name__ == "__main__":
     app.run()
 EOF
-WS_TEST_BLOCK_800_2
+WS_TEST_BLOCK_800_5
 
-ws_run_block 3 'Adding the code execution tool' '- 77: Add the code interpreter tool' 235 381 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_800_3'
+ws_run_block 6 'Adding the code execution tool' '1. Replace the content of pom.xml to add the AgentCore Code Interpreter module:' 266 412 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_800_6'
 cat <<'EOF' > ~/environment/aiagent/pom.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -4518,9 +4531,9 @@ cat <<'EOF' > ~/environment/aiagent/pom.xml
 
 </project>
 EOF
-WS_TEST_BLOCK_800_3
+WS_TEST_BLOCK_800_6
 
-ws_run_block 4 'Adding the code execution tool' '- 89-93: AgentCore Code Interpreter tool' 389 572 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_800_4'
+ws_run_block 7 'Adding the code execution tool' '2. Replace the content of ChatService.java:' 422 605 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_800_7'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -4705,9 +4718,9 @@ public class ChatService {
     }
 }
 EOF
-WS_TEST_BLOCK_800_4
+WS_TEST_BLOCK_800_7
 
-ws_run_block 5 'Adding the code execution tool' '- 155-182: Images render inline, other files as download links; the sandbox'"'"'s npm files are skipped' 588 631 'python' 'python-langgraph' <<'WS_TEST_BLOCK_800_5'
+ws_run_block 8 'Adding the code execution tool' '1. Create codeinterpretertools.py with the executecode tool:' 621 664 'python' 'python-langgraph' <<'WS_TEST_BLOCK_800_8'
 cat <<'EOF' > ~/environment/aiagent/code_interpreter_tools.py
 import logging
 import mimetypes
@@ -4752,9 +4765,9 @@ def execute_code(code: str, output_files: list[str] | None = None) -> str:
     log.info("Code executed, %d output files", len(output_files or []))
     return "\n".join(output) or "Code executed with no output."
 EOF
-WS_TEST_BLOCK_800_5
+WS_TEST_BLOCK_800_8
 
-ws_run_block 6 'Adding the code execution tool' '- 31-41: Download the generated files and keep them for the user instead of returning them to the model' 643 729 'python' 'python-langgraph' <<'WS_TEST_BLOCK_800_6'
+ws_run_block 9 'Adding the code execution tool' '2. Replace the content of main.py:' 676 762 'python' 'python-langgraph' <<'WS_TEST_BLOCK_800_9'
 cat <<'EOF' > ~/environment/aiagent/main.py
 from datetime import datetime
 import os
@@ -4842,9 +4855,9 @@ app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 if __name__ == "__main__":
     app.run()
 EOF
-WS_TEST_BLOCK_800_6
+WS_TEST_BLOCK_800_9
 
-ws_run_block 7 'Adding the code execution tool' '- 44: Add the code interpreter tool' 743 800 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_800_7'
+ws_run_block 10 'Adding the code execution tool' '1. Create code-interpreter-tools.ts with the executeCode tool:' 776 833 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_800_10'
 cat <<'EOF' > ~/environment/aiagent/code-interpreter-tools.ts
 import path from 'node:path';
 
@@ -4903,9 +4916,9 @@ export const codeInterpreterTools = {
   }),
 };
 EOF
-WS_TEST_BLOCK_800_7
+WS_TEST_BLOCK_800_10
 
-ws_run_block 8 'Adding the code execution tool' '- 42-50: Download the generated files and keep them for the user instead of returning them to the model' 812 898 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_800_8'
+ws_run_block 11 'Adding the code execution tool' '2. Replace the content of main.ts:' 845 931 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_800_11'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -4993,28 +5006,23 @@ if (existsSync('static')) {
 
 app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
-WS_TEST_BLOCK_800_8
+WS_TEST_BLOCK_800_11
 
-ws_run_block 9 'Testing the Code Interpreter' 'Start the application in the background, send the prompt, and stop the application:' 912 915 'bash' '' <<'WS_TEST_BLOCK_800_9'
+ws_run_block 12 'Testing the Code Interpreter' '1. Interact with the AI agent:' 948 950 'bash' 'terminal' <<'WS_TEST_BLOCK_800_12'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 ~/workshop/scripts/local-app.sh ask "Here is my cost estimate for San Francisco: flight 890 EUR, hotel 5 nights at 149 USD, conference ticket 1100 USD, meals 60 USD a day for 6 days, taxis 120 USD. Convert USD at 0.86 EUR, compare the total with my budget of 3500 EUR, and give me a chart and a CSV."
-~/workshop/scripts/local-app.sh stop
-WS_TEST_BLOCK_800_9
+WS_TEST_BLOCK_800_12
 
-ws_skip_block 10 'Testing the Code Interpreter' '1. Start the application:' 926 927 'bash' 'python-strands' 'foreground app for the Web UI'
+ws_skip_block 13 'Testing the Code Interpreter' 'Testing the Code Interpreter' 955 966 'text' 'terminal' 'copy action disabled'
 
-ws_skip_block 11 'Testing the Code Interpreter' 'Testing the Code Interpreter' 934 935 'bash' 'java-spring-ai' 'foreground app for the Web UI'
+ws_skip_block 14 'Testing the Code Interpreter' '1. Interact with the AI agent:' 978 979 'bash' 'chat-ui' 'the Terminal tab runs it'
 
-ws_skip_block 12 'Testing the Code Interpreter' 'Testing the Code Interpreter' 942 943 'bash' 'python-langgraph' 'foreground app for the Web UI'
-
-ws_skip_block 13 'Testing the Code Interpreter' 'Testing the Code Interpreter' 950 951 'bash' 'ts-vercel' 'foreground app for the Web UI'
-
-ws_run_block 14 'Committing changes' 'Committing changes' 973 975 'bash' '' <<'WS_TEST_BLOCK_800_14'
+ws_run_block 15 'Committing changes' '1. Commit the changes:' 1001 1003 'bash' '' <<'WS_TEST_BLOCK_800_15'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add code interpreter"
-WS_TEST_BLOCK_800_14
+WS_TEST_BLOCK_800_15
 
 ws_end_page
 
