@@ -1,3 +1,18 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+Conditions:
+  IdeAdministratorAccessEnabled:
+    Fn::Equals:
+      - Ref: IdeAdministratorAccess
+      - "true"
+  IdeArm64:
+    Fn::Equals:
+      - Ref: IdeArchitecture
+      - arm64
+  IdeIsUsEast1C8D91B94:
+    Fn::Equals:
+      - Ref: AWS::Region
+      - us-east-1
 Metadata:
   cdk_nag:
     rules_to_suppress:
@@ -13,10 +28,14 @@ Metadata:
         reason: API Gateway access logging not needed for workshop
       - id: AwsSolutions-COG4
         reason: Workshop environment does not require Cognito User Pool authorization
-      - id: AwsSolutions-IAM4
-        reason: AWS Managed policies are acceptable for workshop
-      - id: AwsSolutions-IAM5
-        reason: Wildcard permissions acceptable for workshop parallel resource creation
+      - applies_to:
+          - regex: /^Policy::.*$/g
+        id: AwsSolutions-IAM4
+        reason: AWS managed policies are acceptable for the ephemeral workshop environment
+      - applies_to:
+          - regex: /^(Action|Resource)::.*$/g
+        id: AwsSolutions-IAM5
+        reason: Wildcard permissions are acceptable for the ephemeral workshop environment
       - id: AwsSolutions-RDS2
         reason: Workshop non-sensitive test database does not need encryption at rest
       - id: AwsSolutions-RDS3
@@ -92,10 +111,1028 @@ Outputs:
               - IdePasswordResource07883F17
               - password
 Parameters:
+  IdeAdministratorAccess:
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "true"
+    Description: Attach AdministratorAccess to the IDE role workshop-ide-user; false = attach scoped policies from another template
+    Type: String
+  IdeArchitecture:
+    AllowedValues:
+      - x86_64
+      - arm64
+    Default: x86_64
+    Description: IDE instance architecture
+    Type: String
+  SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter:
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
   SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter:
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+  WorkshopSetupUrl:
+    Default: ""
+    Description: Optional setup script (s3:// or https://) that the IDE runs as ec2-user after the tools
+    Type: String
 Resources:
+  BedrockLoggingRole71F633EF:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Condition:
+              ArnLike:
+                aws:SourceArn:
+                  Fn::Join:
+                    - ""
+                    - - "arn:aws:bedrock:"
+                      - Ref: AWS::Region
+                      - ":"
+                      - Ref: AWS::AccountId
+                      - :*
+              StringEquals:
+                aws:SourceAccount:
+                  Ref: AWS::AccountId
+            Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+        Version: "2012-10-17"
+      Description: Role for Bedrock model invocation logging to CloudWatch
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:aws:logs:"
+                      - Ref: AWS::Region
+                      - ":"
+                      - Ref: AWS::AccountId
+                      - :log-group:/aws/bedrock/*
+            Version: "2012-10-17"
+          PolicyName: BedrockLogging
+      RoleName: workshop-bedrock-logging-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::IAM::Role
+  CfnPreDeleteCleanupFA953B95:
+    DeletionPolicy: Delete
+    Properties:
+      BucketNames:
+        - Ref: WorkshopBucketFD5BC43F
+        - Ref: WorkshopBucketAccessLogs476BAB88
+      ServiceToken:
+        Fn::GetAtt:
+          - CfnPreDeleteCleanupFunction580FB700
+          - Arn
+      VpcId:
+        Ref: VpcC3027511
+    Type: AWS::CloudFormation::CustomResource
+    UpdateReplacePolicy: Delete
+  CfnPreDeleteCleanupFunction580FB700:
+    DependsOn:
+      - CfnPreDeleteCleanupRoleDefaultPolicy7B910EB7
+      - CfnPreDeleteCleanupRole2BF62B3D
+    Properties:
+      Code:
+        ZipFile: |
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
+          import boto3
+          import time
+          import cfnresponse
+
+          ec2 = boto3.client('ec2')
+          s3 = boto3.client('s3')
+          s3_resource = boto3.resource('s3')
+
+          def lambda_handler(event, context):
+              """
+              Custom Resource handler to cleanup resources before stack deletion.
+              - GuardDuty VPC endpoints that block VPC deletion
+              - GuardDuty managed security groups
+              - S3 buckets supplied by the stack
+              Note: CloudWatch logs are kept for debugging/analysis
+              """
+              print(f"Event: {event}")
+
+              request_type = event['RequestType']
+              vpc_id = event['ResourceProperties'].get('VpcId', '')
+              bucket_names = event['ResourceProperties'].get('BucketNames', [])
+
+              try:
+                  if request_type == 'Delete':
+                      # Start VPC endpoint deletion (async)
+                      endpoint_ids = start_guardduty_endpoint_deletion(vpc_id)
+
+                      # While endpoints are deleting, clean up S3
+                      cleanup_s3_buckets(bucket_names)
+
+                      # Wait for VPC endpoint deletion to complete
+                      if endpoint_ids:
+                          wait_for_deletion(endpoint_ids, max_wait=300)
+
+                      # Delete GuardDuty security groups (after endpoints are deleted)
+                      cleanup_guardduty_security_groups(vpc_id)
+
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  print(f"Error: {e}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
+
+          def start_guardduty_endpoint_deletion(vpc_id):
+              """Find and start deletion of GuardDuty VPC endpoints."""
+
+              # Find GuardDuty data endpoints
+              filters = [{'Name': 'service-name', 'Values': ['*guardduty-data*']}]
+              if vpc_id:
+                  filters.append({'Name': 'vpc-id', 'Values': [vpc_id]})
+
+              response = ec2.describe_vpc_endpoints(Filters=filters)
+              endpoints = response.get('VpcEndpoints', [])
+
+              if not endpoints:
+                  print("No GuardDuty endpoints found")
+                  return []
+
+              endpoint_ids = [ep['VpcEndpointId'] for ep in endpoints]
+              print(f"Found GuardDuty endpoints: {endpoint_ids}")
+
+              # Start deletion (don't wait yet)
+              for endpoint_id in endpoint_ids:
+                  print(f"Deleting endpoint: {endpoint_id}")
+                  try:
+                      ec2.delete_vpc_endpoints(VpcEndpointIds=[endpoint_id])
+                  except Exception as e:
+                      print(f"Error deleting {endpoint_id}: {e}")
+
+              return endpoint_ids
+
+          def cleanup_guardduty_security_groups(vpc_id, max_retries=6, retry_delay=10):
+              """Delete GuardDuty managed security groups for the VPC with retry logic."""
+              if not vpc_id:
+                  print("No VPC ID provided, skipping security group cleanup")
+                  return
+
+              try:
+                  # Find GuardDuty managed security groups by name pattern
+                  response = ec2.describe_security_groups(
+                      Filters=[
+                          {'Name': 'vpc-id', 'Values': [vpc_id]},
+                          {'Name': 'group-name', 'Values': [f'GuardDutyManagedSecurityGroup-{vpc_id}']}
+                      ]
+                  )
+
+                  security_groups = response.get('SecurityGroups', [])
+
+                  if not security_groups:
+                      print("No GuardDuty security groups found")
+                      return
+
+                  for sg in security_groups:
+                      sg_id = sg['GroupId']
+                      sg_name = sg['GroupName']
+                      print(f"Deleting GuardDuty security group: {sg_name} ({sg_id})")
+
+                      # Retry deletion - ENIs may take time to detach after endpoint deletion
+                      for attempt in range(max_retries):
+                          try:
+                              ec2.delete_security_group(GroupId=sg_id)
+                              print(f"Deleted security group: {sg_id}")
+                              break
+                          except ec2.exceptions.ClientError as e:
+                              if 'DependencyViolation' in str(e) and attempt < max_retries - 1:
+                                  print(f"Security group has dependencies, waiting {retry_delay}s (attempt {attempt + 1}/{max_retries})...")
+                                  time.sleep(retry_delay)
+                              else:
+                                  print(f"Error deleting security group {sg_id}: {e}")
+                                  break
+
+              except Exception as e:
+                  print(f"Error listing GuardDuty security groups: {e}")
+
+              print("GuardDuty security group cleanup completed")
+
+          def cleanup_s3_buckets(bucket_names):
+              """Delete only the S3 buckets supplied by the stack."""
+              for bucket_name in bucket_names:
+                  print(f"Deleting S3 bucket: {bucket_name}")
+                  empty_bucket(bucket_name)
+                  try:
+                      s3.delete_bucket(Bucket=bucket_name)
+                      print(f"Deleted bucket: {bucket_name}")
+                  except Exception as e:
+                      print(f"Error deleting bucket {bucket_name}: {e}")
+
+              print("S3 bucket cleanup completed")
+
+          def empty_bucket(bucket_name):
+              """Delete all objects and versions from a bucket using boto3 resource API."""
+              try:
+                  bucket = s3_resource.Bucket(bucket_name)
+                  # Delete all object versions (handles both versioned and non-versioned buckets)
+                  bucket.object_versions.delete()
+                  print(f"Emptied bucket: {bucket_name}")
+              except Exception as e:
+                  print(f"Error emptying bucket {bucket_name}: {e}")
+
+          def wait_for_deletion(endpoint_ids, max_wait=300):
+              """Poll until endpoints are fully deleted (not just deleting) or timeout."""
+              start_time = time.time()
+
+              while time.time() - start_time < max_wait:
+                  try:
+                      response = ec2.describe_vpc_endpoints(VpcEndpointIds=endpoint_ids)
+                      endpoints = response.get('VpcEndpoints', [])
+
+                      # Wait for fully deleted state, not just deleting
+                      remaining = [ep for ep in endpoints if ep['State'] != 'deleted']
+
+                      if not remaining:
+                          print("All endpoints fully deleted")
+                          return
+
+                      states = {ep['VpcEndpointId']: ep['State'] for ep in remaining}
+                      print(f"Waiting for endpoints: {states}")
+                      time.sleep(10)
+                  except ec2.exceptions.ClientError as e:
+                      if 'InvalidVpcEndpointId.NotFound' in str(e):
+                          print("All endpoints deleted (not found)")
+                          return
+                      raise
+
+              print(f"Timeout waiting for endpoint deletion after {max_wait}s")
+      Description: Cleanup VPC endpoints, CloudWatch logs, and S3 buckets before stack deletion
+      FunctionName: workshop-cfn-pre-delete-cleanup
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - CfnPreDeleteCleanupRole2BF62B3D
+          - Arn
+      Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+      Timeout: 600
+    Type: AWS::Lambda::Function
+  CfnPreDeleteCleanupRole2BF62B3D:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::IAM::Role
+  CfnPreDeleteCleanupRoleDefaultPolicy7B910EB7:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeVpcEndpoints
+            Effect: Allow
+            Resource: "*"
+          - Action: ec2:DeleteVpcEndpoints
+            Condition:
+              StringEquals:
+                ec2:Vpc:
+                  Fn::Join:
+                    - ""
+                    - - "arn:"
+                      - Ref: AWS::Partition
+                      - ":ec2:"
+                      - Ref: AWS::Region
+                      - ":"
+                      - Ref: AWS::AccountId
+                      - :vpc/
+                      - Ref: VpcC3027511
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ec2:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :vpc-endpoint/*
+          - Action: ec2:DeleteSecurityGroup
+            Condition:
+              StringEquals:
+                ec2:Vpc:
+                  Fn::Join:
+                    - ""
+                    - - "arn:"
+                      - Ref: AWS::Partition
+                      - ":ec2:"
+                      - Ref: AWS::Region
+                      - ":"
+                      - Ref: AWS::AccountId
+                      - :vpc/
+                      - Ref: VpcC3027511
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":ec2:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :security-group/*
+          - Action:
+              - s3:DeleteBucket
+              - s3:ListBucket
+              - s3:ListBucketVersions
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - WorkshopBucketAccessLogs476BAB88
+                  - Arn
+              - Fn::GetAtt:
+                  - WorkshopBucketFD5BC43F
+                  - Arn
+          - Action:
+              - s3:DeleteObject
+              - s3:DeleteObjectVersion
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - WorkshopBucketAccessLogs476BAB88
+                        - Arn
+                    - /*
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - WorkshopBucketFD5BC43F
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+      PolicyName: CfnPreDeleteCleanupRoleDefaultPolicy7B910EB7
+      Roles:
+        - Ref: CfnPreDeleteCleanupRole2BF62B3D
+    Type: AWS::IAM::Policy
+  CodeBuild2FDE9E35:
+    DeletionPolicy: Delete
+    DependsOn:
+      - CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89
+      - CodeBuildCompleteRuleEE9277E8
+      - CodeBuildPendingBuilds19869454
+      - CodeBuildProjectA0FF5539
+      - CodeBuildReportLambdaFunctionA3C396F7
+      - CodeBuildStartLambdaFunction8349284F
+    Properties:
+      ContentHash: "1793649809143"
+      ProjectName:
+        Ref: CodeBuildProjectA0FF5539
+      ServiceToken:
+        Fn::GetAtt:
+          - CodeBuildStartLambdaFunction8349284F
+          - Arn
+    Type: AWS::CloudFormation::CustomResource
+    UpdateReplacePolicy: Delete
+  CodeBuildCompleteRuleAllowEventRuleWorkshopStackCodeBuildReportLambdaFunctionD77C60919E0B0C89:
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - CodeBuildReportLambdaFunctionA3C396F7
+          - Arn
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+          - CodeBuildCompleteRuleEE9277E8
+          - Arn
+    Type: AWS::Lambda::Permission
+  CodeBuildCompleteRuleEE9277E8:
+    Properties:
+      Description: workshop-setup build complete
+      EventPattern:
+        detail:
+          build-status:
+            - SUCCEEDED
+            - FAILED
+            - FAULT
+            - STOPPED
+            - TIMED_OUT
+          project-name:
+            - Ref: CodeBuildProjectA0FF5539
+        detail-type:
+          - CodeBuild Build State Change
+        source:
+          - aws.codebuild
+      State: ENABLED
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+      Targets:
+        - Arn:
+            Fn::GetAtt:
+              - CodeBuildReportLambdaFunctionA3C396F7
+              - Arn
+          Id: Target0
+    Type: AWS::Events::Rule
+  CodeBuildLambdaRole655C06B4:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::IAM::Role
+  CodeBuildLambdaRoleDefaultPolicyFB35F0AF:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - codebuild:BatchGetBuilds
+              - codebuild:StartBuild
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - CodeBuildProjectA0FF5539
+                - Arn
+          - Action:
+              - dynamodb:BatchWriteItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - CodeBuildPendingBuilds19869454
+                - Arn
+          - Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:ConditionCheckItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+              - dynamodb:GetItem
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - CodeBuildPendingBuilds19869454
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: CodeBuildLambdaRoleDefaultPolicyFB35F0AF
+      Roles:
+        - Ref: CodeBuildLambdaRole655C06B4
+    Type: AWS::IAM::Policy
+  CodeBuildPendingBuilds19869454:
+    DeletionPolicy: Delete
+    Metadata:
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-DDB3
+            reason: The table stores short-lived CloudFormation callback state and does not require point-in-time recovery
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: BuildId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: BuildId
+          KeyType: HASH
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+      TimeToLiveSpecification:
+        AttributeName: ExpiresAt
+        Enabled: true
+    Type: AWS::DynamoDB::Table
+    UpdateReplacePolicy: Delete
+  CodeBuildProjectA0FF5539:
+    Properties:
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Cache:
+        Type: NO_CACHE
+      EncryptionKey: alias/aws/s3
+      Environment:
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        EnvironmentVariables:
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: base
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: cdk
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: false
+        Type: LINUX_CONTAINER
+      Name: workshop-setup
+      ServiceRole:
+        Fn::GetAtt:
+          - CodeBuildRoleE9A44575
+          - Arn
+      Source:
+        BuildSpec: |
+          version: 0.2
+          env:
+            shell: bash
+          phases:
+            install:
+              commands:
+                - |
+                  aws --version
+                  echo "Environment Variables:"
+                  echo "TEMPLATE_TYPE: $TEMPLATE_TYPE"
+                  echo "GIT_BRANCH: $GIT_BRANCH"
+            build:
+              commands:
+                - |
+                  # Resolution for when creating the first service in the account
+                  aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
+                  aws iam create-service-linked-role --aws-service-name elasticloadbalancing.amazonaws.com 2>/dev/null || true
+                  aws iam create-service-linked-role --aws-service-name network.bedrock-agentcore.amazonaws.com 2>/dev/null || true
+                  aws iam create-service-linked-role --aws-service-name runtime-identity.bedrock-agentcore.amazonaws.com 2>/dev/null || true
+        Type: NO_SOURCE
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+      TimeoutInMinutes: 30
+    Type: AWS::CodeBuild::Project
+  CodeBuildReportLambdaFunctionA3C396F7:
+    DependsOn:
+      - CodeBuildLambdaRoleDefaultPolicyFB35F0AF
+      - CodeBuildLambdaRole655C06B4
+    Properties:
+      Code:
+        ZipFile: |
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
+          import json
+          import os
+          import urllib.request
+
+          import boto3
+
+          codebuild = boto3.client("codebuild")
+          table = boto3.resource("dynamodb").Table(os.environ["PENDING_TABLE_NAME"])
+
+          FAILURE_STATUSES = {"FAILED", "FAULT", "STOPPED", "TIMED_OUT"}
+
+
+          def normalized_build_id(value):
+              if ":build/" in value:
+                  return value.split(":build/", 1)[1]
+              return value
+
+
+          def send_response(event, context, status, data, physical_id, reason=None):
+              body = json.dumps(
+                  {
+                      "Status": status,
+                      "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+                      "PhysicalResourceId": physical_id,
+                      "StackId": event["StackId"],
+                      "RequestId": event["RequestId"],
+                      "LogicalResourceId": event["LogicalResourceId"],
+                      "NoEcho": False,
+                      "Data": data,
+                  }
+              ).encode("utf-8")
+              request = urllib.request.Request(
+                  event["ResponseURL"],
+                  data=body,
+                  method="PUT",
+                  headers={"content-type": "", "content-length": str(len(body))},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  if response.status >= 300:
+                      raise RuntimeError(f"CloudFormation response failed with HTTP {response.status}")
+
+
+          def failure_details(build):
+              details = []
+              for phase in build.get("phases", []):
+                  contexts = "; ".join(
+                      context.get("message", "") for context in phase.get("contexts", [])
+                  )
+                  if phase.get("phaseStatus") in FAILURE_STATUSES or contexts:
+                      details.append(
+                          f"{phase.get('phaseType')}={phase.get('phaseStatus')}: {contexts}".strip()
+                      )
+              logs = build.get("logs", {})
+              if logs.get("deepLink"):
+                  details.append(f"logs={logs['deepLink']}")
+              return " | ".join(details) or "No phase failure details were returned"
+
+
+          def lambda_handler(event, context):
+              detail = event["detail"]
+              event_build_id = detail["build-id"]
+              build_id = normalized_build_id(event_build_id)
+              print(f"Terminal CodeBuild event for {event_build_id}: {detail['build-status']}")
+
+              item = table.get_item(Key={"BuildId": build_id}, ConsistentRead=True).get("Item")
+              if not item:
+                  raise RuntimeError(f"Pending CloudFormation callback not found for {build_id}")
+
+              build_response = codebuild.batch_get_builds(ids=[item.get("BuildArn", event_build_id)])
+              builds = build_response.get("builds", [])
+              if len(builds) != 1:
+                  raise RuntimeError(f"CodeBuild build not found: {event_build_id}")
+
+              build = builds[0]
+              status = build["buildStatus"]
+              original_event = json.loads(item["CloudFormationEvent"])
+              data = {
+                  "BuildId": build["id"],
+                  "BuildArn": build["arn"],
+                  "ProjectName": item["ProjectName"],
+                  "BuildStatus": status,
+              }
+
+              if status == "SUCCEEDED":
+                  response_status = "SUCCESS"
+                  reason = None
+              elif status in FAILURE_STATUSES:
+                  response_status = "FAILED"
+                  reason = f"CodeBuild finished with {status}: {failure_details(build)}"
+              else:
+                  raise RuntimeError(f"Received non-terminal CodeBuild status {status}")
+
+              send_response(
+                  original_event,
+                  context,
+                  response_status,
+                  data,
+                  item["PhysicalResourceId"],
+                  reason,
+              )
+              table.delete_item(Key={"BuildId": build_id})
+              print(f"Sent {response_status} to CloudFormation for {build_id}")
+      Environment:
+        Variables:
+          PENDING_TABLE_NAME:
+            Ref: CodeBuildPendingBuilds19869454
+      FunctionName: workshop-setup-report
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - CodeBuildLambdaRole655C06B4
+          - Arn
+      Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+      Timeout: 120
+    Type: AWS::Lambda::Function
+  CodeBuildRoleDefaultPolicy196BAF24:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: iam:CreateServiceLinkedRole
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - ecs.amazonaws.com
+                  - elasticloadbalancing.amazonaws.com
+                  - network.bedrock-agentcore.amazonaws.com
+                  - runtime-identity.bedrock-agentcore.amazonaws.com
+            Effect: Allow
+            Resource: arn:aws:iam::*:role/aws-service-role/*
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":logs:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/codebuild/
+                    - Ref: CodeBuildProjectA0FF5539
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":logs:"
+                    - Ref: AWS::Region
+                    - ":"
+                    - Ref: AWS::AccountId
+                    - :log-group:/aws/codebuild/
+                    - Ref: CodeBuildProjectA0FF5539
+          - Action:
+              - codebuild:BatchPutCodeCoverages
+              - codebuild:BatchPutTestCases
+              - codebuild:CreateReport
+              - codebuild:CreateReportGroup
+              - codebuild:UpdateReport
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - ":codebuild:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :report-group/
+                  - Ref: CodeBuildProjectA0FF5539
+                  - -*
+        Version: "2012-10-17"
+      PolicyName: CodeBuildRoleDefaultPolicy196BAF24
+      Roles:
+        - Ref: CodeBuildRoleE9A44575
+    Type: AWS::IAM::Policy
+  CodeBuildRoleE9A44575:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+        Version: "2012-10-17"
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::IAM::Role
+  CodeBuildStartLambdaFunction8349284F:
+    DependsOn:
+      - CodeBuildLambdaRoleDefaultPolicyFB35F0AF
+      - CodeBuildLambdaRole655C06B4
+    Properties:
+      Code:
+        ZipFile: |
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
+          import json
+          import os
+          import time
+          import urllib.request
+
+          import boto3
+
+          codebuild = boto3.client("codebuild")
+          table = boto3.resource("dynamodb").Table(os.environ["PENDING_TABLE_NAME"])
+
+
+          def send_response(event, context, status, data, physical_id, reason=None):
+              body = json.dumps(
+                  {
+                      "Status": status,
+                      "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+                      "PhysicalResourceId": physical_id,
+                      "StackId": event["StackId"],
+                      "RequestId": event["RequestId"],
+                      "LogicalResourceId": event["LogicalResourceId"],
+                      "NoEcho": False,
+                      "Data": data,
+                  }
+              ).encode("utf-8")
+              request = urllib.request.Request(
+                  event["ResponseURL"],
+                  data=body,
+                  method="PUT",
+                  headers={"content-type": "", "content-length": str(len(body))},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  if response.status >= 300:
+                      raise RuntimeError(f"CloudFormation response failed with HTTP {response.status}")
+
+
+          def lambda_handler(event, context):
+              print(f"RequestType={event['RequestType']} LogicalResourceId={event['LogicalResourceId']}")
+              project_name = event["ResourceProperties"]["ProjectName"]
+              physical_id = event.get("PhysicalResourceId", project_name)
+
+              if event["RequestType"] == "Delete":
+                  send_response(event, context, "SUCCESS", {"ProjectName": project_name}, physical_id)
+                  return
+
+              try:
+                  build = codebuild.start_build(projectName=project_name)["build"]
+                  table.put_item(
+                      Item={
+                          "BuildId": build["id"],
+                          "BuildArn": build["arn"],
+                          "ProjectName": project_name,
+                          "PhysicalResourceId": project_name,
+                          "CloudFormationEvent": json.dumps(event),
+                          "ExpiresAt": int(time.time()) + 7200,
+                      }
+                  )
+                  print(f"Started CodeBuild project {project_name}: {build['id']}")
+              except Exception as error:
+                  print(f"Failed to start or persist CodeBuild callback: {error}")
+                  send_response(
+                      event,
+                      context,
+                      "FAILED",
+                      {"ProjectName": project_name},
+                      physical_id,
+                      str(error),
+                  )
+      Environment:
+        Variables:
+          PENDING_TABLE_NAME:
+            Ref: CodeBuildPendingBuilds19869454
+      FunctionName: workshop-setup-start
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - CodeBuildLambdaRole655C06B4
+          - Arn
+      Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+      Timeout: 120
+    Type: AWS::Lambda::Function
+  EcrRegistryTemplateD54113AB:
+    Properties:
+      AppliedFor:
+        - CREATE_ON_PUSH
+        - REPLICATION
+      CustomRoleArn:
+        Fn::GetAtt:
+          - EcrRegistryTemplateRole9295BC5C
+          - Arn
+      Description: Auto-create repositories on push with lifecycle policies for workshop workshop
+      ImageTagMutability: MUTABLE
+      LifecyclePolicy: |
+        {
+            "rules": [
+                {
+                    "rulePriority": 1,
+                    "description": "Expire untagged images after 1 day",
+                    "selection": {
+                        "tagStatus": "untagged",
+                        "countType": "sinceImagePushed",
+                        "countUnit": "days",
+                        "countNumber": 1
+                    },
+                    "action": {
+                        "type": "expire"
+                    }
+                },
+                {
+                    "rulePriority": 2,
+                    "description": "Keep only 10 most recent tagged images",
+                    "selection": {
+                        "tagStatus": "tagged",
+                        "tagPrefixList": ["latest", "v"],
+                        "countType": "imageCountMoreThan",
+                        "countNumber": 10
+                    },
+                    "action": {
+                        "type": "expire"
+                    }
+                }
+            ]
+        }
+      Prefix: ROOT
+      ResourceTags:
+        - Key: Environment
+          Value: workshop
+        - Key: ManagedBy
+          Value: ecr-create-on-push
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopOwner
+          Value: workshop-run
+    Type: AWS::ECR::RepositoryCreationTemplate
+  EcrRegistryTemplateRole9295BC5C:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecr.amazonaws.com
+        Version: "2012-10-17"
+      RoleName: workshop-ecr-template-role
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::IAM::Role
+  EcrRegistryTemplateRoleDefaultPolicy760EC63A:
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - ecr:CreateRepository
+              - ecr:PutLifecyclePolicy
+              - ecr:TagResource
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: EcrRegistryTemplateRoleDefaultPolicy760EC63A
+      Roles:
+        - Ref: EcrRegistryTemplateRole9295BC5C
+    Type: AWS::IAM::Policy
   IdeDistribution042A6660:
     DeletionPolicy: Delete
     DependsOn:
@@ -160,8 +1197,23 @@ Resources:
                           - Fn::GetAtt:
                               - IdeElasticIP3327A0B5
                               - PublicIp
-                  - .compute-1.amazonaws.com
+                  - "."
+                  - Fn::If:
+                      - IdeIsUsEast1C8D91B94
+                      - compute-1.amazonaws.com
+                      - Fn::Join:
+                          - ""
+                          - - Ref: AWS::Region
+                            - .compute.amazonaws.com
             Id: WorkshopStackIdeDistributionOrigin10FECA386
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::CloudFront::Distribution
     UpdateReplacePolicy: Delete
   IdeEC2InstanceResource438B3605:
@@ -172,9 +1224,16 @@ Resources:
           - IdeInstanceProfile61B92038
           - Arn
       ImageId:
-        Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
+        Fn::If:
+          - IdeArm64
+          - Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61arm64C96584B6F00A464EAD1953AFF4B05118Parameter
+          - Ref: SsmParameterValueawsserviceamiamazonlinuxlatestal2023amikernel61x8664C96584B6F00A464EAD1953AFF4B05118Parameter
       InstanceName: ide
-      InstanceTypes: m6a.xlarge,m7a.xlarge
+      InstanceTypes:
+        Fn::If:
+          - IdeArm64
+          - m7g.xlarge,m6g.xlarge
+          - m6a.xlarge,m7a.xlarge
       SecurityGroupIds:
         Fn::Join:
           - ""
@@ -202,25 +1261,46 @@ Resources:
             - - |-
                 #!/bin/bash
                 #!/bin/bash
+                # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+                # SPDX-License-Identifier: MIT-0
                 set -e
 
                 # Minimal EC2 UserData script - downloads and runs full bootstrap
                 # This keeps UserData under size limits while allowing unlimited bootstrap size
 
                 # Configuration from CDK
-                export GIT_BRANCH="main"
+                export GIT_BRANCH="cdk"
                 export AWS_REGION="
               - Ref: AWS::Region
               - |-
                 "
                 export TEMPLATE_TYPE="base"
-                export ARCH="x86_64"
+                export WORKSHOP_ID="base"
+                export WORKSHOP_STACK_NAME="
+              - Ref: AWS::StackName
+              - |-
+                "
+                export WORKSHOP_DEPLOYMENT_ID="
+              - Ref: AWS::StackId
+              - |-
+                "
+                export ARCH="
+              - Fn::If:
+                  - IdeArm64
+                  - aarch64
+                  - x86_64
+              - |-
+                "
                 export IDE_TYPE="code-editor"
                 export WAIT_CONDITION_HANDLE_URL="
               - Ref: IdeWaitConditionHandleE8345861
               - |-
                 "
                 export PREFIX="workshop"
+                export WORKSHOP_SETUP_URL="
+              - Ref: WorkshopSetupUrl
+              - |-
+                "
 
                 # Setup logging - use PREFIX for log group name
                 LOG_GROUP_NAME="workshop-ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
@@ -348,6 +1428,14 @@ Resources:
   IdeElasticIP3327A0B5:
     Properties:
       Domain: vpc
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EC2::EIP
   IdeInstanceLauncherFunction803C5A2A:
     DependsOn:
@@ -356,6 +1444,9 @@ Resources:
     Properties:
       Code:
         ZipFile: |-
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
           import boto3
           import traceback
           import cfnresponse
@@ -492,6 +1583,14 @@ Resources:
           - IdeLambdaRole82392143
           - Arn
       Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       Timeout: 300
     Type: AWS::Lambda::Function
   IdeInstanceProfile61B92038:
@@ -504,6 +1603,14 @@ Resources:
     Properties:
       GroupDescription: IDE internal security group
       GroupName: workshop-ide-internal-sg
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::SecurityGroup
@@ -548,27 +1655,57 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   IdeLambdaRoleDefaultPolicy099093D2:
     Properties:
       PolicyDocument:
         Statement:
           - Action:
-              - ec2:CreateTags
               - ec2:DescribeInstanceStatus
               - ec2:DescribeInstances
               - ec2:DescribeManagedPrefixLists
               - ec2:DescribeSubnets
-              - ec2:RunInstances
-              - ec2:TerminateInstances
-              - iam:PassRole
-              - secretsmanager:DescribeSecret
-              - secretsmanager:GetSecretValue
-              - ssm:DescribeInstanceInformation
-              - ssm:GetCommandInvocation
-              - ssm:SendCommand
             Effect: Allow
             Resource: "*"
+          - Action: ec2:RunInstances
+            Effect: Allow
+            Resource:
+              - arn:aws:ec2:*:*:instance/*
+              - arn:aws:ec2:*:*:network-interface/*
+              - arn:aws:ec2:*:*:security-group/*
+              - arn:aws:ec2:*:*:subnet/*
+              - arn:aws:ec2:*:*:volume/*
+              - arn:aws:ec2:*::image/*
+          - Action: ec2:CreateTags
+            Condition:
+              StringEquals:
+                aws:RequestTag/Workshop: "true"
+                ec2:CreateAction: RunInstances
+            Effect: Allow
+            Resource: arn:aws:ec2:*:*:instance/*
+          - Action: ec2:TerminateInstances
+            Condition:
+              StringEquals:
+                ec2:ResourceTag/Workshop: "true"
+            Effect: Allow
+            Resource: arn:aws:ec2:*:*:instance/*
+          - Action: iam:PassRole
+            Condition:
+              StringEquals:
+                iam:PassedToService: ec2.amazonaws.com
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - IdeRole4650E22E
+                - Arn
         Version: "2012-10-17"
       PolicyName: IdeLambdaRoleDefaultPolicy099093D2
       Roles:
@@ -581,6 +1718,9 @@ Resources:
     Properties:
       Code:
         ZipFile: |-
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
           import boto3
           import json
           import traceback
@@ -632,6 +1772,14 @@ Resources:
           - IdePasswordFunctionServiceRole971421B6
           - Arn
       Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       Timeout: 180
     Type: AWS::Lambda::Function
   IdePasswordFunctionServiceRole971421B6:
@@ -649,6 +1797,14 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   IdePasswordFunctionServiceRoleDefaultPolicy282A360C:
     Properties:
@@ -715,6 +1871,14 @@ Resources:
         PasswordLength: 32
         SecretStringTemplate: '{"password":""}'
       Name: workshop-ide-password
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::SecretsManager::Secret
     UpdateReplacePolicy: Delete
   IdePrefixListLookupFunction9E5A63DE:
@@ -724,6 +1888,9 @@ Resources:
     Properties:
       Code:
         ZipFile: |-
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+
           from __future__ import print_function
           import boto3
           import traceback
@@ -766,6 +1933,14 @@ Resources:
           - IdeLambdaRole82392143
           - Arn
       Runtime: python3.13
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       Timeout: 180
     Type: AWS::Lambda::Function
   IdePrefixListResourceD2EAC007:
@@ -802,20 +1977,28 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/CloudWatchAgentServerPolicy
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AdministratorAccess
+        - Fn::If:
+            - IdeAdministratorAccessEnabled
+            - Fn::Join:
+                - ""
+                - - "arn:"
+                  - Ref: AWS::Partition
+                  - :iam::aws:policy/AdministratorAccess
+            - Ref: AWS::NoValue
       RoleName: workshop-ide-user
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::IAM::Role
   IdeRoleDefaultPolicyFD4BDE67:
     Properties:
       PolicyDocument:
         Statement:
-          - Action: cloudformation:SignalResource
-            Effect: Allow
-            Resource: "*"
           - Action:
               - secretsmanager:DescribeSecret
               - secretsmanager:GetSecretValue
@@ -835,6 +2018,14 @@ Resources:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::SecurityGroup
@@ -860,7 +2051,7 @@ Resources:
       Count: 1
       Handle:
         Ref: IdeWaitConditionHandleE8345861
-      Timeout: "1800"
+      Timeout: "2700"
     Type: AWS::CloudFormation::WaitCondition
   IdeWaitConditionHandleE8345861:
     Type: AWS::CloudFormation::WaitConditionHandle
@@ -873,12 +2064,26 @@ Resources:
       Tags:
         - Key: Name
           Value: workshop-vpc
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EC2::VPC
   VpcIGW488B0FEB:
     Properties:
       Tags:
         - Key: Name
           Value: workshop-vpc
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EC2::InternetGateway
   VpcPrivateSubnet1DefaultRouteF704DE9F:
     Properties:
@@ -893,6 +2098,13 @@ Resources:
       Tags:
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PrivateSubnet1
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::RouteTable
@@ -918,6 +2130,13 @@ Resources:
           Value: Private
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PrivateSubnet1
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::Subnet
@@ -934,6 +2153,13 @@ Resources:
       Tags:
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PrivateSubnet2
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::RouteTable
@@ -959,6 +2185,13 @@ Resources:
           Value: Private
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PrivateSubnet2
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::Subnet
@@ -978,6 +2211,13 @@ Resources:
       Tags:
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EC2::EIP
   VpcPublicSubnet1NATGateway8185E366:
     DependsOn:
@@ -993,12 +2233,26 @@ Resources:
       Tags:
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
     Type: AWS::EC2::NatGateway
   VpcPublicSubnet1RouteTable431DD755:
     Properties:
       Tags:
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::RouteTable
@@ -1024,6 +2278,13 @@ Resources:
           Value: Public
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet1
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::Subnet
@@ -1042,6 +2303,13 @@ Resources:
       Tags:
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet2
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::RouteTable
@@ -1067,6 +2335,13 @@ Resources:
           Value: Public
         - Key: Name
           Value: WorkshopStack/Vpc/Vpc/PublicSubnet2
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
       VpcId:
         Ref: VpcC3027511
     Type: AWS::EC2::Subnet
@@ -1081,7 +2356,160 @@ Resources:
     Properties:
       Description: Workshop VPC ID for cross-stack reference
       Name: workshop-vpc-id
+      Tags:
+        WorkshopDeploymentId:
+          Ref: AWS::StackId
+        WorkshopId: base
+        WorkshopOwner: cloudformation
       Type: String
       Value:
         Ref: VpcC3027511
     Type: AWS::SSM::Parameter
+  WorkshopBucketAccessLogs476BAB88:
+    DeletionPolicy: Delete
+    Metadata:
+      checkov:
+        skip:
+          - comment: Dedicated access-log target; recursive logging is intentionally disabled.
+            id: CKV_AWS_18
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      BucketName:
+        Fn::Join:
+          - ""
+          - - workshop-access-logs-
+            - Ref: AWS::AccountId
+            - "-"
+            - Ref: AWS::Region
+            - "-20261102210329"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::S3::Bucket
+    UpdateReplacePolicy: Delete
+  WorkshopBucketAccessLogsPolicy37DFEA4E:
+    Properties:
+      Bucket:
+        Ref: WorkshopBucketAccessLogs476BAB88
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+            Effect: Deny
+            Principal:
+              AWS: "*"
+            Resource:
+              - Fn::GetAtt:
+                  - WorkshopBucketAccessLogs476BAB88
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - WorkshopBucketAccessLogs476BAB88
+                        - Arn
+                    - /*
+          - Action: s3:PutObject
+            Condition:
+              ArnLike:
+                aws:SourceArn:
+                  Fn::GetAtt:
+                    - WorkshopBucketFD5BC43F
+                    - Arn
+              StringEquals:
+                aws:SourceAccount:
+                  Ref: AWS::AccountId
+            Effect: Allow
+            Principal:
+              Service: logging.s3.amazonaws.com
+            Resource:
+              Fn::Join:
+                - ""
+                - - Fn::GetAtt:
+                      - WorkshopBucketAccessLogs476BAB88
+                      - Arn
+                  - /workshop-data/*
+        Version: "2012-10-17"
+    Type: AWS::S3::BucketPolicy
+  WorkshopBucketBucketNameParameterCEE58012:
+    Properties:
+      Description: Workshop bucket name for thread dumps and profiling data
+      Name: workshop-bucket-name
+      Tags:
+        WorkshopDeploymentId:
+          Ref: AWS::StackId
+        WorkshopId: base
+        WorkshopOwner: cloudformation
+      Type: String
+      Value:
+        Ref: WorkshopBucketFD5BC43F
+    Type: AWS::SSM::Parameter
+  WorkshopBucketFD5BC43F:
+    DeletionPolicy: Delete
+    Properties:
+      BucketName:
+        Fn::Join:
+          - ""
+          - - workshop-bucket-
+            - Ref: AWS::AccountId
+            - "-"
+            - Ref: AWS::Region
+            - "-20261102210329"
+      LoggingConfiguration:
+        DestinationBucketName:
+          Ref: WorkshopBucketAccessLogs476BAB88
+        LogFilePrefix: workshop-data/
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: base
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::S3::Bucket
+    UpdateReplacePolicy: Delete
+  WorkshopBucketPolicyA21947CB:
+    Properties:
+      Bucket:
+        Ref: WorkshopBucketFD5BC43F
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+            Effect: Deny
+            Principal:
+              AWS: "*"
+            Resource:
+              - Fn::GetAtt:
+                  - WorkshopBucketFD5BC43F
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - WorkshopBucketFD5BC43F
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+    Type: AWS::S3::BucketPolicy

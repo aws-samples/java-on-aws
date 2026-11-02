@@ -17,6 +17,7 @@ export ARCH="${ARCH}"
 export IDE_TYPE="${IDE_TYPE}"
 export WAIT_CONDITION_HANDLE_URL="${WAIT_CONDITION_HANDLE_URL}"
 export PREFIX="${PREFIX}"
+export WORKSHOP_SETUP_URL="${WORKSHOP_SETUP_URL}"
 
 # Setup logging - use PREFIX for log group name
 LOG_GROUP_NAME="${PREFIX}-ide-bootstrap-$(date +%Y%m%d-%H%M%S)"

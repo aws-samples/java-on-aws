@@ -101,6 +101,11 @@ public class Ide extends Construct {
         // Policy names from workshops.json, loaded from /iam/<name>.json. Empty = legacy shared policies.
         private List<String> iamPolicies = List.of();
         private boolean permissionsBoundary = true;
+        // Deploy-time choices (base template parameters); null = decided at synth time
+        private CfnCondition ideArm64Condition;
+        private CfnCondition administratorAccessCondition;
+        // Optional setup script that bootstrap.sh runs after the tools (s3:// or https://); "" = none
+        private String workshopSetupUrl = "";
 
         // Architecture-specific instance type lists
         private static final List<String> ARM64_INSTANCE_TYPES =
@@ -129,6 +134,9 @@ public class Ide extends Construct {
             public Builder ideRole(Role ideRole) { props.ideRole = ideRole; return this; }
             public Builder iamPolicies(List<String> iamPolicies) { props.iamPolicies = iamPolicies; return this; }
             public Builder permissionsBoundary(boolean permissionsBoundary) { props.permissionsBoundary = permissionsBoundary; return this; }
+            public Builder ideArm64Condition(CfnCondition ideArm64Condition) { props.ideArm64Condition = ideArm64Condition; return this; }
+            public Builder administratorAccessCondition(CfnCondition administratorAccessCondition) { props.administratorAccessCondition = administratorAccessCondition; return this; }
+            public Builder workshopSetupUrl(String workshopSetupUrl) { props.workshopSetupUrl = workshopSetupUrl; return this; }
             public IdeProps build() { return props; }
         }
 
@@ -163,6 +171,9 @@ public class Ide extends Construct {
         public Role getIdeRole() { return ideRole; }
         public List<String> getIamPolicies() { return iamPolicies; }
         public boolean isPermissionsBoundary() { return permissionsBoundary; }
+        public CfnCondition getIdeArm64Condition() { return ideArm64Condition; }
+        public CfnCondition getAdministratorAccessCondition() { return administratorAccessCondition; }
+        public String getWorkshopSetupUrl() { return workshopSetupUrl; }
     }
 
     public Ide(final Construct scope, final String id, final IVpc vpc) {
@@ -195,7 +206,14 @@ public class Ide extends Construct {
         // Load IAM policy: base template uses AdministratorAccess, templates with a policy list in
         // workshops.json use /iam/<name>.json (same files as the Participant role), others use iam-policy.json
         if ("base".equals(props.getTemplateType())) {
-            this.ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
+            if (props.getAdministratorAccessCondition() == null) {
+                this.ideRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"));
+            } else {
+                // IdeAdministratorAccess=false leaves the role without it; another template attaches scoped policies by role name
+                this.ideRole.addManagedPolicy(ManagedPolicy.fromManagedPolicyArn(this, "AdministratorAccess",
+                    Token.asString(Fn.conditionIf(props.getAdministratorAccessCondition().getLogicalId(),
+                        "arn:" + Aws.PARTITION + ":iam::aws:policy/AdministratorAccess", Aws.NO_VALUE))));
+            }
         } else if (!props.getIamPolicies().isEmpty()) {
             for (String policyName : props.getIamPolicies()) {
                 String policyJson = loadFile("/iam/" + policyName + ".json")
@@ -433,7 +451,8 @@ public class Ide extends Construct {
             .replace("${WORKSHOP_ID}", props.getWorkshopId())
             .replace("${WORKSHOP_STACK_NAME}", Aws.STACK_NAME)
             .replace("${WORKSHOP_DEPLOYMENT_ID}", Stack.of(this).getStackId())
-            .replace("${ARCH}", props.getIdeArch().getUnameValue())
+            .replace("${ARCH}", ifArm64(props, "aarch64", props.getIdeArch().getUnameValue()))
+            .replace("${WORKSHOP_SETUP_URL}", props.getWorkshopSetupUrl())
             .replace("${IDE_TYPE}", props.getIdeType().getScriptName())
             .replace("${WAIT_CONDITION_HANDLE_URL}", waitHandle.getRef())
             .replace("${PREFIX}", prefix);
@@ -450,8 +469,12 @@ public class Ide extends Construct {
             .serviceToken(instanceLauncherFunction.getFunctionArn())
             .properties(Map.of(
                 "SubnetIds", String.join(",", publicSubnets.getSubnetIds()),
-                "InstanceTypes", String.join(",", props.getInstanceTypes()),
-                "ImageId", props.getMachineImage().getImage(this).getImageId(),
+                "InstanceTypes", ifArm64(props, String.join(",", IdeProps.ARM64_INSTANCE_TYPES),
+                    String.join(",", props.getInstanceTypes())),
+                "ImageId", ifArm64(props,
+                    MachineImage.latestAmazonLinux2023(AmazonLinux2023ImageSsmParameterProps.builder()
+                        .cpuType(AmazonLinuxCpuType.ARM_64).build()).getImage(this).getImageId(),
+                    props.getMachineImage().getImage(this).getImageId()),
                 "SecurityGroupIds", String.join(",", securityGroupIds),
                 "IamInstanceProfileArn", instanceProfile.getInstanceProfileArn(),
                 "VolumeSize", String.valueOf(props.getDiskSize()),
@@ -553,6 +576,14 @@ public class Ide extends Construct {
 
     public Role getIdeRole() {
         return ideRole;
+    }
+
+    /** The ARM64 value when the IdeArchitecture parameter selects arm64, otherwise the synth-time value. */
+    private static String ifArm64(IdeProps props, String arm64Value, String synthValue) {
+        if (props.getIdeArm64Condition() == null) {
+            return synthValue;
+        }
+        return Token.asString(Fn.conditionIf(props.getIdeArm64Condition().getLogicalId(), arm64Value, synthValue));
     }
 
     /**

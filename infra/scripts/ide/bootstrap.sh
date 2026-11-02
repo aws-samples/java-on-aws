@@ -108,6 +108,18 @@ else
     exit 1
 fi
 
+# Optional workshop setup (base template parameter WorkshopSetupUrl): s3:// or https://, run as ec2-user
+if [ -n "${WORKSHOP_SETUP_URL}" ]; then
+    log_info "Running workshop setup from ${WORKSHOP_SETUP_URL}"
+    SETUP_SCRIPT=/tmp/workshop-setup.sh
+    case "${WORKSHOP_SETUP_URL}" in
+        s3://*) aws s3 cp --no-progress "${WORKSHOP_SETUP_URL}" "${SETUP_SCRIPT}" ;;
+        *) curl -fsSL --retry 5 -o "${SETUP_SCRIPT}" "${WORKSHOP_SETUP_URL}" ;;
+    esac
+    chmod 755 "${SETUP_SCRIPT}"
+    sudo -H -i -u ec2-user WORKSHOP_SETUP_URL="${WORKSHOP_SETUP_URL}" bash "${SETUP_SCRIPT}"
+fi
+
 log_info "Bootstrap completed successfully"
 
 grep "✅ Success:" /var/log/bootstrap.log | sudo -u ec2-user tee /home/ec2-user/workshop-ide-bootstrap.log >/dev/null

@@ -1,5 +1,8 @@
 package sample.com;
 
+import software.amazon.awscdk.CfnCondition;
+import software.amazon.awscdk.CfnParameter;
+import software.amazon.awscdk.Fn;
 import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -101,6 +104,38 @@ public class WorkshopStack extends Stack {
             .prefix(prefix)
             .build());
 
+        // Base template parameters: other workshops pick the IDE architecture and rights at deploy time
+        // and add their own setup (Workshop Studio passes them from contentspec.yaml)
+        CfnCondition ideArm64 = null;
+        CfnCondition administratorAccess = null;
+        String workshopSetupUrl = "";
+        if ("base".equals(templateType)) {
+            var ideArchitecture = CfnParameter.Builder.create(this, "IdeArchitecture")
+                .type("String")
+                .allowedValues(List.of("x86_64", "arm64"))
+                .defaultValue("x86_64")
+                .description("IDE instance architecture")
+                .build();
+            ideArm64 = CfnCondition.Builder.create(this, "IdeArm64")
+                .expression(Fn.conditionEquals(ideArchitecture.getValueAsString(), "arm64"))
+                .build();
+            var ideAdministratorAccess = CfnParameter.Builder.create(this, "IdeAdministratorAccess")
+                .type("String")
+                .allowedValues(List.of("true", "false"))
+                .defaultValue("true")
+                .description("Attach AdministratorAccess to the IDE role " + prefix + "-ide-user; false = attach scoped policies from another template")
+                .build();
+            administratorAccess = CfnCondition.Builder.create(this, "IdeAdministratorAccessEnabled")
+                .expression(Fn.conditionEquals(ideAdministratorAccess.getValueAsString(), "true"))
+                .build();
+            workshopSetupUrl = CfnParameter.Builder.create(this, "WorkshopSetupUrl")
+                .type("String")
+                .defaultValue("")
+                .description("Optional setup script (s3:// or https://) that the IDE runs as ec2-user after the tools")
+                .build()
+                .getValueAsString();
+        }
+
         // Create IDE props and get role for parallel resource creation
         IdeProps ideProps = IdeProps.builder()
             .prefix(prefix)
@@ -112,6 +147,9 @@ public class WorkshopStack extends Stack {
             .iamPolicies(loadIamPolicies(templateType))
             // Boundary for roles created from the IDE; java-on-aws and java-on-amazon-eks create none
             .permissionsBoundary(!isJavaOnAws && !isEks)
+            .ideArm64Condition(ideArm64)
+            .administratorAccessCondition(administratorAccess)
+            .workshopSetupUrl(workshopSetupUrl)
             .build();
         Ide ide = new Ide(this, "Ide", ideProps);
 
