@@ -4,11 +4,16 @@ const SESSION_KEY = 'agentcore_session_id';
 
 let currentAuth = null;
 
-// Session ID management
+// Session ID management: with Cognito, one conversation per user, the same ID as scripts/ask-runtime.sh
+function conversationSessionId(username) {
+    return `workshop-conversation-of-user-${username}`.padEnd(33, '-');
+}
+
 function getSessionId() {
     let sessionId = sessionStorage.getItem(SESSION_KEY);
     if (!sessionId) {
-        sessionId = crypto.randomUUID();
+        const auth = loadAuth();
+        sessionId = auth && auth.authType === 'cognito' ? conversationSessionId(auth.username) : crypto.randomUUID();
         sessionStorage.setItem(SESSION_KEY, sessionId);
     }
     return sessionId;

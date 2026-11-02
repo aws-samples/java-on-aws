@@ -3,21 +3,22 @@
 #
 #   ask-runtime.sh ask PROMPT [SESSION]   sign in, send PROMPT, print the streamed answer as text
 #   ask-runtime.sh oauth SESSION_URI      hand a consent session from AgentCore Identity to the AI agent (as callback.html)
-#   ask-runtime.sh stop SESSION           stop the runtime session (the next request starts a new microVM)
+#   ask-runtime.sh stop [SESSION]         stop the runtime session (the next request starts a new microVM on the latest version)
 #   ask-runtime.sh token                  print an access token
 #
 # USER_NAME selects the Cognito user (default alice; admin, alice, bob exist), the password is IDE_PASSWORD.
-# SESSION is the X-Amzn-Bedrock-AgentCore-Runtime-Session-Id (at least 33 characters). The default,
-# workshop-terminal-session-<user>-runtime-v<runtime version> (33 characters or more for every user), keeps one conversation per runtime version: a session's microVM
-# runs the version it started with, so after an update the next request starts a new microVM. Reads ~/environment/.envrc.
+# SESSION is the X-Amzn-Bedrock-AgentCore-Runtime-Session-Id (at least 33 characters). The default is one conversation per user,
+# workshop-conversation-of-user-<user> padded with "-" to 33 characters, the same ID as the chat UI (ui/auth.js). A session's microVM
+# runs the version it started with: after an update, `stop` ends it, and the next request continues the conversation on the new
+# version. Reads ~/environment/.envrc.
 # ATTACH_FILE=PATH sends the file with the prompt (fileName, fileBase64), like the attachment button of the UI.
 set -euo pipefail
 [ -f ~/environment/.envrc ] && source ~/environment/.envrc
 USER_NAME="${USER_NAME:-alice}"
 default_session() {
-  echo "workshop-terminal-session-${USER_NAME}-runtime-v$(aws bedrock-agentcore-control get-agent-runtime \
-    --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --region "${AWS_REGION}" --no-cli-pager \
-    --query agentRuntimeVersion --output text)"
+  local id="workshop-conversation-of-user-${USER_NAME}"
+  while [ ${#id} -lt 33 ]; do id="${id}-"; done
+  echo "${id}"
 }
 
 token() {  # one access token per user for 50 minutes: AgentCore Identity binds a consent to the exact token
@@ -60,14 +61,24 @@ case "${1:-}" in
     | python3 "$(dirname "$0")/sse_text.py"
     ;;
   stop)
-    session="${2:?ask-runtime.sh stop SESSION}"
+    session="${2:-$(default_session)}"
     # A runtime with a JWT authorizer accepts the stop call with the user's bearer token (SigV4 is rejected)
-    curl -sS --fail-with-body -X POST "${AIAGENT_ENDPOINT%/invocations*}/stopruntimesession?qualifier=DEFAULT" \
-      -H "Content-Type: application/json" \
-      -H "Authorization: Bearer $(token)" \
-      -H "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: ${session}" \
-      -d "$(jq -n --arg session "${session}" '{runtimeSessionId: $session}')" > /dev/null
-    echo "stopped session ${session}"
+    for attempt in 1 2 3 4 5; do   # 409: the session is starting or stopping, retry
+      status=$(curl -sS -o /tmp/ask-runtime-stop.out -w '%{http_code}' -X POST "${AIAGENT_ENDPOINT%/invocations*}/stopruntimesession?qualifier=DEFAULT" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $(token)" \
+        -H "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: ${session}" \
+        -d "$(jq -n --arg session "${session}" '{runtimeSessionId: $session}')")
+      [ "${status}" = "409" ] || break
+      sleep $((attempt * 3))
+    done
+    if [[ "${status}" == 2* ]]; then
+      echo "stopped session ${session}"
+    elif [ "${status}" = "404" ]; then
+      echo "no running session ${session}"   # the user has not called the runtime since the last stop or update
+    else
+      cat /tmp/ask-runtime-stop.out; echo; exit 1
+    fi
     ;;
   token)
     token

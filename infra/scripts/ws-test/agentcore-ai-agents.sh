@@ -6,7 +6,7 @@ set -Eeuo pipefail
 WS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${WS_SCRIPT_DIR}/runtime.sh"
 ws_begin_run 'Building AI agents with Amazon Bedrock AgentCore' "${WS_SCRIPT_DIR}/reports/agentcore-ai-agents" 5 "$@"
-ws_set_executable_total 492
+ws_set_executable_total 497
 ws_set_default_timeout 600
 ws_tab_group 'chat-ui' 'terminal'
 ws_tab_group 'java-spring-ai' 'python-langgraph' 'python-strands' 'ts-vercel'
@@ -10521,17 +10521,22 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
 WS_TEST_BLOCK_1200_27
 
-ws_run_block 28 'Testing the deployed AI agent' '1. Interact with the AI agent:' 1469 1469 'bash' 'terminal' <<'WS_TEST_BLOCK_1200_28'
-~/workshop/scripts/ask-runtime.sh ask "Check my plan against our policies: a business class flight from Berlin to San Francisco for 4200 EUR and the Yerba Buena Suites for 5 nights at 185 USD. I need a report for Bob."
+ws_run_block 28 'Redeploying the AI agent' '3. Stop the runtime sessions of Alice and Bob. Their next requests start on the new version and continue their conversations:' 1462 1463 'bash' '' <<'WS_TEST_BLOCK_1200_28'
+~/workshop/scripts/ask-runtime.sh stop
+USER_NAME=bob ~/workshop/scripts/ask-runtime.sh stop
 WS_TEST_BLOCK_1200_28
 
-ws_skip_block 29 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1474 1474 'text' 'terminal' 'copy action disabled'
+ws_run_block 29 'Testing the deployed AI agent' '1. Interact with the AI agent:' 1476 1476 'bash' 'terminal' <<'WS_TEST_BLOCK_1200_29'
+~/workshop/scripts/ask-runtime.sh ask "Check my plan against our policies: a business class flight from Berlin to San Francisco for 4200 EUR and the Yerba Buena Suites for 5 nights at 185 USD. I need a report for Bob."
+WS_TEST_BLOCK_1200_29
 
-ws_run_block 30 'Committing changes' '1. Commit the changes:' 1505 1507 'bash' '' <<'WS_TEST_BLOCK_1200_30'
+ws_skip_block 30 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1481 1481 'text' 'terminal' 'copy action disabled'
+
+ws_run_block 31 'Committing changes' '1. Commit the changes:' 1512 1514 'bash' '' <<'WS_TEST_BLOCK_1200_31'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add the compliance auditor tool"
-WS_TEST_BLOCK_1200_30
+WS_TEST_BLOCK_1200_31
 
 ws_end_page
 
@@ -11837,30 +11842,35 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
 WS_TEST_BLOCK_1300_30
 
-ws_run_block 31 'Testing the deployed AI agent' '1. Interact with the AI agent:' 1647 1648 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_1300_31'
-ANSWER=$(~/workshop/scripts/ask-runtime.sh ask "Which stocks should I buy with my per diem savings?")
-echo "${ANSWER}"; grep -q "Sorry, I can't help with that" <<< "${ANSWER}"
+ws_run_block 31 'Redeploying the AI agent' '3. Stop the runtime sessions of Alice and Bob. Their next requests start on the new version and continue their conversations:' 1642 1643 'bash' '' <<'WS_TEST_BLOCK_1300_31'
+~/workshop/scripts/ask-runtime.sh stop
+USER_NAME=bob ~/workshop/scripts/ask-runtime.sh stop
 WS_TEST_BLOCK_1300_31
 
-ws_skip_block 32 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1653 1653 'text' 'terminal' 'copy action disabled'
+ws_run_block 32 'Testing the deployed AI agent' '1. Interact with the AI agent:' 1654 1655 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_1300_32'
+ANSWER=$(~/workshop/scripts/ask-runtime.sh ask "Which stocks should I buy with my per diem savings?")
+echo "${ANSWER}"; grep -q "Sorry, I can't help with that" <<< "${ANSWER}"
+WS_TEST_BLOCK_1300_32
 
-ws_run_block 33 'Testing the deployed AI agent' '2. Interact with the AI agent with payment data:' 1662 1662 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_1300_33'
+ws_skip_block 33 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1660 1660 'text' 'terminal' 'copy action disabled'
+
+ws_run_block 34 'Testing the deployed AI agent' '2. Interact with the AI agent with payment data:' 1669 1669 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_1300_34'
 ~/workshop/scripts/ask-runtime.sh ask "My corporate card is 4111 1111 1111 1234. Remember it for my expense reports and tell me the last four digits."
-WS_TEST_BLOCK_1300_33
+WS_TEST_BLOCK_1300_34
 
-ws_skip_block 34 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1667 1667 'text' 'terminal' 'copy action disabled'
+ws_skip_block 35 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1674 1674 'text' 'terminal' 'copy action disabled'
 
-ws_run_block 35 'Testing the deployed AI agent' '3. Interact with the AI agent about the deals page:' 1676 1676 'bash' 'terminal' <<'WS_TEST_BLOCK_1300_35'
+ws_run_block 36 'Testing the deployed AI agent' '3. Interact with the AI agent about the deals page:' 1683 1683 'bash' 'terminal' <<'WS_TEST_BLOCK_1300_36'
 ~/workshop/scripts/ask-runtime.sh ask "Are there hotel deals on our travel portal for my San Francisco trip?"
-WS_TEST_BLOCK_1300_35
+WS_TEST_BLOCK_1300_36
 
-ws_skip_block 36 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1681 1681 'text' 'terminal' 'copy action disabled'
+ws_skip_block 37 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1688 1688 'text' 'terminal' 'copy action disabled'
 
-ws_run_block 37 'Committing changes' '1. Commit the changes:' 1736 1738 'bash' '' <<'WS_TEST_BLOCK_1300_37'
+ws_run_block 38 'Committing changes' '1. Commit the changes:' 1743 1745 'bash' '' <<'WS_TEST_BLOCK_1300_38'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add guardrails"
-WS_TEST_BLOCK_1300_37
+WS_TEST_BLOCK_1300_38
 
 ws_end_page
 
@@ -12947,7 +12957,12 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
 WS_TEST_BLOCK_1400_29
 
-ws_run_block 30 'Testing the deployed AI agent' '1. Interact with the AI agent and consent as alice:' 1363 1370 'bash' 'terminal' 900 <<'WS_TEST_BLOCK_1400_30'
+ws_run_block 30 'Redeploying the AI agent' '6. Stop the runtime sessions of Alice and Bob. Their next requests start on the new version and continue their conversations:' 1358 1359 'bash' '' <<'WS_TEST_BLOCK_1400_30'
+~/workshop/scripts/ask-runtime.sh stop
+USER_NAME=bob ~/workshop/scripts/ask-runtime.sh stop
+WS_TEST_BLOCK_1400_30
+
+ws_run_block 31 'Testing the deployed AI agent' '1. Interact with the AI agent and consent as alice:' 1370 1377 'bash' 'terminal' 900 <<'WS_TEST_BLOCK_1400_31'
 ANSWER=$(~/workshop/scripts/ask-runtime.sh ask "Am I free during my San Francisco trip?")
 echo "${ANSWER}"
 CONSENT_URL=$(grep -oE 'https://[^ )>"]*authorize[^ )>"]*' <<< "${ANSWER}" | head -1 || true)
@@ -12956,11 +12971,11 @@ if [ -n "${CONSENT_URL}" ]; then
   ~/workshop/scripts/ask-runtime.sh oauth "${SESSION_URI}" | grep "calendar is connected"
   ~/workshop/scripts/ask-runtime.sh ask "Am I free during my San Francisco trip?"
 fi
-WS_TEST_BLOCK_1400_30
+WS_TEST_BLOCK_1400_31
 
-ws_skip_block 31 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1375 1375 'text' 'terminal' 'copy action disabled'
+ws_skip_block 32 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1382 1382 'text' 'terminal' 'copy action disabled'
 
-ws_run_block 32 'Testing the deployed AI agent' '2. Interact with the AI agent and consent as bob:' 1384 1391 'bash' 'terminal' 900 <<'WS_TEST_BLOCK_1400_32'
+ws_run_block 33 'Testing the deployed AI agent' '2. Interact with the AI agent and consent as bob:' 1391 1398 'bash' 'terminal' 900 <<'WS_TEST_BLOCK_1400_33'
 ANSWER=$(USER_NAME=bob ~/workshop/scripts/ask-runtime.sh ask "When is my next meeting with Alice?")
 echo "${ANSWER}"
 CONSENT_URL=$(grep -oE 'https://[^ )>"]*authorize[^ )>"]*' <<< "${ANSWER}" | head -1 || true)
@@ -12969,15 +12984,15 @@ if [ -n "${CONSENT_URL}" ]; then
   USER_NAME=bob ~/workshop/scripts/ask-runtime.sh oauth "${SESSION_URI}" | grep "calendar is connected"
   USER_NAME=bob ~/workshop/scripts/ask-runtime.sh ask "When is my next meeting with Alice?"
 fi
-WS_TEST_BLOCK_1400_32
+WS_TEST_BLOCK_1400_33
 
-ws_skip_block 33 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1396 1396 'text' 'terminal' 'copy action disabled'
+ws_skip_block 34 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1403 1403 'text' 'terminal' 'copy action disabled'
 
-ws_run_block 34 'Committing changes' '1. Commit the changes:' 1437 1439 'bash' '' <<'WS_TEST_BLOCK_1400_34'
+ws_run_block 35 'Committing changes' '1. Commit the changes:' 1444 1446 'bash' '' <<'WS_TEST_BLOCK_1400_35'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add the corporate calendar with 3LO"
-WS_TEST_BLOCK_1400_34
+WS_TEST_BLOCK_1400_35
 
 ws_end_page
 
@@ -14887,19 +14902,21 @@ source ~/environment/.envrc
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
 export AUTH_TOKEN=$(~/workshop/scripts/ask-runtime.sh token)
-ATTACH_FILE=~/environment/samples/hotel-new-york.png ~/workshop/scripts/local-app.sh ask "Here is my hotel receipt from my customer visit in New York. I flew there from Berlin. Please register the trip and add the receipt to its expenses."
+ATTACH_FILE=~/environment/samples/hotel-new-york.png ~/workshop/scripts/local-app.sh ask "Transcribe this receipt line by line."
 WS_TEST_BLOCK_1500_37
 
-ws_run_block 38 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 2301 2306 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1500_38'
+ws_skip_block 38 'Testing the receipts' '- 5: ATTACHFILE sends the file like the attachment button of the chat UI (fileName, fileBase64)' 2295 2295 'text' '' 'copy action disabled'
+
+ws_run_block 39 'Redeploying the AI agent' '1. Build the container image and push it to ECR:' 2309 2314 'bash' 'python-strands' 1200 <<'WS_TEST_BLOCK_1500_39'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 cd ~/environment/aiagent
 docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
-WS_TEST_BLOCK_1500_38
+WS_TEST_BLOCK_1500_39
 
-ws_run_block 39 'Redeploying the AI agent' 'Redeploying the AI agent' 2313 2319 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1500_39'
+ws_run_block 40 'Redeploying the AI agent' 'Redeploying the AI agent' 2321 2327 'bash' 'java-spring-ai' 1800 <<'WS_TEST_BLOCK_1500_40'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -14907,18 +14924,9 @@ cd ~/environment/aiagent
 ./mvnw -q -ntp -DskipTests -Pheadless package
 docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
-WS_TEST_BLOCK_1500_39
-
-ws_run_block 40 'Redeploying the AI agent' 'Redeploying the AI agent' 2326 2331 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1500_40'
-ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
-aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
-  docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-cd ~/environment/aiagent
-docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
-docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1500_40
 
-ws_run_block 41 'Redeploying the AI agent' 'Redeploying the AI agent' 2338 2343 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1500_41'
+ws_run_block 41 'Redeploying the AI agent' 'Redeploying the AI agent' 2334 2339 'bash' 'python-langgraph' 1200 <<'WS_TEST_BLOCK_1500_41'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
   docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -14927,7 +14935,16 @@ docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
 docker push "${ECR_URI}:latest"
 WS_TEST_BLOCK_1500_41
 
-ws_run_block 42 'Redeploying the AI agent' '2. Update the runtime to the new image, keeping its configuration and environment variables:' 2352 2361 'bash' '' <<'WS_TEST_BLOCK_1500_42'
+ws_run_block 42 'Redeploying the AI agent' 'Redeploying the AI agent' 2346 2351 'bash' 'ts-vercel' 1200 <<'WS_TEST_BLOCK_1500_42'
+ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
+aws ecr get-login-password --region ${AWS_REGION} --no-cli-pager | \
+  docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+cd ~/environment/aiagent
+docker build --platform linux/arm64 -t "${ECR_URI}:latest" .
+docker push "${ECR_URI}:latest"
+WS_TEST_BLOCK_1500_42
+
+ws_run_block 43 'Redeploying the AI agent' '2. Update the runtime to the new image, keeping its configuration and environment variables:' 2360 2369 'bash' '' <<'WS_TEST_BLOCK_1500_43'
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aiagent"
 aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" --no-cli-pager --output json \
   | jq --arg uri "${ECR_URI}:latest" '{agentRuntimeId, roleArn, authorizerConfiguration, requestHeaderConfiguration,
@@ -14938,27 +14955,26 @@ aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RU
 aws bedrock-agentcore-control update-agent-runtime --cli-input-json file:///tmp/aiagent-update.json --no-cli-pager > /dev/null
 until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "${AIAGENT_RUNTIME_ID}" \
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
-WS_TEST_BLOCK_1500_42
-
-ws_run_block 43 'Testing the deployed AI agent' '1. Interact with the AI agent with the hotel receipt:' 2372 2372 'bash' 'terminal' <<'WS_TEST_BLOCK_1500_43'
-ATTACH_FILE=~/environment/samples/hotel-new-york.png ~/workshop/scripts/ask-runtime.sh ask "Here is my hotel receipt from my customer visit in New York. I flew there from Berlin. Please register the trip and add the receipt to its expenses."
 WS_TEST_BLOCK_1500_43
 
-ws_skip_block 44 'Testing the deployed AI agent' 'Testing the deployed AI agent' 2377 2377 'text' 'terminal' 'copy action disabled'
+ws_run_block 44 'Redeploying the AI agent' '3. Stop the runtime sessions of Alice and Bob. Their next requests start on the new version and continue their conversations:' 2375 2376 'bash' '' <<'WS_TEST_BLOCK_1500_44'
+~/workshop/scripts/ask-runtime.sh stop
+USER_NAME=bob ~/workshop/scripts/ask-runtime.sh stop
+WS_TEST_BLOCK_1500_44
 
-ws_run_block 45 'Testing the deployed AI agent' '2. Interact with the AI agent about the card number:' 2388 2388 'bash' 'terminal' <<'WS_TEST_BLOCK_1500_45'
-ATTACH_FILE=~/environment/samples/hotel-new-york.png ~/workshop/scripts/ask-runtime.sh ask "Transcribe this receipt line by line."
+ws_run_block 45 'Testing the deployed AI agent' '1. Interact with the AI agent with the hotel receipt:' 2387 2387 'bash' 'terminal' <<'WS_TEST_BLOCK_1500_45'
+ATTACH_FILE=~/environment/samples/hotel-new-york.png ~/workshop/scripts/ask-runtime.sh ask "Here is my hotel receipt from my customer visit in New York. I flew there from Berlin. Please register the trip and add the receipt to its expenses."
 WS_TEST_BLOCK_1500_45
 
-ws_skip_block 46 'Testing the deployed AI agent' 'Testing the deployed AI agent' 2393 2393 'text' 'terminal' 'copy action disabled'
+ws_skip_block 46 'Testing the deployed AI agent' 'Testing the deployed AI agent' 2392 2392 'text' 'terminal' 'copy action disabled'
 
-ws_run_block 47 'Testing the deployed AI agent' '3. Interact with the AI agent with the taxi receipt:' 2402 2402 'bash' 'terminal' <<'WS_TEST_BLOCK_1500_47'
+ws_run_block 47 'Testing the deployed AI agent' '2. Interact with the AI agent with the taxi receipt:' 2401 2401 'bash' 'terminal' <<'WS_TEST_BLOCK_1500_47'
 ATTACH_FILE=~/environment/samples/taxi-berlin.png ~/workshop/scripts/ask-runtime.sh ask "Here is a taxi receipt from Berlin. Please add it to my expenses."
 WS_TEST_BLOCK_1500_47
 
-ws_skip_block 48 'Testing the deployed AI agent' 'Testing the deployed AI agent' 2407 2407 'text' 'terminal' 'copy action disabled'
+ws_skip_block 48 'Testing the deployed AI agent' 'Testing the deployed AI agent' 2406 2406 'text' 'terminal' 'copy action disabled'
 
-ws_run_block 49 'Committing changes' '1. Commit the changes:' 2459 2461 'bash' '' <<'WS_TEST_BLOCK_1500_49'
+ws_run_block 49 'Committing changes' '1. Commit the changes:' 2448 2450 'bash' '' <<'WS_TEST_BLOCK_1500_49'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add document processing"
@@ -16213,19 +16229,24 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
 WS_TEST_BLOCK_1620_23
 
-ws_run_block 24 'Testing the deployed AI agent' '1. Interact with the AI agent as Bob:' 1312 1314 'bash' 'terminal' 900 <<'WS_TEST_BLOCK_1620_24'
+ws_run_block 24 'Redeploying the AI agent' '3. Stop the runtime sessions of Alice and Bob. Their next requests start on the new version and continue their conversations:' 1307 1308 'bash' '' <<'WS_TEST_BLOCK_1620_24'
+~/workshop/scripts/ask-runtime.sh stop
+USER_NAME=bob ~/workshop/scripts/ask-runtime.sh stop
+WS_TEST_BLOCK_1620_24
+
+ws_run_block 25 'Testing the deployed AI agent' '1. Interact with the AI agent as Bob:' 1319 1321 'bash' 'terminal' 900 <<'WS_TEST_BLOCK_1620_25'
 USER_NAME=bob ~/workshop/scripts/ask-runtime.sh ask "Which expenses has Alice submitted?"
 USER_NAME=bob ~/workshop/scripts/ask-runtime.sh ask "Approve her hotel expense from New York."
 USER_NAME=bob ~/workshop/scripts/ask-runtime.sh ask "Yes."
-WS_TEST_BLOCK_1620_24
+WS_TEST_BLOCK_1620_25
 
-ws_skip_block 25 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1319 1319 'text' 'terminal' 'copy action disabled'
+ws_skip_block 26 'Testing the deployed AI agent' 'Testing the deployed AI agent' 1326 1326 'text' 'terminal' 'copy action disabled'
 
-ws_run_block 26 'Committing changes' '1. Commit the changes:' 1354 1356 'bash' '' <<'WS_TEST_BLOCK_1620_26'
+ws_run_block 27 'Committing changes' '1. Commit the changes:' 1361 1363 'bash' '' <<'WS_TEST_BLOCK_1620_27'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add policies"
-WS_TEST_BLOCK_1620_26
+WS_TEST_BLOCK_1620_27
 
 ws_end_page
 
@@ -17529,7 +17550,12 @@ until [ "$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$
   --no-cli-pager --query 'status' --output text)" = "READY" ]; do echo -n "."; sleep 5; done && echo " READY"
 WS_TEST_BLOCK_1900_22
 
-ws_run_block 23 'Testing a prompt change without a deployment' '1. Change the signature in a new bundle version:' 1351 1358 'bash' '' <<'WS_TEST_BLOCK_1900_23'
+ws_run_block 23 'Redeploying the AI agent' '3. Stop the runtime sessions of Alice and Bob. Their next requests start on the new version and continue their conversations:' 1349 1350 'bash' '' <<'WS_TEST_BLOCK_1900_23'
+~/workshop/scripts/ask-runtime.sh stop
+USER_NAME=bob ~/workshop/scripts/ask-runtime.sh stop
+WS_TEST_BLOCK_1900_23
+
+ws_run_block 24 'Testing a prompt change without a deployment' '1. Change the signature in a new bundle version:' 1358 1365 'bash' '' <<'WS_TEST_BLOCK_1900_24'
 sed 's/^- End every answer with the line: (prompt v1)$/- End every answer with the line: (prompt v2)/' \
   /tmp/system-prompt-reviewed.txt > /tmp/system-prompt-v2.txt
 aws bedrock-agentcore-control update-configuration-bundle --bundle-id "${CONFIG_BUNDLE_ID}" --no-cli-pager \
@@ -17538,20 +17564,20 @@ aws bedrock-agentcore-control update-configuration-bundle --bundle-id "${CONFIG_
     --no-cli-pager --query 'versionId' --output text)" --commit-message "Signature version 2" --query 'versionId' --output text
 aws bedrock-agentcore-control list-configuration-bundle-versions --bundle-id "${CONFIG_BUNDLE_ID}" --no-cli-pager \
   --query 'versions[].{version: versionId, message: lineageMetadata.commitMessage}' --output table
-WS_TEST_BLOCK_1900_23
-
-ws_run_block 24 'Testing a prompt change without a deployment' '2. Interact with the AI agent after a minute:' 1369 1370 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_1900_24'
-sleep 60
-~/workshop/scripts/ask-runtime.sh ask "How much can I spend on a hotel per night in San Francisco?"
 WS_TEST_BLOCK_1900_24
 
-ws_skip_block 25 'Testing a prompt change without a deployment' 'Testing a prompt change without a deployment' 1375 1375 'text' 'terminal' 'copy action disabled'
+ws_run_block 25 'Testing a prompt change without a deployment' '2. Interact with the AI agent after a minute:' 1376 1377 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_1900_25'
+sleep 60
+~/workshop/scripts/ask-runtime.sh ask "How much can I spend on a hotel per night in San Francisco?"
+WS_TEST_BLOCK_1900_25
 
-ws_run_block 26 'Committing changes' '1. Commit the changes:' 1413 1415 'bash' '' <<'WS_TEST_BLOCK_1900_26'
+ws_skip_block 26 'Testing a prompt change without a deployment' 'Testing a prompt change without a deployment' 1382 1382 'text' 'terminal' 'copy action disabled'
+
+ws_run_block 27 'Committing changes' '1. Commit the changes:' 1420 1422 'bash' '' <<'WS_TEST_BLOCK_1900_27'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add the system prompt from the configuration bundle"
-WS_TEST_BLOCK_1900_26
+WS_TEST_BLOCK_1900_27
 
 ws_end_page
 
