@@ -6,7 +6,7 @@ set -Eeuo pipefail
 WS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${WS_SCRIPT_DIR}/runtime.sh"
 ws_begin_run 'Building AI agents with Amazon Bedrock AgentCore' "${WS_SCRIPT_DIR}/reports/agentcore-ai-agents" 5 "$@"
-ws_set_executable_total 478
+ws_set_executable_total 479
 ws_set_default_timeout 600
 ws_tab_group 'java-spring-ai' 'python-langgraph' 'python-strands' 'ts-vercel'
 ws_tab_group 'chat-ui' 'terminal'
@@ -926,16 +926,19 @@ ws_end_page
 
 ws_begin_page 'AgentCore Memory' 400 'memory/index.en.md'
 
-ws_run_block 1 'AgentCore Memory' '- Why the conversation history needs a limit' 19 22 'bash' 'terminal' <<'WS_TEST_BLOCK_400_1'
+ws_run_block 1 'AgentCore Memory' '1. Start the application:' 16 17 'bash' '' <<'WS_TEST_BLOCK_400_1'
 cd ~/environment/aiagent
 ~/workshop/scripts/local-app.sh start
-~/workshop/scripts/local-app.sh ask "I live in Berlin"
-~/workshop/scripts/local-app.sh ask "Which airports can I fly from?"
 WS_TEST_BLOCK_400_1
 
-ws_skip_block 2 'AgentCore Memory' 'AgentCore Memory' 27 32 'text' 'terminal' 'copy action disabled'
+ws_run_block 2 'AgentCore Memory' '2. Send Alice'"'"'s two prompts:' 26 27 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_400_2'
+~/workshop/scripts/local-app.sh ask "I live in Berlin"
+~/workshop/scripts/local-app.sh ask "Which airports can I fly from?"
+WS_TEST_BLOCK_400_2
 
-ws_run_block 3 'How the conversation history works' 'An application keeps a conversation by sending the earlier turns as messages with every request. Ask a follow-up question with the Converse API, first without the first turn, then with it:' 59 74 'bash' '' <<'WS_TEST_BLOCK_400_3'
+ws_skip_block 3 'AgentCore Memory' 'AgentCore Memory' 32 37 'text' 'terminal' 'copy action disabled'
+
+ws_run_block 4 'How the conversation history works' '1. Ask a follow-up question with the Converse API, without the first turn and with it:' 66 81 'bash' '' <<'WS_TEST_BLOCK_400_4'
 aws bedrock-runtime converse --no-cli-pager \
   --model-id global.anthropic.claude-sonnet-5-5 \
   --system '[{"text": "You are a travel assistant. Answer in one or two sentences."}]' \
@@ -952,15 +955,15 @@ aws bedrock-runtime converse --no-cli-pager \
     {"role": "user", "content": [{"text": "How do I get from there to Union Square?"}]}]' \
   --inference-config '{"maxTokens": 500}' \
   --query 'output.message.content[].text | [0]' --output text
-WS_TEST_BLOCK_400_3
+WS_TEST_BLOCK_400_4
 
-ws_skip_block 4 'How the conversation history works' 'How the conversation history works' 79 80 'text' '' 'copy action disabled'
+ws_skip_block 5 'How the conversation history works' 'How the conversation history works' 86 87 'text' '' 'copy action disabled'
 
-ws_skip_block 5 'How the conversation history works' 'Strands Agents trims the history with a conversation manager. The default SlidingWindowConversationManager keeps the last 40 messages. SummarizingConversationManager replaces older messages with a summary:' 94 96 'python' 'python-strands' 'copy action disabled'
+ws_skip_block 6 'How the conversation history works' 'Strands Agents trims the history with a conversation manager. The default SlidingWindowConversationManager keeps the last 40 messages. SummarizingConversationManager replaces older messages with a summary:' 101 103 'python' 'python-strands' 'copy action disabled'
 
-ws_skip_block 6 'How the conversation history works' 'How the conversation history works' 110 112 'python' 'python-langgraph' 'copy action disabled'
+ws_skip_block 7 'How the conversation history works' 'How the conversation history works' 117 119 'python' 'python-langgraph' 'copy action disabled'
 
-ws_run_block 7 'Creating the memory' 'Create the memory with its two long-term strategies, or reuse it, and wait until it is active. It takes about two minutes:' 216 231 'bash' '' <<'WS_TEST_BLOCK_400_7'
+ws_run_block 8 'Creating the memory' '1. Create the memory with its two long-term strategies and wait until it is active:' 225 240 'bash' '' <<'WS_TEST_BLOCK_400_8'
 AGENTCORE_MEMORY_ID=$(aws bedrock-agentcore-control list-memories --no-cli-pager \
   --query "memories[?starts_with(id, 'aiagent_memory-')].id | [0]" --output text)
 if [ "${AGENTCORE_MEMORY_ID}" = "None" ]; then
@@ -977,14 +980,14 @@ until [ "$(aws bedrock-agentcore-control get-memory --memory-id "${AGENTCORE_MEM
   echo -n "."; sleep 10
 done && echo " ACTIVE"
 echo "export AGENTCORE_MEMORY_ID=${AGENTCORE_MEMORY_ID}" >> ~/environment/.envrc
-WS_TEST_BLOCK_400_7
-
-ws_run_block 8 'Connecting the AI agent to memory' '1. Add the dependencies:' 247 248 'bash' 'python-strands' <<'WS_TEST_BLOCK_400_8'
-cd ~/environment/aiagent
-uv add boto3
 WS_TEST_BLOCK_400_8
 
-ws_run_block 9 'Connecting the AI agent to memory' 'Replace the content of pom.xml to add the AgentCore Memory module:' 257 370 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_400_9'
+ws_run_block 9 'Connecting the AI agent to memory' '1. Add the AWS SDK for Python, which reads the memory strategies:' 256 257 'bash' 'python-strands' <<'WS_TEST_BLOCK_400_9'
+cd ~/environment/aiagent
+uv add boto3
+WS_TEST_BLOCK_400_9
+
+ws_run_block 10 'Connecting the AI agent to memory' '1. Replace the content of pom.xml to add the AgentCore Memory module:' 266 379 'xml' 'java-spring-ai' <<'WS_TEST_BLOCK_400_10'
 cat <<'EOF' > ~/environment/aiagent/pom.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -1099,19 +1102,19 @@ cat <<'EOF' > ~/environment/aiagent/pom.xml
 
 </project>
 EOF
-WS_TEST_BLOCK_400_9
-
-ws_run_block 10 'Connecting the AI agent to memory' '- 56-60: AgentCore Memory for short- and long-term memory' 381 382 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_400_10'
-cd ~/environment/aiagent
-uv add langgraph-checkpoint-aws boto3
 WS_TEST_BLOCK_400_10
 
-ws_run_block 11 'Connecting the AI agent to memory' 'Add the AgentCore clients of the AWS SDK for JavaScript:' 391 392 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_400_11'
+ws_run_block 11 'Connecting the AI agent to memory' '1. Add the AgentCore Memory integration for LangGraph and the AWS SDK for Python:' 390 391 'bash' 'python-langgraph' <<'WS_TEST_BLOCK_400_11'
 cd ~/environment/aiagent
-npm install @aws-sdk/client-bedrock-agentcore @aws-sdk/client-bedrock-agentcore-control
+uv add langgraph-checkpoint-aws boto3
 WS_TEST_BLOCK_400_11
 
-ws_run_block 12 'Connecting the AI agent to memory' '2. Connect the AI agent to the memory:' 406 495 'python' 'python-strands' <<'WS_TEST_BLOCK_400_12'
+ws_run_block 12 'Connecting the AI agent to memory' '1. Add the AgentCore clients of the AWS SDK for JavaScript:' 400 401 'bash' 'ts-vercel' 900 <<'WS_TEST_BLOCK_400_12'
+cd ~/environment/aiagent
+npm install @aws-sdk/client-bedrock-agentcore @aws-sdk/client-bedrock-agentcore-control
+WS_TEST_BLOCK_400_12
+
+ws_run_block 13 'Connecting the AI agent to memory' '2. Replace the content of main.py:' 413 502 'python' 'python-strands' <<'WS_TEST_BLOCK_400_13'
 cat <<'EOF' > ~/environment/aiagent/main.py
 import os
 
@@ -1202,9 +1205,9 @@ app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 if __name__ == "__main__":
     app.run()
 EOF
-WS_TEST_BLOCK_400_12
+WS_TEST_BLOCK_400_13
 
-ws_run_block 13 'Connecting the AI agent to memory' '- 80: context.sessionid is the session header. In Code Editor, the chat UI sends the user name' 513 528 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_400_13'
+ws_run_block 14 'Connecting the AI agent to memory' '2. Replace the content of application.properties:' 520 535 'properties' 'java-spring-ai' <<'WS_TEST_BLOCK_400_14'
 cat <<'EOF' > ~/environment/aiagent/src/main/resources/application.properties
 spring.application.name=agent
 # Logging
@@ -1221,9 +1224,9 @@ spring.ai.bedrock.converse.chat.model=global.anthropic.claude-sonnet-5-5
 agentcore.memory.memory-id=${AGENTCORE_MEMORY_ID}
 agentcore.memory.long-term.auto-discovery=true
 EOF
-WS_TEST_BLOCK_400_13
+WS_TEST_BLOCK_400_14
 
-ws_run_block 14 'Connecting the AI agent to memory' '- 13-15: The memory ID from ~/environment/.envrc; auto-discovery finds the LTM strategies at startup' 536 607 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_400_14'
+ws_run_block 15 'Connecting the AI agent to memory' '3. Replace the content of ChatService.java:' 543 614 'java' 'java-spring-ai' <<'WS_TEST_BLOCK_400_15'
 cat <<'EOF' > ~/environment/aiagent/src/main/java/com/example/agent/ChatService.java
 package com.example.agent;
 
@@ -1296,9 +1299,9 @@ public class ChatService {
     }
 }
 EOF
-WS_TEST_BLOCK_400_14
+WS_TEST_BLOCK_400_15
 
-ws_run_block 15 'Connecting the AI agent to memory' '- 58-70: The conversation ID comes from the session header' 622 685 'python' 'python-langgraph' <<'WS_TEST_BLOCK_400_15'
+ws_run_block 16 'Connecting the AI agent to memory' '2. Create memory.py with the checkpointer, the store, and the middleware that connects them to the agent:' 629 692 'python' 'python-langgraph' <<'WS_TEST_BLOCK_400_16'
 cat <<'EOF' > ~/environment/aiagent/memory.py
 import os
 import uuid
@@ -1363,9 +1366,9 @@ def save_turn(state, runtime):
         if isinstance(message, (HumanMessage, AIMessage)) and message.text:
             store.put((ctx.actor_id, ctx.session_id), str(uuid.uuid4()), {"message": message})
 EOF
-WS_TEST_BLOCK_400_15
+WS_TEST_BLOCK_400_16
 
-ws_run_block 16 'Connecting the AI agent to memory' '- 56-63: After each turn, save the question and the answer as events; AgentCore Memory extracts facts and preferences from them' 700 763 'python' 'python-langgraph' <<'WS_TEST_BLOCK_400_16'
+ws_run_block 17 'Connecting the AI agent to memory' '3. Replace the content of main.py:' 707 770 'python' 'python-langgraph' <<'WS_TEST_BLOCK_400_17'
 cat <<'EOF' > ~/environment/aiagent/main.py
 import os
 
@@ -1430,9 +1433,9 @@ app.mount("/", StaticFiles(directory="static", html=True, check_dir=False))
 if __name__ == "__main__":
     app.run()
 EOF
-WS_TEST_BLOCK_400_16
+WS_TEST_BLOCK_400_17
 
-ws_run_block 17 'Connecting the AI agent to memory' '- 54: Pass actor and session as config for the checkpointer and as context for the middleware; only the new message is sent, the checkpointer restores the history' 777 822 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_400_17'
+ws_run_block 18 'Connecting the AI agent to memory' '2. Create memory.ts with the short-term and long-term memory functions:' 784 829 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_400_18'
 cat <<'EOF' > ~/environment/aiagent/memory.ts
 import {
   BedrockAgentCoreClient, CreateEventCommand, ListEventsCommand, RetrieveMemoryRecordsCommand,
@@ -1479,9 +1482,9 @@ export async function save(actorId: string, sessionId: string, user: string, ass
   }));
 }
 EOF
-WS_TEST_BLOCK_400_17
+WS_TEST_BLOCK_400_18
 
-ws_run_block 18 'Connecting the AI agent to memory' '- 37-45: Save the turn as conversational events; the strategies extract long-term memory from them' 835 894 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_400_18'
+ws_run_block 19 'Connecting the AI agent to memory' '3. Replace the content of main.ts:' 842 901 'typescript' 'ts-vercel' <<'WS_TEST_BLOCK_400_19'
 cat <<'EOF' > ~/environment/aiagent/main.ts
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -1542,21 +1545,21 @@ if (existsSync('static')) {
 
 app.run({ port: Number(process.env.PORT ?? 8080) });
 EOF
-WS_TEST_BLOCK_400_18
-
-ws_run_block 19 'Testing the memory' '1. Restart the application with the memory:' 911 912 'bash' '' <<'WS_TEST_BLOCK_400_19'
-cd ~/environment/aiagent
-~/workshop/scripts/local-app.sh start
 WS_TEST_BLOCK_400_19
 
-ws_run_block 20 'Testing the memory' '2. Send Alice'"'"'s two prompts again:' 921 922 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_400_20'
-~/workshop/scripts/local-app.sh ask "I live in Berlin"
-~/workshop/scripts/local-app.sh ask "Which airports can I fly from?"
+ws_run_block 20 'Testing the memory' '1. Restart the application with the memory:' 918 919 'bash' '' <<'WS_TEST_BLOCK_400_20'
+cd ~/environment/aiagent
+~/workshop/scripts/local-app.sh start
 WS_TEST_BLOCK_400_20
 
-ws_skip_block 21 'Testing the memory' 'Testing the memory' 927 934 'text' 'terminal' 'copy action disabled'
+ws_run_block 21 'Testing the memory' '2. Send Alice'"'"'s two prompts:' 928 929 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_400_21'
+~/workshop/scripts/local-app.sh ask "I live in Berlin"
+~/workshop/scripts/local-app.sh ask "Which airports can I fly from?"
+WS_TEST_BLOCK_400_21
 
-ws_run_block 22 'Testing the memory' '3. The strategies extract records about a minute after the events arrive. Wait for Alice'"'"'s records and list them:' 959 972 'bash' '' <<'WS_TEST_BLOCK_400_22'
+ws_skip_block 22 'Testing the memory' 'Testing the memory' 934 941 'text' 'terminal' 'copy action disabled'
+
+ws_run_block 23 'Testing the memory' '3. Wait for Alice'"'"'s records and list them:' 952 965 'bash' 'terminal' <<'WS_TEST_BLOCK_400_23'
 STRATEGY_IDS=$(aws bedrock-agentcore-control get-memory --memory-id "${AGENTCORE_MEMORY_ID}" \
   --no-cli-pager --query 'memory.strategies[].strategyId' --output text)
 
@@ -1571,22 +1574,26 @@ list_records() {
 echo -n "Waiting for records"
 until [ -n "$(list_records)" ]; do echo -n "."; sleep 10; done && echo
 list_records
-WS_TEST_BLOCK_400_22
+WS_TEST_BLOCK_400_23
 
-ws_skip_block 23 'Testing the memory' '- 7: Each strategy stores Alice'"'"'s records in its own namespace under actors/alice' 979 980 'text' '' 'copy action disabled'
+ws_skip_block 24 'Testing the memory' '- 7: Each strategy stores Alice'"'"'s records in its own namespace under actors/alice' 972 973 'text' 'terminal' 'copy action disabled'
 
-ws_run_block 24 'Testing the memory' '4. Ask where Alice lives in a new conversation, then as Bob:' 990 991 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_400_24'
+ws_run_block 25 'Testing the memory' '4. Ask where Alice lives in a new session, then as Bob:' 980 981 'bash' 'terminal' 300 <<'WS_TEST_BLOCK_400_25'
 ~/workshop/scripts/local-app.sh ask "Where do I live?" alice:second-conversation
 ~/workshop/scripts/local-app.sh ask "Where do I live?" bob
-WS_TEST_BLOCK_400_24
+WS_TEST_BLOCK_400_25
 
-ws_skip_block 25 'Testing the memory' 'Testing the memory' 996 999 'text' 'terminal' 'copy action disabled'
+ws_skip_block 26 'Testing the memory' 'Testing the memory' 986 989 'text' 'terminal' 'copy action disabled'
 
-ws_run_block 26 'Committing changes' 'Committing changes' 1022 1024 'bash' '' <<'WS_TEST_BLOCK_400_26'
+ws_skip_block 27 'Testing the memory' '3. Wait for Alice'"'"'s records and list them:' 1015 1028 'bash' 'chat-ui' 'the Terminal tab runs it'
+
+ws_skip_block 28 'Testing the memory' '- 7: Each strategy stores Alice'"'"'s records in its own namespace under actors/alice' 1035 1036 'text' 'chat-ui' 'copy action disabled'
+
+ws_run_block 29 'Committing changes' '1. Commit the changes:' 1054 1056 'bash' '' <<'WS_TEST_BLOCK_400_29'
 cd ~/environment/aiagent
 git add .
 git commit --allow-empty -m "Add memory"
-WS_TEST_BLOCK_400_26
+WS_TEST_BLOCK_400_29
 
 ws_end_page
 
