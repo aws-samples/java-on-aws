@@ -43,7 +43,7 @@ export WS_ENV_FILE=~/path/to/.env     # git-ignored: export AWS_DEFAULT_REGION=.
 cd infra/scripts/ws-test
 
 node generate.mjs java-performance && git commit ...    # content changed: regenerate, commit
-remote/sync-branch.sh [--skills] [--sensor]             # IDE ~/java-on-aws → this branch
+remote/sync-branch.sh [--skills] [--sensor]             # IDE ~/java-on-aws → this branch (--workshop=NAME)
 remote/run-ws-test.sh java-performance                  # reset-app.sh, then the run (~20 min)
 REPORT=$(remote/fetch-report.sh java-performance)       # → ~/.cache/ws-test/reports/...
 samples/refresh.py java-performance "$REPORT" ../../../../java-performance/content
@@ -51,7 +51,8 @@ samples/refresh.py java-performance "$REPORT" ../../../../java-performance/conte
 
 - `sync-branch.sh` ships only commits. `--skills` reinstalls the Claude Code skills and
   settings (`claude-code.sh`; reset-app does not), `--sensor` rebuilds and reinstalls the
-  sensor (`perf-sensor.sh`).
+  sensor (`perf-sensor.sh`). Both run the scripts of `--workshop=NAME`
+  (`infra/scripts/deploy/NAME`, default java-performance).
 - `run-ws-test.sh` runs detached on the IDE and polls every 30 s; `--no-wait` returns at
   once, `--status` shows the last lines later, `--no-reset` skips `reset-app.sh`, arguments
   after `--` go to the test script. Never use an interactive Claude on the IDE during a run:
