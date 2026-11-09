@@ -1,13 +1,15 @@
 #!/bin/bash
 # =============================================================================
-# sync-branch.sh [--skills] [--sensor] [BRANCH] — move the IDE's ~/java-on-aws to a
-# local branch that is not pushed: bundle origin/main..BRANCH (default: the current
-# branch), upload it to S3, fetch it on the IDE and `checkout -B` the branch there.
-# Only commits travel: commit first.
+# sync-branch.sh [--workshop=NAME] [--skills] [--sensor] [BRANCH] — move the IDE's
+# ~/java-on-aws to a local branch that is not pushed: bundle origin/main..BRANCH (default:
+# the current branch), upload it to S3, fetch it on the IDE and `checkout -B` the branch
+# there. Only commits travel: commit first.
 #
-#   --skills   then reinstall the Claude Code skills and settings (claude-code.sh);
-#              reset-app.sh does not
-#   --sensor   then rebuild and reinstall the sensor (perf-sensor.sh)
+#   --workshop=NAME  the deploy scripts --skills and --sensor run (infra/scripts/deploy/NAME,
+#                    default java-performance)
+#   --skills         then reinstall the Claude Code skills and settings (claude-code.sh);
+#                    reset-app.sh does not
+#   --sensor         then rebuild and reinstall the sensor (perf-sensor.sh)
 #
 # The IDE clones java-on-aws main at bootstrap, so a fresh environment needs this
 # before every run of a branch.
@@ -16,12 +18,13 @@ set -euo pipefail
 DIR="$(dirname "${BASH_SOURCE[0]}")"
 source "$DIR/env.sh"
 
-SKILLS=0; SENSOR=0; BRANCH=""
+SKILLS=0; SENSOR=0; BRANCH=""; WORKSHOP=java-performance
 for a in "$@"; do
     case "$a" in
+        --workshop=?*) WORKSHOP="${a#--workshop=}" ;;
         --skills) SKILLS=1 ;;
         --sensor) SENSOR=1 ;;
-        -*) sed -n 3,13p "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+        -*) sed -n 3,15p "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
         *) BRANCH="$a" ;;
     esac
 done
@@ -33,7 +36,9 @@ BUNDLE="$WS_LOCAL/java-on-aws.bundle"
 git -C "$WS_REPO" bundle create -q "$BUNDLE" "origin/main..$BRANCH"
 aws s3 cp --quiet "$BUNDLE" "$WS_S3/java-on-aws.bundle"
 
-DEPLOY='~/java-on-aws/infra/scripts/deploy/java-performance'
+[ -d "$WS_REPO/infra/scripts/deploy/$WORKSHOP" ] \
+    || { echo "No deploy scripts for workshop $WORKSHOP (infra/scripts/deploy/$WORKSHOP)" >&2; exit 2; }
+DEPLOY="~/java-on-aws/infra/scripts/deploy/$WORKSHOP"
 {
     cat <<EOF
 set -euo pipefail

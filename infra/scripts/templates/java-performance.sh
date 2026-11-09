@@ -112,4 +112,4 @@ run "Environment verified"          "$DEPLOY/verify.sh"
 log_success "$(stamp)java-performance post-deploy completed"
 
 # Emit for bootstrap summary
-echo "✅ Success: Java-on-Amazon-EKS workshop template"
+echo "✅ Success: Java-Performance workshop template"

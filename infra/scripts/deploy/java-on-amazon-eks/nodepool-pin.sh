@@ -9,6 +9,11 @@
 # (e.g. m8azn at 5 GHz) and startup "improves" from hardware, not from the change.
 # Family, not type, keeps capacity flexible across sizes.
 #
+# Consolidation: WhenEmpty only. The pool carries just the app (platform-placement.sh), and
+# one m6a.xlarge fits every state of the session, rollout surge and boosted start included.
+# WhenEmptyOrUnderutilized (the eks.sh default) would replace the node when the app shrinks
+# and move the pod mid-measurement; WhenEmpty only removes a node nothing runs on.
+#
 # Replaces the three scheduling requirements (cpu-manufacturer, instance-category,
 # instance-generation) with one (instance-family); capacity-type, arch, os, cpu and
 # memory requirements stay. Idempotent. Runs after setup/eks.sh.
@@ -38,7 +43,8 @@ PATCH="$(kubectl get nodepool "${NODEPOOL}" -o json | jq -c --arg fam "${INSTANC
                          "eks.amazonaws.com/instance-generation",
                          "eks.amazonaws.com/instance-family") | not))
   + [{"key":"eks.amazonaws.com/instance-family","operator":"In","values":[$fam]}]
-  | {spec:{template:{spec:{requirements:.}}}}')"
+  | {spec:{template:{spec:{requirements:.}},
+           disruption:{consolidationPolicy:"WhenEmpty",consolidateAfter:"5m"}}}')"
 kubectl patch nodepool "${NODEPOOL}" --type merge -p "${PATCH}" >/dev/null \
-  && log_success "NodePool ${NODEPOOL} pinned to ${INSTANCE_FAMILY} (existing nodes drain on consolidation; new nodes are ${INSTANCE_FAMILY})" \
+  && log_success "NodePool ${NODEPOOL} pinned to ${INSTANCE_FAMILY}, consolidation WhenEmpty (existing nodes drain on consolidation; new nodes are ${INSTANCE_FAMILY})" \
   || { log_error "NodePool patch failed"; exit 1; }
