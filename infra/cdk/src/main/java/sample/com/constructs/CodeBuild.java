@@ -103,6 +103,11 @@ public class CodeBuild extends Construct {
             .buildSpec(BuildSpec.fromObjectToYaml(new Yaml().load(props.getBuildSpec())))
             .environmentVariables(codeBuildEnvVars)
             .timeout(props.getTimeout())
+            .logging(LoggingOptions.builder()
+                .cloudWatch(CloudWatchLoggingOptions.builder()
+                    .logGroup(Lambda.stackLogGroup(this, "ProjectLogGroup"))
+                    .build())
+                .build())
             .build();
 
         lambdaRole.addToPolicy(PolicyStatement.Builder.create()

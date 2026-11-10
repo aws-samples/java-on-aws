@@ -21,8 +21,8 @@ import java.util.Map;
 /**
  * CfnPreDeleteCleanup construct for cleaning up resources before stack deletion.
  * - GuardDuty VPC endpoints that block VPC deletion
- * - CloudWatch log groups with workshop- or unicornstore- prefix
  * - S3 bucket contents for workshop- buckets
+ * Its own log group belongs to the stack (Lambda.stackLogGroup), like every function's.
  */
 public class CfnPreDeleteCleanup extends Construct {
 
@@ -120,7 +120,8 @@ public class CfnPreDeleteCleanup extends Construct {
             .code(Code.fromInline(loadFile("/lambda/cfn-pre-delete-cleanup.py")))
             .role(lambdaRole)
             .timeout(Duration.minutes(10))
-            .description("Cleanup VPC endpoints, CloudWatch logs, and S3 buckets before stack deletion")
+            .logGroup(Lambda.stackLogGroup(this, "FunctionLogGroup"))
+            .description("Cleanup VPC endpoints and S3 buckets before stack deletion")
             .build();
 
         // Create Custom Resource that triggers cleanup on stack delete

@@ -18,8 +18,8 @@ export IDE_TYPE="${IDE_TYPE}"
 export WAIT_CONDITION_HANDLE_URL="${WAIT_CONDITION_HANDLE_URL}"
 export PREFIX="${PREFIX}"
 
-# Setup logging - use PREFIX for log group name
-LOG_GROUP_NAME="${PREFIX}-ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
+# Setup logging into the stack's bootstrap log group (Ide.java), deleted with the stack
+LOG_GROUP_NAME="${LOG_GROUP_NAME}"
 echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
 
 # Install CloudWatch agent for logging
