@@ -345,9 +345,12 @@ Resources:
                       raise
 
               print(f"Timeout waiting for endpoint deletion after {max_wait}s")
-      Description: Cleanup VPC endpoints, CloudWatch logs, and S3 buckets before stack deletion
+      Description: Cleanup VPC endpoints and S3 buckets before stack deletion
       FunctionName: workshop-cfn-pre-delete-cleanup
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: CfnPreDeleteCleanupFunctionLogGroupE77CC8F5
       Role:
         Fn::GetAtt:
           - CfnPreDeleteCleanupRole2BF62B3D
@@ -363,6 +366,20 @@ Resources:
           Value: cloudformation
       Timeout: 600
     Type: AWS::Lambda::Function
+  CfnPreDeleteCleanupFunctionLogGroupE77CC8F5:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-amazon-eks
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   CfnPreDeleteCleanupRole2BF62B3D:
     Properties:
       AssumeRolePolicyDocument:
@@ -490,7 +507,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1792832525276"
+      ContentHash: "1794299254880"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -653,16 +670,21 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: GIT_BRANCH
-            Type: PLAINTEXT
-            Value: main
           - Name: TEMPLATE_TYPE
             Type: PLAINTEXT
             Value: java-on-amazon-eks
+          - Name: GIT_BRANCH
+            Type: PLAINTEXT
+            Value: main
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
         Type: LINUX_CONTAINER
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName:
+            Ref: CodeBuildProjectLogGroup8E24F361
+          Status: ENABLED
       Name: workshop-setup
       ServiceRole:
         Fn::GetAtt:
@@ -697,6 +719,20 @@ Resources:
           Value: cloudformation
       TimeoutInMinutes: 30
     Type: AWS::CodeBuild::Project
+  CodeBuildProjectLogGroup8E24F361:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-amazon-eks
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   CodeBuildReportLambdaFunctionA3C396F7:
     DependsOn:
       - CodeBuildLambdaRoleDefaultPolicyFB35F0AF
@@ -815,6 +851,9 @@ Resources:
             Ref: CodeBuildPendingBuilds19869454
       FunctionName: workshop-setup-report
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: CodeBuildReportLambdaLogGroup7EC4A659
       Role:
         Fn::GetAtt:
           - CodeBuildLambdaRole655C06B4
@@ -830,6 +869,20 @@ Resources:
           Value: cloudformation
       Timeout: 120
     Type: AWS::Lambda::Function
+  CodeBuildReportLambdaLogGroup7EC4A659:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-amazon-eks
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   CodeBuildRoleDefaultPolicy196BAF24:
     Properties:
       PolicyDocument:
@@ -841,6 +894,14 @@ Resources:
                   - elasticloadbalancing.amazonaws.com
             Effect: Allow
             Resource: arn:aws:iam::*:role/aws-service-role/*
+          - Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - CodeBuildProjectLogGroup8E24F361
+                - Arn
           - Action:
               - logs:CreateLogGroup
               - logs:CreateLogStream
@@ -993,6 +1054,9 @@ Resources:
             Ref: CodeBuildPendingBuilds19869454
       FunctionName: workshop-setup-start
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: CodeBuildStartLambdaLogGroup8C94F258
       Role:
         Fn::GetAtt:
           - CodeBuildLambdaRole655C06B4
@@ -1008,6 +1072,20 @@ Resources:
           Value: cloudformation
       Timeout: 120
     Type: AWS::Lambda::Function
+  CodeBuildStartLambdaLogGroup8C94F258:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-amazon-eks
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   DatabaseCluster5B53A178:
     DeletionPolicy: Delete
     Properties:
@@ -1527,6 +1605,20 @@ Resources:
         - Key: WorkshopOwner
           Value: cloudformation
     Type: AWS::EKS::Addon
+  IdeBootstrapLogGroupE41C8C91:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-amazon-eks
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   IdeDistribution042A6660:
     DeletionPolicy: Delete
     DependsOn:
@@ -1679,8 +1771,11 @@ Resources:
                 "
                 export PREFIX="workshop"
 
-                # Setup logging - use PREFIX for log group name
-                LOG_GROUP_NAME="workshop-ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
+                # Setup logging into the stack's bootstrap log group (Ide.java), deleted with the stack
+                LOG_GROUP_NAME="
+              - Ref: IdeBootstrapLogGroupE41C8C91
+              - |-
+                "
                 echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
 
                 # Install CloudWatch agent for logging
@@ -1955,6 +2050,9 @@ Resources:
               cfnresponse.send(event, context, status, responseData, physical_id)
       FunctionName: workshop-ide-launcher
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: IdeInstanceLauncherLogGroup5E716EFF
       Role:
         Fn::GetAtt:
           - IdeLambdaRole82392143
@@ -1970,6 +2068,20 @@ Resources:
           Value: cloudformation
       Timeout: 300
     Type: AWS::Lambda::Function
+  IdeInstanceLauncherLogGroup5E716EFF:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-amazon-eks
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   IdeInstanceProfile61B92038:
     Properties:
       InstanceProfileName: workshop-ide-instance-profile
@@ -2144,6 +2256,9 @@ Resources:
               cfnresponse.send(event, context, status, responseData, physical_id)
       FunctionName: workshop-ide-password
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: IdePasswordFunctionLogGroup75ECD53B
       Role:
         Fn::GetAtt:
           - IdePasswordFunctionServiceRole971421B6
@@ -2159,6 +2274,20 @@ Resources:
           Value: cloudformation
       Timeout: 180
     Type: AWS::Lambda::Function
+  IdePasswordFunctionLogGroup75ECD53B:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-amazon-eks
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   IdePasswordFunctionServiceRole971421B6:
     Properties:
       AssumeRolePolicyDocument:
@@ -2547,6 +2676,9 @@ Resources:
                       cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
       FunctionName: workshop-ide-prefixlist
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: IdePrefixListLookupLogGroup8650FFBA
       Role:
         Fn::GetAtt:
           - IdeLambdaRole82392143
@@ -2562,6 +2694,20 @@ Resources:
           Value: cloudformation
       Timeout: 180
     Type: AWS::Lambda::Function
+  IdePrefixListLookupLogGroup8650FFBA:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-amazon-eks
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   IdePrefixListResourceD2EAC007:
     DeletionPolicy: Delete
     Properties:
@@ -2923,6 +3069,9 @@ Resources:
                   cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
       FunctionName: unicornstore-database-setup
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: UnicornUnicornStoreDatabaseSetupLogGroup79C2BE46
       Role:
         Fn::GetAtt:
           - UnicornUnicornStoreDatabaseSetupFunctionServiceRole61942171
@@ -3019,6 +3168,20 @@ Resources:
       Roles:
         - Ref: UnicornUnicornStoreDatabaseSetupFunctionServiceRole61942171
     Type: AWS::IAM::Policy
+  UnicornUnicornStoreDatabaseSetupLogGroup79C2BE46:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-amazon-eks
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   UnicornUnicornStoreDatabaseSetupResourceCDB8BDDF:
     DeletionPolicy: Delete
     DependsOn:
@@ -3498,7 +3661,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261024110205"
+            - "-20261110092734"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3582,7 +3745,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261024110205"
+            - "-20261110092734"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88
