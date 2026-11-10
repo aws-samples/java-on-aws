@@ -29,6 +29,9 @@ CLUSTER_NAME="${PREFIX:-workshop}-eks"                 # stamped into the sideca
 APP_UID="${APP_UID:-1000}"                             # UID the profiled app runs as
 PYROSCOPE_URL="${PYROSCOPE_URL:-http://pyroscope.monitoring:4040}"
 KYVERNO_CHART_VERSION="3.9.1"                          # Kyverno v1.19.1; MutatingPolicy v1beta1 needs >= this
+# The reports controller can stall without an error (kyverno#17848; #17085 is only in 1.20 rcs), so the
+# content's enforce block restarts it after 90 s without a PolicyReport. Once a stable release has the
+# fix, bump this pin and remove the restart from ../java-on-amazon-eks/content/enforce/index.en.md.
 
 build() {
   log_info "Building and pushing perf-profiler image..."
