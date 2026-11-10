@@ -12,16 +12,16 @@ ws_source_environment '/etc/profile.d/workshop.sh'
 
 ws_begin_page 'Set up the environment' 10 'setup/index.en.md'
 
-ws_run_block 1 'Check the environment' 'In the Shell terminal:' 25 26 'bash' '' <<'WS_TEST_BLOCK_10_1'
+ws_run_block 1 'Check the environment' 'In the Shell terminal:' 65 66 'bash' '' <<'WS_TEST_BLOCK_10_1'
 curl -sf localhost:8090/actuator/health && echo
 kubectl -n unicorn-store-spring get pods
 WS_TEST_BLOCK_10_1
 
-ws_skip_block 2 'Check the environment' 'Check the environment' 31 32 'text' '' 'copy action disabled'
+ws_skip_block 2 'Check the environment' 'Check the environment' 71 72 'text' '' 'copy action disabled'
 
-ws_skip_block 3 'Start Claude Code' 'In the Claude terminal:' 47 47 'bash' '' 'interactive terminal UI'
+ws_skip_block 3 'Start Claude Code' 'In the Claude terminal:' 87 87 'bash' '' 'interactive terminal UI'
 
-ws_run_block 4 'Start Claude Code' 'With -p, Claude Code prints the answer and exits. Later calls with -c continue the same session:' 65 65 'bash' 'non-interactive' <<'WS_TEST_BLOCK_10_4'
+ws_run_block 4 'Start Claude Code' 'With -p, Claude Code prints the answer and exits. Later calls with -c continue the same session:' 105 105 'bash' 'non-interactive' <<'WS_TEST_BLOCK_10_4'
 cd ~/environment && claude -p "List the MCP tools you can see from perf-sensor and eks-mcp, names only."
 WS_TEST_BLOCK_10_4
 
@@ -272,10 +272,12 @@ WS_TEST_BLOCK_500_1
 
 ws_skip_block 2 'Review the policy' '- Item 10 assumption: the grace-period rule assumes Spring Boot'"'"'s 30 s default drain. The app sets no spring.lifecycle.timeout-per-shutdown-phase, so that holds today.' 93 105 'yaml' '' 'copy action disabled'
 
-ws_run_block 3 'Apply and test' 'In the Shell terminal:' 117 129 'bash' '' <<'WS_TEST_BLOCK_500_3'
+ws_run_block 3 'Apply and test' 'In the Shell terminal:' 117 131 'bash' '' <<'WS_TEST_BLOCK_500_3'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/policy.yaml
 
 # the background scan reports the running Deployment
+timeout 90 sh -c 'until kubectl -n unicorn-store-spring get policyreport -o name | grep -q .; do sleep 5; done' \
+  || kubectl -n kyverno rollout restart deploy/kyverno-reports-controller
 until kubectl -n unicorn-store-spring get policyreport -o name | grep -q .; do sleep 5; done
 kubectl -n unicorn-store-spring get policyreport
 
@@ -288,7 +290,7 @@ git -C ~/environment/unicorn-store-spring add -A \
   && git -C ~/environment/unicorn-store-spring commit -q -m "kyverno policy"
 WS_TEST_BLOCK_500_3
 
-ws_skip_block 4 'Apply and test' 'Apply and test' 134 138 'text' '' 'copy action disabled'
+ws_skip_block 4 'Apply and test' 'Apply and test' 136 140 'text' '' 'copy action disabled'
 
 ws_end_page
 
