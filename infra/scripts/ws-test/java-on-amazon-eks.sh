@@ -12,16 +12,16 @@ ws_source_environment '/etc/profile.d/workshop.sh'
 
 ws_begin_page 'Set up the environment' 10 'setup/index.en.md'
 
-ws_run_block 1 'Check the environment' 'In the Shell terminal:' 65 66 'bash' '' <<'WS_TEST_BLOCK_10_1'
+ws_run_block 1 'Check the environment' 'In the Shell terminal:' 67 68 'bash' '' <<'WS_TEST_BLOCK_10_1'
 curl -sf localhost:8090/actuator/health && echo
 kubectl -n unicorn-store-spring get pods
 WS_TEST_BLOCK_10_1
 
-ws_skip_block 2 'Check the environment' 'Check the environment' 71 72 'text' '' 'copy action disabled'
+ws_skip_block 2 'Check the environment' 'Check the environment' 73 74 'text' '' 'copy action disabled'
 
-ws_skip_block 3 'Start Claude Code' 'In the Claude terminal:' 87 87 'bash' '' 'interactive terminal UI'
+ws_skip_block 3 'Start Claude Code' 'In the Claude terminal:' 89 89 'bash' '' 'interactive terminal UI'
 
-ws_run_block 4 'Start Claude Code' 'With -p, Claude Code prints the answer and exits. Later calls with -c continue the same session:' 105 105 'bash' 'non-interactive' <<'WS_TEST_BLOCK_10_4'
+ws_run_block 4 'Start Claude Code' 'With -p, Claude Code prints the answer and exits. Later calls with -c continue the same session:' 107 107 'bash' 'non-interactive' <<'WS_TEST_BLOCK_10_4'
 cd ~/environment && claude -p "List the MCP tools you can see from perf-sensor and eks-mcp, names only."
 WS_TEST_BLOCK_10_4
 
