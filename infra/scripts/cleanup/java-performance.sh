@@ -42,6 +42,7 @@ declare -a SECURITY_GROUPS=()
 declare -a STACK_RESOURCE_IDS=()
 
 log_info() { printf '[INFO] %s\n' "$*"; }
+log_success() { printf '[OK] %s\n' "$*"; }
 log_warn() { printf '[WARN] %s\n' "$*" >&2; }
 log_error() { printf '[ERROR] %s\n' "$*" >&2; }
 record_error() { log_error "$*"; ERRORS=$((ERRORS + 1)); }
@@ -399,9 +400,10 @@ discover_resources() {
 }
 
 print_plan() {
-    local ingress_count service_count association_count
+    local ingress_count service_count association_count pvc_count
     ingress_count=$(kubectl_cli get ingress --all-namespaces -o json | jq '.items | length')
     service_count=$(kubectl_cli get service --all-namespaces -o json | jq '[.items[] | select(.spec.type == "LoadBalancer")] | length')
+    pvc_count=$(kubectl_cli get pvc --all-namespaces -o json | jq '.items | length')
     association_count=$(aws_cli eks list-pod-identity-associations --cluster-name "$EKS_CLUSTER_NAME" \
         --query 'length(associations)' --output text)
 
@@ -409,6 +411,7 @@ print_plan() {
     printf '  Kubernetes Ingresses:             %s\n' "$ingress_count"
     printf '  Kubernetes LoadBalancer Services: %s\n' "$service_count"
     printf '  EKS Pod Identity associations:    %s\n' "$association_count"
+    printf '  Kubernetes volume claims:         %s\n' "$pvc_count"
     printf '  Load balancers in VPC:            %d\n' "${#RUNTIME_LOAD_BALANCERS[@]}"
     printf '  Target groups in VPC:             %d\n' "${#RUNTIME_TARGET_GROUPS[@]}"
     printf '  Tagged runtime ECR repositories:  %d\n' "${#RUNTIME_ECR_REPOSITORIES[@]}"
@@ -432,6 +435,63 @@ kubernetes_dependencies_gone() {
     ingress_count=$(kubectl_cli get ingress --all-namespaces -o json 2>/dev/null | jq '.items | length') || return 1
     service_count=$(kubectl_cli get service --all-namespaces -o json 2>/dev/null | jq '[.items[] | select(.spec.type == "LoadBalancer")] | length') || return 1
     [[ "$ingress_count" -eq 0 && "$service_count" -eq 0 ]]
+}
+
+pods_with_claims_gone() {
+    local count
+    count=$(kubectl_cli get pods --all-namespaces -o json 2>/dev/null \
+        | jq '[.items[] | select([.spec.volumes[]? | select(.persistentVolumeClaim)] | length > 0)] | length') || return 1
+    [[ "$count" -eq 0 ]]
+}
+
+volumes_gone() {
+    local name
+    for name in "$@"; do
+        kubectl_cli get pv "$name" >/dev/null 2>&1 && return 1
+    done
+    return 0
+}
+
+# PersistentVolumeClaims are backed by EBS volumes that outlive the cluster: once it is
+# deleted, no CSI driver is left to delete them, and they stay billed as `available`.
+# Stop every workload that mounts a claim (this also stops Pyroscope writing blocks into
+# the stack's bucket, which would fail the bucket's deletion), delete the claims, and wait
+# until their PersistentVolumes, and with them the EBS volumes, are gone.
+cleanup_persistent_volumes() {
+    local pvc_json workload_json namespace kind name
+    local -a volume_names=()
+    pvc_json=$(kubectl_cli get pvc --all-namespaces -o json) || {
+        record_error "Could not enumerate PersistentVolumeClaims"
+        return
+    }
+    [[ "$(jq '.items | length' <<<"$pvc_json")" -gt 0 ]] || return 0
+    mapfile -t volume_names < <(jq -r '.items[].spec.volumeName // empty' <<<"$pvc_json")
+
+    workload_json=$(kubectl_cli get statefulsets,deployments --all-namespaces -o json) || {
+        record_error "Could not enumerate StatefulSets and Deployments"
+        return
+    }
+    log_info "Stopping every workload that mounts a PersistentVolumeClaim"
+    while IFS=$'\t' read -r namespace kind name; do
+        [[ -n "$namespace" && -n "$name" ]] || continue
+        kubectl_cli scale "$kind/$name" --namespace "$namespace" --replicas=0 >/dev/null \
+            || record_error "Failed to scale $kind $namespace/$name to 0"
+    done < <(jq -r '.items[]
+        | select(((.spec.volumeClaimTemplates // []) | length > 0)
+                 or ([.spec.template.spec.volumes[]? | select(.persistentVolumeClaim)] | length > 0))
+        | [.metadata.namespace, (.kind | ascii_downcase), .metadata.name] | @tsv' <<<"$workload_json")
+    wait_until "pods that mount PersistentVolumeClaims to stop" pods_with_claims_gone || true
+
+    log_info "Deleting every PersistentVolumeClaim from validated EKS cluster $EKS_CLUSTER_NAME"
+    while IFS=$'\t' read -r namespace name; do
+        [[ -n "$namespace" && -n "$name" ]] || continue
+        kubectl_cli delete pvc "$name" --namespace "$namespace" --ignore-not-found \
+            --wait=true --timeout="${WAIT_SECONDS}s" >/dev/null || record_error "Failed to delete PersistentVolumeClaim $namespace/$name"
+    done < <(jq -r '.items[] | [.metadata.namespace,.metadata.name] | @tsv' <<<"$pvc_json")
+    if (( ${#volume_names[@]} > 0 )); then
+        wait_until "PersistentVolumes and their EBS volumes to be deleted" volumes_gone "${volume_names[@]}" \
+            && log_info "PersistentVolumes deleted: ${volume_names[*]}"
+    fi
 }
 
 cleanup_eks_dependencies() {
@@ -663,6 +723,7 @@ main() {
     fi
 
     confirm_cleanup
+    cleanup_persistent_volumes
     cleanup_eks_dependencies
     cleanup_vpc_load_balancers
     cleanup_runtime_ecr

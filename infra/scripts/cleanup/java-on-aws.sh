@@ -37,6 +37,7 @@ declare -a SECURITY_GROUPS=()
 declare -a STACK_RESOURCE_IDS=()
 
 log_info() { printf '[INFO] %s\n' "$*"; }
+log_success() { printf '[OK] %s\n' "$*"; }
 log_warn() { printf '[WARN] %s\n' "$*" >&2; }
 log_error() { printf '[ERROR] %s\n' "$*" >&2; }
 record_error() { log_error "$*"; ERRORS=$((ERRORS + 1)); }

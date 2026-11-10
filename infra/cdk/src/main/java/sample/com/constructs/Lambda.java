@@ -1,10 +1,13 @@
 package sample.com.constructs;
 
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.RemovalPolicy;
 import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
+import software.amazon.awscdk.services.logs.LogGroup;
+import software.amazon.awscdk.services.logs.RetentionDays;
 import software.constructs.Construct;
 
 import java.io.IOException;
@@ -58,6 +61,20 @@ public class Lambda extends Construct {
             .timeout(props.getTimeout())
             .functionName(props.getFunctionName())
             .role(props.getRole())
+            .logGroup(stackLogGroup(this, "LogGroup"))
+            .build();
+    }
+
+    /**
+     * A log group the stack owns: CloudFormation deletes it after the function that writes
+     * to it, so the logs of a custom resource's Delete call go too. Without it, Lambda
+     * creates /aws/lambda/<name> itself and the group outlives the stack. The name is
+     * generated, so a group left by an earlier deployment can't block the create.
+     */
+    public static LogGroup stackLogGroup(final Construct scope, final String id) {
+        return LogGroup.Builder.create(scope, id)
+            .retention(RetentionDays.ONE_WEEK)
+            .removalPolicy(RemovalPolicy.DESTROY)
             .build();
     }
 

@@ -82,6 +82,7 @@ public class Unicorn extends Construct {
             .timeout(Duration.minutes(3))
             .vpc(props.getVpc())
             .securityGroups(List.of(database.getDatabaseSecurityGroup()))
+            .logGroup(Lambda.stackLogGroup(this, "UnicornStoreDatabaseSetupLogGroup"))
             .build();
 
         // Grant permissions to setup function

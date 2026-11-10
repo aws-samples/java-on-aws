@@ -424,7 +424,9 @@ public class Ide extends Construct {
         String gitBranch = props.getGitBranch();
         String templateType = props.getTemplateType();
 
-        // Load UserData from external template file and substitute variables
+        // Load UserData from external template file and substitute variables. The bootstrap log
+        // group belongs to the stack, so it is deleted with it (after the instance).
+        var bootstrapLogGroup = Lambda.stackLogGroup(this, "BootstrapLogGroup");
         String userDataTemplate = loadFile("/userdata.sh");
         String userDataContent = userDataTemplate
             .replace("${GIT_BRANCH}", gitBranch)
@@ -436,6 +438,7 @@ public class Ide extends Construct {
             .replace("${ARCH}", props.getIdeArch().getUnameValue())
             .replace("${IDE_TYPE}", props.getIdeType().getScriptName())
             .replace("${WAIT_CONDITION_HANDLE_URL}", waitHandle.getRef())
+            .replace("${LOG_GROUP_NAME}", bootstrapLogGroup.getLogGroupName())
             .replace("${PREFIX}", prefix);
 
         userData.addCommands(userDataContent);
@@ -578,6 +581,7 @@ public class Ide extends Construct {
                 .runtime(Runtime.PYTHON_3_13)
                 .timeout(Duration.minutes(3))
                 .functionName(prefix + "-ide-password")
+                .logGroup(Lambda.stackLogGroup(this, "PasswordFunctionLogGroup"))
                 .build();
 
             ideSecretsManagerPassword.grantRead(passwordFunction);
