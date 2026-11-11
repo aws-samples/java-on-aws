@@ -37,6 +37,18 @@ The workshop includes an AI-driven performance analysis module that uses Amazon 
 - **Observability** — CloudWatch Application Signals, OpenTelemetry instrumentation, service maps, logs, metrics, and traces
 - **Graviton/ARM64** — build multi-architecture images and deploy to AWS Graviton for up to 40% better price-performance
 
+## Java Performance Optimization on Amazon EKS
+
+**[catalog.workshops.aws/java-performance](https://catalog.workshops.aws/java-performance)**
+
+A one-hour, expert-level (L400) builders' session. You take a Spring Boot service on Amazon EKS from default sizes and JVM settings to one that passes a checklist of cloud-native practices. Claude Code on Amazon Bedrock uses skills and a performance sensor over MCP to read profiles, metrics and thread dumps, and proposes each change for you to review and roll out.
+
+- **Measure the baseline**: profile the running service and score it against the checklist
+- **Improve the manifest**: size memory and CPU from measurements, and start faster without changing the image
+- **Improve the image**: shorten startup with an AOT cache, then a CRaC snapshot
+- **Improve the code**: find what adds latency to requests under load, and size again
+- **Enforce the practices**: turn checklist rules into a Kyverno admission policy
+
 ## Building Java AI Agents with Spring AI
 
 **[catalog.workshops.aws/java-spring-ai-agents](https://catalog.workshops.aws/java-spring-ai-agents)**
