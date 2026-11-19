@@ -7,7 +7,7 @@
 # sidecar starts fast and works in air-gapped clusters. Linux x86-64 (matches
 # the workshop's amd64 nodes); to upgrade, bump ASYNC_PROFILER_VERSION AND the
 # matching ASYNC_PROFILER_SHA256 (from the release's checksums).
-FROM public.ecr.aws/docker/library/amazoncorretto:25-al2023
+FROM public.ecr.aws/docker/library/amazoncorretto:27-al2023
 
 ARG ASYNC_PROFILER_VERSION=4.4
 ARG TARGETARCH=x64
