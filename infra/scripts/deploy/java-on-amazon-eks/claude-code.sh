@@ -109,7 +109,7 @@ with open(path, "w") as f:
 PY
 echo "wrote ${ENV_DIR}/.claude/settings.json (MCP servers enabled; allow: sensor, eks-mcp read tools, read, edit; deny: Bash, Agent, config edits, eks-mcp write tools)"
 
-# No workspace CLAUDE.md: the app repo documents itself (unicorn-store-spring/CLAUDE.md).
+# No workspace CLAUDE.md: the app repo documents itself (unicorn-store-spring/AGENTS.md).
 # --allow-sensitive-data-access is required for get_pod_logs / get_k8s_events (read-only;
 # --allow-write is NOT passed, so the server refuses mutations even if a write tool is
 # called). Auth uses the IDE role (default iam mode). uv/uvx and the eks-mcp package are

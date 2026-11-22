@@ -13,7 +13,7 @@
 #   1. ~/environment/unicorn-store-spring: hard reset to the commit
 #      "Starting point: containerized + deployed to EKS" (made by app-prepare.sh), untracked files removed
 #      (Dockerfile.aot/.crac, startup-cpu-boost.yaml, listener classes ...); then
-#      scripts/load.sh, scripts/build.sh and CLAUDE.md are synced from the shared
+#      scripts/load.sh, scripts/build.sh and AGENTS.md are synced from the shared
 #      source (apps/unicorn-store-spring) and folded into that commit, so the
 #      starting point always carries the current versions.
 #   2. StartupCPUBoost CRs in the app namespace deleted (created in module 2;
@@ -87,13 +87,18 @@ git -C "${APP_DIR}" reset -q --hard "${START_SHA}" \
 # bootstrap). Sync them and fold them into the starting-point commit, so a later reset
 # never brings an old script back.
 SYNCED=""
-for f in scripts/load.sh scripts/build.sh CLAUDE.md; do
+for f in scripts/load.sh scripts/build.sh AGENTS.md; do
   if [ -f "${SHARED_SRC}/${f}" ] && ! cmp -s "${SHARED_SRC}/${f}" "${APP_DIR}/${f}"; then
     mkdir -p "$(dirname "${APP_DIR}/${f}")"
     cp "${SHARED_SRC}/${f}" "${APP_DIR}/${f}"
     SYNCED="${SYNCED} ${f}"
   fi
 done
+# CLAUDE.md is gone from the shared source (the app guide is AGENTS.md): remove it.
+if [ -f "${APP_DIR}/CLAUDE.md" ] && [ ! -f "${SHARED_SRC}/CLAUDE.md" ]; then
+  rm "${APP_DIR}/CLAUDE.md"
+  SYNCED="${SYNCED} -CLAUDE.md"
+fi
 if [ -n "${SYNCED}" ]; then
   git -C "${APP_DIR}" add -A \
     && git -C "${APP_DIR}" commit -q --amend --no-edit \
