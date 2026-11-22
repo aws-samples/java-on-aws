@@ -16,7 +16,7 @@
 #      ~/.claude/settings.json.
 #
 # Permissions, the same for both agents: every perf-sensor tool, the EKS MCP read tools by
-# name, file reads and edits run without a prompt. Not available: the shell, subagents and
+# name, file reads and edits, and loading the skills run without a prompt. Not available: the shell, subagents and
 # the EKS MCP write tools. Claude Code also denies edits to .git/**; Kiro always asks for
 # them. Everything else is settled by each tool's classifier (Claude Code auto mode, Kiro
 # approve-for-me) or asks.
@@ -105,6 +105,7 @@ save(os.path.join(kiro, "agents", f"{env['KIRO_AGENT']}.json"), {
         {"capability": "mcp", "match": ["perf-sensor/*"] + [f"eks-mcp/{t}" for t in read_tools], "effect": "allow"},
         {"capability": "fs_read", "effect": "allow"},
         {"capability": "fs_write", "match": [f"{env_dir}/**"], "effect": "allow"},
+        {"capability": "skill", "effect": "allow"},
     ]},
 })
 
