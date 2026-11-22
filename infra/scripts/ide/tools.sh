@@ -170,8 +170,8 @@ install_uv() {
     log_info "Installing uv (uvx) and prewarming eks-mcp-server..."
     retry_optional "uv" "curl -LsSf https://astral.sh/uv/install.sh | sh"
     export PATH="$HOME/.local/bin:$PATH"
-    # ~/.local/bin is already exported by k9s/claude installs above; make it persistent.
-    grep -q '.local/bin' /etc/profile.d/workshop.sh 2>/dev/null \
+    # Make ~/.local/bin persistent for login shells and zsh (.zshrc sources workshop.sh).
+    grep -q '^export PATH=.*\.local/bin' /etc/profile.d/workshop.sh 2>/dev/null \
         || echo "export PATH=\$PATH:\$HOME/.local/bin" | sudo tee -a /etc/profile.d/workshop.sh >/dev/null
     if command -v uvx >/dev/null 2>&1; then
         uvx "awslabs.eks-mcp-server@${EKS_MCP_VERSION:-0.2.1}" --help >/dev/null 2>&1 \
@@ -187,8 +187,8 @@ install_kiro_cli() {
     retry_optional "Kiro CLI" \
         "curl -fsSL https://cli.kiro.dev/install -o /tmp/kiro_cli_install.sh && bash /tmp/kiro_cli_install.sh"
 
-    if $HOME/.local/bin/kiro --version >/dev/null 2>&1; then
-        local version=$($HOME/.local/bin/kiro --version 2>/dev/null | head -1)
+    if $HOME/.local/bin/kiro-cli --version >/dev/null 2>&1; then
+        local version=$($HOME/.local/bin/kiro-cli --version 2>/dev/null | head -1)
         echo "✅ Success: Kiro CLI $version"
     else
         echo "⚠️  Warning: Kiro CLI installation could not be verified"
