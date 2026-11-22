@@ -5,18 +5,18 @@
 # provides ACCOUNT_ID, AWS_REGION, PREFIX).
 #
 # Stages, ordered by dependency. Everything that needs no cluster (images, the
-# participant's repo, Claude Code wiring) runs in ONE background job while the EKS
+# participant's repo, AI agent wiring) runs in ONE background job while the EKS
 # cluster is still being created, which is the longest wait of the bootstrap.
 #
 #   A  background   app-prepare (repo + :latest), prebuild fallbacks, profiler image,
-#                   sensor image, claude-code.sh, IDE terminal layout, prompt
+#                   sensor image, ai-agent.sh, IDE terminal layout, prompt
 #   B  cluster      eks.sh (waits for ACTIVE), nodepool-pin, metrics-server
 #   C  monitoring   Prometheus, Pyroscope, Grafana (shared setup/monitoring.sh)
 #      --- wait for A ---
 #   D  app          app-deploy (namespace, Pod Identity, manifests)      } in
 #   E  platform     perf-profiler install, startup-cpu-boost, perf-sensor } parallel
 #      placement    platform Deployments/StatefulSets → own platform NodePool
-#   F  verify       ALB answers, sensor measures, Claude wiring present
+#   F  verify       ALB answers, sensor measures, AI agent wiring present
 #
 # Each stage script is idempotent and runnable on its own from the IDE.
 # =============================================================================
@@ -41,7 +41,7 @@ try() { local label="$1"; shift; if bash "$@"; then log_success "$(stamp)$label"
 log_info "Starting java-performance post-deploy..."
 
 # --- A: everything without a cluster, in the background --------------------------------
-stage "A (background): repo + images + Claude Code"
+stage "A (background): repo + images + AI agents"
 (
   set -e
   bash "$DEPLOY/app-prepare.sh"
@@ -50,7 +50,7 @@ stage "A (background): repo + images + Claude Code"
   APP_SRC="$REPO_ROOT/apps/unicorn-store-spring" bash "$DEPLOY/prebuild-images.sh"
   bash "$DEPLOY/perf-profiler.sh" build
   bash "$DEPLOY/perf-sensor.sh" build
-  bash "$DEPLOY/claude-code.sh"
+  bash "$DEPLOY/ai-agent.sh"
   bash "$DEPLOY/ide-layout.sh"
   # Prompt: drop vcs, kubecontext and aws segments (three terminals, less noise).
   P10K="$HOME/.p10k.zsh"
@@ -77,7 +77,7 @@ run "Monitoring stack deployed"     "$SETUP/monitoring.sh"
 stage "A: waiting for the background job"
 if wait "$A_PID"; then
   cat "$A_LOG"
-  log_success "$(stamp)Stage A done (repo, :latest, prebuilt tags, profiler + sensor images, Claude Code)"
+  log_success "$(stamp)Stage A done (repo, :latest, prebuilt tags, profiler + sensor images, AI agents)"
 else
   cat "$A_LOG"
   log_error "$(stamp)Stage A FAILED (see above)"

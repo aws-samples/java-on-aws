@@ -24,8 +24,9 @@
 #   4. ~/environment/baseline.txt removed.
 #   5. Claude Code per-run state under ~/.claude removed (projects/ = transcripts
 #      `-c` would resume + auto-memory, sessions/, session-env/, shell-snapshots/,
-#      backups/, downloads/). KEPT: ~/.claude/settings.json, ~/.claude.json, and the
-#      workshop wiring in ~/environment/.claude/ + ~/environment/.mcp.json.
+#      backups/, downloads/), and Kiro CLI per-run state (~/.kiro/sessions/,
+#      ~/.kiro/memories/). KEPT: ~/.claude/settings.json, ~/.claude.json, ~/.claude/skills/,
+#      ~/.kiro/agents/, ~/.kiro/settings/ and ~/environment/skills/ (ai-agent.sh).
 #   6. --prebuild: rebuild the :aot-prebuilt / :crac-prebuilt fallback tags from the
 #      SHARED source (~/java-on-aws/apps/unicorn-store-spring, which still carries the
 #      CRaC hook). Participant builds push :aot / :crac, so the fallbacks survive a run;
@@ -152,6 +153,9 @@ if [ -d "${HOME}/.claude" ]; then
          "${HOME}/.claude/shell-snapshots" "${HOME}/.claude/backups" "${HOME}/.claude/downloads"
   log_success "Claude Code sessions/transcripts/memory cleared (settings kept)"
 fi
+# Kiro CLI per-run state: sessions (what --resume continues) and memories.
+rm -rf "${HOME}/.kiro/sessions" "${HOME}/.kiro/memories"
+log_success "Kiro CLI sessions and memories cleared (agent and settings kept)"
 
 # 6. Optional: restore the prebuilt tags from the shared (not de-spoiled) source.
 if ${PREBUILD}; then
