@@ -9,7 +9,8 @@
 # sets "task.allowAutomaticTasks": "on" in the user settings (without it Code Editor asks
 # before running the task) and "terminal.integrated.environmentChangesIndicator": "off" (the
 # Claude Code extension asks to relaunch every terminal Claude runs in, which otherwise marks
-# the tab with a warning badge for the rest of the session). Runs as ec2-user after
+# the tab with a warning badge for the rest of the session), and hides the secondary side
+# bar, which Code Editor otherwise opens empty on the right. Runs as ec2-user after
 # ide/code-editor.sh. Idempotent.
 # =============================================================================
 set -euo pipefail
@@ -22,7 +23,8 @@ SETTINGS="${USER_DIR}/settings.json"
 
 tmp="$(mktemp)"
 jq '. + {"workbench.startupEditor": "terminal", "task.allowAutomaticTasks": "on",
-         "terminal.integrated.environmentChangesIndicator": "off"}' "${SETTINGS}" > "${tmp}"
+         "terminal.integrated.environmentChangesIndicator": "off",
+         "workbench.secondarySideBar.defaultVisibility": "hidden"}' "${SETTINGS}" > "${tmp}"
 mv "${tmp}" "${SETTINGS}"
 
 cat > "${USER_DIR}/tasks.json" <<'JSON'
