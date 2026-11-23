@@ -79,7 +79,7 @@ Environment variables are listed in `src/main/resources/application.yaml`.
 ```bash
 mvn -o test                                             # unit tests, no cluster needed
 infra/scripts/deploy/java-performance/perf-sensor.sh    # build (jib, push, digest) then install (RBAC, Deployment, dashboard); or `build` / `install` alone
-infra/scripts/deploy/java-performance/ai-agent.sh        # skills, MCP servers and permissions for Kiro CLI and Claude Code on the IDE
+infra/scripts/deploy/java-performance/claude-code.sh     # skills + .mcp.json + Claude permissions on the IDE
 kubectl -n monitoring port-forward svc/perf-sensor 8090:8080
 curl -s localhost:8090/api/v1/measure/<service> | jq .
 curl -sN "localhost:8090/api/v1/checklist/<service>?format=text&wait=true"

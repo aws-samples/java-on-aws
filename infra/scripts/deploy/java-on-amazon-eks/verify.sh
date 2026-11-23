@@ -35,7 +35,7 @@ done
 [ -d "${ENV_DIR}/${APP_NS}/.git" ] || fail "${ENV_DIR}/${APP_NS} is not a git repo"
 git -C "${ENV_DIR}/${APP_NS}" log --format=%s -n 1 2>/dev/null | grep -q "^Starting point" \
   && log_success "Starting-point commit present" || fail "starting-point commit missing"
-for f in k8s/deployment.yaml scripts/load.sh scripts/build.sh AGENTS.md; do
+for f in k8s/deployment.yaml scripts/load.sh scripts/build.sh CLAUDE.md; do
   [ -f "${ENV_DIR}/${APP_NS}/${f}" ] || fail "missing ${f} in the participant repo"
 done
 grep -q "org.crac" "${ENV_DIR}/${APP_NS}/pom.xml" && fail "pom.xml still carries org.crac (de-spoil failed)"

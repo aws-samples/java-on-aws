@@ -7,8 +7,8 @@
 #
 #   --workshop=NAME  the deploy scripts --skills and --sensor run (infra/scripts/deploy/NAME,
 #                    default java-performance)
-#   --skills         then reinstall the AI agent skills and settings (ai-agent.sh, or
-#                    claude-code.sh where a workshop has no ai-agent.sh); reset-app.sh does not
+#   --skills         then reinstall the Claude Code skills and settings (claude-code.sh);
+#                    reset-app.sh does not
 #   --sensor         then rebuild and reinstall the sensor (perf-sensor.sh)
 #
 # The IDE clones java-on-aws main at bootstrap, so a fresh environment needs this
@@ -49,11 +49,7 @@ git fetch -q -f /tmp/java-on-aws.bundle "+$BRANCH:refs/ws-test/$BRANCH"
 git checkout -q -B "$BRANCH" "refs/ws-test/$BRANCH"
 git log --oneline -1
 EOF
-    if [ "$SKILLS" = 1 ]; then
-        AGENT_SCRIPT=claude-code.sh
-        [ -f "$WS_REPO/infra/scripts/deploy/$WORKSHOP/ai-agent.sh" ] && AGENT_SCRIPT=ai-agent.sh
-        echo "bash $DEPLOY/$AGENT_SCRIPT > /tmp/$AGENT_SCRIPT.log 2>&1 && echo 'skills reinstalled'"
-    fi
+    [ "$SKILLS" = 1 ] && echo "bash $DEPLOY/claude-code.sh > /tmp/claude-code.log 2>&1 && echo 'skills reinstalled'"
     [ "$SENSOR" = 1 ] && echo "bash $DEPLOY/perf-sensor.sh > /tmp/perf-sensor.log 2>&1 && echo 'sensor rebuilt and installed'"
     echo true
 } | "$DIR/run-on-ide.sh" - 1800
