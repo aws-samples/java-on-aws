@@ -6,7 +6,7 @@
 # Run after skills.sh. No cluster needed. Idempotent.
 #
 #   - Agent ~/.kiro/agents/workshop.json: the skills in ~/environment/skills (skills.sh),
-#     the app guide ~/environment/unicorn-store-spring/CLAUDE.md, the MCP servers
+#     the app guide ~/environment/unicorn-store-spring/AGENTS.md, the MCP servers
 #     perf-sensor and eks-mcp, the permissions and the model.
 #   - ~/.kiro/settings/cli.json: default agent, effort, V3 harness, no auto-updates.
 #   - ~/.kiro/workspace-roots/<hash>/permissions.yaml: trust for ~/environment and the
@@ -70,7 +70,7 @@ save(os.path.join(kiro, "agents", f"{env['KIRO_AGENT']}.json"), {
     "excludedTools": ["shell", "subagent", "invoke_sub_agent"] + [f"@eks-mcp/{t}" for t in write_tools],
     "resources": [
         f"skill://{env_dir}/skills/*/SKILL.md",
-        f"file://{env_dir}/unicorn-store-spring/CLAUDE.md",
+        f"file://{env_dir}/unicorn-store-spring/AGENTS.md",
     ],
     "permissions": {"rules": [
         {"capability": "mcp", "match": ["perf-sensor/*"] + [f"eks-mcp/{t}" for t in read_tools], "effect": "allow"},
