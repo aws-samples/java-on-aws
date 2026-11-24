@@ -3250,7 +3250,7 @@ ws_end_page
 
 ws_begin_page 'Amazon EKS' 520 'graviton/arm64-eks/index.en.md'
 
-ws_run_block 1 'Creating the ARM64 NodePool' 'Create a Karpenter NodePool that provisions Graviton instances:' 15 56 'yaml' '' <<'WS_TEST_BLOCK_520_1'
+ws_run_block 1 'Creating the ARM64 NodePool' 'Create a Karpenter NodePool that provisions Graviton instances:' 15 59 'yaml' '' <<'WS_TEST_BLOCK_520_1'
 cat <<EOF > ~/environment/unicorn-store-spring/k8s/nodepool-graviton.yaml
 apiVersion: karpenter.sh/v1
 kind: NodePool
@@ -3289,34 +3289,37 @@ spec:
     cpu: 16
     memory: 64Gi
   disruption:
-    consolidationPolicy: WhenEmptyOrUnderutilized
-    consolidateAfter: 1m
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 5m
+    budgets:
+      - nodes: "0"
+        reasons: ["Drifted"]
 EOF
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/nodepool-graviton.yaml
 WS_TEST_BLOCK_520_1
 
-ws_run_block 2 'Changing the deployment' 'Update the deployment to target Graviton nodes using nodeSelector:' 66 67 'bash' '' <<'WS_TEST_BLOCK_520_2'
+ws_run_block 2 'Changing the deployment' 'Update the deployment to target Graviton nodes using nodeSelector:' 69 70 'bash' '' <<'WS_TEST_BLOCK_520_2'
 yq -i '.spec.template.spec.nodeSelector."karpenter.sh/nodepool" = "graviton"' \
   ~/environment/unicorn-store-spring/k8s/deployment.yaml
 WS_TEST_BLOCK_520_2
 
-ws_run_block 3 'Re-deploying the application' 'Apply the updated deployment:' 77 79 'bash' '' <<'WS_TEST_BLOCK_520_3'
+ws_run_block 3 'Re-deploying the application' 'Apply the updated deployment:' 80 82 'bash' '' <<'WS_TEST_BLOCK_520_3'
 kubectl apply -f ~/environment/unicorn-store-spring/k8s/deployment.yaml
 kubectl rollout status deployment unicorn-store-spring -n unicorn-store-spring --timeout=300s
 sleep 15
 WS_TEST_BLOCK_520_3
 
-ws_skip_block 4 'Verifying the results' 'Open a new terminal and run eks-node-viewer:' 89 89 'bash' '' 'interactive terminal UI'
+ws_skip_block 4 'Verifying the results' 'Open a new terminal and run eks-node-viewer:' 92 92 'bash' '' 'interactive terminal UI'
 
-ws_run_block 5 'Testing the application' 'Testing the application' 99 101 'bash' '' <<'WS_TEST_BLOCK_520_5'
+ws_run_block 5 'Testing the application' 'Testing the application' 102 104 'bash' '' <<'WS_TEST_BLOCK_520_5'
 SVC_URL=http://$(kubectl get ingress unicorn-store-spring -n unicorn-store-spring \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 curl --location --request GET ${SVC_URL}'/' --header 'Content-Type: application/json'; echo
 WS_TEST_BLOCK_520_5
 
-ws_skip_block 6 'Testing the application' 'Expected output:' 107 107 '' '' 'informational block without language'
+ws_skip_block 6 'Testing the application' 'Expected output:' 110 110 '' '' 'informational block without language'
 
-ws_run_block 7 'Testing the application' 'Verify the pod is running on a Graviton node:' 113 113 'bash' '' <<'WS_TEST_BLOCK_520_7'
+ws_run_block 7 'Testing the application' 'Verify the pod is running on a Graviton node:' 116 116 'bash' '' <<'WS_TEST_BLOCK_520_7'
 kubectl get pods -n unicorn-store-spring -o wide
 WS_TEST_BLOCK_520_7
 
