@@ -195,9 +195,10 @@ public class WorkshopStack extends Stack {
                 .build());
         }
 
+        Eks eks = null;
         if (isFullTemplate) {
             // EKS cluster
-            Eks eks = new Eks(this, "Eks", Eks.EksProps.builder()
+            eks = new Eks(this, "Eks", Eks.EksProps.builder()
                 .prefix(prefix)
                 .vpc(vpc.getVpc())
                 .ideInstanceRole(ideProps.getIdeRole())
@@ -492,11 +493,16 @@ public class WorkshopStack extends Stack {
 
         // Pre-delete cleanup (removes VPC endpoints, CloudWatch logs, S3 contents before stack deletion)
         // Runs for all templates
-        new CfnPreDeleteCleanup(this, "CfnPreDeleteCleanup",
+        CfnPreDeleteCleanup cleanup = new CfnPreDeleteCleanup(this, "CfnPreDeleteCleanup",
             CfnPreDeleteCleanup.CfnPreDeleteCleanupProps.builder()
                 .prefix(prefix)
                 .vpc(vpc.getVpc())
                 .buckets(java.util.List.of(workshopBucket.getBucket(), workshopBucket.getAccessLogBucket()))
                 .build());
+        // The cluster depends on the cleanup, so on delete the cluster and its pods are gone
+        // before the cleanup empties the buckets.
+        if (eks != null) {
+            eks.getCluster().getNode().getDefaultChild().getNode().addDependency(cleanup.getResource());
+        }
     }
 }

@@ -26,6 +26,8 @@ import java.util.Map;
  */
 public class CfnPreDeleteCleanup extends Construct {
 
+    private final CustomResource resource;
+
     public static class CfnPreDeleteCleanupProps {
         private String prefix = "workshop";
         private IVpc vpc;
@@ -125,13 +127,20 @@ public class CfnPreDeleteCleanup extends Construct {
             .build();
 
         // Create Custom Resource that triggers cleanup on stack delete
-        CustomResource.Builder.create(this, "Resource")
+        resource = CustomResource.Builder.create(this, "Resource")
             .serviceToken(cleanupFunction.getFunctionArn())
             .properties(Map.of(
                 "VpcId", props.getVpc().getVpcId(),
                 "BucketNames", props.getBuckets().stream().map(IBucket::getBucketName).toList()
             ))
             .build();
+        // On delete it runs before the VPC subnets, routes and gateways are removed.
+        resource.getNode().addDependency(props.getVpc());
+    }
+
+    /** The custom resource; resources that depend on it are deleted before the cleanup runs. */
+    public CustomResource getResource() {
+        return resource;
     }
 
     private String loadFile(String filePath) {
