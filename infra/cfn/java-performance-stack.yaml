@@ -535,7 +535,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1795534764479"
+      ContentHash: "1795544024593"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -698,12 +698,12 @@ Resources:
       Environment:
         ComputeType: BUILD_GENERAL1_MEDIUM
         EnvironmentVariables:
-          - Name: TEMPLATE_TYPE
-            Type: PLAINTEXT
-            Value: java-performance
           - Name: GIT_BRANCH
             Type: PLAINTEXT
             Value: main
+          - Name: TEMPLATE_TYPE
+            Type: PLAINTEXT
+            Value: java-performance
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
@@ -1563,20 +1563,6 @@ Resources:
           Value: cloudformation
       Type: STANDARD
     Type: AWS::EKS::AccessEntry
-  EksMountpointS3DriverB7062BF9:
-    Properties:
-      AddonName: aws-mountpoint-s3-csi-driver
-      ClusterName:
-        Ref: EksClusterB2BDED5B
-      Tags:
-        - Key: WorkshopDeploymentId
-          Value:
-            Ref: AWS::StackId
-        - Key: WorkshopId
-          Value: java-performance
-        - Key: WorkshopOwner
-          Value: cloudformation
-    Type: AWS::EKS::Addon
   EksParticipantAccessEntryCBA5D5C0:
     Properties:
       AccessPolicies:
@@ -3690,7 +3676,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261124163924"
+            - "-20261124191344"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -3774,7 +3760,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261124163924"
+            - "-20261124191344"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

@@ -211,6 +211,28 @@ Resources:
     Type: AWS::IAM::Role
   CfnPreDeleteCleanupFA953B95:
     DeletionPolicy: Delete
+    DependsOn:
+      - VpcIGW488B0FEB
+      - VpcPrivateSubnet1DefaultRouteF704DE9F
+      - VpcPrivateSubnet1RouteTable901BAEEE
+      - VpcPrivateSubnet1RouteTableAssociation2BC202CB
+      - VpcPrivateSubnet1Subnet67A4DBCB
+      - VpcPrivateSubnet2DefaultRoute5FAC9901
+      - VpcPrivateSubnet2RouteTable1EA00C9D
+      - VpcPrivateSubnet2RouteTableAssociationFA51927B
+      - VpcPrivateSubnet2SubnetC8EB537D
+      - VpcPublicSubnet1DefaultRoute0F5C6C43
+      - VpcPublicSubnet1EIP2293BAA3
+      - VpcPublicSubnet1NATGateway8185E366
+      - VpcPublicSubnet1RouteTable431DD755
+      - VpcPublicSubnet1RouteTableAssociationBBCB7AA1
+      - VpcPublicSubnet1Subnet8E8DEDC0
+      - VpcPublicSubnet2DefaultRouteD629179A
+      - VpcPublicSubnet2RouteTable77FB35FC
+      - VpcPublicSubnet2RouteTableAssociation3AFE92E6
+      - VpcPublicSubnet2SubnetA811849C
+      - VpcC3027511
+      - VpcVPCGW42EC8516
     Properties:
       BucketNames:
         - Ref: WorkshopBucketFD5BC43F
@@ -348,28 +370,34 @@ Resources:
 
               print("GuardDuty security group cleanup completed")
 
-          def cleanup_s3_buckets(bucket_names):
-              """Delete only the S3 buckets supplied by the stack."""
+          def cleanup_s3_buckets(bucket_names, attempts=6, retry_delay=10):
+              """Empty and delete the S3 buckets supplied by the stack, each up to `attempts` times.
+              Raises if a bucket remains, so the custom resource reports FAILED."""
+              remaining = []
               for bucket_name in bucket_names:
-                  print(f"Deleting S3 bucket: {bucket_name}")
-                  empty_bucket(bucket_name)
-                  try:
-                      s3.delete_bucket(Bucket=bucket_name)
-                      print(f"Deleted bucket: {bucket_name}")
-                  except Exception as e:
-                      print(f"Error deleting bucket {bucket_name}: {e}")
-
+                  if not delete_bucket(bucket_name, attempts, retry_delay):
+                      remaining.append(bucket_name)
+              if remaining:
+                  raise RuntimeError(f"S3 buckets not deleted: {remaining}")
               print("S3 bucket cleanup completed")
 
-          def empty_bucket(bucket_name):
-              """Delete all objects and versions from a bucket using boto3 resource API."""
-              try:
-                  bucket = s3_resource.Bucket(bucket_name)
-                  # Delete all object versions (handles both versioned and non-versioned buckets)
-                  bucket.object_versions.delete()
-                  print(f"Emptied bucket: {bucket_name}")
-              except Exception as e:
-                  print(f"Error emptying bucket {bucket_name}: {e}")
+          def delete_bucket(bucket_name, attempts, retry_delay):
+              """Empty and delete one bucket. Returns True once the bucket is gone."""
+              for attempt in range(1, attempts + 1):
+                  try:
+                      # Delete all object versions (handles both versioned and non-versioned buckets)
+                      s3_resource.Bucket(bucket_name).object_versions.delete()
+                      s3.delete_bucket(Bucket=bucket_name)
+                      print(f"Deleted bucket: {bucket_name}")
+                      return True
+                  except Exception as e:
+                      if getattr(e, 'response', {}).get('Error', {}).get('Code') == 'NoSuchBucket':
+                          print(f"Bucket already deleted: {bucket_name}")
+                          return True
+                      print(f"Attempt {attempt}/{attempts} for bucket {bucket_name}: {e}")
+                      if attempt < attempts:
+                          time.sleep(retry_delay)
+              return False
 
           def wait_for_deletion(endpoint_ids, max_wait=300):
               """Poll until endpoints are fully deleted (not just deleting) or timeout."""
@@ -397,9 +425,12 @@ Resources:
                       raise
 
               print(f"Timeout waiting for endpoint deletion after {max_wait}s")
-      Description: Cleanup VPC endpoints, CloudWatch logs, and S3 buckets before stack deletion
+      Description: Cleanup VPC endpoints and S3 buckets before stack deletion
       FunctionName: workshop-cfn-pre-delete-cleanup
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: CfnPreDeleteCleanupFunctionLogGroupE77CC8F5
       Role:
         Fn::GetAtt:
           - CfnPreDeleteCleanupRole2BF62B3D
@@ -415,6 +446,20 @@ Resources:
           Value: cloudformation
       Timeout: 600
     Type: AWS::Lambda::Function
+  CfnPreDeleteCleanupFunctionLogGroupE77CC8F5:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-aws
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   CfnPreDeleteCleanupRole2BF62B3D:
     Properties:
       AssumeRolePolicyDocument:
@@ -542,7 +587,7 @@ Resources:
       - CodeBuildReportLambdaFunctionA3C396F7
       - CodeBuildStartLambdaFunction8349284F
     Properties:
-      ContentHash: "1792832519401"
+      ContentHash: "1795544012214"
       ProjectName:
         Ref: CodeBuildProjectA0FF5539
       ServiceToken:
@@ -715,6 +760,11 @@ Resources:
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: false
         Type: LINUX_CONTAINER
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName:
+            Ref: CodeBuildProjectLogGroup8E24F361
+          Status: ENABLED
       Name: workshop-setup
       ServiceRole:
         Fn::GetAtt:
@@ -752,6 +802,20 @@ Resources:
           Value: cloudformation
       TimeoutInMinutes: 30
     Type: AWS::CodeBuild::Project
+  CodeBuildProjectLogGroup8E24F361:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-aws
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   CodeBuildReportLambdaFunctionA3C396F7:
     DependsOn:
       - CodeBuildLambdaRoleDefaultPolicyFB35F0AF
@@ -870,6 +934,9 @@ Resources:
             Ref: CodeBuildPendingBuilds19869454
       FunctionName: workshop-setup-report
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: CodeBuildReportLambdaLogGroup7EC4A659
       Role:
         Fn::GetAtt:
           - CodeBuildLambdaRole655C06B4
@@ -885,6 +952,20 @@ Resources:
           Value: cloudformation
       Timeout: 120
     Type: AWS::Lambda::Function
+  CodeBuildReportLambdaLogGroup7EC4A659:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-aws
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   CodeBuildRoleDefaultPolicy196BAF24:
     Properties:
       PolicyDocument:
@@ -899,6 +980,14 @@ Resources:
                   - runtime-identity.bedrock-agentcore.amazonaws.com
             Effect: Allow
             Resource: arn:aws:iam::*:role/aws-service-role/*
+          - Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - CodeBuildProjectLogGroup8E24F361
+                - Arn
           - Action:
               - logs:CreateLogGroup
               - logs:CreateLogStream
@@ -1051,6 +1140,9 @@ Resources:
             Ref: CodeBuildPendingBuilds19869454
       FunctionName: workshop-setup-start
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: CodeBuildStartLambdaLogGroup8C94F258
       Role:
         Fn::GetAtt:
           - CodeBuildLambdaRole655C06B4
@@ -1066,6 +1158,20 @@ Resources:
           Value: cloudformation
       Timeout: 120
     Type: AWS::Lambda::Function
+  CodeBuildStartLambdaLogGroup8C94F258:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-aws
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   DatabaseCluster5B53A178:
     DeletionPolicy: Delete
     Properties:
@@ -1380,6 +1486,7 @@ Resources:
     Type: AWS::IAM::Role
   EksClusterB2BDED5B:
     DependsOn:
+      - CfnPreDeleteCleanupFA953B95
       - VpcIGW488B0FEB
       - VpcPrivateSubnet1DefaultRouteF704DE9F
       - VpcPrivateSubnet1RouteTable901BAEEE
@@ -1576,6 +1683,7 @@ Resources:
       AddonName: aws-mountpoint-s3-csi-driver
       ClusterName:
         Ref: EksClusterB2BDED5B
+      ConfigurationValues: '{"controller":{"nodeSelector":{"karpenter.sh/nodepool":"workshop"}}}'
       Tags:
         - Key: WorkshopDeploymentId
           Value:
@@ -1642,6 +1750,20 @@ Resources:
         - Key: WorkshopOwner
           Value: cloudformation
     Type: AWS::EKS::Addon
+  IdeBootstrapLogGroupE41C8C91:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-aws
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   IdeDistribution042A6660:
     DeletionPolicy: Delete
     DependsOn:
@@ -1794,8 +1916,11 @@ Resources:
                 "
                 export PREFIX="workshop"
 
-                # Setup logging - use PREFIX for log group name
-                LOG_GROUP_NAME="workshop-ide-bootstrap-$(date +%Y%m%d-%H%M%S)"
+                # Setup logging into the stack's bootstrap log group (Ide.java), deleted with the stack
+                LOG_GROUP_NAME="
+              - Ref: IdeBootstrapLogGroupE41C8C91
+              - |-
+                "
                 echo "Bootstrap logs will be written to CloudWatch log group: $LOG_GROUP_NAME"
 
                 # Install CloudWatch agent for logging
@@ -2070,6 +2195,9 @@ Resources:
               cfnresponse.send(event, context, status, responseData, physical_id)
       FunctionName: workshop-ide-launcher
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: IdeInstanceLauncherLogGroup5E716EFF
       Role:
         Fn::GetAtt:
           - IdeLambdaRole82392143
@@ -2085,6 +2213,20 @@ Resources:
           Value: cloudformation
       Timeout: 300
     Type: AWS::Lambda::Function
+  IdeInstanceLauncherLogGroup5E716EFF:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-aws
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   IdeInstanceProfile61B92038:
     Properties:
       InstanceProfileName: workshop-ide-instance-profile
@@ -2259,6 +2401,9 @@ Resources:
               cfnresponse.send(event, context, status, responseData, physical_id)
       FunctionName: workshop-ide-password
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: IdePasswordFunctionLogGroup75ECD53B
       Role:
         Fn::GetAtt:
           - IdePasswordFunctionServiceRole971421B6
@@ -2274,6 +2419,20 @@ Resources:
           Value: cloudformation
       Timeout: 180
     Type: AWS::Lambda::Function
+  IdePasswordFunctionLogGroup75ECD53B:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-aws
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   IdePasswordFunctionServiceRole971421B6:
     Properties:
       AssumeRolePolicyDocument:
@@ -2731,6 +2890,9 @@ Resources:
                       cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
       FunctionName: workshop-ide-prefixlist
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: IdePrefixListLookupLogGroup8650FFBA
       Role:
         Fn::GetAtt:
           - IdeLambdaRole82392143
@@ -2746,6 +2908,20 @@ Resources:
           Value: cloudformation
       Timeout: 180
     Type: AWS::Lambda::Function
+  IdePrefixListLookupLogGroup8650FFBA:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-aws
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   IdePrefixListResourceD2EAC007:
     DeletionPolicy: Delete
     Properties:
@@ -3735,6 +3911,9 @@ Resources:
                   cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
       FunctionName: unicornstore-database-setup
       Handler: index.lambda_handler
+      LoggingConfig:
+        LogGroup:
+          Ref: UnicornUnicornStoreDatabaseSetupLogGroup79C2BE46
       Role:
         Fn::GetAtt:
           - UnicornUnicornStoreDatabaseSetupFunctionServiceRole61942171
@@ -3831,6 +4010,20 @@ Resources:
       Roles:
         - Ref: UnicornUnicornStoreDatabaseSetupFunctionServiceRole61942171
     Type: AWS::IAM::Policy
+  UnicornUnicornStoreDatabaseSetupLogGroup79C2BE46:
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: WorkshopDeploymentId
+          Value:
+            Ref: AWS::StackId
+        - Key: WorkshopId
+          Value: java-on-aws
+        - Key: WorkshopOwner
+          Value: cloudformation
+    Type: AWS::Logs::LogGroup
+    UpdateReplacePolicy: Delete
   UnicornUnicornStoreDatabaseSetupResourceCDB8BDDF:
     DeletionPolicy: Delete
     DependsOn:
@@ -4462,7 +4655,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261024110159"
+            - "-20261124191332"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -4546,7 +4739,7 @@ Resources:
             - Ref: AWS::AccountId
             - "-"
             - Ref: AWS::Region
-            - "-20261024110159"
+            - "-20261124191332"
       LoggingConfiguration:
         DestinationBucketName:
           Ref: WorkshopBucketAccessLogs476BAB88

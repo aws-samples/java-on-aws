@@ -204,6 +204,7 @@ public class WorkshopStack extends Stack {
                 .ideInstanceRole(ideProps.getIdeRole())
                 .ideInternalSecurityGroup(ide.getIdeInternalSecurityGroup())
                 .cloudWatchAgentRole(!isEks)
+                .mountpointS3Driver(!isEks)
                 .build());
 
             // Unicorn construct: EventBus, Roles, DB Setup (uses unicorn* naming for workshop content compatibility)

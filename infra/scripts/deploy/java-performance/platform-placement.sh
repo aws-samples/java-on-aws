@@ -18,8 +18,8 @@
 # Namespaces: monitoring (Prometheus, Grafana, Pyroscope, Alloy, sensor), kyverno,
 # kube-startup-cpu-boost-system, and metrics-server in kube-system. Pods move once, at
 # bootstrap; Prometheus, Grafana and Pyroscope keep their data on their PVCs. The pods are
-# marked do-not-disrupt, the pool consolidates only when empty and its disruption budget is
-# 0 nodes (no drift replacement on a new AMI), so nothing moves them later.
+# marked do-not-disrupt, the pool consolidates only when empty and its budget blocks drift
+# replacement on a new Auto Mode AMI, so nothing moves them later.
 # Idempotent. `platform-placement.sh pool` creates only the NodePool (template stage B, so
 # monitoring.sh installs onto it via MONITORING_NODEPOOL); without an argument it also pins
 # the workloads (after stage E). A later `helm upgrade`
@@ -73,8 +73,9 @@ spec:
     consolidateAfter: 5m
     budgets:
       - nodes: "0"
+        reasons: ["Drifted"]
 EOF
-log_info "NodePool ${POOL}: at least 4 vCPU and 8 GiB, consolidation WhenEmpty, disruption budget 0"
+log_info "NodePool ${POOL}: at least 4 vCPU and 8 GiB, consolidation WhenEmpty, no drift replacement"
 # `pool`: only the NodePool (template stage B, before monitoring.sh installs onto it).
 [ "${1:-}" = pool ] && exit 0
 

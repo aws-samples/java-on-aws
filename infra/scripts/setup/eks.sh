@@ -79,7 +79,8 @@ else
     exit 1
 fi
 
-# Deploy workshop NodePool (AMD, 4+ vCPU, 16+ GB RAM)
+# Deploy workshop NodePool (AMD, 4+ vCPU, 16+ GB RAM). Consolidation removes only empty nodes,
+# and the budget blocks drift replacement on a new Auto Mode AMI, so no running pod is moved.
 log_info "Deploying workshop NodePool..."
 cat <<EOF | kubectl apply -f -
 apiVersion: karpenter.sh/v1
@@ -122,8 +123,11 @@ spec:
     cpu: 16
     memory: 64Gi
   disruption:
-    consolidationPolicy: WhenEmptyOrUnderutilized
-    consolidateAfter: 1m
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 5m
+    budgets:
+      - nodes: "0"
+        reasons: ["Drifted"]
 EOF
 
 if [ $? -eq 0 ]; then
