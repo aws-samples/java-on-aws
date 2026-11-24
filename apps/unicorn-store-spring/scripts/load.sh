@@ -20,6 +20,8 @@ TEST_DIR="${JAVA_ON_AWS_TEST_DIR:-${HOME}/java-on-aws/infra/scripts/test}"
 
 [ -x "${TEST_DIR}/benchmark.sh" ] && [ -x "${TEST_DIR}/getsvcurl.sh" ] \
   || { echo "load.sh: shared test scripts not found in ${TEST_DIR}" >&2; exit 1; }
+command -v artillery >/dev/null 2>&1 \
+  || { echo "load.sh: artillery not found on PATH" >&2; exit 1; }
 
 URL="$("${TEST_DIR}/getsvcurl.sh" eks)" || exit 1
 

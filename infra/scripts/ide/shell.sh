@@ -57,6 +57,10 @@ source $ZSH/oh-my-zsh.sh
 # Source workshop env vars (must be before kubectl completion)
 [ -f /etc/profile.d/workshop.sh ] && source /etc/profile.d/workshop.sh
 
+# Node.js from nvm (tools.sh install_nodejs), as in .bashrc
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
 # Basic aliases
 alias ll='ls -la'
 alias k=kubectl
