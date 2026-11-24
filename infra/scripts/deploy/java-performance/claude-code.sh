@@ -1,10 +1,11 @@
 #!/bin/bash
 # =============================================================================
-# claude-code.sh — configure Claude Code on the IDE for this workshop: the skill pack,
-# the workspace MCP config (perf-sensor + EKS MCP Server) and the project permissions,
-# so Claude Code started from ~/environment finds all three. No cluster needed.
+# claude-code.sh — configure Claude Code on the IDE for this workshop: the skills, the
+# workspace MCP config (perf-sensor + EKS MCP Server) and the project permissions, so
+# Claude Code started from ~/environment finds all three. No cluster needed.
 #
-# Copies the two skills to ~/environment/.claude/skills/, writes ~/environment/.mcp.json
+# Links each skill that skills.sh installed in ~/environment/skills/ into
+# ~/environment/.claude/skills/ (run skills.sh first), writes ~/environment/.mcp.json
 # (perf-sensor over streamable-http on localhost:8090, the IDE's port-forward service;
 # eks-mcp read-only) and the project permissions. Idempotent.
 #
@@ -17,19 +18,20 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
-SKILLS_SRC="${REPO_ROOT}/apps/perf-sensor/skills"
 ENV_DIR="${ENVIRONMENT_DIR:-${HOME}/environment}"
+SKILLS_DIR="${ENV_DIR}/skills"
 SKILLS_DST="${ENV_DIR}/.claude/skills"
 REGION="${AWS_REGION:-us-east-1}"
 NS="monitoring"
 EKS_MCP_VERSION="${EKS_MCP_VERSION:-0.2.1}"   # pinned; bump deliberately (ide/tools.sh prewarms the same version)
 
-# 1. Skills -> ~/environment/.claude/skills/
+# 1. Skills: ~/environment/.claude/skills/<skill> -> ~/environment/skills/<skill>
 mkdir -p "${SKILLS_DST}"
 for skill in java-on-eks-optimization java-on-eks-checklist; do
+  [ -f "${SKILLS_DIR}/${skill}/SKILL.md" ] || { echo "skill ${skill} missing in ${SKILLS_DIR}: run skills.sh first" >&2; exit 1; }
   rm -rf "${SKILLS_DST:?}/${skill}"
-  cp -R "${SKILLS_SRC}/${skill}" "${SKILLS_DST}/${skill}"
-  echo "installed skill: ${SKILLS_DST}/${skill}"
+  ln -s "${SKILLS_DIR}/${skill}" "${SKILLS_DST}/${skill}"
+  echo "linked skill: ${SKILLS_DST}/${skill} -> ${SKILLS_DIR}/${skill}"
 done
 
 # 2. ~/environment/.mcp.json
@@ -65,8 +67,9 @@ echo "wrote ${ENV_DIR}/.mcp.json"
 # name, file reads, and edits — so the investigate -> explain -> apply loop runs without
 # prompts. permissions.deny closes the ways the agent could widen its own scope: Bash
 # (the participant rolls out; the load runs in its own terminal), edits to the Claude
-# configuration itself (.claude/**, .mcp.json) or to .git/** — Edit(path) rules cover the
-# Write tool too — and Agent: a subagent answers out of the skill's sight, and its
+# configuration itself (.claude/**, .mcp.json), to the skills (skills/**) or to .git/** —
+# Edit(path) rules cover the Write tool too — and Agent: a subagent answers out of the
+# skill's sight, and its
 # hand-off text ("I'll be notified when the agent completes") ended up in an answer.
 # Everything not listed prompts.
 python3 - "${ENV_DIR}/.claude/settings.json" <<'PY'
@@ -97,7 +100,7 @@ perms["allow"] = allow
 # rejects Write(path) rules at startup. Drop any Write(...) entries left by an earlier run.
 deny = [r for r in perms.get("deny", []) if not r.startswith("Write(")]
 for rule in ["Bash", "Agent",
-             "Edit(.claude/**)", "Edit(.mcp.json)", "Edit(**/.git/**)",
+             "Edit(.claude/**)", "Edit(.mcp.json)", "Edit(skills/**)", "Edit(**/.git/**)",
              "mcp__eks-mcp__apply_yaml", "mcp__eks-mcp__manage_k8s_resource", "mcp__eks-mcp__manage_eks_stacks",
              "mcp__eks-mcp__add_inline_policy", "mcp__eks-mcp__generate_app_manifest"]:
     if rule not in deny:
@@ -107,9 +110,9 @@ os.makedirs(os.path.dirname(path), exist_ok=True)
 with open(path, "w") as f:
     json.dump(data, f, indent=2)
 PY
-echo "wrote ${ENV_DIR}/.claude/settings.json (MCP servers enabled; allow: sensor, eks-mcp read tools, read, edit; deny: Bash, Agent, config edits, eks-mcp write tools)"
+echo "wrote ${ENV_DIR}/.claude/settings.json (MCP servers enabled; allow: sensor, eks-mcp read tools, read, edit; deny: Bash, Agent, config and skill edits, eks-mcp write tools)"
 
-# No workspace CLAUDE.md: the app repo documents itself (unicorn-store-spring/CLAUDE.md).
+# No workspace CLAUDE.md: the app repo documents itself (unicorn-store-spring/AGENTS.md).
 # --allow-sensitive-data-access is required for get_pod_logs / get_k8s_events (read-only;
 # --allow-write is NOT passed, so the server refuses mutations even if a write tool is
 # called). Auth uses the IDE role (default iam mode). uv/uvx and the eks-mcp package are

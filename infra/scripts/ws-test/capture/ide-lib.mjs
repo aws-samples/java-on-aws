@@ -28,7 +28,7 @@ export async function palette(page, cmd) {
   await page.waitForTimeout(1200);
 }
 
-// Type into the editor-area terminal (where Claude runs), or the panel's active one.
+// Type into the editor-area terminal (the Agent terminal), or the panel's active one.
 export async function typeInTerminal(page, text, where = 'editor') {
   await page.locator(where === 'editor' ? '.editor-instance .xterm-helper-textarea'
     : '.part.panel .terminal-wrapper.active .xterm-helper-textarea').last().focus();

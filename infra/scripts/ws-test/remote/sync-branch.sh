@@ -7,7 +7,8 @@
 #
 #   --workshop=NAME  the deploy scripts --skills and --sensor run (infra/scripts/deploy/NAME,
 #                    default java-performance)
-#   --skills         then reinstall the Claude Code skills and settings (claude-code.sh);
+#   --skills         then reinstall the skills and the agent settings (skills.sh,
+#                    claude-code.sh, kiro-cli.sh, each when the workshop has it);
 #                    reset-app.sh does not
 #   --sensor         then rebuild and reinstall the sensor (perf-sensor.sh)
 #
@@ -49,7 +50,12 @@ git fetch -q -f /tmp/java-on-aws.bundle "+$BRANCH:refs/ws-test/$BRANCH"
 git checkout -q -B "$BRANCH" "refs/ws-test/$BRANCH"
 git log --oneline -1
 EOF
-    [ "$SKILLS" = 1 ] && echo "bash $DEPLOY/claude-code.sh > /tmp/claude-code.log 2>&1 && echo 'skills reinstalled'"
+    [ "$SKILLS" = 1 ] && cat <<EOF
+for s in skills claude-code kiro-cli; do
+    [ -f $DEPLOY/\$s.sh ] || continue
+    bash $DEPLOY/\$s.sh > /tmp/\$s.log 2>&1 && echo "\$s.sh reinstalled"
+done
+EOF
     [ "$SENSOR" = 1 ] && echo "bash $DEPLOY/perf-sensor.sh > /tmp/perf-sensor.log 2>&1 && echo 'sensor rebuilt and installed'"
     echo true
 } | "$DIR/run-on-ide.sh" - 1800

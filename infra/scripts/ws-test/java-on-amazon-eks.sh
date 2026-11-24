@@ -19,7 +19,7 @@ WS_TEST_BLOCK_10_1
 
 ws_skip_block 2 'Check the environment' 'Check the environment' 31 32 'text' '' 'copy action disabled'
 
-ws_skip_block 3 'Start Claude Code' 'In the Claude terminal:' 47 47 'bash' '' 'interactive terminal UI'
+ws_skip_block 3 'Start Claude Code' 'In the Agent terminal:' 47 47 'bash' '' 'interactive terminal UI'
 
 ws_run_block 4 'Start Claude Code' 'With -p, Claude Code prints the answer and exits. Later calls with -c continue the same session:' 65 65 'bash' 'non-interactive' <<'WS_TEST_BLOCK_10_4'
 cd ~/environment && claude -p "List the MCP tools you can see from perf-sensor and eks-mcp, names only."

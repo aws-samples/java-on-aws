@@ -35,7 +35,7 @@ done
 [ -d "${ENV_DIR}/${APP_NS}/.git" ] || fail "${ENV_DIR}/${APP_NS} is not a git repo"
 git -C "${ENV_DIR}/${APP_NS}" log --format=%s -n 1 2>/dev/null | grep -q "^Starting point" \
   && log_success "Starting-point commit present" || fail "starting-point commit missing"
-for f in k8s/deployment.yaml scripts/load.sh scripts/build.sh CLAUDE.md; do
+for f in k8s/deployment.yaml scripts/load.sh scripts/build.sh AGENTS.md; do
   [ -f "${ENV_DIR}/${APP_NS}/${f}" ] || fail "missing ${f} in the participant repo"
 done
 grep -q "org.crac" "${ENV_DIR}/${APP_NS}/pom.xml" && fail "pom.xml still carries org.crac (de-spoil failed)"
@@ -63,13 +63,18 @@ echo "${M}" | jq -e '.workload.memLimitMi != null and .runtime.uptimeSeconds != 
   && log_success "perf-sensor measures ${APP_NS} (limit $(echo "${M}" | jq -r .workload.memLimitMi) Mi, uptime $(echo "${M}" | jq -r .runtime.uptimeSeconds) s)" \
   || fail "perf-sensor returned no workload/runtime facts for ${APP_NS}: $(echo "${M}" | head -c 300)"
 
-# 6. Claude Code wiring on the IDE.
+# 6. Skills for the coding agents (skills.sh).
+for s in java-on-eks-checklist java-on-eks-optimization; do
+  [ -f "${ENV_DIR}/skills/${s}/SKILL.md" ] || fail "skill ${s} missing in ${ENV_DIR}/skills"
+done
+
+# 7. Claude Code wiring on the IDE.
 [ -f "${ENV_DIR}/.mcp.json" ] && jq -e '.mcpServers["perf-sensor"] and .mcpServers["eks-mcp"]' "${ENV_DIR}/.mcp.json" >/dev/null \
   && log_success ".mcp.json has perf-sensor + eks-mcp" || fail ".mcp.json missing or incomplete"
 jq -e '.permissions.deny | index("Bash")' "${ENV_DIR}/.claude/settings.json" >/dev/null 2>&1 \
   && log_success "settings.json denies Bash" || fail "settings.json does not deny Bash"
 for s in java-on-eks-checklist java-on-eks-optimization; do
-  [ -f "${ENV_DIR}/.claude/skills/${s}/SKILL.md" ] || fail "skill ${s} missing"
+  [ -f "${ENV_DIR}/.claude/skills/${s}/SKILL.md" ] || fail "skill link ${ENV_DIR}/.claude/skills/${s} missing or broken"
 done
 command -v claude >/dev/null 2>&1 || [ -x "${HOME}/.local/bin/claude" ] || fail "claude CLI not installed"
 
