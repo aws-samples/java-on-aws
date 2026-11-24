@@ -116,28 +116,34 @@ def cleanup_guardduty_security_groups(vpc_id, max_retries=6, retry_delay=10):
 
     print("GuardDuty security group cleanup completed")
 
-def cleanup_s3_buckets(bucket_names):
-    """Delete only the S3 buckets supplied by the stack."""
+def cleanup_s3_buckets(bucket_names, attempts=6, retry_delay=10):
+    """Empty and delete the S3 buckets supplied by the stack, each up to `attempts` times.
+    Raises if a bucket remains, so the custom resource reports FAILED."""
+    remaining = []
     for bucket_name in bucket_names:
-        print(f"Deleting S3 bucket: {bucket_name}")
-        empty_bucket(bucket_name)
-        try:
-            s3.delete_bucket(Bucket=bucket_name)
-            print(f"Deleted bucket: {bucket_name}")
-        except Exception as e:
-            print(f"Error deleting bucket {bucket_name}: {e}")
-
+        if not delete_bucket(bucket_name, attempts, retry_delay):
+            remaining.append(bucket_name)
+    if remaining:
+        raise RuntimeError(f"S3 buckets not deleted: {remaining}")
     print("S3 bucket cleanup completed")
 
-def empty_bucket(bucket_name):
-    """Delete all objects and versions from a bucket using boto3 resource API."""
-    try:
-        bucket = s3_resource.Bucket(bucket_name)
-        # Delete all object versions (handles both versioned and non-versioned buckets)
-        bucket.object_versions.delete()
-        print(f"Emptied bucket: {bucket_name}")
-    except Exception as e:
-        print(f"Error emptying bucket {bucket_name}: {e}")
+def delete_bucket(bucket_name, attempts, retry_delay):
+    """Empty and delete one bucket. Returns True once the bucket is gone."""
+    for attempt in range(1, attempts + 1):
+        try:
+            # Delete all object versions (handles both versioned and non-versioned buckets)
+            s3_resource.Bucket(bucket_name).object_versions.delete()
+            s3.delete_bucket(Bucket=bucket_name)
+            print(f"Deleted bucket: {bucket_name}")
+            return True
+        except Exception as e:
+            if getattr(e, 'response', {}).get('Error', {}).get('Code') == 'NoSuchBucket':
+                print(f"Bucket already deleted: {bucket_name}")
+                return True
+            print(f"Attempt {attempt}/{attempts} for bucket {bucket_name}: {e}")
+            if attempt < attempts:
+                time.sleep(retry_delay)
+    return False
 
 def wait_for_deletion(endpoint_ids, max_wait=300):
     """Poll until endpoints are fully deleted (not just deleting) or timeout."""

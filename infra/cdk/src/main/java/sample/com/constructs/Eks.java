@@ -19,6 +19,7 @@ import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
 
 import java.util.List;
+import java.util.Map;
 
 import software.constructs.Construct;
 
@@ -49,7 +50,7 @@ public class Eks extends Construct {
         cloudwatchAgentRole = props.isCloudWatchAgentRole() ? createCloudWatchAgentRole(prefix) : null;
 
         // Add EKS add-ons
-        createAddons();
+        createAddons(props);
 
         // Create Access Entries for workshop access
         createAccessEntries(props);
@@ -85,18 +86,22 @@ public class Eks extends Construct {
         return role;
     }
 
-    private void createAddons() {
+    private void createAddons(EksProps props) {
         // AWS Secrets Store CSI Driver
         Addon.Builder.create(this, "SecretsStoreDriver")
             .cluster(cluster)
             .addonName("aws-secrets-store-csi-driver-provider")
             .build();
 
-        // AWS Mountpoint S3 CSI Driver
-        Addon.Builder.create(this, "MountpointS3Driver")
-            .cluster(cluster)
-            .addonName("aws-mountpoint-s3-csi-driver")
-            .build();
+        // AWS Mountpoint S3 CSI Driver, its controller on the workshop NodePool (setup/eks.sh)
+        if (props.isMountpointS3Driver()) {
+            Addon.Builder.create(this, "MountpointS3Driver")
+                .cluster(cluster)
+                .addonName("aws-mountpoint-s3-csi-driver")
+                .configurationValues(Map.of("controller",
+                    Map.of("nodeSelector", Map.of("karpenter.sh/nodepool", "workshop"))))
+                .build();
+        }
 
         // EKS Pod Identity Agent
         Addon.Builder.create(this, "PodIdentityAgent")
@@ -162,6 +167,7 @@ public class Eks extends Construct {
         private final IRole ideInstanceRole;
         private final ISecurityGroup ideInternalSecurityGroup;
         private final boolean cloudWatchAgentRole;
+        private final boolean mountpointS3Driver;
 
         private EksProps(Builder builder) {
             this.prefix = builder.prefix;
@@ -169,6 +175,7 @@ public class Eks extends Construct {
             this.ideInstanceRole = builder.ideInstanceRole;
             this.ideInternalSecurityGroup = builder.ideInternalSecurityGroup;
             this.cloudWatchAgentRole = builder.cloudWatchAgentRole;
+            this.mountpointS3Driver = builder.mountpointS3Driver;
         }
 
         public static Builder builder() {
@@ -195,12 +202,17 @@ public class Eks extends Construct {
             return cloudWatchAgentRole;
         }
 
+        public boolean isMountpointS3Driver() {
+            return mountpointS3Driver;
+        }
+
         public static class Builder {
             private String prefix = "workshop";
             private IVpc vpc;
             private IRole ideInstanceRole;
             private ISecurityGroup ideInternalSecurityGroup;
             private boolean cloudWatchAgentRole = true;
+            private boolean mountpointS3Driver = true;
 
             public Builder prefix(String prefix) {
                 this.prefix = prefix;
@@ -224,6 +236,11 @@ public class Eks extends Construct {
 
             public Builder cloudWatchAgentRole(boolean cloudWatchAgentRole) {
                 this.cloudWatchAgentRole = cloudWatchAgentRole;
+                return this;
+            }
+
+            public Builder mountpointS3Driver(boolean mountpointS3Driver) {
+                this.mountpointS3Driver = mountpointS3Driver;
                 return this;
             }
 
