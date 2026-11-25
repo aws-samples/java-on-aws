@@ -67,8 +67,14 @@ done
 # Both this script and perf-platform.sh consume it — monitoring.sh owns
 # the create, downstream scripts only read.
 log_info "Looking up shared folder '$FOLDER_NAME'..."
-SHARED_FOLDER=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/folders" \
-  | jq -r ".[] | select(.title == \"$FOLDER_NAME\")")
+SHARED_FOLDER=""
+for i in {1..12}; do
+  SHARED_FOLDER=$(curl -s --connect-timeout 5 --max-time 15 -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+    "$GRAFANA_URL/api/folders" | jq -r ".[] | select(.title == \"$FOLDER_NAME\")" 2>/dev/null || true)
+  [[ -n "$SHARED_FOLDER" ]] && break
+  log_info "Folder lookup failed, retrying... ($i/12)"
+  sleep 5
+done
 if [[ -z "$SHARED_FOLDER" ]]; then
   log_error "Shared folder '$FOLDER_NAME' not found. Run monitoring.sh first."
   exit 1

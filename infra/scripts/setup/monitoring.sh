@@ -246,6 +246,8 @@ service:
   type: LoadBalancer
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    # Every NLB zone forwards to the one Grafana pod, also the zones without a target
+    service.beta.kubernetes.io/aws-load-balancer-attributes: load_balancing.cross_zone.enabled=true
 
 persistence:
   enabled: true
